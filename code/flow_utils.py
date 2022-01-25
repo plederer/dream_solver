@@ -199,6 +199,7 @@ class FlowUtils():
 
     def numFlux(self, uhatold, u,uhat,n):        
         #Lax-Friedrich flux
+        
         return self.Flux(uhat)*n + self.c(u) * (u-uhat)
 
     def numdiffFlux(self, u,uhat,q,n):
@@ -206,7 +207,7 @@ class FlowUtils():
         C = CoefficientFunction((0,0,0,0,
                                  0,1,0,0,
                                  0,0,1,0,
-                                 0,0,0,1/((self.gamma-1)*self.Minf2 * self.Re * self.Pr)), dims = (4,4))
+                                 0,0,0,self.mu/(self.Re * self.Pr)), dims = (4,4))
     
         #Lax-Friedrich flux
         return self.diffFlux(uhat,q)*n + C * (u-uhat)
