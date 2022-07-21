@@ -9,7 +9,7 @@ from ngsolve.nonlinearsolvers import Newton, NewtonSolver
 from flow_utils import *
 
 class compressibleHDGsolver():
-    def __init__(self, mesh, order, ff_data, bnd_data, bnd_names):
+    def __init__(self, mesh, order, ff_data, bnd_data, bnd_names, viscid=True):
         self.mesh = mesh
 
         # boundary conditions, bnd_names is a set
@@ -22,6 +22,7 @@ class compressibleHDGsolver():
         
         self.FU = FlowUtils(ff_data)
 
+        self.viscid = viscid
         self.order = order
         self.bnd_data = bnd_data
         self.ff_data = ff_data
@@ -35,10 +36,14 @@ class compressibleHDGsolver():
         self.V2 = FacetFESpace(self.mesh, order=self.order)
         self.V3 = VectorL2(self.mesh, order=self.order)
         
-        self.fes = self.V1**4 * self.V2**4 * self.V3**4
-
-        u, uhat, q = self.fes.TrialFunction()
-        v, vhat, r = self.fes.TestFunction()
+        if self.viscid:
+            self.fes = self.V1**4 * self.V2**4 * self.V3**4
+            u, uhat, q = self.fes.TrialFunction()
+            v, vhat, r = self.fes.TestFunction()
+        else:
+            self.fes = self.V1**4 * self.V2**4
+            u, uhat = self.fes.TrialFunction()
+            v, vhat = self.fes.TestFunction()
                                                    
         # u = CoefficientFunction((u1,u2,u3,u4))
         # v = CoefficientFunction((v1,v2,v3,v4))
@@ -69,26 +74,30 @@ class compressibleHDGsolver():
         #a += u * v * dx()
 
         # q = nabla u 
-        self.a += (InnerProduct(q, r) + InnerProduct(u, div(r))).Compile() \
-            * dx()
-        self.a += -InnerProduct(uhat, r*n).Compile() \
-            * dx(element_boundary=True)
+        if self.viscid:
+            self.a += (InnerProduct(q, r) + InnerProduct(u, div(r))).Compile() \
+                * dx()
+            self.a += -InnerProduct(uhat, r*n).Compile() \
+                * dx(element_boundary=True)
 
         #  konv flux
         self.a += -InnerProduct(self.FU.Flux(u), grad(v)).Compile() * dx()
-
         self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), v).Compile() \
             * dx(element_boundary=True)
         self.a += (1-psi) * InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
             * dx(element_boundary=True)
         
-        # diff flux
-        self.a += -InnerProduct(self.FU.diffFlux(u, q ), grad(v)).Compile() \
-            * dx(bonus_intorder=bi_vol)
-        self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), v).Compile() \
-            * dx(element_boundary=True, bonus_intorder=bi_bnd)
-        self.a += (1-psi) * InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
-            * dx(element_boundary=True, bonus_intorder=bi_bnd)
+        self.a += (1-psi) * InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
+            * ds(skeleton=True)
+
+        #  diff flux
+        if self.viscid:
+            self.a += -InnerProduct(self.FU.diffFlux(u, q ), grad(v)).Compile() \
+                * dx(bonus_intorder=bi_vol)
+            self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), v).Compile() \
+                * dx(element_boundary=True, bonus_intorder=bi_bnd)
+            self.a += (1-psi) * InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
+                * dx(element_boundary=True, bonus_intorder=bi_bnd)
 
         # bnd fluxes
         # a += (  (Aplus(uhat,n) * (u-uhat) + Aminus(uhat, n) * (cf0-uhat)) * vhat) * ds(skeleton = True, definedon = mesh.Boundaries("left|right|top|bottom"))
@@ -115,7 +124,7 @@ class compressibleHDGsolver():
                 
         #################################################################################
         
-    def SetInitial(self, U_init, Q_init):        
+    def SetInitial(self, U_init, Q_init = None):        
         # Initial conditions
         # set to zero
         # for i in range(4):
@@ -124,12 +133,17 @@ class compressibleHDGsolver():
         #    gfu.components[i+8].Set(1e-6)
         #    gfu.components[i+12].Set(1e-6)
         
-        u, uhat, q = self.fes.TrialFunction()
-        v, vhat, r = self.fes.TestFunction()
+        if self.viscid:
+            u, uhat, q = self.fes.TrialFunction()
+            v, vhat, r = self.fes.TestFunction()
+        else:
+            u, uhat = self.fes.TrialFunction()
+            v, vhat = self.fes.TestFunction()
 
         self.m = BilinearForm(self.fes)
+        if self.viscid:
+            self.m += InnerProduct(q,r) * dx()
 
-        self.m += InnerProduct(q,r) * dx()
         self.m += u * v * dx()
         self.m += uhat * vhat * dx(element_boundary=True)
         self.m.Assemble()
@@ -137,7 +151,8 @@ class compressibleHDGsolver():
         minv = self.m.mat.Inverse(self.fes.FreeDofs(), inverse="sparsecholesky")
 
         t0 = LinearForm(self.fes)
-        t0 += InnerProduct(Q_init, r) * dx()
+        if self.viscid:
+            t0 += InnerProduct(Q_init, r) * dx()
         t0 += U_init * v * dx()
         t0 += U_init * vhat * dx(element_boundary=True)
         t0.Assemble()
