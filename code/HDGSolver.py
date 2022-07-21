@@ -86,9 +86,6 @@ class compressibleHDGsolver():
             * dx(element_boundary=True)
         self.a += (1-psi) * InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
             * dx(element_boundary=True)
-        
-        self.a += (1-psi) * InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
-            * ds(skeleton=True)
 
         #  diff flux
         if self.viscid:
