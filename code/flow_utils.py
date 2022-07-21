@@ -18,7 +18,9 @@ class FlowUtils():
         # this results in the given choice of R
         # see also notes.tex file!
         
-        self.R = (self.gamma - 1) / self.gamma
+        # self.R = (self.gamma - 1) 
+        self.R = ff_data["R"]
+        # self.R = (self.gamma - 1) #/ self.gamma
               
     def p(self, u):
         # p = (gamma-1) * rho*E - rho/2 * ||v||**2    
@@ -51,7 +53,7 @@ class FlowUtils():
     def gradT(self, u, q):
         # T = (self.gamma-1) * self.gamma * Minf**2(E - 1/2 (u**2 + v**2)
         # self.gamma * Minf**2 comes due to the non-dimensional NVS T = self.gamma Minf**2*p/rho
-        #temp flux
+        # temp flux
         vel = CoefficientFunction((u[1]/u[0],u[2]/u[0]))
         grad_vel = self.gradvel(u,q)
         u_x = grad_vel[0,0]
@@ -199,18 +201,16 @@ class FlowUtils():
 
     def numFlux(self, uhatold, u,uhat,n):        
         #Lax-Friedrich flux
-        
-        return self.Flux(uhat)*n + self.c(u) * (u-uhat)
+        return self.Flux(uhat)*n + self.c(uhat) * (u-uhat)  #self.Flux(uhat)*n + self.c(u) * (u-uhat)
 
     def numdiffFlux(self, u,uhat,q,n):
         #C = calcmaxspeed(uhat)
         C = CoefficientFunction((0,0,0,0,
-                                 0,1,0,0,
-                                 0,0,1,0,
+                                 0,1/self.Re,0,0,
+                                 0,0,1/self.Re,0,
                                  0,0,0,self.mu/(self.Re * self.Pr)), dims = (4,4))
     
-        #Lax-Friedrich flux
-        return self.diffFlux(uhat,q)*n + C * (u-uhat)
+        return self.diffFlux(uhat,q)*n #+ C * (u-uhat)
 
 
     def reflect(self,u,n):

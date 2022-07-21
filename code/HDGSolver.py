@@ -158,8 +158,8 @@ class compressibleHDGsolver():
         #              printenergy=False, print_wrong_direction=False)
         
         for it in range(maxit):
-            if it < 10:
-                dampfactor = 0.2
+            # if it < 10:
+            #     dampfactor = 0.2
             if printing:
                 print ("Newton iteration", it)
             self.a.Apply(self.gfu.vec, res)
