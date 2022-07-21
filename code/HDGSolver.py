@@ -9,22 +9,25 @@ from ngsolve.nonlinearsolvers import Newton, NewtonSolver
 from flow_utils import *
 
 class compressibleHDGsolver():
-    def __init__(self, mesh, order, ff_data, bnd_data, bnd_names, viscid=True):
+    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True):
         self.mesh = mesh
 
-        # boundary conditions, bnd_names is a set
-        self.inflow = bnd_names["inflow"]  # far-field, subsonic inflow
-        self.ss_outflow = bnd_names["ss_outflow"]  # super sonic outflow (pressure outflow)
-        self.ad_wall = bnd_names["ad_wall"]  # adiabatic wall
-        self.iso_wall = bnd_names["iso_wall"]  # isothermal wall
-        self.inv_wall = bnd_names["inv_wall"]  # invscid wall
-        self.dirichlet = bnd_names["dirichlet"]  # invscid wall
+        # bnd names and conditions :
+        # "inflow" far-field, subsonic inflow
+        # "ss_outflow" super sonic outflow (pressure outflow)
+        # "ad_wall" adiabatic wall
+        # "iso_wall" isothermal wall
+        # "inv_wall" invscid wall
+        # "dirichlet" dirichlet
         
+        self.bnd_data = bnd_data
+
+
         self.FU = FlowUtils(ff_data)
 
         self.viscid = viscid
         self.order = order
-        self.bnd_data = bnd_data
+        
         self.ff_data = ff_data
         #################################################################################
         
@@ -62,9 +65,9 @@ class compressibleHDGsolver():
         h = specialcf.mesh_size
         n = specialcf.normal(2)
 
-        V3 = FacetFESpace(self.mesh, order=0, dirichlet=self.dirichlet)
-        psi = GridFunction(V3)
-        psi.Set(1, BND)
+        # V3 = FacetFESpace(self.mesh, order=0, dirichlet=self.dirichlet)
+        # psi = GridFunction(V3)
+        # psi.Set(1, BND)
         
         # Bilinearform
         self.a = BilinearForm(self.fes, condense=self.condense)
@@ -84,8 +87,13 @@ class compressibleHDGsolver():
         self.a += -InnerProduct(self.FU.Flux(u), grad(v)).Compile() * dx()
         self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), v).Compile() \
             * dx(element_boundary=True)
-        self.a += (1-psi) * InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
+        self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
             * dx(element_boundary=True)
+
+        # subtract integrals that were added in the line above
+        if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
+            self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
+                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
         #  diff flux
         if self.viscid:
@@ -93,24 +101,22 @@ class compressibleHDGsolver():
                 * dx(bonus_intorder=bi_vol)
             self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), v).Compile() \
                 * dx(element_boundary=True, bonus_intorder=bi_bnd)
-            self.a += (1-psi) * InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
+            self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
                 * dx(element_boundary=True, bonus_intorder=bi_bnd)
+            if self.bnd_data["dirichlet"][0] != "":
+                self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
+                    * dx(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
         # bnd fluxes
-        # a += (  (Aplus(uhat,n) * (u-uhat) + Aminus(uhat, n) * (cf0-uhat)) * vhat) * ds(skeleton = True, definedon = mesh.Boundaries("left|right|top|bottom"))
 
-        # ubnd = CoefficientFunction((rho_ex,rho_ex * u_ex,rho_ex * v_ex, rho_ex * E_ex))
-        
-        # ubnd = CoefficientFunction((u[0],rho_ex * u_ex,rho_ex * v_ex, rho_ex * E_ex))
+        # for bnd_name in 
+        # a += (  (Aplus(uhat,n) * (u-uhat) + Aminus(uhat, n) * (cf0-uhat)) * vhat) \
+        #     * ds(skeleton = True, definedon = mesh.Boundaries("left|right|top|bottom"))
 
-        #self.a += (   (self.bnd_data-uhat) * vhat) * ds(skeleton = True, \
-        # definedon = self.mesh.Boundaries(self.dirichlet))
-        #self.a += ( psi *   (self.bnd_data-uhat) * vhat) \
-        # * dx(element_boundary = True) #ds(skeleton = True, \
-        # definedon = self.mesh.Boundaries(self.dirichlet))
 
-        self.a += ( (self.bnd_data-uhat.Trace()) * vhat.Trace()) \
-            * ds(definedon=self.mesh.Boundaries(self.dirichlet))
+        if self.bnd_data["dirichlet"][0] != "":
+            self.a += ( (self.bnd_data["dirichlet"][1]-uhat.Trace()) * vhat.Trace()) \
+                * ds(definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
         
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
         # definedon = self.mesh.Boundaries(self.dirichlet))
@@ -119,7 +125,7 @@ class compressibleHDGsolver():
         self.f += InnerProduct(force, v) * dx(bonus_intorder=bi_vol)
         self.f.Assemble()
                 
-        #################################################################################
+        #######################################################################
         
     def SetInitial(self, U_init, Q_init = None):        
         # Initial conditions
