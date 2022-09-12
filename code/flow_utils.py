@@ -8,8 +8,8 @@ class FlowUtils():
         self.Re = ff_data["Re"]
         self.Pr = ff_data["Pr"]
         self.mu = ff_data["mu"]
-        self.Minf = ff_data["Minf"]
-        self.Minf2 = self.Minf**2
+        # self.Minf = ff_data["Minf"]
+        # self.Minf2 = self.Minf**2
         self.gamma = ff_data["gamma"]
 
         self.mu = 1
@@ -159,7 +159,7 @@ class FlowUtils():
     
         vk_p_c = vk+ck
         vk_m_c = vk-ck
-
+        
         # ABS = absolute value
         if (ABS==True):
             vk = sqrt(vk**2)
@@ -172,14 +172,14 @@ class FlowUtils():
                                     0,0,0,vk_m_c), dims = (4,4)).Compile()
                     
     def Aplus(self, u,k):
-        return 0.5 * (P(u,k) * (Lam(u,k,False) + Lam(u,k,True)) * Pinv(u,k))  
+        return 0.5 * (self.P(u,k) * (self.Lam(u,k,False) + self.Lam(u,k,True)) * self.Pinv(u,k))  
 
     def Aminus(self, u,k):
-        return 0.5 * (P(u,k) * (Lam(u,k,False) - Lam(u,k,True)) * Pinv(u,k))
+        return 0.5 * (self.P(u,k) * (self.Lam(u,k,False) - self.Lam(u,k,True)) * self.Pinv(u,k))
 
     def Flux(self, u):
         m = CoefficientFunction((u[1],u[2]),dims=(2,1))
-        p = self.p(u) #(self.gamma-1) * (u[3] - 0.5*InnerProduct(m,m)/u[0])
+        p = self.p(u) # (self.gamma-1) * (u[3] - 0.5*InnerProduct(m,m)/u[0])
         return CoefficientFunction(tuple([m, 1/u[0] * m*m.trans + p*Id(2), 1/u[0] * (u[3]+p) * m]), 
                                dims = (4,2))
 
@@ -212,12 +212,9 @@ class FlowUtils():
     
         return self.diffFlux(uhat,q)*n #+ C * (u-uhat)
 
-
     def reflect(self,u,n):
         m = CoefficientFunction(tuple([u[i] for i in range(1,3)]),dims=(2,1))
         mn = InnerProduct(m,n)
         m -= mn*n
         #P = Id(2) - OuterProduct(n,n)
         return CoefficientFunction(tuple([u[0],m,u[3]]), dims = (4,1))
-
-

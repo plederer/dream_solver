@@ -22,13 +22,9 @@ class compressibleHDGsolver():
         
         self.bnd_data = bnd_data
 
-
         self.FU = FlowUtils(ff_data)
-
         self.viscid = viscid
         self.order = order
-        
-        self.ff_data = ff_data
         #################################################################################
         
     def SetUp(self, force=CoefficientFunction((0, 0, 0, 0)), condense=False):
@@ -91,9 +87,9 @@ class compressibleHDGsolver():
             * dx(element_boundary=True)
 
         # subtract integrals that were added in the line above
-        if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
-            self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
+        # if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
+        self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
+                * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
         #  diff flux
         if self.viscid:
@@ -103,9 +99,9 @@ class compressibleHDGsolver():
                 * dx(element_boundary=True, bonus_intorder=bi_bnd)
             self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
                 * dx(element_boundary=True, bonus_intorder=bi_bnd)
-            if self.bnd_data["dirichlet"][0] != "":
-                self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
-                    * dx(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
+            #if "dirichlet" in self.bnd_data:
+            self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
+                    * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
         # bnd fluxes
 
@@ -113,11 +109,22 @@ class compressibleHDGsolver():
         # a += (  (Aplus(uhat,n) * (u-uhat) + Aminus(uhat, n) * (cf0-uhat)) * vhat) \
         #     * ds(skeleton = True, definedon = mesh.Boundaries("left|right|top|bottom"))
 
-
-        if self.bnd_data["dirichlet"][0] != "":
-            self.a += ( (self.bnd_data["dirichlet"][1]-uhat.Trace()) * vhat.Trace()) \
-                * ds(definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
+        # print(self.bnd_data)
+        if "dirichlet" in self.bnd_data:
+            Bhat = self.bnd_data["dirichlet"][1]
+            self.a += ((Bhat-uhat) * vhat) \
+                * ds(skeleton = True, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
         
+        if "inflow" in self.bnd_data:
+            Bhat = self.FU.Aplus(uhat,n) * (u-uhat)
+            Bhat += self.FU.Aminus(uhat, n) * (self.bnd_data["inflow"][1]-uhat)
+            self.a += (Bhat * vhat) \
+                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inflow"][0]))
+
+        if "inv_wall" in self.bnd_data:
+            self.a += (InnerProduct(self.FU.reflect(u,n)-uhat,vhat)) \
+                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inv_wall"]))
+
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
         # definedon = self.mesh.Boundaries(self.dirichlet))
 
@@ -218,12 +225,12 @@ class compressibleHDGsolver():
 
     @property
     def pressure(self):
-        return (self.ff_data["gamma"] - 1) * (self.gfu.components[0][3] - self.gfu.components[0][0]/2 * InnerProduct(self.velocity,self.velocity))
+        return (self.FU.gamma - 1) * (self.gfu.components[0][3] - self.gfu.components[0][0]/2 * InnerProduct(self.velocity,self.velocity))
 
     @property
     def temperature(self):        
         # return self.ff_data["gamma"] * self.ff_data["Minf"]**2 * self.pressure / self.density
-        return self.ff_data["R"] * self.pressure / self.density
+        return self.FU.R * self.pressure / self.density
 
     @property
     def energy(self):
@@ -231,13 +238,8 @@ class compressibleHDGsolver():
 
     @property
     def c(self):
-        return sqrt(self.ff_data["gamma"] * self.temperature)
+        return sqrt(self.FU.gamma * self.temperature)
         
     @property
     def M(self):
         return sqrt(self.velocity[0]**2 + self.velocity[1]**2)/self.c
-
-    @property
-    def GFU(self):
-        return self.gfu
-
