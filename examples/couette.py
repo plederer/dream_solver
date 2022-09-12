@@ -21,7 +21,7 @@ mu = 1
 Re = 1
 
 print("pinf = ", pinf)
-order = 4
+order = 2
 
 #################################################################################
 # Geometry, exact solution and boundary solution
@@ -63,38 +63,33 @@ ff_data = {"Re": Re,
            "Pr" : Pr,
            "Minf" : Minf,
            "gamma" : gamma,
-           "mu" : mu}
+           "mu" : mu,
+           "R": (gamma - 1)/gamma}
 
-bnd_data = CoefficientFunction((rho_ex, vel_ex[0]*rho_ex,vel_ex[1]*rho_ex, E_ex * rho_ex))
+dir_data = CoefficientFunction((rho_ex, vel_ex[0]*rho_ex,vel_ex[1]*rho_ex, E_ex * rho_ex))
 
-bnd_names = {"inflow" : "",
-             "ss_outflow": "",
-             "ad_wall": "",
-             "iso_wall":"",
-             "inv_wall" : "",
-             "dirichlet": "left|right|top|bottom"}
+bnd_data = {"dirichlet": ["left|right|top|bottom", BoundaryFromVolumeCF(dir_data)]}
 
-hdgsolver = compressibleHDGsolver(mesh, order = order, ff_data = ff_data, bnd_data = bnd_data, bnd_names = bnd_names)
 
-# uinit = CoefficientFunction((1,0,0,0.5+pinf/(gamma-1)))
+
+hdgsolver = compressibleHDGsolver(mesh, order=order, ff_data=ff_data, bnd_data=bnd_data) #, bnd_names = bnd_names)
 
 # we solve for tile T, thus we have p = (gamma-1)/gamma rho * tilde T
-
-uinit = CoefficientFunction((1,0,0,pinf/(gamma-1)))
-qinit = CoefficientFunction((0,0,0,0,0,0,0,0), dims = (4,2))
+uinit = CoefficientFunction((1, 0, 0, pinf/(gamma-1)))
+qinit = CoefficientFunction((0, 0, 0, 0, 0, 0, 0, 0), dims=(4, 2))
 
 with TaskManager():
-    hdgsolver.SetUp(force, condense = True)
+    hdgsolver.SetUp(force, condense=True)
     hdgsolver.SetInitial(uinit, qinit)
     hdgsolver.Solve()
 
-Draw (hdgsolver.velocity,mesh, "u")
-Draw (hdgsolver.pressure,mesh, "p")
-Draw (hdgsolver.c,mesh, "c")
-Draw (hdgsolver.M,mesh, "M")
-Draw (hdgsolver.temperature,mesh, "T")
-Draw (hdgsolver.energy, mesh, "E")
-Draw (hdgsolver.density,mesh, "rho")
+Draw(hdgsolver.velocity, mesh, "u")
+Draw(hdgsolver.pressure, mesh, "p")
+Draw(hdgsolver.c, mesh, "c")
+Draw(hdgsolver.M, mesh, "M")
+Draw(hdgsolver.temperature, mesh, "T")
+Draw(hdgsolver.energy, mesh, "E")
+Draw(hdgsolver.density, mesh, "rho")
 
 
 print("rho_err = ", sqrt(Integrate((hdgsolver.density-rho_ex)**2, mesh)))
