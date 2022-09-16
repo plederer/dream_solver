@@ -72,7 +72,12 @@ bnd_data = {"dirichlet": ["left|right|top|bottom", BoundaryFromVolumeCF(dir_data
 
 
 
-hdgsolver = compressibleHDGsolver(mesh, order=order, ff_data=ff_data, bnd_data=bnd_data) #, bnd_names = bnd_names)
+hdgsolver = compressibleHDGsolver(
+    mesh, 
+    order=order, 
+    ff_data=ff_data, 
+    bnd_data=bnd_data,
+    viscid=True)
 
 # we solve for tile T, thus we have p = (gamma-1)/gamma rho * tilde T
 uinit = CoefficientFunction((1, 0, 0, pinf/(gamma-1)))

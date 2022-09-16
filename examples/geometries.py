@@ -24,7 +24,23 @@ def MakeSmoothRectangle (geo, p1, p2,r, bc=None, bcs=None, **args):
     geo.Append( ["spline3", pts[5], pts[6], pts[7]],bc = bc, **args)
     geo.Append( ["spline3", pts[8], pts[9], pts[10]],bc = bc, **args)
 
+
+def MakeRectangle(geo, p1, p2, p3, p4, bc=None, bcs=None, **args):
+    # p1x, p1y = p1
+    # p2x, p2y = p2
+    # p1x,p2x = min(p1x,p2x), max(p1x, p2x)
+    # p1y,p2y = min(p1y,p2y), max(p1y, p2y)
+
+    if not bcs: bcs=4*[bc]
+
+    pts = [geo.AppendPoint(*p) for p in [p1, p2, p3, p4]]
     
+    for p1, p2, bc in [(0, 1, bcs[0]), (1, 2, bcs[1]), (2, 3, bcs[2]), (3, 0, bcs[3])]:
+        geo.Append(["line", pts[p1], pts[p2]], bc=bc, **args)
+
+
+
+
     
 # z + n*b / (z - n*b) = (zeta + b / (zeta - b) ) ** n
 # this gives
@@ -50,3 +66,34 @@ def profile(Mx,My,r,k,b,t, scale = 1):
          scale * k * b * (top[1] * bott[0] - top[0] * bott[1]) / (bott[0]**2 + bott[1]**2)]
     
     return z[0],z[1]
+
+
+
+def Make_C_type(geo, r, R, L, maxh_cyl):
+    pts = [geo.AppendPoint(*p) for p in [(-R, R), (-R, 0),(-R, -R),
+                                         (0, -R), (L,-R), (L, R),
+                                         (0, R)]]
+    
+    geo.Append( ["spline3", pts[6], pts[0], pts[1]],bc="inflow")
+    geo.Append( ["spline3", pts[1], pts[2], pts[3]],bc="inflow")
+
+    geo.Append( ["line", pts[3], pts[4]], bc="outflow")
+    geo.Append( ["line", pts[4], pts[5]], bc="outflow")
+    geo.Append( ["line", pts[5], pts[6]], bc="outflow")
+
+    geo.AddCircle ( (0, 0), r=r, leftdomain=0, rightdomain=1, bc="cyl", maxh=maxh_cyl)
+
+
+def Make_Circle(geo, R):
+    pts = [geo.AppendPoint(*p) for p in [(0, R), (-R, R), (-R, 0),(-R, -R),
+                                         (0, -R), (R,-R), (R, 0),
+                                         (R, R)]]
+    
+    geo.Append( ["spline3", pts[0], pts[1], pts[2]],bc="inflow")
+    geo.Append( ["spline3", pts[2], pts[3], pts[4]],bc="inflow")
+
+    geo.Append( ["spline3", pts[4], pts[5], pts[6]],bc="outflow")
+    geo.Append( ["spline3", pts[6], pts[7], pts[0]],bc="outflow")
+
+
+# def Make_FlatPlate()
