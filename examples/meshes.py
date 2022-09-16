@@ -8,6 +8,10 @@ from math import cos, sin, pi
 
 
 def Get_Omesh(r,R,N,L, geom=1):
+    if (N%4) > 0:
+        print("N must be a multiplicative of 4!")
+        quit()
+
     mesh = ng_Mesh()
     mesh.dim = 2
 
@@ -24,13 +28,16 @@ def Get_Omesh(r,R,N,L, geom=1):
     mesh.SetGeometry(geo)
 
     pnums = []
-    for i in range(N):
-        px = cos(2 * pi * i/N)
-        py = sin(2 * pi * i/N)
-        for j in range(L+1):
+    for j in range(L+1):
+        for i in range(N):
+            # phi = 0
+            phi = pi/N * j
+            px = cos(2 * pi * i/N + phi)
+            py = sin(2 * pi * i/N + phi)
             ri = (R - r)* (j/L)**geom + r
             pnums.append(mesh.Add(MeshPoint(Pnt(ri * px, ri * py, 0))))
 
+    # print(pnums)
     mesh.Add(FaceDescriptor(surfnr=1, domin=1, bc=1))
     mesh.Add(FaceDescriptor(surfnr=2, domin=1, domout=0, bc=1))
     mesh.Add(FaceDescriptor(surfnr=3, domin=1, domout=0, bc=2))
@@ -38,23 +45,25 @@ def Get_Omesh(r,R,N,L, geom=1):
     
     idx_dom = 1 
     
-    for i in range(N-1):
-        for j in range(L):
-            mesh.Add(Element2D(idx_dom, [pnums[i * (L+1) + j], pnums[i * (L+1) + j + 1], pnums[(i+1) * (L+1) + j]]))
-            mesh.Add(Element2D(idx_dom, [pnums[(i+1) * (L+1) + j], pnums[i * (L+1) + j + 1], pnums[(i+1) * (L+1) + j+1]]))
-
+    
     for j in range(L):
-            mesh.Add(Element2D(idx_dom, [pnums[(N - 1) * (L+1) + j], pnums[(N-1) * (L+1) + j + 1], pnums[j]]))
-            mesh.Add(Element2D(idx_dom, [pnums[j], pnums[(N-1) * (L+1) + j + 1], pnums[j+1]]))
+        # print("j=",j)
+        for i in range(N-1):
+            # print("i=",i)
+            # offset =
+            mesh.Add(Element2D(idx_dom, [pnums[i + j * (N)], pnums[i + (j+1) * (N)], pnums[i + 1 + j * (N)]]))
+            mesh.Add(Element2D(idx_dom, [pnums[i + (j+1) * (N)], pnums[i + (j+1) * (N) + 1], pnums[i + 1 + j * (N)]]))
+        
+        mesh.Add(Element2D(idx_dom, [pnums[N -1 + j * (N)], pnums[N-1 + (j+1) * (N)], pnums[j * (N)]]))
+        mesh.Add(Element2D(idx_dom, [pnums[0 + j * (N)], pnums[N-1 + (j+1) * (N)], pnums[(j+1) * (N)]]))
 
     for i in range(N-1):
-        mesh.Add(Element1D([pnums[i*(L+1)],pnums[(i+1)*(L+1)]], [0,1], 1))
-
-    mesh.Add(Element1D([pnums[(N-1)*(L+1)], pnums[0]], [0,1], 1))
+        mesh.Add(Element1D([pnums[i],pnums[i+1]], [0,1], 1))
+    mesh.Add(Element1D([pnums[N-1], pnums[0]], [0,1], 1))
 
     for i in range(N-1):
-        mesh.Add(Element1D([pnums[(i+1)*(L+1) + L],pnums[i*(L+1) + L]], [0,2], index=2))
-    mesh.Add(Element1D([pnums[(N-1)*(L+1)+ L], pnums[L]], [0,2], index=2))
+        mesh.Add(Element1D([pnums[i + L * N],pnums[i + L * N + 1]], [0,2], index=2))
+    mesh.Add(Element1D([pnums[N -1 + L * N], pnums[L*N]], [0,2], index=2))
 
     mesh.SetBCName(0, "cyl")
     mesh.SetBCName(1, "inflow")
@@ -64,8 +73,12 @@ def Get_Omesh(r,R,N,L, geom=1):
 if __name__ == "__main__":
     from ngsolve import *
     R = 1   
-    R_farfield = R * 2
-    mesh = Mesh(Get_Omesh(R, R_farfield, 12, 3))
+    R_farfield = R * 15
+    mesh = Mesh(Get_Omesh(R, R_farfield, 20, 10, geom = 2))
     mesh.Curve(2)
     print(mesh.GetBoundaries())
     Draw(mesh)
+    V = H1(mesh, dirichlet=".*")
+    u = GridFunction(V)
+    u.Set(1, BND, definedon=mesh.Boundaries("cyl"))
+    Draw(u)

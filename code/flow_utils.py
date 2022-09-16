@@ -12,6 +12,9 @@ class FlowUtils():
         # self.Minf2 = self.Minf**2
         self.gamma = ff_data["gamma"]
 
+        # time step for pseudo time stepping
+        self.dt = Parameter(ff_data["dt"])
+
         self.mu = 1
 
         # we use a T_infty value equal to 1 / (gamma-1  * M_infty**2)
@@ -216,5 +219,5 @@ class FlowUtils():
         m = CoefficientFunction(tuple([u[i] for i in range(1,3)]),dims=(2,1))
         mn = InnerProduct(m,n)
         m -= mn*n
-        #P = Id(2) - OuterProduct(n,n)
+        # P = Id(2) - OuterProduct(n,n)
         return CoefficientFunction(tuple([u[0],m,u[3]]), dims = (4,1))

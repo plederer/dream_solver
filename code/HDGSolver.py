@@ -9,12 +9,12 @@ from ngsolve.nonlinearsolvers import Newton, NewtonSolver
 from flow_utils import *
 
 class compressibleHDGsolver():
-    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True):
+    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=True):
         self.mesh = mesh
 
         # bnd names and conditions :
         # "inflow" far-field, subsonic inflow
-        # "ss_outflow" super sonic outflow (pressure outflow)
+        # "outflow" subsonic outflow (pressure outflow)
         # "ad_wall" adiabatic wall
         # "iso_wall" isothermal wall
         # "inv_wall" invscid wall
@@ -24,6 +24,7 @@ class compressibleHDGsolver():
 
         self.FU = FlowUtils(ff_data)
         self.viscid = viscid
+        self.stationary = True
         self.order = order
         #################################################################################
         
@@ -86,6 +87,10 @@ class compressibleHDGsolver():
         self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
             * dx(element_boundary=True)
 
+        if self.stationary:
+            self.a += 1/self.FU.dt * InnerProduct(u - self.gfu.components[0], v) * dx 
+
+
         # subtract integrals that were added in the line above
         # if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
         self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
@@ -124,6 +129,14 @@ class compressibleHDGsolver():
         if "inv_wall" in self.bnd_data:
             self.a += (InnerProduct(self.FU.reflect(u,n)-uhat,vhat)) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inv_wall"]))
+
+        if "outflow" in self.bnd_data:
+            p_out = self.bnd_data["outflow"][1]
+            rho_E = p_out/(self.FU.gamma - 1) + u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2)
+            U = CF((u[0], u[1], u[2], rho_E))
+            # U = u
+            self.a += (-InnerProduct(uhat-U,vhat)) \
+                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["outflow"][0]))
 
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
         # definedon = self.mesh.Boundaries(self.dirichlet))
@@ -184,7 +197,15 @@ class compressibleHDGsolver():
         
         for it in range(maxit):
             # if it < 10:
-            #     dampfactor = 0.2
+            #     dampfactor = 0.001
+
+            if self.stationary == True:
+                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 1):
+                    c_dt = self.FU.dt.Get() * 10
+                    self.FU.dt.Set(c_dt)
+                    print("new dt = ", c_dt)
+
+                
             if printing:
                 print ("Newton iteration", it)
             self.a.Apply(self.gfu.vec, res)
