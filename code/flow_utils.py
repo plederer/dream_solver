@@ -5,25 +5,21 @@ from math import pi, atan2
 
 class FlowUtils():
     def __init__(self, ff_data):
-        self.Re = ff_data["Re"]
-        self.Pr = ff_data["Pr"]
-        self.mu = ff_data["mu"]
-        # self.Minf = ff_data["Minf"]
-        # self.Minf2 = self.Minf**2
-        self.gamma = ff_data["gamma"]
+
+        # stationary solution without pseudo time stepping
+        if "dt" not in ff_data.keys():
+            ff_data["dt"] = 1e10
+
+        for k in ["Re", "Pr", "mu", "Minf", "gamma", "R"]:
+            if k not in ff_data.keys():
+                print("Setting standard value: {} = 1".format(k))
+                ff_data[k] = 1
+            else:
+                setattr(self, k, ff_data[k])
 
         # time step for pseudo time stepping
         self.dt = Parameter(ff_data["dt"])
 
-        self.mu = 1
-
-        # we use a T_infty value equal to 1 / (gamma-1  * M_infty**2)
-        # this results in the given choice of R
-        # see also notes.tex file!
-        
-        # self.R = (self.gamma - 1) 
-        self.R = ff_data["R"]
-        # self.R = (self.gamma - 1) #/ self.gamma
               
     def p(self, u):
         # p = (gamma-1) * rho*E - rho/2 * ||v||**2    

@@ -24,7 +24,7 @@ class compressibleHDGsolver():
 
         self.FU = FlowUtils(ff_data)
         self.viscid = viscid
-        self.stationary = True
+        self.stationary = stationary
         self.order = order
         #################################################################################
         
@@ -55,6 +55,7 @@ class compressibleHDGsolver():
         # vhat_trace = CoefficientFunction((vhat1.Trace(),vhat2.Trace(),vhat3.Trace(),vhat4.Trace()))
 
         self.gfu = GridFunction(self.fes)
+        self.gfu_old = GridFunction(self.fes)
         # gfu_old = GridFunction(fes)
 
         # gfu_old = CoefficientFunction((gfu_old.components[0],gfu_old.components[1],gfu_old.components[2],gfu_old.components[3]))
@@ -87,14 +88,15 @@ class compressibleHDGsolver():
         self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
             * dx(element_boundary=True)
 
-        if self.stationary:
-            self.a += 1/self.FU.dt * InnerProduct(u - self.gfu.components[0], v) * dx 
-
-
         # subtract integrals that were added in the line above
         # if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
         self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
                 * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
+
+
+        # if self.stationary:
+        self.a += 1/self.FU.dt * InnerProduct(u - self.gfu_old.components[0], v) * dx 
+
 
         #  diff flux
         if self.viscid:
@@ -127,8 +129,29 @@ class compressibleHDGsolver():
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inflow"][0]))
 
         if "inv_wall" in self.bnd_data:
+            # if self.viscid and "inv_wall" in self.bnd_data:
+            #     raise Exception("inv_val boundary only for inviscid flows available")
             self.a += (InnerProduct(self.FU.reflect(u,n)-uhat,vhat)) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inv_wall"]))
+
+        if "iso_wall" in self.bnd_data:
+            if not self.viscid:
+                raise Exception("iso_val boundary only for viscid flows available")
+            T_w = self.bnd_data["iso_wall"][1]
+            rho_E = u[0] * T_w/self.FU.gamma
+            U = CF((u[0], u[1], u[2], rho_E))
+            self.a += (-InnerProduct(uhat-U,vhat)) \
+                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["iso_wall"][0]))
+        
+        if "ad_wall" in self.bnd_data:
+            if not self.viscid:
+                raise Exception("ad_val boundary only for viscid flows available")
+            tau_d = 1/((self.FU.gamma - 1) * self.FU.Minf**2 * self.FU.Re * self.FU.Pr)
+            rho_E = self.FU.mu/(self.FU.Re*self.FU.Pr) * self.FU.gradT(u, q) * n - tau_d * (u[3] - uhat[3])
+            B = CF((u[0] - uhat[0], u[1], u[2], rho_E))
+            self.a += (InnerProduct(B,vhat)) \
+                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["ad_wall"]))
+
 
         if "outflow" in self.bnd_data:
             p_out = self.bnd_data["outflow"][1]
@@ -178,15 +201,18 @@ class compressibleHDGsolver():
             t0 += InnerProduct(Q_init, r) * dx()
         t0 += U_init * v * dx()
         t0 += U_init * vhat * dx(element_boundary=True)
+        # if "ad_wall" in self.bnd_data:
+        #     t0 += -InnerProduct(U_init, vhat) \
+        #             * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["ad_wall"]))
+        
         t0.Assemble()
 
         self.gfu.vec.data = minv * t0.vec
         #################################################################################
 
-    def Solve(self, maxit=10, maxerr=1e-8, dampfactor=1, solver = "pardiso", printing = True):                       
+    def Solve(self, maxit=10, maxerr=1e-8, dampfactor=1, solver="pardiso", printing=True):
         res = self.gfu.vec.CreateVector()
         w = self.gfu.vec.CreateVector()
-
 
         # solver = NewtonSolver(a=self.a, u=self.gfu, rhs=self.f, freedofs=None,
         #          inverse="pardiso", solver=None)
@@ -196,6 +222,8 @@ class compressibleHDGsolver():
         #              printenergy=False, print_wrong_direction=False)
         
         for it in range(maxit):
+            if self.stationary == True:
+                self.gfu_old.vec.data = self.gfu.vec
             # if it < 10:
             #     dampfactor = 0.001
 
@@ -205,11 +233,11 @@ class compressibleHDGsolver():
                     self.FU.dt.Set(c_dt)
                     print("new dt = ", c_dt)
 
-                
             if printing:
                 print ("Newton iteration", it)
+
             self.a.Apply(self.gfu.vec, res)
-            # print(Norm(res))
+            
             
             self.a.AssembleLinearization(self.gfu.vec)
             res.data -= self.f.vec
@@ -224,16 +252,18 @@ class compressibleHDGsolver():
             else:
                 w.data = inv * res
 
-            # print(Norm(w))
             self.gfu.vec.data -= dampfactor *  w
-            Redraw()
-            
+
             err = sqrt(InnerProduct (w,res)**2)
             if printing:
                 print("err = ", err)
             if err < maxerr:
                 break
-            # input()
+
+            Redraw()
+        if not self.stationary:
+            self.gfu_old.vec.data = self.gfu.vec
+        #     # input()
         #################################################################################
 
     @property
@@ -245,13 +275,18 @@ class compressibleHDGsolver():
         return CoefficientFunction((self.gfu.components[0][1]/self.gfu.components[0][0],self.gfu.components[0][2]/self.gfu.components[0][0]))
 
     @property
+    def grad_velocity(self):
+        return self.FU.gradvel(self.gfu.components[0], self.gfu.components[2])
+
+    @property
     def pressure(self):
-        return (self.FU.gamma - 1) * (self.gfu.components[0][3] - self.gfu.components[0][0]/2 * InnerProduct(self.velocity,self.velocity))
+        # return (self.FU.gamma - 1) * (self.gfu.components[0][3] - self.gfu.components[0][0]/2 * InnerProduct(self.velocity,self.velocity))
+        return self.FU.R * (self.gfu.components[0][3] - self.gfu.components[0][0]/2 * InnerProduct(self.velocity,self.velocity))
 
     @property
     def temperature(self):        
         # return self.ff_data["gamma"] * self.ff_data["Minf"]**2 * self.pressure / self.density
-        return self.FU.R * self.pressure / self.density
+        return  self.pressure / self.density / self.FU.R
 
     @property
     def energy(self):
@@ -259,7 +294,7 @@ class compressibleHDGsolver():
 
     @property
     def c(self):
-        return sqrt(self.FU.gamma * self.temperature)
+        return sqrt(self.FU.gamma * self.FU.R * self.temperature)
         
     @property
     def M(self):

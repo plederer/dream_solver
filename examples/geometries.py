@@ -39,6 +39,15 @@ def MakeRectangle(geo, p1, p2, p3, p4, bc=None, bcs=None, **args):
         geo.Append(["line", pts[p1], pts[p2]], bc=bc, **args)
 
 
+def MakePlate(geo, L=1, loc_maxh=0.01):
+
+    ps = [(0, 0), (L/2, 0), (3*L, 0), (3*L, L/2), (0, L/2)]
+    pts = [geo.AppendPoint(*p) for p in ps]
+    for p1, p2, bc in [(0, 1, "sym"), (2, 3, "outflow"), (3, 4, "top"), (4, 0, "inflow")]:
+        geo.Append(["line", pts[p1], pts[p2]], bc=bc)
+
+    geo.Append(["line", pts[1], pts[2]], bc="ad_wall", maxh=loc_maxh)
+
 
 
     
