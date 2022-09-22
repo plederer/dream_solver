@@ -19,8 +19,8 @@ class FlowUtils():
             if k not in ff_data.keys():
                 print("Setting standard value: {} = 1".format(k))
                 ff_data[k] = 1
-            else:
-                setattr(self, k, ff_data[k])
+
+            setattr(self, k, ff_data[k])
 
         if "R" in ff_data.keys():
             print("Are you sure about that? Values might be incorrect")

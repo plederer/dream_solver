@@ -259,15 +259,17 @@ class compressibleHDGsolver():
         # solver.Solve(maxit=maxit, maxerr=maxerr, dampfactor=dampfactor,
         #              printing=True, callback=None, linesearch=False,
         #              printenergy=False, print_wrong_direction=False)
-        
+        if not self.stationary:
+            self.gfu_old.vec.data = self.gfu.vec
+
         for it in range(maxit):
-            if self.stationary == True:
+            if self.stationary:
                 self.gfu_old.vec.data = self.gfu.vec
             # if it < 10:
             #     dampfactor = 0.001
 
-            if self.stationary == True:
-                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 0.01):
+            if self.stationary:
+                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 1e4):
                     c_dt = self.FU.dt.Get() * 10
                     self.FU.dt.Set(c_dt)
                     print("new dt = ", c_dt)
@@ -293,17 +295,24 @@ class compressibleHDGsolver():
 
             self.gfu.vec.data -= dampfactor *  w
 
-            err = sqrt(InnerProduct (w,res)**2)
+            if self.stationary:
+                res.data = self.gfu_old.vec - self.gfu.vec
+                err = sqrt(InnerProduct (res,res)/InnerProduct(self.gfu_old.vec,self.gfu_old.vec))
+            else:
+                err = sqrt(InnerProduct (w,res)**2)
             if printing:
                 print("err = ", err)
             if err < maxerr:
                 break
-
-            Redraw()
+            
+            if self.stationary:
+                Redraw()
             if stop:
                 input()
-        if not self.stationary:
-            self.gfu_old.vec.data = self.gfu.vec
+            
+        Redraw()
+        # if not self.stationary:
+        #     self.gfu_old.vec.data = self.gfu.vec
         #     # input()
         #################################################################################
 
