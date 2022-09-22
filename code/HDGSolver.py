@@ -269,7 +269,7 @@ class compressibleHDGsolver():
             #     dampfactor = 0.001
 
             if self.stationary:
-                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 1e4):
+                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 1):
                     c_dt = self.FU.dt.Get() * 10
                     self.FU.dt.Set(c_dt)
                     print("new dt = ", c_dt)
@@ -296,8 +296,9 @@ class compressibleHDGsolver():
             self.gfu.vec.data -= dampfactor *  w
 
             if self.stationary:
-                res.data = self.gfu_old.vec - self.gfu.vec
-                err = sqrt(InnerProduct (res,res)/InnerProduct(self.gfu_old.vec,self.gfu_old.vec))
+                # res.data = self.gfu_old.vec - self.gfu.vec
+                # err = sqrt(InnerProduct (res,res)/InnerProduct(self.gfu_old.vec,self.gfu_old.vec))
+                err = sqrt(InnerProduct (w,res)**2)
             else:
                 err = sqrt(InnerProduct (w,res)**2)
             if printing:

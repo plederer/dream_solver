@@ -27,7 +27,7 @@ Einf = pinf/(gamma-1)/rhoinf + 0.5 * (1**2)
 
 inf_vals = CF((rhoinf, Uinf * rhoinf, 0, Einf * rhoinf))
 
-order = 2
+order = 3
 
 #################################################################################
 # Geometry, exact solution and boundary solution
@@ -45,7 +45,7 @@ R_farfield = R * 30
 
 # mesh = Mesh(geo.GenerateMesh(maxh=1))
 # mesh = Mesh(Get_Omesh(R, R_farfield, 64, 35, geom = 1.5))
-mesh = Mesh(Get_Omesh(R, R_farfield, 32, 20, geom = 1.5))
+mesh = Mesh(Get_Omesh(R, R_farfield, 36, 16, geom = 1.5))
 print("number of elements = ", mesh.ne)
 mesh.Curve(order)
 Draw(mesh)
