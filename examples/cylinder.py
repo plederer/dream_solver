@@ -60,8 +60,7 @@ p_out = pinf
 
 ff_data = {"Minf": Minf,
            "gamma": gamma,
-           "R": (gamma - 1),
-           "dt": 0.001}
+           "dt": 0.01}
 
 # bnd_data = {"inflow": ["inflow", inf_vals],
 #             "inv_wall": "cyl",

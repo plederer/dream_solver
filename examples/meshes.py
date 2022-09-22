@@ -11,6 +11,13 @@ def Get_Omesh(r,R,N,L, geom=1):
     if (N%4) > 0:
         print("N must be a multiplicative of 4!")
         quit()
+    if (L%2) > 0:
+        print("L must be a multiplicative of 2!")
+        quit()
+    if L > int(N/2):
+        print("L > N/2!!! Boundary conditions need to be updated... TODO")
+        quit()
+    
 
     mesh = ng_Mesh()
     mesh.dim = 2
@@ -30,7 +37,6 @@ def Get_Omesh(r,R,N,L, geom=1):
     pnums = []
     for j in range(L+1):
         for i in range(N):
-            # phi = 0
             phi = pi/N * j
             px = cos(2 * pi * i/N + phi)
             py = sin(2 * pi * i/N + phi)
@@ -61,24 +67,35 @@ def Get_Omesh(r,R,N,L, geom=1):
         mesh.Add(Element1D([pnums[i],pnums[i+1]], [0,1], 1))
     mesh.Add(Element1D([pnums[N-1], pnums[0]], [0,1], 1))
 
-    for i in range(N-1):
-        mesh.Add(Element1D([pnums[i + L * N],pnums[i + L * N + 1]], [0,2], index=2))
-    mesh.Add(Element1D([pnums[N -1 + L * N], pnums[L*N]], [0,2], index=2))
+
+    offset = int(-L/2 + N/4)
+
+    for i in range(0, offset):
+        mesh.Add(Element1D([pnums[i + L * N],pnums[i + L * N + 1]], [0,2], index=3))
+    
+
+    for i in range(offset, int(N/2)+offset):
+        mesh.Add(Element1D([pnums[i + L * N], pnums[i + L * N + 1]], [0,2], index=2))
+
+    for i in range(int(N/2)+offset, N-1):
+        mesh.Add(Element1D([pnums[i + L * N], pnums[i + L * N + 1]], [0,2], index=3))
+    mesh.Add(Element1D([pnums[L*N], pnums[N - 1 + L * N]], [0,2], index=3))
 
     mesh.SetBCName(0, "cyl")
     mesh.SetBCName(1, "inflow")
+    mesh.SetBCName(2, "outflow")
 
     return(mesh)
 
 if __name__ == "__main__":
     from ngsolve import *
     R = 1   
-    R_farfield = R * 15
-    mesh = Mesh(Get_Omesh(R, R_farfield, 20, 10, geom = 2))
-    mesh.Curve(2)
+    R_farfield = R * 2
+    mesh = Mesh(Get_Omesh(R, R_farfield, 36, 18, geom = 2))
+    mesh.Curve(4)
     print(mesh.GetBoundaries())
     Draw(mesh)
     V = H1(mesh, dirichlet=".*")
     u = GridFunction(V)
-    u.Set(1, BND, definedon=mesh.Boundaries("cyl"))
+    u.Set(1, BND, definedon=mesh.Boundaries("inflow"))
     Draw(u)
