@@ -10,38 +10,61 @@ class FlowUtils():
         if "dt" not in ff_data.keys():
             ff_data["dt"] = 1e10
 
-        for k in ["Re", "Pr", "mu", "Minf", "gamma", "R"]:
+        if "Du" not in ff_data.keys():
+            ff_data["Du"] = True
+
+        self.Du = ff_data["Du"]
+
+        for k in ["Re", "Pr", "mu", "Minf", "gamma"]:
             if k not in ff_data.keys():
                 print("Setting standard value: {} = 1".format(k))
                 ff_data[k] = 1
             else:
                 setattr(self, k, ff_data[k])
 
+        if "R" in ff_data.keys():
+            print("Are you sure about that? Values might be incorrect")
+            self.R = ff_data["R"]
+        else:
+            self.R = self.gamma - 1
+        
         # time step for pseudo time stepping
         self.dt = Parameter(ff_data["dt"])
 
-              
+    def rho(self, u):
+        return u[0]
+    def vel(self, u):
+        return CF((u[1]/u[0], u[2]/u[0]))
     def p(self, u):
         # p = (gamma-1) * rho*E - rho/2 * ||v||**2    
-        return (self.gamma-1) * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
+        # return (self.gamma-1) * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
+        return self.R * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
     def T(self, u):
-        return self.p(u) / (u[0] * self.R)
+        return self.p(u)/(u[0] * self.R)
+    def E(self, u):
+        return u[3]/u[0]
     def c(self, u):
-        return sqrt(self.gamma * self.p(u) / u[0])
+        return sqrt(self.gamma * self.R * self.T(u))
     def H(self, u):
         return self.p(u) / u[0] * self.gamma / (self.gamma - 1) + ((u[1]/u[0])**2 + (u[2]/u[0])**2)/2
     def M(self, u):
         return sqrt( ((u[1]/u[0])**2 + (u[2]/u[0])**2)) / self.c(u)
         
     def gradvel(self, u, q):
-        vel = CoefficientFunction((u[1]/u[0],u[2]/u[0]))
-        #u_x = 1/rho * [(rho*u)_x - rho_x * u)]
-        u_x = 1/u[0] * (q[1,0] - q[0,0] * u[1]/u[0])
-        #u_y = 1/rho * [(rho*u)_y - rho_y * u)]
-        u_y = 1/u[0] * (q[1,1] - q[0,1] * u[1]/u[0])
-        v_x = 1/u[0] * (q[2,0] - q[0,0] * u[2]/u[0])    
-        v_y = 1/u[0] * (q[2,1] - q[0,1] * u[2]/u[0])
-        return CoefficientFunction((u_x,u_y,v_x,v_y), dims = (2,2))
+        if not self.Du:
+            vel = self.vel(u)
+            #u_x = 1/rho * [(rho*u)_x - rho_x * u)]
+            u_x = 1/u[0] * (q[1,0] - q[0,0] * u[1]/u[0])
+            #u_y = 1/rho * [(rho*u)_y - rho_y * u)]
+            u_y = 1/u[0] * (q[1,1] - q[0,1] * u[1]/u[0])
+            v_x = 1/u[0] * (q[2,0] - q[0,0] * u[2]/u[0])    
+            v_y = 1/u[0] * (q[2,1] - q[0,1] * u[2]/u[0])
+        else:
+            u_x = q[0]
+            u_y = q[1]
+            v_x = q[1]
+            v_y = q[2]
+        return CoefficientFunction((u_x, u_y, v_x, v_y), dims=(2,2))
 
     def gradE(self, u, q):
         #E_x = 1/rho * [(rho*E)_x - rho_x*E]
@@ -53,20 +76,24 @@ class FlowUtils():
         # T = (self.gamma-1) * self.gamma * Minf**2(E - 1/2 (u**2 + v**2)
         # self.gamma * Minf**2 comes due to the non-dimensional NVS T = self.gamma Minf**2*p/rho
         # temp flux
-        vel = CoefficientFunction((u[1]/u[0],u[2]/u[0]))
-        grad_vel = self.gradvel(u,q)
-        u_x = grad_vel[0,0]
-        v_x = grad_vel[1,0]
-        u_y = grad_vel[0,1]
-        v_y = grad_vel[1,1]
+        if not self.Du:
+            vel = self.vel(u) 
+            grad_vel = self.gradvel(u,q)
+            u_x = grad_vel[0,0]
+            v_x = grad_vel[1,0]
+            u_y = grad_vel[0,1]
+            v_y = grad_vel[1,1]
 
-        E_x = self.gradE(u,q)[0]
-        E_y = self.gradE(u,q)[1]
-        
-        # T_x = (self.gamma-1)*(self.gamma * self.Minf2) * (E_x - (u_x * vel[0] + v_x * vel[1]))
-        # T_y = (self.gamma-1)*(self.gamma * self.Minf2) * (E_y - (u_y * vel[0] + v_y * vel[1]))
-        T_x = (self.gamma-1)/self.R * (E_x - (u_x * vel[0] + v_x * vel[1]))
-        T_y = (self.gamma-1)/self.R * (E_y - (u_y * vel[0] + v_y * vel[1]))
+            E_x = self.gradE(u,q)[0]
+            E_y = self.gradE(u,q)[1]
+            
+            # T_x = (self.gamma-1)*(self.gamma * self.Minf2) * (E_x - (u_x * vel[0] + v_x * vel[1]))
+            # T_y = (self.gamma-1)*(self.gamma * self.Minf2) * (E_y - (u_y * vel[0] + v_y * vel[1]))
+            T_x = (self.gamma-1)/self.R * (E_x - (u_x * vel[0] + v_x * vel[1]))
+            T_y = (self.gamma-1)/self.R * (E_y - (u_y * vel[0] + v_y * vel[1]))
+        else:
+            T_x = q[3]
+            T_y = q[4]
         return CF((T_x, T_y))
 
     
@@ -183,33 +210,42 @@ class FlowUtils():
                                dims = (4,2))
 
     def diffFlux(self, u, q):
-        vel = CoefficientFunction((u[1]/u[0],u[2]/u[0]))
-        grad_vel = self.gradvel(u,q)
-        tau = self.mu/self.Re * ((grad_vel+grad_vel.trans) - 2/3 * (grad_vel[0,0] + grad_vel[1,1]) * Id(2))             
-        grad_T = self.gradT(u,q)
-        tau_vel = tau * vel #CoefficientFunction((tau[0,0] * vel[0] + tau[0,1] * vel[1],tau[1,0] * vel[0] + tau[1,1] * vel[1]))
+        if not self.Du:
+            grad_vel = self.gradvel(u,q)
+            tau = self.mu/self.Re * (2 * (grad_vel+grad_vel.trans) - 2/3 * (grad_vel[0,0] + grad_vel[1,1]) * Id(2))
+            grad_T = self.gradT(u,q)
+        else:
+            tau = self.mu/self.Re * CF((q[0], q[1], q[1], q[2]), dims = (2,2))
+            grad_T = CF((q[3], q[4]))
+
+        tau_vel = tau * self.vel(u) #CoefficientFunction((tau[0,0] * vel[0] + tau[0,1] * vel[1],tau[1,0] * vel[0] + tau[1,1] * vel[1]))
 
         #k = 1/((self.gamma-1) * self.Minf2 * self.Re*self.Pr)
         k = self.mu / (self.Re * self.Pr)
 
         return CoefficientFunction((0,0,
-                                    -tau[0,0],-tau[0,1],
-                                    -tau[1,0],-tau[1,1],
-                                    -tau_vel[0] - k*grad_T[0] ,- tau_vel[1] - k*grad_T[1]),dims = (4,2))
+                                    tau[0,0],tau[0,1],
+                                    tau[1,0],tau[1,1],
+                                    tau_vel[0] + k*grad_T[0] , tau_vel[1] + k*grad_T[1]),dims = (4,2))
 
 
     def numFlux(self, uhatold, u,uhat,n):        
         #Lax-Friedrich flux
         return self.Flux(uhat)*n + self.c(uhat) * (u-uhat)  #self.Flux(uhat)*n + self.c(u) * (u-uhat)
 
-    def numdiffFlux(self, u,uhat,q,n):
+    def numdiffFlux(self, u, uhat,q,n):
         #C = calcmaxspeed(uhat)
-        C = CoefficientFunction((0,0,0,0,
-                                 0,1/self.Re,0,0,
-                                 0,0,1/self.Re,0,
-                                 0,0,0,self.mu/(self.Re * self.Pr)), dims = (4,4))
-    
-        return self.diffFlux(uhat,q)*n #+ C * (u-uhat)
+        # tau_d = 1 / ((self.gamma - 1) * self.Minf**2 * self.Pr) #self.mu/(self.Pr))
+        C = CoefficientFunction(
+                (0, 0, 0, 0,
+                 0, 1/self.Re, 0, 0,
+                 0, 0, 1/self.Re, 0,
+                 0, 0, 0, 1/self.Re * self.tau_d), dims = (4, 4))
+
+        if self.Du:
+            return self.diffFlux(uhat,q)*n - C * (u-uhat)
+        else:
+            return self.diffFlux(uhat,q)*n
 
     def reflect(self,u,n):
         m = CoefficientFunction(tuple([u[i] for i in range(1,3)]),dims=(2,1))
@@ -217,3 +253,8 @@ class FlowUtils():
         m -= mn*n
         # P = Id(2) - OuterProduct(n,n)
         return CoefficientFunction(tuple([u[0],m,u[3]]), dims = (4,1))
+
+    @property
+    def tau_d(self):
+        # return 1 / ((self.gamma - 1) * self.Minf**2 * self.Pr)
+        return 1 / (self.gamma * self.R * self.Minf**2 * self.Pr)
