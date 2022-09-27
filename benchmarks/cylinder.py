@@ -1,4 +1,18 @@
-from asyncore import read
+import os
+
+nt = 4
+if os.getlogin() != "philip":
+    try:
+        nt = 24
+        CDLL(os.path.join(os.environ["MKLROOT"], "lib/intel64/libmkl_rt.so"), RTLD_GLOBAL)
+    except:
+        nt = 24
+        try:
+            CDLL(os.path.join(os.environ["MKL_ROOT"], "lib/intel64/libmkl_rt.so"), RTLD_GLOBAL)
+        except: #to be sure
+            CDLL('/opt/sw/vsc4/VSC/x86_64/glibc-2.17/skylake/intel/compilers_and_libraries_2019.5.281/linux/mkl/lib/intel64/libmkl_rt.so', RTLD_GLOBAL)
+
+
 from netgen.geom2d import unit_square, SplineGeometry
 from ngsolve import *
 from ngsolve.internal import visoptions, viewoptions
@@ -15,6 +29,9 @@ from geometries import * #MakeSmoothRectangle, MakeRectangle, Make_C_type
 
 from meshes import Get_Omesh
 
+
+print("Using {} threads".format(nt))
+SetNumThreads(nt)
 
 # Dimensionless equations with diameter D
 R = 1/2
