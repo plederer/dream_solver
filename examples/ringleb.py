@@ -4,6 +4,7 @@ from ngsolve.internal import visoptions, viewoptions
 import math
 import sys
 sys.path.insert(1, '../code')
+sys.path.insert(1, '../utils')
 
 from ngsolve.comp import IntegrationRuleSpace
 from ngsolve.fem import MinimizationCF, NewtonCF
