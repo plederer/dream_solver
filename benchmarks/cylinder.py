@@ -132,3 +132,7 @@ with TaskManager():
         hdgsolver.Solve(maxit=10, maxerr=1e-9, dampfactor=1, printing=False)
         if s == 2:
             hdgsolver.IE.Set(0)
+
+        if t % 20 == 0:
+            filename = "solution_t_" + str(t) + ".dat"
+            hdgsolver.gfu.Save(filename)
