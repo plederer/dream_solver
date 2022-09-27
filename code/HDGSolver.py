@@ -61,6 +61,8 @@ class compressibleHDGsolver():
 
         self.gfu = GridFunction(self.fes)
         self.gfu_old = GridFunction(self.fes)
+        self.gfu_old_2 = GridFunction(self.fes)
+        
         # gfu_old = GridFunction(fes)
 
         # gfu_old = CoefficientFunction((gfu_old.components[0],gfu_old.components[1],gfu_old.components[2],gfu_old.components[3]))
@@ -131,7 +133,9 @@ class compressibleHDGsolver():
 
 
         # if self.stationary:
-        self.a += 1/self.FU.dt * InnerProduct(u - self.gfu_old.components[0], v) * dx 
+        self.IE = Parameter(1)
+        self.a += self.IE * 1/self.FU.dt * InnerProduct(u - self.gfu_old.components[0], v) * dx 
+        self.a += (1 - self.IE) * 1/self.FU.dt * InnerProduct(3/2 * u - 2 * self.gfu_old.components[0] + 1/2 * self.gfu_old.components[0], v) * dx 
 
 
         #  diff flux
@@ -260,6 +264,7 @@ class compressibleHDGsolver():
         #              printing=True, callback=None, linesearch=False,
         #              printenergy=False, print_wrong_direction=False)
         if not self.stationary:
+            self.gfu_old_2.vec.data = self.gfu_old.vec
             self.gfu_old.vec.data = self.gfu.vec
 
         for it in range(maxit):
@@ -269,7 +274,7 @@ class compressibleHDGsolver():
             #     dampfactor = 0.001
 
             if self.stationary:
-                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 1):
+                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 10):
                     c_dt = self.FU.dt.Get() * 10
                     self.FU.dt.Set(c_dt)
                     print("new dt = ", c_dt)
@@ -293,7 +298,10 @@ class compressibleHDGsolver():
             else:
                 w.data = inv * res
 
-            self.gfu.vec.data -= dampfactor *  w
+            if self.IE == 1:
+                self.gfu.vec.data -=  dampfactor *  w
+            else:
+                self.gfu.vec.data -= 2/3 * dampfactor *  w
 
             if self.stationary:
                 # res.data = self.gfu_old.vec - self.gfu.vec
