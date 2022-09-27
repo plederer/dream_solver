@@ -1,4 +1,5 @@
-import os
+import os, sys
+from ctypes import CDLL, RTLD_GLOBAL
 
 nt = 4
 if os.getlogin() != "philip":
