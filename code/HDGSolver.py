@@ -10,7 +10,7 @@ from ngsolve.nonlinearsolvers import Newton, NewtonSolver
 from flow_utils import *
 
 class compressibleHDGsolver():
-    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=True):
+    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=True, time_solver="IE"):
         self.mesh = mesh
 
         # bnd names and conditions :
@@ -27,9 +27,14 @@ class compressibleHDGsolver():
         self.viscid = viscid
         self.stationary = stationary
         self.order = order
+        self.compile_flag = True
+        self.time_solver = time_solver
         #################################################################################
-        
+
+
+
     def SetUp(self, force=CoefficientFunction((0, 0, 0, 0)), condense=False):
+        
         self.condense = condense
         bi_vol = 0
         bi_bnd = 0
@@ -49,37 +54,20 @@ class compressibleHDGsolver():
             self.fes = self.V1**4 * self.V2**4
             u, uhat = self.fes.TrialFunction()
             v, vhat = self.fes.TestFunction()
-                                                   
-        # u = CoefficientFunction((u1,u2,u3,u4))
-        # v = CoefficientFunction((v1,v2,v3,v4))
- 
-        # uhat = CoefficientFunction((uhat1,uhat2,uhat3,uhat4))
-        # vhat = CoefficientFunction((vhat1,vhat2,vhat3,vhat4))
- 
-        # uhat_trace = CoefficientFunction((uhat1.Trace(),uhat2.Trace(),uhat3.Trace(),uhat4.Trace()))
-        # vhat_trace = CoefficientFunction((vhat1.Trace(),vhat2.Trace(),vhat3.Trace(),vhat4.Trace()))
 
         self.gfu = GridFunction(self.fes)
         self.gfu_old = GridFunction(self.fes)
         self.gfu_old_2 = GridFunction(self.fes)
-        
-        # gfu_old = GridFunction(fes)
 
-        # gfu_old = CoefficientFunction((gfu_old.components[0],gfu_old.components[1],gfu_old.components[2],gfu_old.components[3]))
+        self.f = LinearForm(self.fes)
+        self.f += InnerProduct(force, v) * dx(bonus_intorder=bi_vol)
+        self.f.Assemble()
 
         h = specialcf.mesh_size
         n = specialcf.normal(2)
 
-        # V3 = FacetFESpace(self.mesh, order=0, dirichlet=self.dirichlet)
-        # psi = GridFunction(V3)
-        # psi.Set(1, BND)
-        
         # Bilinearform
         self.a = BilinearForm(self.fes, condense=self.condense)
-
-        # time derivative
-        #a += (u - gfu_old) * v * dx()
-        #a += u * v * dx()
 
         # q = nabla u 
         if self.viscid:
@@ -93,9 +81,9 @@ class compressibleHDGsolver():
                 vel = self.FU.vel(u)
                 vel_hat = self.FU.vel(uhat) 
 
-                self.a += (InnerProduct(eps, zeta) + InnerProduct(vel, div_dev_zeta)).Compile() \
+                self.a += (InnerProduct(eps, zeta) + InnerProduct(vel, div_dev_zeta)) \
                     * dx()
-                self.a += -InnerProduct(vel_hat, dev_zeta*n).Compile() \
+                self.a += -InnerProduct(vel_hat, dev_zeta*n) \
                     * dx(element_boundary=True)
 
                 phi = CF((q[3], q[4]))
@@ -105,50 +93,54 @@ class compressibleHDGsolver():
                 T = self.FU.T(u)
                 T_hat = self.FU.T(uhat)
 
-                self.a += (InnerProduct(phi, xi) + InnerProduct(T, div_xi)).Compile() \
+                self.a += (InnerProduct(phi, xi) + InnerProduct(T, div_xi)) \
                     * dx()
-                self.a += -InnerProduct(T_hat, xi*n).Compile() \
+                self.a += -InnerProduct(T_hat, xi*n) \
                     * dx(element_boundary=True)
                     
             else:
-                self.a += (InnerProduct(q, r) + InnerProduct(u, div(r))).Compile() \
+                self.a += (InnerProduct(q, r) + InnerProduct(u, div(r))) \
                     * dx()
-                self.a += -InnerProduct(uhat, r*n).Compile() \
+                self.a += -InnerProduct(uhat, r*n) \
                     * dx(element_boundary=True)
 
         #  konv flux
 
         S = 1
 
-        self.a += -InnerProduct(self.FU.Flux(u), grad(v)).Compile() * dx()
-        self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), v).Compile() \
+        self.a += -InnerProduct(self.FU.Flux(u), grad(v)).Compile(self.compile_flag) * dx()
+        self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), v).Compile(self.compile_flag) \
             * dx(element_boundary=True)
-        self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
+        self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile(self.compile_flag) \
             * dx(element_boundary=True)
 
         # subtract integrals that were added in the line above
         # if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
-        self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile() \
+        self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile(self.compile_flag) \
                 * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
 
         # if self.stationary:
-        self.IE = Parameter(1)
-        self.a += self.IE * 1/self.FU.dt * InnerProduct(u - self.gfu_old.components[0], v) * dx 
-        self.a += (1 - self.IE) * 1/self.FU.dt * InnerProduct(3/2 * u - 2 * self.gfu_old.components[0] + 1/2 * self.gfu_old.components[0], v) * dx 
+        
+        if self.time_solver=="IE":
+            print("Using IE solver")
+            self.a += 1/self.FU.dt * InnerProduct(u - self.gfu_old.components[0], v) * dx 
+        else:
+            print("Using BDF2 solver")
+            self.a += 3/2 * 1/self.FU.dt * InnerProduct(1 * u - 4/3 * self.gfu_old.components[0] + 1/3 * self.gfu_old.components[0], v) * dx 
 
 
         #  diff flux
         if self.viscid:
-            self.a += InnerProduct(self.FU.diffFlux(u, q), grad(v)).Compile() \
+            self.a += InnerProduct(self.FU.diffFlux(u, q), grad(v)).Compile(self.compile_flag) \
                 * dx(bonus_intorder=bi_vol)
-            self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), v).Compile() \
+            self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), v).Compile(self.compile_flag) \
                 * dx(element_boundary=True, bonus_intorder=bi_bnd)
 
-            self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
+            self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile(self.compile_flag) \
                 * dx(element_boundary=True, bonus_intorder=bi_bnd)
             #if "dirichlet" in self.bnd_data:
-            self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile() \
+            self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile(self.compile_flag) \
                     * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
         # bnd fluxes
@@ -164,13 +156,13 @@ class compressibleHDGsolver():
         if "inflow" in self.bnd_data:
             Bhat = self.FU.Aplus(uhat,n) * (u-uhat)
             Bhat += self.FU.Aminus(uhat, n) * (self.bnd_data["inflow"][1]-uhat)
-            self.a += (Bhat * vhat) \
+            self.a += (Bhat * vhat).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inflow"][0]))
 
         if "inv_wall" in self.bnd_data:
             # if self.viscid and "inv_wall" in self.bnd_data:
             #     raise Exception("inv_val boundary only for inviscid flows available")
-            self.a += (InnerProduct(self.FU.reflect(u,n)-uhat,vhat)) \
+            self.a += (InnerProduct(self.FU.reflect(u,n)-uhat,vhat)).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inv_wall"]))
 
         if "iso_wall" in self.bnd_data:
@@ -180,16 +172,16 @@ class compressibleHDGsolver():
             rho_E = u[0] * T_w/self.FU.gamma
             U = CF((u[0], u[1], u[2], rho_E))
             Bhat = U - uhat
-            self.a += (InnerProduct(Bhat,vhat)) \
+            self.a += (InnerProduct(Bhat,vhat)).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["iso_wall"][0]))
         
         if "ad_wall" in self.bnd_data:
             if not self.viscid:
                 raise Exception("ad_val boundary only for viscid flows available")
-            tau_d = self.FU.tau_d * 1/self.FU.Re #1/((self.FU.gamma - 1) * self.FU.Minf**2 * self.FU.Re * self.FU.Pr)
-            rho_E = self.FU.mu/(self.FU.Re*self.FU.Pr) * self.FU.gradT(u, q) * n - tau_d * (u[3] - uhat[3])
+            tau_d = self.FU.tau_d * 1/self.FU.Re.Get() #1/((self.FU.gamma - 1) * self.FU.Minf**2 * self.FU.Re * self.FU.Pr)
+            rho_E = self.FU.mu.Get()/(self.FU.Re.Get()*self.FU.Pr.Get()) * self.FU.gradT(u, q) * n - tau_d * (u[3] - uhat[3])
             Bhat = CF((u[0] - uhat[0], uhat[1], uhat[2], rho_E))
-            self.a += (InnerProduct(Bhat, vhat)) \
+            self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["ad_wall"]))
 
 
@@ -198,16 +190,13 @@ class compressibleHDGsolver():
             rho_E = p_out/(self.FU.gamma - 1) + u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2)
             U = CF((u[0], u[1], u[2], rho_E))
             Bhat = U - uhat
-            self.a += (InnerProduct(Bhat,vhat)) \
+            self.a += (InnerProduct(Bhat,vhat)).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["outflow"][0]))
 
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
         # definedon = self.mesh.Boundaries(self.dirichlet))
 
-        self.f = LinearForm(self.fes)
-        self.f += InnerProduct(force, v) * dx(bonus_intorder=bi_vol)
-        self.f.Assemble()
-                
+        
         #######################################################################
         
     def SetInitial(self, U_init, Q_init = None):        
@@ -284,10 +273,14 @@ class compressibleHDGsolver():
 
             self.a.Apply(self.gfu.vec, res)
             
-            
-            self.a.AssembleLinearization(self.gfu.vec)
             res.data -= self.f.vec
-            # print(Norm(res))
+
+            try:
+                self.a.AssembleLinearization(self.gfu.vec)
+            except Exception as e:
+                print("\nThis did not work!! Try smaller time step \n")
+                raise e
+
             inv = self.a.mat.Inverse(self.fes.FreeDofs(self.a.condense), inverse = solver) 
             if self.a.condense:
                 # print("condense")
@@ -298,10 +291,8 @@ class compressibleHDGsolver():
             else:
                 w.data = inv * res
 
-            if self.IE == 1:
-                self.gfu.vec.data -=  dampfactor *  w
-            else:
-                self.gfu.vec.data -= 2/3 * dampfactor *  w
+            
+            self.gfu.vec.data -= dampfactor *  w
 
             if self.stationary:
                 # res.data = self.gfu_old.vec - self.gfu.vec

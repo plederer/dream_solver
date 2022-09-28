@@ -12,15 +12,20 @@ class FlowUtils():
 
         if "Du" not in ff_data.keys():
             ff_data["Du"] = True
-
         self.Du = ff_data["Du"]
 
-        for k in ["Re", "Pr", "mu", "Minf", "gamma"]:
+        for k in ["Re", "Pr", "mu"]: 
             if k not in ff_data.keys():
                 print("Setting standard value: {} = 1".format(k))
                 ff_data[k] = 1
+            setattr(self, k, Parameter(ff_data[k]))
 
+        for k in ["Minf", "gamma"]: 
+            if k not in ff_data.keys():
+                print("Setting standard value: {} = 1".format(k))
+                ff_data[k] = 1
             setattr(self, k, ff_data[k])
+
 
         if "R" in ff_data.keys():
             print("Are you sure about that? Values might be incorrect")
@@ -211,21 +216,22 @@ class FlowUtils():
 
     def diffFlux(self, u, q):
         if not self.Du:
+            
             grad_vel = self.gradvel(u,q)
-            tau = self.mu/self.Re * (2 * (grad_vel+grad_vel.trans) - 2/3 * (grad_vel[0,0] + grad_vel[1,1]) * Id(2))
+            tau = self.mu.Get()/self.Re.Get() * (2 * (grad_vel+grad_vel.trans) - 2/3 * (grad_vel[0,0] + grad_vel[1,1]) * Id(2))
             grad_T = self.gradT(u,q)
         else:
-            tau = self.mu/self.Re * CF((q[0], q[1], q[1], q[2]), dims = (2,2))
+            tau = self.mu.Get()/self.Re.Get() * CF((q[0], q[1], q[1], q[2]), dims = (2,2))
             grad_T = CF((q[3], q[4]))
 
         tau_vel = tau * self.vel(u) #CoefficientFunction((tau[0,0] * vel[0] + tau[0,1] * vel[1],tau[1,0] * vel[0] + tau[1,1] * vel[1]))
 
         #k = 1/((self.gamma-1) * self.Minf2 * self.Re*self.Pr)
-        k = self.mu / (self.Re * self.Pr)
+        k = self.mu.Get() / (self.Re.Get() * self.Pr.Get())
 
         return CoefficientFunction((0,0,
-                                    tau[0,0],tau[0,1],
-                                    tau[1,0],tau[1,1],
+                                    tau[0,0], tau[0,1],
+                                    tau[1,0], tau[1,1],
                                     tau_vel[0] + k*grad_T[0] , tau_vel[1] + k*grad_T[1]),dims = (4,2))
 
 
@@ -238,9 +244,9 @@ class FlowUtils():
         # tau_d = 1 / ((self.gamma - 1) * self.Minf**2 * self.Pr) #self.mu/(self.Pr))
         C = CoefficientFunction(
                 (0, 0, 0, 0,
-                 0, 1/self.Re, 0, 0,
-                 0, 0, 1/self.Re, 0,
-                 0, 0, 0, 1/self.Re * self.tau_d), dims = (4, 4))
+                 0, 1/self.Re.Get(), 0, 0,
+                 0, 0, 1/self.Re.Get(), 0,
+                 0, 0, 0, 1/self.Re.Get() * self.tau_d), dims = (4, 4))
 
         if self.Du:
             return self.diffFlux(uhat,q)*n - C * (u-uhat)
@@ -257,4 +263,4 @@ class FlowUtils():
     @property
     def tau_d(self):
         # return 1 / ((self.gamma - 1) * self.Minf**2 * self.Pr)
-        return 1 / (self.gamma * self.R * self.Minf**2 * self.Pr)
+        return 1 / (self.gamma * self.R * self.Minf**2 * self.Pr.Get())

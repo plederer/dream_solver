@@ -37,7 +37,7 @@ SetNumThreads(nt)
 # Dimensionless equations with diameter D
 R = 1/2
 
-R_farfield = R * 100
+R_farfield = 2 * R * 30
 
 Pr = 0.75
 Re = 150
@@ -60,14 +60,17 @@ E0 = pinf/(gamma-1)/rhoinf + 0.5 * (U0**2 + V0**2)
 
 inf_vals = CF((rhoinf, U0 * rhoinf, V0 * rhoinf, E0 * rhoinf))
 
-order = 3
+order = 2
 
 #################################################################################
 
-# Make_C_type(geo, R, R_farfield, R_farfield * 2, maxh_cyl=0.2)
 geo = SplineGeometry()
-mesh = Mesh(Get_Omesh(R, R_farfield, 48, 20, geom = 2.5))
-# mesh = Mesh(geo.GenerateMesh(maxh=0.1))
+geo.AddCircle ( (0, 0), r=R, leftdomain=0, rightdomain=1, bc="cyl", maxh=0.1)
+Make_Circle(geo, R_farfield)
+mesh = Mesh(geo.GenerateMesh(maxh=1))
+
+# mesh = Mesh(Get_Omesh(R, R_farfield, 48, 20, geom = 2.5))
+
 
 print("number of elements = ", mesh.ne)
 mesh.Curve(order)
@@ -82,10 +85,10 @@ p_out = pinf
 
 
 ff_data = {"Minf": Minf,
-           "Re": Re,
+           "Re": Re_init,
            "Pr": Pr,
            "gamma": gamma,
-           "dt": 0.1}
+           "dt": 1}
 
 
 bnd_data = {"inflow": ["inflow", inf_vals],
@@ -99,15 +102,33 @@ hdgsolver = compressibleHDGsolver(mesh,
                                   ff_data=ff_data,
                                   bnd_data=bnd_data,
                                   viscid=True,
-                                  stationary=False)
+                                  stationary=True,
+                                  time_solver="BDF2")
 
 
 uinit = inf_vals
 qinit = CoefficientFunction((0,0,0,0,0,0,0,0), dims = (4,2))
 
 
+
+
+# with TaskManager():
+#     hdgsolver.SetUp(condense=True)
+#     hdgsolver.SetInitial(uinit, qinit)
+#     hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
+#     hdgsolver.gfu.Save("initial_cyl.dat")
+# input("finished initial solution")
+# quit()
+# file_initial = "solution_t_259.9999999999906.dat"
+
+
+hdgsolver.stationary = False
+hdgsolver.FU.dt.Set(0.1)
+hdgsolver.FU.Re.Set(Re)
 hdgsolver.SetUp(condense=True)
-hdgsolver.SetInitial(uinit, qinit)
+
+file_initial = "initial_cyl.dat"
+hdgsolver.gfu.Load(file_initial)
 
 nondim_pressure = (hdgsolver.pressure - pinf)/pinf/Uinf**2
 Draw(nondim_pressure, mesh, "nond-p")
@@ -122,20 +143,6 @@ Draw (hdgsolver.density,mesh, "rho")
 
 
 
-
-# # initial solution
-# with TaskManager():
-#     hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
-#     hdgsolver.gfu.Save("initial_cyl.dat")
-# input("finished initial solution")
-
-hdgsolver.gfu.Load("initial_cyl.dat")
-# hdgsolver.stationary = False
-# hdgsolver.FU.dt.Set(0.01)
-# hdgsolver.FU.Re = Re
-
-
-
 tend = 500 
 t = 0
 
@@ -147,10 +154,8 @@ with TaskManager():
         s += 1
         print("step = {}, time = {}".format(s, t), end='\r')
 
-        hdgsolver.Solve(maxit=10, maxerr=1e-9, dampfactor=1, printing=False)
-        if s == 2:
-            hdgsolver.IE.Set(0)
-
-        if t % 20 == 0:
+        hdgsolver.Solve(maxit=10, maxerr=1e-6, dampfactor=1, printing=False)
+        
+        if s % 20 == 0:
             filename = "solution_t_" + str(t) + ".dat"
             hdgsolver.gfu.Save(filename)
