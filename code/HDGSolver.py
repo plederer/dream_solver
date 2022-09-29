@@ -34,10 +34,9 @@ class compressibleHDGsolver():
 
 
     def SetUp(self, force=CoefficientFunction((0, 0, 0, 0)), condense=False):
-        
+        self.bi_vol = 0
+        self.bi_bnd = 0
         self.condense = condense
-        bi_vol = 0
-        bi_bnd = 0
         self.V1 = L2(self.mesh, order=self.order)
         self.V2 = FacetFESpace(self.mesh, order=self.order)
         self.V3 = VectorL2(self.mesh, order=self.order)
@@ -60,15 +59,26 @@ class compressibleHDGsolver():
         self.gfu_old_2 = GridFunction(self.fes)
 
         self.f = LinearForm(self.fes)
-        self.f += InnerProduct(force, v) * dx(bonus_intorder=bi_vol)
+        self.f += InnerProduct(force, v) * dx(bonus_intorder=self.bi_vol)
         self.f.Assemble()
+
+        self.InitBLF()
+
+    def InitBLF(self):
+        
+
+        if self.viscid:
+            u, uhat, q = self.fes.TrialFunction()
+            v, vhat, r = self.fes.TestFunction()
+            
+        else:
+            u, uhat = self.fes.TrialFunction()
+            v, vhat = self.fes.TestFunction()
+
+        self.a = BilinearForm(self.fes, condense=self.condense)
 
         h = specialcf.mesh_size
         n = specialcf.normal(2)
-
-        # Bilinearform
-        self.a = BilinearForm(self.fes, condense=self.condense)
-
         # q = nabla u 
         if self.viscid:
             if self.FU.Du:
@@ -133,12 +143,12 @@ class compressibleHDGsolver():
         #  diff flux
         if self.viscid:
             self.a += InnerProduct(self.FU.diffFlux(u, q), grad(v)).Compile(self.compile_flag) \
-                * dx(bonus_intorder=bi_vol)
+                * dx(bonus_intorder=self.bi_vol)
             self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), v).Compile(self.compile_flag) \
-                * dx(element_boundary=True, bonus_intorder=bi_bnd)
+                * dx(element_boundary=True, bonus_intorder=self.bi_bnd)
 
             self.a += -InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile(self.compile_flag) \
-                * dx(element_boundary=True, bonus_intorder=bi_bnd)
+                * dx(element_boundary=True, bonus_intorder=self.bi_bnd)
             #if "dirichlet" in self.bnd_data:
             self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile(self.compile_flag) \
                     * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
@@ -195,8 +205,6 @@ class compressibleHDGsolver():
 
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
         # definedon = self.mesh.Boundaries(self.dirichlet))
-
-        
         #######################################################################
         
     def SetInitial(self, U_init, Q_init = None):        
@@ -347,3 +355,13 @@ class compressibleHDGsolver():
     @property
     def M(self):
         return self.FU.M(self.gfu.components[0])
+
+    def DrawSolutions(self):
+        Draw(self.velocity, self.mesh, "u")
+        Draw(self.pressure, self.mesh, "p")
+        Draw(self.c, self.mesh, "c")
+        Draw(self.M, self.mesh, "M")
+        Draw(self.temperature, self.mesh, "T")
+        Draw(self.energy, self.mesh, "E")
+        Draw(self.density, self.mesh, "rho")
+        visoptions.scalfunction='u:0'

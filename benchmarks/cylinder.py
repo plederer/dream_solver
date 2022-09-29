@@ -35,23 +35,27 @@ print("Using {} threads".format(nt))
 SetNumThreads(nt)
 
 # Dimensionless equations with diameter D
-R = 1/2
+D = 1
+R = D/2
 
 R_farfield = 2 * R * 30
 
 Pr = 0.75
 Re = 150
-Re_init = 100
+Re_init = 10
 Uinf = 1
 Vinf = 0
+abs_u = sqrt(Uinf**2 + Vinf**2)
 Minf = 0.3
 gamma = 1.4 
 pinf = 1
 
-rhoinf = pinf * gamma / (Uinf/Minf)**2
-Einf = pinf/(gamma-1)/rhoinf + 0.5 * (Uinf**2 + Vinf**2)
+rhoinf = pinf * gamma / (abs_u/Minf)**2
+Einf = pinf/(gamma-1)/rhoinf + 0.5 * abs_u**2
 
-
+mu = rhoinf * abs_u * D / Re
+mu_init = rhoinf * abs_u * D / Re_init
+print("mu init = ", mu_init)
 
 R2 = 5*R
 U0 = 1 #IfPos((x**2 + y**2 - R2**2),1, (x**2 + y**2 - R**2) * 1/(R2**2-R**2))
@@ -65,10 +69,14 @@ order = 2
 #################################################################################
 
 geo = SplineGeometry()
-geo.AddCircle ( (0, 0), r=R, leftdomain=0, rightdomain=1, bc="cyl", maxh=0.1)
+geo.AddCircle ( (0, 0), r=R, leftdomain=0, rightdomain=1, bc="cyl", maxh=0.05)
 Make_Circle(geo, R_farfield)
-mesh = Mesh(geo.GenerateMesh(maxh=1))
 
+mesh = Mesh(geo.GenerateMesh(maxh=2))
+# mesh.ngmesh.Save("cylmesh.vol.gz")
+# mesh = Mesh("cylmesh.vol.gz")
+# mesh.ngmesh.SetGeometry(geo)
+# quit()
 # mesh = Mesh(Get_Omesh(R, R_farfield, 48, 20, geom = 2.5))
 
 
@@ -78,17 +86,15 @@ Draw(mesh)
 
 print(mesh.GetBoundaries())
 
-
-
-
 p_out = pinf
 
 
 ff_data = {"Minf": Minf,
            "Re": Re_init,
            "Pr": Pr,
+           "mu": mu_init,
            "gamma": gamma,
-           "dt": 1}
+           "dt": 0.01}
 
 
 bnd_data = {"inflow": ["inflow", inf_vals],
@@ -109,37 +115,38 @@ hdgsolver = compressibleHDGsolver(mesh,
 uinit = inf_vals
 qinit = CoefficientFunction((0,0,0,0,0,0,0,0), dims = (4,2))
 
+hdgsolver.SetUp(condense=True)
+hdgsolver.DrawSolutions()
 
-
-
-# with TaskManager():
-#     hdgsolver.SetUp(condense=True)
-#     hdgsolver.SetInitial(uinit, qinit)
-#     hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
-#     hdgsolver.gfu.Save("initial_cyl.dat")
+with TaskManager():
+    hdgsolver.SetInitial(uinit, qinit)
+    hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
+    # Re_init = Re_init * 2
+    # mu_init = rhoinf * abs_u * D / Re_init
+    # hdgsolver.FU.Re.Set(Re_init)
+    # hdgsolver.FU.mu.Set(mu_init)
+    # hdgsolver.SetUpBLF()
+    # input("first solve")
+    # hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
+    hdgsolver.gfu.Save("initial_cyl.dat")
 # input("finished initial solution")
 # quit()
-# file_initial = "solution_t_259.9999999999906.dat"
+# file_initial = "solution_t_400.00000000002245.dat"
 
 
 hdgsolver.stationary = False
 hdgsolver.FU.dt.Set(0.1)
 hdgsolver.FU.Re.Set(Re)
-hdgsolver.SetUp(condense=True)
+hdgsolver.FU.mu.Set(mu)
+hdgsolver.InitBLF()
 
 file_initial = "initial_cyl.dat"
 hdgsolver.gfu.Load(file_initial)
 
-nondim_pressure = (hdgsolver.pressure - pinf)/pinf/Uinf**2
-Draw(nondim_pressure, mesh, "nond-p")
+# nondim_pressure = (hdgsolver.pressure - pinf)/pinf/Uinf**2
+# Draw(nondim_pressure, mesh, "nond-p")
 
-Draw (hdgsolver.velocity,mesh, "u")
-Draw (hdgsolver.pressure,mesh, "p")
-Draw (hdgsolver.c,mesh, "c")
-Draw (hdgsolver.M,mesh, "M")
-Draw (hdgsolver.temperature,mesh, "T")
-Draw (hdgsolver.energy, mesh, "E")
-Draw (hdgsolver.density,mesh, "rho")
+
 
 
 
