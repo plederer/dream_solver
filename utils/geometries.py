@@ -100,17 +100,44 @@ def Make_C_type(geo, r, R, L, maxh_cyl):
     geo.AddCircle ( (0, 0), r=r, leftdomain=0, rightdomain=1, bc="cyl", maxh=maxh_cyl)
 
 
-def Make_Circle(geo, R):
-    pts = [geo.AppendPoint(*p) for p in [(0, R), (-R, R), (-R, 0),(-R, -R),
-                                         (0, -R), (R,-R), (R, 0),
-                                         (R, R)]]
-    
-    geo.Append( ["spline3", pts[0], pts[1], pts[2]],bc="inflow")
-    geo.Append( ["spline3", pts[2], pts[3], pts[4]],bc="inflow")
+def Make_Circle(geo, R, R_farfield, quadlayer=False, delta=1, HPREF = 1, loch = 1):
 
-    geo.Append( ["spline3", pts[4], pts[5], pts[6]],bc="outflow")
-    geo.Append( ["spline3", pts[6], pts[7], pts[0]],bc="outflow")
+    ip = [(0, R), (-R, R), (-R, 0),(-R, -R),
+          (0, -R), (R,-R), (R, 0), (R, R)]
 
+    op = [(0, R_farfield), (-R_farfield, R_farfield), (-R_farfield, 0),(-R_farfield, -R_farfield),
+                                         (0, -R_farfield), (R_farfield,-R_farfield), (R_farfield, 0),
+                                         (R_farfield, R_farfield)]
+
+    ps = op + ip
+    rd = 1
+
+    if quadlayer:
+        mp = [(0, R+delta), (-R-delta, R+delta), (-R-delta, 0),(-R-delta, -R-delta),
+          (0, -R-delta), (R+delta,-R-delta), (R+delta, 0), (R+delta, R+delta)]
+        ps = ps + mp
+
+    pts = [geo.AppendPoint(*p) for p in ps]
     
+    geo.Append( ["spline3", pts[0], pts[1], pts[2]], leftdomain=1, rightdomain=0, bc="inflow")
+    geo.Append( ["spline3", pts[2], pts[3], pts[4]], leftdomain=1, rightdomain=0, bc="inflow")
+    geo.Append( ["spline3", pts[4], pts[5], pts[6]], leftdomain=1, rightdomain=0, bc="outflow")
+    geo.Append( ["spline3", pts[6], pts[7], pts[0]], leftdomain=1, rightdomain=0, bc="outflow")
+
+    if quadlayer:
+        rd = 2
+    c1 = geo.Append (["spline3", pts[8],pts[9],pts[10]], leftdomain=0, rightdomain=rd, bc="cyl", hpref = HPREF, maxh=loch)
+    c2 = geo.Append (["spline3", pts[10],pts[11],pts[12]], leftdomain=0, rightdomain=rd, bc="cyl", hpref = HPREF, maxh=loch)
+    c3 = geo.Append (["spline3", pts[12],pts[13],pts[14]], leftdomain=0, rightdomain=rd, bc="cyl", hpref = HPREF, maxh=loch)
+    c4 = geo.Append (["spline3", pts[14],pts[15],pts[8]], leftdomain=0, rightdomain=rd, bc="cyl", hpref = HPREF, maxh=loch)
+
+    if quadlayer:
+        geo.Append (["spline3", pts[16],pts[17],pts[18]], leftdomain=2, rightdomain=1, bc="cyl2", copy = c1)
+        geo.Append (["spline3", pts[18],pts[19],pts[20]], leftdomain=2, rightdomain=1, bc="cyl2", copy = c2)
+        geo.Append (["spline3", pts[20],pts[21],pts[22]], leftdomain=2, rightdomain=1, bc="cyl2", copy = c3)
+        geo.Append (["spline3", pts[22],pts[23],pts[16]], leftdomain=2, rightdomain=1, bc="cyl2", copy = c4)
+
+        # geo.SetDomainQuadMeshing(2,True)
+
 
 # def Make_FlatPlate()
