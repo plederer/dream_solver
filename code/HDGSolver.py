@@ -116,8 +116,6 @@ class compressibleHDGsolver():
 
         #  konv flux
 
-        S = 1
-
         self.a += -InnerProduct(self.FU.Flux(u), grad(v)).Compile(self.compile_flag) * dx()
         self.a += InnerProduct(self.FU.numFlux(uhat, u, uhat, n), v).Compile(self.compile_flag) \
             * dx(element_boundary=True)
@@ -132,7 +130,7 @@ class compressibleHDGsolver():
 
         # if self.stationary:
         
-        if self.time_solver=="IE":
+        if self.time_solver=="IE" or self.stationary:
             print("Using IE solver")
             self.a += 1/self.FU.dt * InnerProduct(u - self.gfu_old.components[0], v) * dx 
         else:
@@ -155,9 +153,6 @@ class compressibleHDGsolver():
 
         # bnd fluxes
 
-        S2 = 1
-
-        # print(self.bnd_data)
         if "dirichlet" in self.bnd_data:
             Bhat = self.bnd_data["dirichlet"][1]
             self.a += ((Bhat-uhat) * vhat) \
@@ -333,6 +328,20 @@ class compressibleHDGsolver():
         return self.FU.vel(self.gfu.components[0])
 
     @property
+    def vorticity(self):
+        # dux_minus_dvy = 0.5 * (self.gfu.components[2][0] - self.gfu.components[2][0])
+        # duy_plus_dvx = self.gfu.components[2][1]
+        q = CF(Grad(self.gfu.components[0]), dims=(4,2))
+        
+        # u_x = 1/self.density * (q[1,0] - q[0,0] * self.velocity[0])
+        u_y = 1/self.density * (q[1,1] - q[0,1] * self.velocity[0])
+        v_x = 1/self.density * (q[2,0] - q[0,0] * self.velocity[1])    
+        # v_y = 1/self.density * (q[2,1] - q[0,1] * self.velocity[1])
+
+        vort = u_y - v_x
+        return vort
+
+    @property
     def grad_velocity(self):
         return self.FU.gradvel(self.gfu.components[0], self.gfu.components[2])
 
@@ -358,6 +367,7 @@ class compressibleHDGsolver():
 
     def DrawSolutions(self):
         Draw(self.velocity, self.mesh, "u")
+        Draw(self.vorticity, self.mesh, "omega")
         Draw(self.pressure, self.mesh, "p")
         Draw(self.c, self.mesh, "c")
         Draw(self.M, self.mesh, "M")
@@ -365,3 +375,18 @@ class compressibleHDGsolver():
         Draw(self.energy, self.mesh, "E")
         Draw(self.density, self.mesh, "rho")
         visoptions.scalfunction='u:0'
+
+
+    def CalcForces(self, surf, scale = 1):
+        q = self.gfu.components[2]
+        sigma_visc = self.FU.mu.Get()/self.FU.Re.Get() * CF((q[0], q[1], q[1], q[2]), dims = (2,2))
+
+        sigma_bnd = BoundaryFromVolumeCF(sigma_visc - self.pressure * Id(2))
+        n = specialcf.normal(2)
+        forces = Integrate(sigma_bnd * n, self.mesh, definedon=self.mesh.Boundaries(surf))
+
+        fd = scale * forces[0]
+        fl = scale * forces[1]
+
+        return fd, fl
+        
