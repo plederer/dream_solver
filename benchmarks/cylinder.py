@@ -32,9 +32,6 @@ from meshes import Get_Omesh
 print("Using {} threads".format(nt))
 SetNumThreads(nt)
 
-
-
-
 # Dimensionless equations with diameter D
 D = 1
 R = D/2
@@ -43,7 +40,7 @@ R_farfield = 2 * R * 30
 
 Pr = 0.75
 Re = 150
-Re_init = 50
+Re_init = 20
 Uinf = 1
 Vinf = 0
 abs_u = sqrt(Uinf**2 + Vinf**2)
@@ -54,43 +51,24 @@ pinf = 1
 rhoinf = pinf * gamma / (abs_u/Minf)**2
 Einf = pinf/(gamma-1)/rhoinf + 0.5 * abs_u**2
 
-# mu = rhoinf * abs_u * D / Re
-# mu_init = rhoinf * abs_u * D / Re_init
-# print("rhoinf = ", rhoinf)
-mu = abs_u * D / Re
-mu_init = abs_u * D / Re_init
+mu = rhoinf * abs_u * D / Re
+mu_init = rhoinf * abs_u * D / Re_init
+# mu = abs_u * D / Re
+# mu_init = abs_u * D / Re_init
 
-print("mu init = ", mu_init)
 
 R2 = 5*R
 U0 = 1 #IfPos((x**2 + y**2 - R2**2),1, (x**2 + y**2 - R**2) * 1/(R2**2-R**2))
 V0 = 0
 E0 = pinf/(gamma-1)/rhoinf + 0.5 * (U0**2 + V0**2)
 
-inf_vals = CF((rhoinf, U0 * rhoinf, V0 * rhoinf, E0 * rhoinf))
+inf_vals = (rhoinf, U0 * rhoinf, V0 * rhoinf, E0 * rhoinf)
 
 order = 3
 
 #################################################################################
 
 geo = SplineGeometry()
-
-# Make_Circle(geo, R, R_farfield)
-
-# mesh = Mesh(geo.GenerateMesh(maxh=2))
-# mesh.ngmesh.Save("cylmesh.vol.gz")
-# mesh = Mesh("cylmesh.vol.gz")
-# mesh.ngmesh.SetGeometry(geo)
-
-# L = 20
-# alpha = 3
-# hr = (R_farfield - R) * (1/L)**alpha + R
-# print(hr)
-# N = int(  D * pi / hr )
-
-# N = N + 4 - N%4
-# print("D pi/ N = ", D * pi/N)
-# print(N)
 
 if False:
     N = 80
@@ -104,15 +82,13 @@ if False:
 else:
     Make_Circle(geo, R, R_farfield, loch = 0.04)
     mesh = Mesh(geo.GenerateMesh(maxh=1.5, grading = 0.2))
-# mesh = Mesh(Get_Omesh(R, R_farfield, 48, 20, geom = 2.5))
+    
 
-
-print("Number of elmeents = ", mesh.ne)
+print("Number of elements = ", mesh.ne)
 # mesh.Curve(order)
 Draw(mesh)
 print(mesh.GetBoundaries())
-p_out = pinf
-# input()
+input()
 
 ff_data = {"Minf": Minf,
            "Re": Re_init,
@@ -137,27 +113,22 @@ hdgsolver = compressibleHDGsolver(mesh,
                                   time_solver="BDF2")
 
 
-uinit = inf_vals
+uinit = CF(tuple(inf_vals))
 qinit = CoefficientFunction((0,0,0,0,0,0,0,0), dims = (4,2))
 
 hdgsolver.SetUp(condense=True)
 hdgsolver.DrawSolutions()
 
-# with TaskManager():
-#     hdgsolver.SetInitial(uinit, qinit)
-#     hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
-#     # Re_init = Re_init * 2
-#     # mu_init = rhoinf * abs_u * D / Re_init
-#     # hdgsolver.FU.Re.Set(Re_init)
-#     # hdgsolver.FU.mu.Set(mu_init)
-#     # hdgsolver.SetUpBLF()
-#     # input("first solve")
-#     # hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
-#     hdgsolver.gfu.Save("initial_cyl.dat")
-# input("finished initial solution")
-# quit()
+# hdgsolver.InitializeDir("fine_solution")
+hdgsolver.SaveConfig()
+hdgsolver.SaveSolution()
 
-file_initial = "solution_s_5.dat"
+
+
+with TaskManager():
+    hdgsolver.SetInitial(uinit, qinit)
+    hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
+    hdgsolver.SaveState(0)
 
 
 hdgsolver.stationary = False
@@ -166,41 +137,23 @@ hdgsolver.FU.Re.Set(Re)
 hdgsolver.FU.mu.Set(mu)
 hdgsolver.InitBLF()
 
-# file_initial = "initial_cyl.dat"
-hdgsolver.gfu.Load(file_initial)
+# hdgsolver.LoadState(0)
 
-nondim_pressure = (hdgsolver.pressure - pinf)/pinf/Uinf**2
-Draw(nondim_pressure, mesh, "nond-p")
-
-# hdgsolver.gfu.Save("./testfolder/test.dat")
-
-
-
-
-tend = 500 
+tend = 200 
 t = 0
-input("asdf")
-
 s = 0
 
-import time 
+scal = 2/rhoinf/abs_u**2/D
+hdgsolver.SaveForces(0, "cyl", scal, init=True)
 
 with TaskManager():
     while t < tend:
-        t += hdgsolver.FU.dt.Get() #["dt"]
+        t += hdgsolver.FU.dt.Get()
         s += 1
         print("step = {}, time = {}".format(s, t), end='\r')
 
-        # hdgsolver.Solve(maxit=10, maxerr=1e-6, dampfactor=1, printing=False)
-        
+        hdgsolver.Solve(maxit=10, maxerr=1e-8, dampfactor=1, printing=False)
+        hdgsolver.SaveForces(t, "cyl", scal)
+
         if s % 5 == 0:
-            filename = "solution_s_" + str(s) + ".dat"
-            # hdgsolver.gfu.Save(filename)
-            hdgsolver.gfu.Load(filename)
-            Redraw(blocking=True)
-            time.sleep(0.1)
-
-
-# >>> import fnmatch
-# >>> import os
-# >>> fnmatch.filter(os.listdir('.'), 'solution_t_13')
+            hdgsolver.SaveState(s)
