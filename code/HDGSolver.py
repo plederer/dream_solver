@@ -4,13 +4,18 @@ from ngsolve import *
 from ngsolve.internal import visoptions, viewoptions
 import math
 import sys
+from datetime import datetime
+import pickle
 
 from ngsolve.nonlinearsolvers import Newton, NewtonSolver
 
 from flow_utils import *
 
+import os, sys
+
+
 class compressibleHDGsolver():
-    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=True, time_solver="IE"):
+    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=False, time_solver="IE"):
         self.mesh = mesh
 
         # bnd names and conditions :
@@ -29,11 +34,90 @@ class compressibleHDGsolver():
         self.order = order
         self.compile_flag = True
         self.time_solver = time_solver
+
+        self.time = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
+        # self.base_dir = os.path.join(os.path.abspath(os.getcwd()), "simulation_" + self.time)
+        self.base_dir = None #os.path.abspath(os.getcwd())
+        self.solutions_dir = None #os.path.join(self.base_dir, "solutions")
+        self.forces_dir = None #os.path.join(self.base_dir, "forces")
+
         #################################################################################
 
+    def SetDirName(self, base_dir):
+        os.path.join(os.path.abspath(os.getcwd()), base_dir)
+        self.base_dir = base_dir
+        self.solutions_dir = os.path.join(self.base_dir, "solutions")
+        self.forces_dir = os.path.join(self.base_dir, "forces")
 
+    def InitializeDir(self, base_dir=None):
+        if base_dir is not None:
+            self.SetDirName(base_dir)
+        else:
+            self.SetDirName("simulation_" + self.time)
+        os.makedirs(self.base_dir, exist_ok=True)
+        os.makedirs(self.solutions_dir, exist_ok=True)
+        os.makedirs(self.forces_dir, exist_ok=True)
 
-    def SetUp(self, force=CoefficientFunction((0, 0, 0, 0)), condense=False):
+    def SaveConfig(self, comment=None, save_mesh=False):
+        if self.base_dir is None:
+            self.InitializeDir()
+            
+        file_name = os.path.join(self.base_dir, "config_info")
+        file = open(file_name, "w")
+        file.write("#" * 40 + "\n")
+        file.write("Compressible HDG Solver plugin\n")
+        file.write("Authors: Philip Lederer\n")
+        file.write("Institute: (2022 - ) ASC TU Wien\n")
+        file.write("Funding: FWF (Austrian Science Fund) - P35391N\n")
+        file.write("https://github.com/plederer/dream_solver\n")
+        file.write("#" * 40 + "\n")
+        file.write("Simulation created on: " + self.time + "\n")
+        file.write("order: {}".format(self.order) + "\n")
+        file.write("Re: {}".format(self.FU.Re.Get()) + "\n")
+        file.write("mu: {}".format(self.FU.mu.Get()) + "\n")
+        file.write("Pr: {}".format(self.FU.Pr.Get()) + "\n")
+        file.write("Minf: {}".format(self.FU.Minf) + "\n")
+        file.write("Gamma: {}".format(self.FU.Minf) + "\n")
+        file.write("time step: {}".format(self.FU.dt.Get()) + "\n")
+        file.write("time solver: {}".format(self.time_solver) + "\n")
+        file.write("#" * 40 + "\n")
+        if comment:
+            file.write(comment + "\n")
+            file.write("#" * 40 + "\n")
+        file.close()
+
+        outfile = open(os.path.join(self.base_dir, "config_file"), 'wb')
+        pickle.dump([self.bnd_data, self.FU.GetData(), self.order], outfile)
+        outfile.close
+
+        if save_mesh:
+            self.SaveMesh()
+
+    def SaveMesh(self):
+        if self.base_dir is None:
+            self.InitializeDir()
+        outfile = open(os.path.join(self.base_dir, "mesh_file"), 'wb')
+        pickle.dump([self.mesh.ngmesh, self.mesh.ngmesh.GetGeometry()], outfile)
+        outfile.close
+
+    def SaveSolution(self):
+        if self.base_dir is None:
+            self.InitializeDir()
+        outfile = open(os.path.join(self.base_dir, "gfu_file"), 'wb')
+        pickle.dump(self.gfu, outfile)
+        outfile.close
+
+    def SaveState(self, s):
+        if self.base_dir is None:
+            self.InitializeDir()
+        state_name = os.path.join(self.solutions_dir, "state_step_" + str(s))
+        self.gfu.Save(state_name)
+
+    def LoadState(self, s):
+        state_name = os.path.join(self.solutions_dir, "state_step_" + str(s))
+        self.gfu.Load(state_name)
+
+    def SetUp(self, force=CoefficientFunction((0, 0, 0, 0)), condense=True):
         self.bi_vol = 0
         self.bi_bnd = 0
         self.condense = condense
@@ -65,8 +149,6 @@ class compressibleHDGsolver():
         self.InitBLF()
 
     def InitBLF(self):
-        
-
         if self.viscid:
             u, uhat, q = self.fes.TrialFunction()
             v, vhat, r = self.fes.TestFunction()
@@ -137,7 +219,6 @@ class compressibleHDGsolver():
             print("Using BDF2 solver")
             self.a += 3/2 * 1/self.FU.dt * InnerProduct(1 * u - 4/3 * self.gfu_old.components[0] + 1/3 * self.gfu_old.components[0], v) * dx 
 
-
         #  diff flux
         if self.viscid:
             self.a += InnerProduct(self.FU.diffFlux(u, q), grad(v)).Compile(self.compile_flag) \
@@ -160,7 +241,8 @@ class compressibleHDGsolver():
         
         if "inflow" in self.bnd_data:
             Bhat = self.FU.Aplus(uhat,n) * (u-uhat)
-            Bhat += self.FU.Aminus(uhat, n) * (self.bnd_data["inflow"][1]-uhat)
+            inflow_cf = CF(tuple(self.bnd_data["inflow"][1]))
+            Bhat += self.FU.Aminus(uhat, n) * (inflow_cf-uhat)
             self.a += (Bhat * vhat).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inflow"][0]))
 

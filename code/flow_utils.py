@@ -26,15 +26,28 @@ class FlowUtils():
                 ff_data[k] = 1
             setattr(self, k, ff_data[k])
 
-
         if "R" in ff_data.keys():
-            print("Are you sure about that? Values might be incorrect")
+            # print("Are you sure about that? Values might be incorrect")
             self.R = ff_data["R"]
         else:
             self.R = self.gamma - 1
-        
+
         # time step for pseudo time stepping
         self.dt = Parameter(ff_data["dt"])
+
+    def GetData(self):
+        ff_data={}
+        ff_data["dt"] = self.dt.Get()
+        ff_data["Du"] = self.Du
+        ff_data["Re"] = self.Re.Get()
+        ff_data["Pr"] = self.Pr.Get()
+        ff_data["mu"] = self.mu.Get()
+        ff_data["Minf"] = self.Minf
+        ff_data["gamma"] = self.gamma
+        ff_data["R"] = self.R
+
+        return ff_data
+
 
     def rho(self, u):
         return u[0]
@@ -55,7 +68,7 @@ class FlowUtils():
         return self.p(u) / u[0] * self.gamma / (self.gamma - 1) + ((u[1]/u[0])**2 + (u[2]/u[0])**2)/2
     def M(self, u):
         return sqrt(((u[1]/u[0])**2 + (u[2]/u[0])**2)) / self.c(u)
-        
+
     def gradvel(self, u, q):
         if not self.Du:
             vel = self.vel(u)
