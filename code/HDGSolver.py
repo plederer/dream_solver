@@ -461,7 +461,7 @@ class compressibleHDGsolver():
         visoptions.scalfunction='u:0'
 
 
-    def CalcForces(self, surf, scale = 1):
+    def CalcForces(self, surf, scale=1):
         q = self.gfu.components[2]
         sigma_visc = self.FU.mu.Get()/self.FU.Re.Get() * CF((q[0], q[1], q[1], q[2]), dims = (2,2))
 
@@ -474,3 +474,13 @@ class compressibleHDGsolver():
 
         return fd, fl
         
+    def SaveForces(self, t, surf, scale=1, init=False):
+        if self.base_dir is None:
+            self.InitializeDir()
+        if init:
+            outfile = open(os.path.join(self.forces_dir, "force_file"), 'w')
+        else:
+            outfile = open(os.path.join(self.forces_dir, "force_file"), 'a')
+        fd, fl = self.CalcForces(surf, scale)
+        outfile.write("{}\t{}\t{}\n".format(t,fd,fl))
+        outfile.close
