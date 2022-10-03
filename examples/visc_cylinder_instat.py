@@ -16,10 +16,11 @@ from geometries import * #MakeSmoothRectangle, MakeRectangle, Make_C_type
 from meshes import Get_Omesh
 
 
-R = 1
-R_farfield = R * 30
+R = 0.5
+R_farfield = 2*R * 30
 
-Re = 1e3
+Re_init = 10
+Re = 150
 Uinf = 1
 Vinf = 0
 Minf = 0.3
@@ -30,9 +31,8 @@ rhoinf = pinf * gamma / (Uinf/Minf)**2
 Einf = pinf/(gamma-1)/rhoinf + 0.5 * (Uinf**2 + Vinf**2)
 
 
-
 R2 = 5*R
-U0 = IfPos((x**2 + y**2 - R2**2),1, (x**2 + y**2 - R**2) * 1/(R2**2-R**2))
+U0 = 1
 V0 = 0
 E0 = pinf/(gamma-1)/rhoinf + 0.5 * (U0**2 + V0**2)
 
@@ -42,7 +42,7 @@ order = 3
 
 #################################################################################
 geo = SplineGeometry()
-Make_C_type(geo, R, R_farfield, R_farfield * 2, maxh_cyl=0.2)
+Make_C_type(geo, R, R_farfield, R_farfield * 2, maxh_cyl=0.1)
 mesh = Mesh(geo.GenerateMesh(maxh=5))
 
 print("number of elements = ", mesh.ne)
@@ -60,7 +60,7 @@ p_out = pinf
 ff_data = {"Minf": Minf,
            "Re": Re,
            "gamma": gamma,
-           "dt": 0.5}
+           "dt": 10}
 
 
 bnd_data = {"inflow": ["inflow", inf_vals],
@@ -74,15 +74,37 @@ hdgsolver = compressibleHDGsolver(mesh,
                                   ff_data=ff_data,
                                   bnd_data=bnd_data,
                                   viscid=True,
-                                  stationary=False)
+                                  stationary=True)
 
 
 uinit = inf_vals
 qinit = CoefficientFunction((0,0,0,0,0,0,0,0), dims = (4,2))
 
 
+
+
+# initial solution
+with TaskManager():
+    hdgsolver.SetUp(condense=True)
+    hdgsolver.SetInitial(uinit, qinit)    
+    hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
+    hdgsolver.gfu.Save("initial_cyl.dat")
+    
+input("finished initial solution")
+
+
+hdgsolver.stationary = False
+hdgsolver.FU.dt.Set(0.5)
+hdgsolver.FU.Re.Set(Re)
 hdgsolver.SetUp(condense=True)
-hdgsolver.SetInitial(uinit, qinit)
+
+# hdgsolver.gfu.Load("initial_cyl.dat")
+hdgsolver.gfu_old.vec.data = hdgsolver.gfu.vec
+hdgsolver.gfu_old_2.vec.data = hdgsolver.gfu.vec
+
+tend = 200 
+t = 0
+
 
 
 Draw (hdgsolver.velocity,mesh, "u")
@@ -93,13 +115,8 @@ Draw (hdgsolver.temperature,mesh, "T")
 Draw (hdgsolver.energy, mesh, "E")
 Draw (hdgsolver.density,mesh, "rho")
 
-
-
-tend = 200 
-t = 0
-
 with TaskManager():
     while t < tend:
-        t += ff_data["dt"]
+        t += hdgsolver.FU.dt.Get() #ff_data["dt"]
         print("time = {}".format(t), end='\r')
-        hdgsolver.Solve(maxit=10, maxerr=1e-9, dampfactor=1, printing=False)
+        hdgsolver.Solve(maxit=10, maxerr=1e-6, dampfactor=1, printing=False)
