@@ -61,7 +61,7 @@ class compressibleHDGsolver():
     def SaveConfig(self, comment=None, save_mesh=False):
         if self.base_dir is None:
             self.InitializeDir()
-            
+
         file_name = os.path.join(self.base_dir, "config_info")
         file = open(file_name, "w")
         file.write("#" * 40 + "\n")
@@ -114,6 +114,8 @@ class compressibleHDGsolver():
         self.gfu.Save(state_name)
 
     def LoadState(self, s):
+        if self.base_dir is None:
+            raise Exception("Please first set base directory with SetDirName()")
         state_name = os.path.join(self.solutions_dir, "state_step_" + str(s))
         self.gfu.Load(state_name)
 

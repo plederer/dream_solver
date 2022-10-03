@@ -83,13 +83,12 @@ hdgsolver.SetUp(condense=True)
 hdgsolver.SetInitial(uinit, qinit)
 
 
-Draw (hdgsolver.velocity,mesh, "u")
-Draw (hdgsolver.pressure,mesh, "p")
-Draw (hdgsolver.c,mesh, "c")
-Draw (hdgsolver.M,mesh, "M")
-Draw (hdgsolver.temperature,mesh, "T")
-Draw (hdgsolver.energy, mesh, "E")
-Draw (hdgsolver.density,mesh, "rho")
+hdgsolver.DrawSolutions()
+
+hdgsolver.InitializeDir("visc_cylinder_data")
+hdgsolver.SaveConfig()
+hdgsolver.SaveSolution()
 
 with TaskManager():
     hdgsolver.Solve(maxit=100,   maxerr=1e-9, dampfactor=1, printing=True)
+    hdgsolver.SaveState(0)
