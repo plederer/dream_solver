@@ -43,7 +43,8 @@ class FlowUtils():
     def p(self, u):
         # p = (gamma-1) * rho*E - rho/2 * ||v||**2    
         # return (self.gamma-1) * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
-        return self.R * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
+        # return self.R * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
+        return self.R * (u[3] - 1/(u[0] * 2) * (u[1]**2 + u[2]**2))
     def T(self, u):
         return self.p(u)/(u[0] * self.R)
     def E(self, u):
@@ -53,7 +54,7 @@ class FlowUtils():
     def H(self, u):
         return self.p(u) / u[0] * self.gamma / (self.gamma - 1) + ((u[1]/u[0])**2 + (u[2]/u[0])**2)/2
     def M(self, u):
-        return sqrt( ((u[1]/u[0])**2 + (u[2]/u[0])**2)) / self.c(u)
+        return sqrt(((u[1]/u[0])**2 + (u[2]/u[0])**2)) / self.c(u)
         
     def gradvel(self, u, q):
         if not self.Du:
@@ -216,7 +217,6 @@ class FlowUtils():
 
     def diffFlux(self, u, q):
         if not self.Du:
-            
             grad_vel = self.gradvel(u,q)
             tau = self.mu.Get()/self.Re.Get() * (2 * (grad_vel+grad_vel.trans) - 2/3 * (grad_vel[0,0] + grad_vel[1,1]) * Id(2))
             grad_T = self.gradT(u,q)
