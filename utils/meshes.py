@@ -40,7 +40,9 @@ def Get_Omesh(r,R,N,L, geom=1):
             phi = pi/N * j
             px = cos(2 * pi * i/N + phi)
             py = sin(2 * pi * i/N + phi)
-            ri = (R - r)* (j/L)**geom + r
+           
+            ri = (R - r) * (j/L)**geom + r
+
             pnums.append(mesh.Add(MeshPoint(Pnt(ri * px, ri * py, 0))))
 
     # print(pnums)
