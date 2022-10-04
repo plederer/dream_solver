@@ -143,6 +143,8 @@ def Make_Circle(geo, R, R_farfield, quadlayer=False, delta=1, HPREF = 1, loch = 
 
 
 def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_channel):
+    if R+2*maxh_cyl > R_channel:
+        raise Exception("reduce maxh_cyl")
     cyl = Solid2d( [(0, -1),
                           EI(( 1,  -1), bc="cyl", maxh=maxh_cyl), # control point for quadratic spline
                           (1,0),
@@ -152,7 +154,8 @@ def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_chan
                           (-1,0),
                           EI((-1, -1), bc="cyl", maxh=maxh_cyl), # spline with bc
                           ])
-    cyl_layer = cyl.Copy().Scale(R+2*maxh_cyl)
+
+    cyl_layer = Circle( center=(0,0), radius=R+2*maxh_cyl, bc = "inner")
     cyl.Scale(R)
     
 
@@ -167,8 +170,8 @@ def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_chan
                           ])
     circle_FF.Scale(R_farfield)
 
-    cyl_2 = Circle( center=(0,0), radius=R_channel)
-    rect = Rectangle( pmin=(0,-R_channel), pmax=(R_farfield + 1,R_channel))                 
+    cyl_2 = Circle( center=(0,0), radius=R_channel, bc = "inner")
+    rect = Rectangle( pmin=(0,-R_channel), pmax=(R_farfield + 1,R_channel), bc = "inner")                 
     
     layer = cyl_layer - cyl
     layer.Maxh(maxh_cyl)

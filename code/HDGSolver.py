@@ -28,6 +28,16 @@ class compressibleHDGsolver():
         
         self.bnd_data = bnd_data
 
+        self.dom_bnd = ""
+        for key in self.bnd_data.keys():
+            bnd = self.bnd_data[key]
+            if type(bnd) == list:
+                self.dom_bnd += bnd[0] + "|"
+            else:
+                self.dom_bnd += bnd + "|"
+        self.dom_bnd = self.dom_bnd[:-1]
+      
+
         self.FU = FlowUtils(ff_data)
         self.viscid = viscid
         self.stationary = stationary
@@ -208,8 +218,9 @@ class compressibleHDGsolver():
 
         # subtract integrals that were added in the line above
         # if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
+        
         self.a += -InnerProduct(self.FU.numFlux(uhat, u, uhat, n), vhat).Compile(self.compile_flag) \
-                * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
+                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.dom_bnd))
 
 
         # if self.stationary:
@@ -232,7 +243,7 @@ class compressibleHDGsolver():
                 * dx(element_boundary=True, bonus_intorder=self.bi_bnd)
             #if "dirichlet" in self.bnd_data:
             self.a += InnerProduct(self.FU.numdiffFlux(u, uhat, q, n), vhat).Compile(self.compile_flag) \
-                    * ds(skeleton=True) #, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
+                    * ds(skeleton=True, definedon=self.mesh.Boundaries(self.dom_bnd))
 
         # bnd fluxes
 

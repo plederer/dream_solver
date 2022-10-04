@@ -40,7 +40,7 @@ R_farfield = 2 * R * 30
 
 Pr = 0.75
 Re = 150
-Re_init = 20
+Re_init = 10
 Uinf = 1
 Vinf = 0
 abs_u = sqrt(Uinf**2 + Vinf**2)
@@ -57,14 +57,14 @@ mu_init = rhoinf * abs_u * D / Re_init
 # mu_init = abs_u * D / Re_init
 
 
-R2 = 5*R
+
 U0 = 1 #IfPos((x**2 + y**2 - R2**2),1, (x**2 + y**2 - R**2) * 1/(R2**2-R**2))
 V0 = 0
 E0 = pinf/(gamma-1)/rhoinf + 0.5 * (U0**2 + V0**2)
 
 inf_vals = (rhoinf, U0 * rhoinf, V0 * rhoinf, E0 * rhoinf)
 
-order = 4
+order = 3
 
 #################################################################################
 
@@ -114,6 +114,8 @@ hdgsolver.SaveSolution()
 
 with TaskManager():
     hdgsolver.SetInitial(uinit, qinit)
+    Redraw()
+    # input()
     hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True, max_dt=10)
     hdgsolver.SaveState(0)
 
