@@ -64,31 +64,18 @@ E0 = pinf/(gamma-1)/rhoinf + 0.5 * (U0**2 + V0**2)
 
 inf_vals = (rhoinf, U0 * rhoinf, V0 * rhoinf, E0 * rhoinf)
 
-order = 3
+order = 4
 
 #################################################################################
 
-geo = SplineGeometry()
+# geo = SplineGeometry()
+geo = CSG2d()
 
-if False:
-    N = 80
-    L = 30
-    alpha = 1.9
-    hr = (R_farfield - R) * (1/L)**alpha
-
-    mesh = Mesh(Get_Omesh(R, R_farfield, N, L, geom = alpha))
-    print("Local mesh size at boundary = ", D * pi / N)
-    print("Local mesh size orthogonal to boundary = ", hr)
-else:
-    Make_Circle(geo, R, R_farfield, loch = 0.04)
-    mesh = Mesh(geo.GenerateMesh(maxh=1.5, grading = 0.2))
-    
-
+Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
+mesh = Mesh(geo.GenerateMesh(maxh = 1.5, grading = 0.2))
 print("Number of elements = ", mesh.ne)
-# mesh.Curve(order)
+mesh.Curve(order)
 Draw(mesh)
-print(mesh.GetBoundaries())
-input()
 
 ff_data = {"Minf": Minf,
            "Re": Re_init,
@@ -119,7 +106,7 @@ qinit = CoefficientFunction((0,0,0,0,0,0,0,0), dims = (4,2))
 hdgsolver.SetUp(condense=True)
 hdgsolver.DrawSolutions()
 
-# hdgsolver.InitializeDir("fine_solution")
+hdgsolver.InitializeDir("channel_mesh")
 hdgsolver.SaveConfig()
 hdgsolver.SaveSolution()
 
@@ -127,7 +114,7 @@ hdgsolver.SaveSolution()
 
 with TaskManager():
     hdgsolver.SetInitial(uinit, qinit)
-    hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True)
+    hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True, max_dt=10)
     hdgsolver.SaveState(0)
 
 

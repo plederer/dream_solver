@@ -1,4 +1,6 @@
 from ngsolve import *
+from netgen.geom2d import CSG2d, Circle, Rectangle, EdgeInfo as EI, PointInfo as PI, Solid2d
+
 
 import math
 from math import pi, atan2
@@ -140,4 +142,44 @@ def Make_Circle(geo, R, R_farfield, quadlayer=False, delta=1, HPREF = 1, loch = 
         # geo.SetDomainQuadMeshing(2,True)
 
 
-# def Make_FlatPlate()
+def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_channel):
+    cyl = Solid2d( [(0, -1),
+                          EI(( 1,  -1), bc="cyl", maxh=maxh_cyl), # control point for quadratic spline
+                          (1,0),
+                          EI(( 1,  1), bc="cyl", maxh=maxh_cyl), # spline with maxh
+                          (0,1),
+                          EI((-1,  1), bc="cyl", maxh=maxh_cyl),
+                          (-1,0),
+                          EI((-1, -1), bc="cyl", maxh=maxh_cyl), # spline with bc
+                          ])
+    cyl_layer = cyl.Copy().Scale(R+2*maxh_cyl)
+    cyl.Scale(R)
+    
+
+    circle_FF = Solid2d( [(0, -1),
+                          EI(( 1,  -1), bc="outflow"), # control point for quadratic spline
+                          (1,0),
+                          EI(( 1,  1), bc="outflow"), # spline with maxh
+                          (0,1),
+                          EI((-1,  1), bc="inflow"),
+                          (-1,0),
+                          EI((-1, -1), bc="inflow"), # spline with bc
+                          ])
+    circle_FF.Scale(R_farfield)
+
+    cyl_2 = Circle( center=(0,0), radius=R_channel)
+    rect = Rectangle( pmin=(0,-R_channel), pmax=(R_farfield,R_channel))                 
+    
+    layer = cyl_layer - cyl
+    layer.Maxh(maxh_cyl)
+    geo.Add(layer)
+
+    dom1 = (cyl_2 + rect)
+    channel = dom1 * circle_FF - cyl_layer
+    channel.Maxh(maxh_channel)
+    geo.Add(channel)
+
+    outer = circle_FF - (dom1*circle_FF)
+    outer.Maxh(maxh)
+    geo.Add(outer)
+    

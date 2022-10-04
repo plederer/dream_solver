@@ -329,7 +329,7 @@ class compressibleHDGsolver():
         self.gfu.vec.data = minv * t0.vec
         #################################################################################
 
-    def Solve(self, maxit=10, maxerr=1e-8, dampfactor=1, solver="pardiso", printing=True, stop = False):
+    def Solve(self, maxit=10, maxerr=1e-8, dampfactor=1, solver="pardiso", printing=True, stop = False, max_dt=1):
         res = self.gfu.vec.CreateVector()
         w = self.gfu.vec.CreateVector()
 
@@ -350,7 +350,7 @@ class compressibleHDGsolver():
             #     dampfactor = 0.001
 
             if self.stationary:
-                if (it%10 == 0) and (it > 0) and (self.FU.dt.Get() < 10):
+                if (it%30 == 0) and (it > 0) and (self.FU.dt.Get() < max_dt):
                     c_dt = self.FU.dt.Get() * 10
                     self.FU.dt.Set(c_dt)
                     print("new dt = ", c_dt)
