@@ -168,18 +168,19 @@ def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_chan
     circle_FF.Scale(R_farfield)
 
     cyl_2 = Circle( center=(0,0), radius=R_channel)
-    rect = Rectangle( pmin=(0,-R_channel), pmax=(R_farfield,R_channel))                 
+    rect = Rectangle( pmin=(0,-R_channel), pmax=(R_farfield + 1,R_channel))                 
     
     layer = cyl_layer - cyl
     layer.Maxh(maxh_cyl)
-    geo.Add(layer)
+    
 
     dom1 = (cyl_2 + rect)
     channel = dom1 * circle_FF - cyl_layer
     channel.Maxh(maxh_channel)
-    geo.Add(channel)
+   
 
-    outer = circle_FF - (dom1*circle_FF)
+    outer = (circle_FF - rect) - cyl_2
     outer.Maxh(maxh)
     geo.Add(outer)
-    
+    geo.Add(channel)
+    geo.Add(layer)
