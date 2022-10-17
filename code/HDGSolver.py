@@ -287,7 +287,7 @@ class compressibleHDGsolver():
 
         if "outflow" in self.bnd_data:
             p_out = self.bnd_data["outflow"][1]
-            rho_E = p_out/(self.FU.gamma - 1) + u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2)
+            rho_E = p_out/(self.FU.gamma - 1) + 1/(2*u[0]) * (u[1]**2 + u[2]**2)
             U = CF((u[0], u[1], u[2], rho_E))
             Bhat = U - uhat
             self.a += (InnerProduct(Bhat,vhat)).Compile(self.compile_flag) \

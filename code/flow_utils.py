@@ -30,7 +30,7 @@ class FlowUtils():
             # print("Are you sure about that? Values might be incorrect")
             self.R = ff_data["R"]
         else:
-            self.R = self.gamma - 1
+            self.R = (self.gamma - 1) / self.gamma
 
         # time step for pseudo time stepping
         self.dt = Parameter(ff_data["dt"])
@@ -57,7 +57,9 @@ class FlowUtils():
         # p = (gamma-1) * rho*E - rho/2 * ||v||**2    
         # return (self.gamma-1) * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
         # return self.R * (u[3] - u[0]/2 * ((u[1]/u[0])**2 + (u[2]/u[0])**2))
-        return self.R * (u[3] - 1/(u[0] * 2) * (u[1]**2 + u[2]**2))
+        # return self.R * (u[3] - 1/(u[0] * 2) * (u[1]**2 + u[2]**2))
+        return (self.gamma-1) * (u[3] - 1/(u[0] * 2) * (u[1]**2 + u[2]**2))
+
     def T(self, u):
         return self.p(u)/(u[0] * self.R)
     def E(self, u):
