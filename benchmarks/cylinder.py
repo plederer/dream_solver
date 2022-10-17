@@ -26,7 +26,7 @@ from HDGSolver import compressibleHDGsolver
 
 ngsglobals.msg_level = 0
 
-from geometries import * #MakeSmoothRectangle, MakeRectangle, Make_C_type
+from geometries import * 
 from meshes import Get_Omesh
 
 print("Using {} threads".format(nt))
@@ -71,7 +71,8 @@ order = 3
 # geo = SplineGeometry()
 geo = CSG2d()
 
-Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
+# Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
+Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.5, maxh_channel=1)
 mesh = Mesh(geo.GenerateMesh(maxh = 1.5, grading = 0.2))
 print("Number of elements = ", mesh.ne)
 mesh.Curve(order)
@@ -85,8 +86,7 @@ ff_data = {"Minf": Minf,
            "dt": 0.1}
 
 
-bnd_data = {"inflow": ["inflow", inf_vals],
-            "outflow": ["outflow", pinf],
+bnd_data = {"inflow": ["inflow|outflow", inf_vals],
             "ad_wall": "cyl"}
 
 
@@ -106,7 +106,7 @@ qinit = CoefficientFunction((0,0,0,0,0,0,0,0), dims = (4,2))
 hdgsolver.SetUp(condense=True)
 hdgsolver.DrawSolutions()
 
-hdgsolver.InitializeDir("channel_mesh")
+hdgsolver.InitializeDir("test")
 hdgsolver.SaveConfig()
 hdgsolver.SaveSolution()
 
@@ -115,7 +115,6 @@ hdgsolver.SaveSolution()
 with TaskManager():
     hdgsolver.SetInitial(uinit, qinit)
     Redraw()
-    # input()
     hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True, max_dt=10)
     hdgsolver.SaveState(0)
 
