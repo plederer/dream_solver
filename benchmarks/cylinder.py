@@ -39,20 +39,26 @@ R = D/2
 R_farfield = 2 * R * 30
 
 Pr = 0.75
-Re = 150
-Re_init = 10
+Re = 100
+Re_init = 40
 Uinf = 1
 Vinf = 0
 abs_u = sqrt(Uinf**2 + Vinf**2)
 Minf = 0.3
 gamma = 1.4 
-pinf = 1
 
-rhoinf = pinf * gamma / (abs_u/Minf)**2
+T_inf = 1/(gamma - 1)/Minf**2
+rhoinf = 1
+
+pinf = 1/Minf**2/gamma
+
+# pinf = 1
+
+# rhoinf = pinf * gamma / (abs_u/Minf)**2
 Einf = pinf/(gamma-1)/rhoinf + 0.5 * abs_u**2
 
-mu = rhoinf * abs_u * D / Re
-mu_init = rhoinf * abs_u * D / Re_init
+mu = 1 #rhoinf * abs_u * D / Re
+mu_init = 1 #rhoinf * abs_u * D / Re_init
 # mu = abs_u * D / Re
 # mu_init = abs_u * D / Re_init
 
@@ -71,13 +77,13 @@ order = 3
 # geo = SplineGeometry()
 geo = CSG2d()
 
-# Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
-Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.5, maxh_channel=1)
-mesh = Mesh(geo.GenerateMesh(maxh = 1.5, grading = 0.2))
+Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
+# Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 3, maxh_cyl=0.5, maxh_channel=3)
+mesh = Mesh(geo.GenerateMesh(maxh = 3, grading = 0.2))
 print("Number of elements = ", mesh.ne)
 mesh.Curve(order)
 Draw(mesh)
-
+# input()
 ff_data = {"Minf": Minf,
            "Re": Re_init,
            "Pr": Pr,
@@ -117,6 +123,8 @@ with TaskManager():
     Redraw()
     hdgsolver.Solve(maxit=100, maxerr=1e-10, dampfactor=1, printing=True, max_dt=10)
     hdgsolver.SaveState(0)
+
+# input()
 
 
 hdgsolver.stationary = False
