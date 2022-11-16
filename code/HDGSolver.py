@@ -290,7 +290,7 @@ class compressibleHDGsolver():
             rho_E = p_out/(self.FU.gamma - 1) + 1/(2*u[0]) * (u[1]**2 + u[2]**2)
             U = CF((u[0], u[1], u[2], rho_E))
             Bhat = U - uhat
-            self.a += (InnerProduct(Bhat,vhat)).Compile(self.compile_flag) \
+            self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["outflow"][0]))
 
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \

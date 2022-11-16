@@ -36,7 +36,7 @@ class FlowUtils():
         self.dt = Parameter(ff_data["dt"])
 
     def GetData(self):
-        ff_data={}
+        ff_data = {}
         ff_data["dt"] = self.dt.Get()
         ff_data["Du"] = self.Du
         ff_data["Re"] = self.Re.Get()
@@ -252,7 +252,11 @@ class FlowUtils():
 
     def numFlux(self, uhatold, u,uhat,n):        
         #Lax-Friedrich flux
-        return self.Flux(uhat)*n + self.c(uhat) * (u-uhat)  #self.Flux(uhat)*n + self.c(u) * (u-uhat)
+        # return self.Flux(uhat)*n + self.c(uhat) * (u-uhat)  #self.Flux(uhat)*n + self.c(u) * (u-uhat)
+        velhat_n = (uhat[1]/uhat[0] * n[0] + uhat[2]/uhat[0] * n[1])
+
+        abs_uhat = IfPos(velhat_n, velhat_n, -velhat_n)
+        return self.Flux(uhat)*n + (abs_uhat + self.c(uhat)) * (u-uhat)  #self.Flux(uhat)*n + self.c(u) * (u-uhat)
 
     def numdiffFlux(self, u, uhat,q,n):
         #C = calcmaxspeed(uhat)
