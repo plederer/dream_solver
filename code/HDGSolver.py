@@ -15,7 +15,7 @@ import os, sys
 
 
 class compressibleHDGsolver():
-    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=False, time_solver="IE"):
+    def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=False, time_solver="IE", force=None):
         self.mesh = mesh
 
         # bnd names and conditions :
@@ -44,6 +44,8 @@ class compressibleHDGsolver():
         self.order = order
         self.compile_flag = True
         self.time_solver = time_solver
+
+        self.force = force
 
         self.time = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
         # self.base_dir = os.path.join(os.path.abspath(os.getcwd()), "simulation_" + self.time)
@@ -129,7 +131,7 @@ class compressibleHDGsolver():
         state_name = os.path.join(self.solutions_dir, "state_step_" + str(s))
         self.gfu.Load(state_name)
 
-    def SetUp(self, force=CoefficientFunction((0, 0, 0, 0)), condense=True):
+    def SetUp(self, condense=True):
         self.bi_vol = 0
         self.bi_bnd = 0
         self.condense = condense
@@ -142,23 +144,30 @@ class compressibleHDGsolver():
                 self.fes = self.V1**4 * self.V2**4 * self.V1**5
             else:
                 self.fes = self.V1**4 * self.V2**4 * self.V3**4
-            u, uhat, q = self.fes.TrialFunction()
-            v, vhat, r = self.fes.TestFunction()
-            
+
         else:
             self.fes = self.V1**4 * self.V2**4
-            u, uhat = self.fes.TrialFunction()
-            v, vhat = self.fes.TestFunction()
 
         self.gfu = GridFunction(self.fes)
         self.gfu_old = GridFunction(self.fes)
         self.gfu_old_2 = GridFunction(self.fes)
 
-        self.f = LinearForm(self.fes)
-        self.f += InnerProduct(force, v) * dx(bonus_intorder=self.bi_vol)
-        self.f.Assemble()
-
+        self.InitLF()
         self.InitBLF()
+
+    def InitLF(self):
+        if self.viscid:
+            u, uhat, q = self.fes.TrialFunction()
+            v, vhat, r = self.fes.TestFunction()
+            
+        else:
+            u, uhat = self.fes.TrialFunction()
+            v, vhat = self.fes.TestFunction()
+
+        self.f = LinearForm(self.fes)
+        if self.force is not None: 
+            self.f += InnerProduct(force, v) * dx(bonus_intorder=self.bi_vol)
+        self.f.Assemble()
 
     def InitBLF(self):
         if self.viscid:
@@ -223,8 +232,6 @@ class compressibleHDGsolver():
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.dom_bnd))
 
 
-        # if self.stationary:
-        
         if self.time_solver=="IE" or self.stationary:
             print("Using IE solver")
             self.a += 1/self.FU.dt * InnerProduct(u - self.gfu_old.components[0], v) * dx 
@@ -284,7 +291,6 @@ class compressibleHDGsolver():
             self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["ad_wall"]))
 
-
         if "outflow" in self.bnd_data:
             p_out = self.bnd_data["outflow"][1]
             rho_E = p_out/(self.FU.gamma - 1) + 1/(2*u[0]) * (u[1]**2 + u[2]**2)
@@ -294,7 +300,7 @@ class compressibleHDGsolver():
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["outflow"][0]))
 
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
-        # definedon = self.mesh.Boundaries(self.dirichlet))
+        # definedon = self.mesh.Boundaries(self.dirichlet)) 
         #######################################################################
         
     def SetInitial(self, U_init, Q_init = None):        
