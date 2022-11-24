@@ -187,3 +187,77 @@ def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_chan
     geo.Add(outer)
     geo.Add(channel)
     geo.Add(layer)
+
+
+def Make_HalfCircle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_channel):
+    if R+2*maxh_cyl > R_channel:
+        raise Exception("reduce maxh_cyl")
+    cyl = Solid2d( [(0, -1),
+                          EI(( 1,  -1), bc="cyl", maxh=maxh_cyl), # control point for quadratic spline
+                          (1,0),
+                          EI(( 1,  1), bc="cyl", maxh=maxh_cyl), # spline with maxh
+                          (0,1),
+                          EI((-1,  1), bc="cyl", maxh=maxh_cyl),
+                          (-1,0),
+                          EI((-1, -1), bc="cyl", maxh=maxh_cyl), # spline with bc
+                          ])
+
+    cyl_layer = Circle( center=(0,0), radius=R+2*maxh_cyl, bc = "inner")
+    cyl.Scale(R)
+    
+
+    circle_FF_1 = Solid2d( [(0, -1),
+                          EI(( 1,  -1), bc="outflow"), # control point for quadratic spline
+                          (1,0),
+                          EI(( 1,  1), bc="outflow"), # spline with maxh
+                          (0,1),
+                          EI((-1,  1), bc="inflow"),
+                          (-1,0),
+                          EI((-1, -1), bc="inflow"), # spline with bc
+                          ])
+    circle_FF_1.Scale(R_farfield)
+
+    # rect_FF = Rectangle( pmin=(0,-R_farfield), pmax=(2 * R_farfield, R_farfield), bc = "outflow")                 
+    rect_FF = Solid2d( [(0, -R_farfield), (2 * R_farfield, -R_farfield-2), (2 * R_farfield, R_farfield+2), (0, R_farfield)], bc = "outflow")
+
+    circle_FF = circle_FF_1 + rect_FF
+
+    cyl_2 = Circle( center=(0,0), radius=R_channel, bc = "inner")
+    rect = Rectangle( pmin=(0,-R_channel), pmax=(R_farfield + 1,R_channel), bc = "inner")                 
+    
+    layer = cyl_layer - cyl
+    layer.Maxh(maxh_cyl)
+    
+
+    dom1 = (cyl_2 + rect)
+    channel = dom1 * circle_FF - cyl_layer
+    channel.Maxh(maxh_channel)
+   
+
+    outer = (circle_FF - rect) - cyl_2
+    outer.Maxh(maxh)
+    geo.Add(outer)
+    geo.Add(channel)
+    geo.Add(layer)
+
+def MakeCircle(geo, R_farfield, addrect = False):
+    circle_FF_1 = Solid2d( [(0, -1),
+                          EI(( 1,  -1), bc="outflow"), # control point for quadratic spline
+                          (1,0),
+                          EI(( 1,  1), bc="outflow"), # spline with maxh
+                          (0,1),
+                          EI((-1,  1), bc="inflow"),
+                          (-1,0),
+                          EI((-1, -1), bc="inflow"), # spline with bc
+                          ])
+    circle_FF_1.Scale(R_farfield)
+    if addrect:
+        L_rect = 10
+        rect_FF = Solid2d( [(0, -R_farfield), (L_rect, -R_farfield), (L_rect, R_farfield), (0, R_farfield)], bc = "outflow")
+        circle_FF = circle_FF_1 + rect_FF   
+    else:
+        circle_FF = circle_FF_1
+
+    geo.Add(circle_FF)
+
+    
