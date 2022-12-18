@@ -1,8 +1,5 @@
 from ngsolve import *
 
-import math
-from math import pi, atan2
-
 
 class FlowUtils():
     def __init__(self, ff_data):
@@ -98,20 +95,21 @@ class FlowUtils():
 
     def gradp(self, u, q=None):
 
-        momentum = self.momentum(u)
+        rho = self.rho(u)
+        m = self.momentum(u)
+
+        gradU = grad(u)
+        m_grad = CF(tuple(gradU[i, j] for i in [1, 2] for j in range(2)), dims=(2, 2))
+        eps_grad = CF(tuple(gradU[3, i] for i in range(2)))
+        rho_grad = self.gradrho(u, q)
 
         if q is None:
-            rho = self.rho(u)
-            gradients = grad(u)
-            momentum_gradient_x = CF(tuple(gradients[1, i] for i in range(2)))
-            momentum_gradient_y = CF(tuple(gradients[2, i] for i in range(2)))
-            energy_gradient = CF(tuple(gradients[3, i] for i in range(2)))
-            gradp = (self.gamma - 1) * (energy_gradient - (u[1] * momentum_gradient_x + u[2] * momentum_gradient_y)/rho + (
-                self.gradrho(u, q) * InnerProduct(momentum, momentum)) / (2 * rho**2))
+            gradp = (self.gamma - 1) * (eps_grad - m_grad.trans * m / rho +
+                                        (rho_grad * InnerProduct(m, m)) / (2 * rho ** 2))
         elif not self.Du:
             raise NotImplementedError()
         else:
-            gradp = (self.gamma - 1)/self.gamma * (self.T(u) * grad(self.rho(u)) + self.rho(u) * self.gradT(u, q))
+            gradp = (self.gamma - 1)/self.gamma * (self.T(u) * rho_grad + self.rho(u) * self.gradT(u, q))
 
         return gradp
 
@@ -155,10 +153,10 @@ class FlowUtils():
         rho_E = u[3]
         p = self.p(u)
 
-        m = rho_u[0]
-        n = rho_u[1]
+        r = rho_u[0]
+        s = rho_u[1]
 
-        return CF((m, m**2/rho + p, m*n/rho, m/rho*(rho_E + p)))
+        return CF((r, r**2/rho + p, r*s/rho, r/rho*(rho_E + p)))
 
     def f_gradient_convective_flux(self, u, q):
 
@@ -169,23 +167,35 @@ class FlowUtils():
         rho_u = self.momentum(u)
         rho_E = u[3]
 
-        m = rho_u[0]
-        n = rho_u[1]
+        r = rho_u[0]
+        s = rho_u[1]
 
         Dp = self.gradp(u, q)
         Drho = CF((gradU[0, 0], gradU[0, 1]))
-        Dm = CF((gradU[1, 0], gradU[1, 1]))
-        Dn = CF((gradU[2, 0], gradU[2, 1]))
+        Dr = CF((gradU[1, 0], gradU[1, 1]))
+        Ds = CF((gradU[2, 0], gradU[2, 1]))
         Drho_E = CF((gradU[3, 0], gradU[3, 1]))
 
         gradf = CF((
-            Dm,
-            2*m*Dm/rho - Drho*m**2/rho**2 + Dp,
-            (Dm * n + Dn * m)/rho - Drho*m*n/rho**2,
-            (Dm*(rho_E + p) + (Drho_E + Dp)*m)/rho - Drho*m*(rho_E + p)/rho**2
+            Dr,
+            2*r*Dr/rho - Drho*r**2/rho**2 + Dp,
+            (Dr * s + Ds * r)/rho - Drho*r*s/rho**2,
+            (Dr*(rho_E + p) + (Drho_E + Dp)*r)/rho - Drho*r*(rho_E + p)/rho**2
         ), dims=(4, 2))
 
         return gradf
+
+    def g_convective_flux(self, u):
+
+        rho = self.rho(u)
+        rho_u = self.momentum(u)
+        rho_E = u[3]
+        p = self.p(u)
+
+        r = rho_u[0]
+        s = rho_u[1]
+
+        return CF((s, r*s/rho, s**2/rho + p,  s/rho*(rho_E + p)))
 
     def g_gradient_convective_flux(self, u, q):
 
@@ -196,38 +206,85 @@ class FlowUtils():
         rho_u = self.momentum(u)
         rho_E = u[3]
 
-        m = rho_u[0]
-        n = rho_u[1]
+        r = rho_u[0]
+        s = rho_u[1]
 
         Dp = self.gradp(u, q)
         Drho = CF((gradU[0, 0], gradU[0, 1]))
-        Dm = CF((gradU[1, 0], gradU[1, 1]))
-        Dn = CF((gradU[2, 0], gradU[2, 1]))
+        Dr = CF((gradU[1, 0], gradU[1, 1]))
+        Ds = CF((gradU[2, 0], gradU[2, 1]))
         Drho_E = CF((gradU[3, 0], gradU[3, 1]))
 
         gradg = CF((
-            Dn,
-            (Dm * n + Dn * m)/rho - Drho*m*n/rho**2,
-            2*n*Dn/rho - Drho*n**2/rho**2 + Dp,
-            (Dn*(rho_E + p) + (Drho_E + Dp)*n)/rho - Drho*n*(rho_E + p)/rho**2
+            Ds,
+            (Dr * s + Ds * r)/rho - Drho*r*s/rho**2,
+            2*s*Ds/rho - Drho*s**2/rho**2 + Dp,
+            (Ds*(rho_E + p) + (Drho_E + Dp)*s)/rho - Drho*s*(rho_E + p)/rho**2
         ), dims=(4, 2))
 
         return gradg
 
-    def g_convective_flux(self, u):
+    def f_viscous_flux(self, u, q):
 
-        rho = self.rho(u)
-        rho_u = self.momentum(u)
-        rho_E = u[3]
-        p = self.p(u)
+        flux = self.diffusive_flux(u, q)
+        return CF(tuple(flux[i, 0] for i in range(4)))
 
-        m = rho_u[0]
-        n = rho_u[1]
+    def f_gradient_viscous_flux(self, u, q):
+        if not self.Du:
+            raise NotImplementedError()
 
-        return CF((n, m*n/rho, n**2/rho + p,  n/rho*(rho_E + p)))
+        q_gradient = grad(q)
+        grad_exx = CF(tuple(q_gradient[0, i] for i in range(2)))
+        grad_eyx = CF(tuple(q_gradient[1, i] for i in range(2)))
+        grad_phix = CF(tuple(q_gradient[3, i] for i in range(2)))
+        vel = self.vel(u)
 
-    def tangential_flux_gradient(self, u, q, t):
-        return self.f_gradient_convective_flux(u, q) * t[0] + self.g_gradient_convective_flux(u, q) * t[1]
+        vel_grad = self.gradvel(u, q)
+        grad_u = CF(tuple(vel_grad[0, i] for i in range(2)))
+        grad_v = CF(tuple(vel_grad[1, i] for i in range(2)))
+
+        grad_flux = CF((
+            0, 0,
+            grad_exx,
+            grad_eyx,
+            grad_exx * vel[0] + q[0] * grad_u + grad_eyx * vel[1] + q[1] * grad_v + grad_phix/self.Pr.Get()
+        ), dims=(4, 2)) / self.Re.Get()
+
+        return grad_flux
+
+    def g_viscous_flux(self, u, q):
+
+        flux = self.diffusive_flux(u, q)
+        return CF(tuple(flux[i, 1] for i in range(4)))
+
+    def g_gradient_viscous_flux(self, u, q):
+        if not self.Du:
+            raise NotImplementedError()
+
+        q_gradient = grad(q)
+        grad_exy = CF(tuple(q_gradient[1, i] for i in range(2)))
+        grad_eyy = CF(tuple(q_gradient[2, i] for i in range(2)))
+        grad_phiy = CF(tuple(q_gradient[4, i] for i in range(2)))
+        vel = self.vel(u)
+
+        vel_grad = self.gradvel(u, q)
+        grad_u = CF(tuple(vel_grad[0, i] for i in range(2)))
+        grad_v = CF(tuple(vel_grad[1, i] for i in range(2)))
+
+        grad_flux = CF((
+            0, 0,
+            grad_exy,
+            grad_eyy,
+            grad_exy * vel[0] + q[1] * grad_u + grad_eyy * vel[1] + q[2] * grad_v + grad_phiy/self.Pr.Get()
+        ), dims=(4, 2)) / self.Re.Get()
+
+        return grad_flux
+
+    def convective_flux_gradient(self, u, q, vec):
+        return vec[0] * self.f_gradient_convective_flux(u, q) + vec[1] * self.g_gradient_convective_flux(u, q)
+
+    def viscous_flux_gradient(self, u, q, vec):
+        return vec[0] * self.f_gradient_viscous_flux(u, q) + vec[1] * self.g_gradient_viscous_flux(u, q)
 
     def A_jacobian(self, u):
         """

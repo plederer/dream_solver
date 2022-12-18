@@ -11,11 +11,13 @@ from ngsolve.nonlinearsolvers import Newton, NewtonSolver
 
 from flow_utils import *
 
-import os, sys
+import os
+import sys
 
 
 class compressibleHDGsolver():
     def __init__(self, mesh, order, ff_data, bnd_data, viscid=True, stationary=False, time_solver="IE", force=None):
+
         self.mesh = mesh
 
         # bnd names and conditions :
@@ -132,7 +134,7 @@ class compressibleHDGsolver():
 
     def SetUp(self, condense=True):
         self.bi_vol = 0
-        self.bi_bnd = 0
+        self.bi_bnd = 10
         self.condense = condense
         self.V1 = L2(self.mesh, order=self.order)
         self.V2 = FacetFESpace(self.mesh, order=self.order)
@@ -231,7 +233,7 @@ class compressibleHDGsolver():
         # if "dirichlet" in self.bnd_data:  #self.bnd_data["dirichlet"][0] != "":
 
         self.a += -InnerProduct(self.FU.numerical_convective_flux(uhat, u, uhat, n), vhat) \
-            * ds(skeleton=True, definedon=self.mesh.Boundaries(self.dom_bnd))
+            * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.dom_bnd))
 
         if self.time_solver == "IE" or self.stationary:
             print("Using IE solver")
@@ -249,10 +251,10 @@ class compressibleHDGsolver():
                 * dx(element_boundary=True, bonus_intorder=self.bi_bnd)
 
             self.a += -InnerProduct(self.FU.numerical_diffusive_flux(u, uhat, q, n), vhat).Compile(self.compile_flag) \
-                * dx(element_boundary=True, bonus_intorder=self.bi_bnd)
+                * dx(element_boundary=True, bonus_intorder=self.bi_bnd,)
             # if "dirichlet" in self.bnd_data:
             self.a += InnerProduct(self.FU.numerical_diffusive_flux(u, uhat, q, n), vhat).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.dom_bnd))
+                * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.dom_bnd))
 
         # bnd fluxes
 
@@ -262,21 +264,27 @@ class compressibleHDGsolver():
                 * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
         if "NRBC" in self.bnd_data:
+            region = self.mesh.Boundaries(self.bnd_data["NRBC"][0])
             pinf = self.bnd_data["NRBC"][1]
+
             L = self.FU.charachteristic_amplitudes(u, q, n, uhat)
             K = 0.25 * self.FU.c(uhat) * (1 - self.FU.M(uhat)) / h
             incoming = K * (self.FU.p(uhat) - pinf)
-            # incoming = 0
+            incoming = 0
             L = CF((L[0], L[1], L[2], incoming))
             D = self.FU.P_matrix(uhat, n) * L
 
-            Ft = self.FU.tangential_flux_gradient(u, q, t)
             self.a += 3/2*1/self.FU.dt * InnerProduct(uhat - 4/3*self.gfu_old.components[1] + 1/3 * self.gfu_old_2.components[1], vhat) * ds(
-                skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
+                skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
             self.a += (D * vhat) * ds(skeleton=True,
-                                      definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
-            self.a += ((Ft * t) * vhat) * ds(skeleton=True,
-                                             definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
+                                      definedon=region, bonus_intorder=self.bi_bnd)
+            self.a += (self.FU.convective_flux_gradient(u, q, t) * t
+                       * vhat) * ds(skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
+            if self.viscid:
+                self.a += -(self.FU.viscous_flux_gradient(u, q, n) * n
+                            * vhat) * ds(skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
+                self.a += -(self.FU.viscous_flux_gradient(u, q, t) * t
+                            * vhat) * ds(skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
 
         if "Test" in self.bnd_data:
             vn = InnerProduct(self.FU.vel(uhat), n)
@@ -310,7 +318,7 @@ class compressibleHDGsolver():
             L = CF((L[0], L[1], L[2], incoming))
             D = self.FU.P_matrix(uhat, n) * L
 
-            Ft = self.FU.tangential_flux_gradient(u, q, t)
+            Ft = self.FU.convective_flux_gradient(u, q, t)
             self.a += 1/self.FU.dt * InnerProduct(uhat - self.gfu_old.components[1], vhat) * ds(
                 skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["ForceFree"][0]), bonus_intorder=10)
             self.a += (D * vhat) * ds(skeleton=True,
