@@ -286,8 +286,6 @@ def Make_Circle_Channel_occ(R, R_farfield, R_channel, maxh, maxh_cyl, maxh_chann
     bcs = ["inflow", "outflow", "default", "default", "default", "outflow", "inner", "inner", "inner", "outflow", "cyl"]
 
     for i, e in enumerate(c.edges):
-        print(i)
-        print(e.name)
         e.name = bcs[i]
 
     geo = OCCGeometry(c, dim = 2)

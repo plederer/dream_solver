@@ -75,9 +75,8 @@ order = 3
 #################################################################################
 
 # geo = SplineGeometry()
-geo = CSG2d()
 
-Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
+geo = Make_Circle_Channel_occ(R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
 # Make_Circle_Channel(geo, R, R_farfield, R_channel=5*R, maxh = 3, maxh_cyl=0.5, maxh_channel=3)
 mesh = Mesh(geo.GenerateMesh(maxh = 3, grading = 0.2))
 print("Number of elements = ", mesh.ne)
