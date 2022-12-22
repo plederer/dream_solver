@@ -1,5 +1,6 @@
 from ngsolve import *
 from netgen.geom2d import CSG2d, Circle, Rectangle, EdgeInfo as EI, PointInfo as PI, Solid2d
+from netgen.occ import *
 
 
 import math
@@ -143,6 +144,7 @@ def Make_Circle(geo, R, R_farfield, quadlayer=False, delta=1, HPREF = 1, loch = 
 
 
 def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_channel):
+    raise Exception("Do not use CSG2D geometries!")
     if R+2*maxh_cyl > R_channel:
         raise Exception("reduce maxh_cyl")
     cyl = Solid2d( [(0, -1),
@@ -190,6 +192,7 @@ def Make_Circle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_chan
 
 
 def Make_HalfCircle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_channel):
+    raise Exception("Do not use CSG2D geometries!")
     if R+2*maxh_cyl > R_channel:
         raise Exception("reduce maxh_cyl")
     cyl = Solid2d( [(0, -1),
@@ -241,6 +244,7 @@ def Make_HalfCircle_Channel(geo, R, R_farfield, R_channel, maxh, maxh_cyl, maxh_
     geo.Add(layer)
 
 def MakeCircle(geo, R_farfield, addrect = False):
+    raise Exception("Do not use CSG2D geometries!")
     circle_FF_1 = Solid2d( [(0, -1),
                           EI(( 1,  -1), bc="outflow"), # control point for quadratic spline
                           (1,0),
@@ -260,4 +264,47 @@ def MakeCircle(geo, R_farfield, addrect = False):
 
     geo.Add(circle_FF)
 
+def Make_Circle_Channel_occ(R, R_farfield, R_channel, maxh, maxh_cyl, maxh_channel):
+    # from netgen.occ import *
+    wp = WorkPlane()
+    wp.MoveTo(0,-R_farfield)
+    cyl_outer = wp.Arc(r=R_farfield, ang=180).Arc(r=R_farfield, ang=180).Face()
     
+    cyl = Circle((0,0), R).Face()
+    cyl.maxh = maxh_cyl
+
+    cyl_channel = Circle((0,0), R_channel).Face()
+    rec_channel = Rectangle(R_farfield + 2, 2 * R_channel).Face().Move((0,-R_channel,0))
+
+    
+    channel = (cyl_channel + rec_channel) * cyl_outer
+    outer = cyl_outer - channel
+    channel = channel - cyl
+    channel.maxh = maxh_channel
+    c = Glue([outer, channel])
+    
+    bcs = ["inflow", "outflow", "default", "default", "default", "outflow", "inner", "inner", "inner", "outflow", "cyl"]
+
+    for i, e in enumerate(c.edges):
+        print(i)
+        print(e.name)
+        e.name = bcs[i]
+
+    geo = OCCGeometry(c, dim = 2)
+    
+    return geo
+
+if __name__ == "__main__":
+    from ngsolve import *
+    D = 1
+    R = D/2
+    R_farfield = 2 * R * 30
+    geo = Make_Circle_Channel_occ(R, R_farfield, R_channel=5*R, maxh = 1.5, maxh_cyl=0.04, maxh_channel=0.4)
+    mesh = Mesh(geo.GenerateMesh(maxh = 3, grading = 0.2))
+    mesh.Curve(4)
+    print(mesh.GetBoundaries())
+
+    V = H1(mesh, dirichlet=".*")
+    u = GridFunction(V)
+    u.Set(1, BND, definedon=mesh.Boundaries("inflow"))
+    Draw(u)
