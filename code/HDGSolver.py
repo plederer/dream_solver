@@ -133,7 +133,7 @@ class compressibleHDGsolver():
         self.gfu.Load(state_name)
 
     def SetUp(self, condense=True):
-        self.bi_vol = 0
+        self.bi_vol = 10
         self.bi_bnd = 10
         self.condense = condense
         self.V1 = L2(self.mesh, order=self.order)
@@ -261,17 +261,17 @@ class compressibleHDGsolver():
         if "dirichlet" in self.bnd_data:
             Bhat = self.bnd_data["dirichlet"][1]
             self.a += ((Bhat-uhat) * vhat) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
+                * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.bnd_data["dirichlet"][0]))
 
         if "NRBC" in self.bnd_data:
             region = self.mesh.Boundaries(self.bnd_data["NRBC"][0])
             pinf = self.bnd_data["NRBC"][1]
 
             L = self.FU.charachteristic_amplitudes(u, q, n, uhat)
-            K = 0.25 * self.FU.c(uhat) * (1 - self.FU.M(uhat)) / h
+            veln = InnerProduct(self.FU.vel(uhat), n)
+            K = 1/(self.FU.c(uhat) * self.FU.rho(uhat) * self.FU.dt)#(self.FU.c(uhat) - veln) / 
             incoming = K * (self.FU.p(uhat) - pinf)
-            incoming = 0
-            L = CF((L[0], L[1], L[2], incoming))
+            L = CF((L[0], L[1], L[2], 0))
             D = self.FU.P_matrix(uhat, n) * L
 
             self.a += 3/2*1/self.FU.dt * InnerProduct(uhat - 4/3*self.gfu_old.components[1] + 1/3 * self.gfu_old_2.components[1], vhat) * ds(
@@ -281,8 +281,8 @@ class compressibleHDGsolver():
             self.a += (self.FU.convective_flux_gradient(u, q, t) * t
                        * vhat) * ds(skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
             if self.viscid:
-                self.a += -(self.FU.viscous_flux_gradient(u, q, n) * n
-                            * vhat) * ds(skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
+                # self.a += -(self.FU.viscous_flux_gradient(u, q, n) * n
+                #             * vhat) * ds(skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
                 self.a += -(self.FU.viscous_flux_gradient(u, q, t) * t
                             * vhat) * ds(skeleton=True, definedon=region, bonus_intorder=self.bi_bnd)
 
@@ -331,13 +331,13 @@ class compressibleHDGsolver():
             inflow_cf = CF(tuple(self.bnd_data["inflow"][1]))
             Bhat += self.FU.Aminus(uhat, n) * (inflow_cf-uhat)
             self.a += (Bhat * vhat).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inflow"][0]))
+                * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.bnd_data["inflow"][0]))
 
         if "inv_wall" in self.bnd_data:
             # if self.viscid and "inv_wall" in self.bnd_data:
             #     raise Exception("inv_val boundary only for inviscid flows available")
             self.a += (InnerProduct(self.FU.reflect(u, n)-uhat, vhat)).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inv_wall"]))
+                * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.bnd_data["inv_wall"]))
 
         if "iso_wall" in self.bnd_data:
             if not self.viscid:
@@ -347,7 +347,7 @@ class compressibleHDGsolver():
             U = CF((u[0], u[1], u[2], rho_E))
             Bhat = U - uhat
             self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["iso_wall"][0]))
+                * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.bnd_data["iso_wall"][0]))
 
         if "ad_wall" in self.bnd_data:
             if not self.viscid:
@@ -357,7 +357,7 @@ class compressibleHDGsolver():
                                       ) * self.FU.gradT(u, q) * n - tau_d * (u[3] - uhat[3])
             Bhat = CF((u[0] - uhat[0], uhat[1], uhat[2], rho_E))
             self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["ad_wall"]))
+                * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.bnd_data["ad_wall"]))
 
         if "outflow" in self.bnd_data:
             p_out = self.bnd_data["outflow"][1]
@@ -365,7 +365,7 @@ class compressibleHDGsolver():
             U = CF((u[0], u[1], u[2], rho_E))
             Bhat = U - uhat
             self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["outflow"][0]))
+                * ds(skeleton=True, bonus_intorder=self.bi_bnd, definedon=self.mesh.Boundaries(self.bnd_data["outflow"][0]))
 
         # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
         # definedon = self.mesh.Boundaries(self.dirichlet))
