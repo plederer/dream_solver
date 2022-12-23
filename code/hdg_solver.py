@@ -3,8 +3,7 @@ from netgen.geom2d import unit_square, SplineGeometry
 from ngsolve import *
 from ngsolve.internal import visoptions, viewoptions
 from configuration import SolverConfiguration, DynamicViscosity, MixedMethods
-from formulations import formulation_factory
-from time_marching_schemes import time_marching_factory
+from formulations import formulation_factory, Formulation
 import boundary_conditions as bc
 from datetime import datetime
 from ngsolve.nonlinearsolvers import Newton, NewtonSolver
@@ -16,17 +15,20 @@ import sys
 
 
 class compressibleHDGsolver():
-    def __init__(self, mesh, solver_configuration: SolverConfiguration, force):
+    def __init__(self, mesh, solver_configuration: SolverConfiguration):
 
         self.mesh = mesh
         self.solver_configuration = solver_configuration
-        self.formulation = formulation_factory(mesh, solver_configuration)
-        self.time_marching = time_marching_factory(solver_configuration)
+        self._formulation = formulation_factory(mesh, solver_configuration)
+        self._bcs = self.formulation.bcs
 
-        self.force = force
+    @property
+    def boundary_conditions(self) -> bc.BoundaryConditions:
+        return self._bcs
 
-        self.time = datetime.now().strftime('%d-%m-%Y_%H-%M-%S')
-        #################################################################################
+    @property
+    def formulation(self) -> Formulation:
+        return self._formulation
 
     def _set_linearform(self, force):
 
@@ -42,65 +44,12 @@ class compressibleHDGsolver():
             self.f += InnerProduct(force, V) * dx(bonus_intorder=bonus_int_order)
         self.f.Assemble()
 
-    def set_bc_dirichlet(self,
-                         boundary,
-                         density: float,
-                         velocity: tuple[float, ...],
-                         temperature: float = None,
-                         pressure: float = None,
-                         energy: float = None):
-
-        gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = bc.split_boundary(boundary)
-        pressure, temperature, energy = bc.Dirichlet.convert_to_PTE(
-            density, velocity, temperature, pressure, energy, gamma)
-
-        for boundary in boundaries:
-            self.formulation.boundaries[boundary] = bc.Dirichlet(density, velocity, temperature, pressure, energy)
-
-    def set_bc_farfield(self,
-                        boundary,
-                        density: float,
-                        velocity: tuple[float, ...],
-                        temperature: float = None,
-                        pressure: float = None,
-                        energy: float = None):
-
-        gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = bc.split_boundary(boundary)
-        pressure, temperature, energy = bc.FarField.convert_to_PTE(
-            density, velocity, temperature, pressure, energy, gamma)
-
-        for boundary in boundaries:
-            self.formulation.boundaries[boundary] = bc.FarField(density, velocity, temperature, pressure, energy)
-
-    def set_bc_outflow(self,
-                       boundary,
-                       pressure: float):
-
-        gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = bc.split_boundary(boundary)
-
-        for boundary in boundaries:
-            self.formulation.boundaries[boundary] = bc.Outflow(None, None, None, pressure, None)
-
-    def set_bc_nonreflecting_outflow(self,
-                                     boundary,
-                                     pressure: float,
-                                     sigma: float = 0.25):
-
-        gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = bc.split_boundary(boundary)
-
-        for boundary in boundaries:
-            self.formulation.boundaries[boundary] = bc.NROutflow(None, None, None, pressure, None)
-
     def _set_bilinearform(self):
 
         fes = self.formulation.fes
         TnT = self.formulation.TnT
         mesh = self.formulation.mesh
-        time_scheme = self.formulation.get_scheme
+        time_scheme = self.formulation.time_scheme
 
         condense = self.solver_configuration.static_condensation
         viscosity = self.solver_configuration.dynamic_viscosity
@@ -114,8 +63,7 @@ class compressibleHDGsolver():
         (U, Uhat, Q), (V, Vhat, P) = TnT
 
         self.a = BilinearForm(fes, condense=condense)
-        self.a += time_scheme(U, V, self.gfu_old.components[0],
-                              self.gfu_old_2.components[0]) * dx(bonus_intorder=bonus_vol)
+        self.formulation.set_time_bilinearform(self.a, self.gfu_old)
 
         self.formulation.set_convective_bilinearform(self.a)
 
@@ -125,32 +73,9 @@ class compressibleHDGsolver():
         if mixed_method is not MixedMethods.NONE:
             self.formulation.set_mixed_bilinearform(self.a)
 
-        self.formulation.set_boundary_conditions(self.a)
+        self.formulation.set_boundary_conditions_bilinearform(self.a)
 
         # bnd fluxes
-
-        if "NRBC" in self.bnd_data:
-            pinf = self.bnd_data["NRBC"][1]
-            L = self.FU.charachteristic_amplitudes(u, q, n, uhat)
-            K = 0.25 * self.FU.c(uhat) * (1 - self.FU.M(uhat)) / h
-            incoming = K * (self.FU.p(uhat) - pinf)
-            # incoming = 0
-            L = CF((L[0], L[1], L[2], incoming))
-            D = self.FU.P_matrix(uhat, n) * L
-
-            Ft = self.FU.tangential_flux_gradient(u, q, t)
-            self.a += 3/2*1/self.FU.dt * InnerProduct(uhat - 4/3*self.gfu_old.components[1] + 1/3 * self.gfu_old_2.components[1], vhat) * ds(
-                skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
-            self.a += (D * vhat) * ds(skeleton=True,
-                                      definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
-            self.a += ((Ft * t) * vhat) * ds(skeleton=True,
-                                             definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
-
-        if "inv_wall" in self.bnd_data:
-            # if self.viscid and "inv_wall" in self.bnd_data:
-            #     raise Exception("inv_val boundary only for inviscid flows available")
-            self.a += (InnerProduct(self.FU.reflect(u, n)-uhat, vhat)).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["inv_wall"]))
 
         if "iso_wall" in self.bnd_data:
             if not self.viscid:
@@ -177,9 +102,11 @@ class compressibleHDGsolver():
         #######################################################################
 
     def setup(self, force: CF = None):
+
+        num_temporary_vectors = self.formulation.time_scheme.num_temporary_vectors
+
         self.gfu = GridFunction(self.formulation.fes)
-        self.gfu_old = GridFunction(self.formulation.fes)
-        self.gfu_old_2 = GridFunction(self.formulation.fes)
+        self.gfu_old = tuple(GridFunction(self.formulation.fes) for num in range(num_temporary_vectors))
 
         self._set_linearform(force)
         self._set_bilinearform()

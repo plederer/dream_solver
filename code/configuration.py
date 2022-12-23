@@ -2,26 +2,13 @@ from enum import Enum
 from ngsolve import Parameter
 from typing import Optional
 
-
-class CompressibleFormulations(Enum):
-    PRIMITIVE = "primitive"
-    CONSERVATIVE = "conservative"
+from formulations import CompressibleFormulations, MixedMethods
+from time_schemes import TimeSchemes
 
 
 class Simulation(Enum):
     STATIONARY = "steady"
     TRANSIENT = "transient"
-
-
-class TimeSchemes(Enum):
-    IE = "IE"
-    BDF2 = "BDF2"
-
-
-class MixedMethods(Enum):
-    NONE = None
-    GRADIENT = "gradient"
-    STRAIN_HEAT = "strain_heat"
 
 
 class DynamicViscosity(Enum):

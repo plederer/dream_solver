@@ -37,8 +37,18 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         return tuple(trial), tuple(test)
 
+    def set_time_bilinearform(self, blf, old_components):
+
+        bonus_vol = self.solver_configuration.bonus_int_order_vol
+
+        (U, _, _), (V, _, _) = self.TnT
+
+        blf += InnerProduct(self.time_scheme(U, *old_components), V) * dx(bonus_intorder=bonus_vol)
+
     def set_mixed_bilinearform(self, blf):
 
+        bonus_vol = self.solver_configuration.bonus_int_order_vol
+        bonus_bnd = self.solver_configuration.bonus_int_order_bnd
         mixed_variant = self.solver_configuration.mixed_method
 
         (U, Uhat, Q), (_, _, P) = self.TnT
@@ -60,52 +70,58 @@ class ConservativeFormulation2D(ConservativeFormulation):
             div_dev_zeta = 2 * CF((gradient_P[0, 0] + gradient_P[1, 1], gradient_P[1, 0] + gradient_P[2, 1]))
             div_dev_zeta -= 2/3 * CF((gradient_P[0, 0] + gradient_P[2, 0], gradient_P[0, 1] + gradient_P[2, 1]))
 
-            blf += (InnerProduct(eps, zeta) + InnerProduct(vel, div_dev_zeta)) * dx()
-            blf += -InnerProduct(vel_hat, dev_zeta*n) * dx(element_boundary=True)
+            blf += (InnerProduct(eps, zeta) + InnerProduct(vel, div_dev_zeta)) * dx(bonus_intorder=bonus_vol)
+            blf += -InnerProduct(vel_hat, dev_zeta*n) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
             phi = CF((Q[3], Q[4]))
             xi = CF((P[3], P[4]))
 
             div_xi = gradient_P[3, 0] + gradient_P[4, 1]
 
-            blf += (InnerProduct(phi, xi) + InnerProduct(T, div_xi)) * dx()
-            blf += -InnerProduct(T_hat, xi*n) * dx(element_boundary=True)
+            blf += (InnerProduct(phi, xi) + InnerProduct(T, div_xi)) * dx(bonus_intorder=bonus_vol)
+            blf += -InnerProduct(T_hat, xi*n) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
         elif mixed_variant is MixedMethods.GRADIENT:
 
-            blf += (InnerProduct(Q, P) + InnerProduct(U, div(P))) * dx()
-            blf += -InnerProduct(Uhat, P*n) * dx(element_boundary=True)
+            blf += (InnerProduct(Q, P) + InnerProduct(U, div(P))) * dx(bonus_intorder=bonus_vol)
+            blf += -InnerProduct(Uhat, P*n) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
     def set_convective_bilinearform(self, blf):
 
-        (U, Uhat, Q), (V, Vhat, P) = self.TnT
+        bonus_vol = self.solver_configuration.bonus_int_order_vol
+        bonus_bnd = self.solver_configuration.bonus_int_order_bnd
 
-        blf += -InnerProduct(self.convective_flux(U), grad(V)) * dx()
-        blf += InnerProduct(self.numerical_convective_flux(U, Uhat), V) * dx(element_boundary=True)
-        blf += InnerProduct(self.numerical_convective_flux(U, Uhat), Vhat) * dx(element_boundary=True)
+        (U, Uhat, _), (V, Vhat, _) = self.TnT
+
+        blf += -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_vol)
+        blf += InnerProduct(self.convective_numerical_flux(U, Uhat),
+                            V) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
+        blf += InnerProduct(self.convective_numerical_flux(U, Uhat),
+                            Vhat) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
         # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.boundaries.keys()))
-        blf += -InnerProduct(self.numerical_convective_flux(U, Uhat), Vhat) * ds(skeleton=True, definedon=regions)
+        regions = self.mesh.Boundaries("|".join(self.bcs.keys()))
+        blf += -InnerProduct(self.convective_numerical_flux(U, Uhat), Vhat) * ds(skeleton=True,
+                                                                                 definedon=regions, bonus_intorder=bonus_bnd)
 
     def set_diffusive_bilinearform(self, blf):
 
         bonus_vol = self.solver_configuration.bonus_int_order_vol
         bonus_bnd = self.solver_configuration.bonus_int_order_bnd
 
-        (U, Uhat, Q), (V, Vhat, R) = self.TnT
+        (U, Uhat, Q), (V, Vhat, _) = self.TnT
         blf += InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_vol)
-        blf += -InnerProduct(self.numerical_diffusive_flux(U, Uhat, Q),
+        blf += -InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
                              V) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
-        blf += -InnerProduct(self.numerical_diffusive_flux(U, Uhat, Q),
+        blf += -InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
                              Vhat) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
         # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.boundaries.keys()))
-        blf += InnerProduct(self.numerical_diffusive_flux(U, Uhat, Q),
+        regions = self.mesh.Boundaries("|".join(self.bcs.keys()))
+        blf += InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
                             Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_bnd)
 
-    def _set_dirichlet(self, blf, boundary: str, value: bc.Dirichlet):
+    def _set_dirichlet(self, blf, boundary: str, bc: bc.Dirichlet):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -113,12 +129,12 @@ class ConservativeFormulation2D(ConservativeFormulation):
         region = self.mesh.Boundaries(boundary)
 
         (_, Uhat, _), (_, Vhat, _) = self.TnT
-        Bhat = CF((value.density, value.velocity, value.energy))
+        dirichlet = CF((bc.density, bc.velocity, bc.energy))
+        bc = ((dirichlet-Uhat) * Vhat).Compile(compile_flag)
 
-        blf += ((Bhat-Uhat) * Vhat).Compile(compile_flag) * ds(skeleton=True,
-                                                               definedon=region, bonus_intorder=bonus_order_bnd)
+        blf += bc * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
-    def _set_farfield(self, blf,  boundary: str, value: bc.FarField):
+    def _set_farfield(self, blf,  boundary: str, bc: bc.FarField):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -126,15 +142,16 @@ class ConservativeFormulation2D(ConservativeFormulation):
         region = self.mesh.Boundaries(boundary)
 
         n = self.normal
-        farfield = CF((value.density, value.velocity, value.energy))
+        farfield = CF((bc.density, bc.velocity, bc.energy))
 
         (U, Uhat, _), (_, Vhat, _) = self.TnT
         Bhat = self.Aplus(Uhat, n) * (U-Uhat)
         Bhat += self.Aminus(Uhat, n) * (farfield - Uhat)
+        bc = (Bhat * Vhat).Compile(compile_flag)
 
-        blf += (Bhat * Vhat).Compile(compile_flag) * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
+        blf += bc * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
-    def _set_outflow(self, blf, boundary: str, value: bc.Outflow):
+    def _set_outflow(self, blf, boundary: str, bc: bc.Outflow):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -146,15 +163,107 @@ class ConservativeFormulation2D(ConservativeFormulation):
         rho = self.density(U)
         rho_m = self.momentum(U)
 
-        pressure = value.pressure
-        energy = pressure/(gamma - 1) + 1/(2*rho) * InnerProduct(rho_m, rho_m)
+        energy = bc.pressure/(gamma - 1) + 1/(2*rho) * InnerProduct(rho_m, rho_m)
+        outflow = CF((rho, rho_m, energy))
+        bc = (InnerProduct(outflow - Uhat, Vhat)).Compile(compile_flag)
 
-        outflow = CF((rho, rho_m[0], rho_m[1], energy))
-        Bhat = outflow - Uhat
-        blf += (InnerProduct(Bhat, Vhat)).Compile(compile_flag) * ds(skeleton=True,
-                                                                     definedon=region, bonus_intorder=bonus_order_bnd)
+        blf += bc * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
-    def _set_nonreflecting_outflow(self, blf, boundary, value): ...
+    def _set_nonreflecting_outflow(self, blf, boundary: str, bc: bc.NonReflectingOutflow):
+
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+        compile_flag = self.solver_configuration.compile_flag
+        gamma = self.solver_configuration.heat_capacity_ratio
+
+        region = self.mesh.Boundaries(boundary)
+
+        (U, Uhat, Q), (_, Vhat, _) = self.TnT
+
+        L = self.charachteristic_amplitudes(U, Q, Uhat)
+
+        if bc.type is bc.TYPE.PERFECT:
+            L = CF((L[0], L[1], L[2], 0))
+
+        elif bc.type is bc.TYPE.POINSOT:
+            c = self.speed_of_sound(Uhat)
+            M = self.mach_number(Uhat)
+            ref_length = bc.reference_length
+
+            L3 = bc.sigma * c * (1 - M)/ref_length * (self.pressure(Uhat) - bc.pressure)
+            L = CF((L[0], L[1], L[2], L3))
+
+        elif bc.type is bc.TYPE.PIROZZOLI:
+            c = self.speed_of_sound(Uhat)
+            M = self.mach_number(Uhat)
+            ref_length = bc.reference_length
+
+            L3 = bc.sigma * c * (1 - M)/ref_length * (self.pressure(Uhat) - bc.pressure)
+            L = CF((L[0], L[1], L[2], L3))
+
+        D = self.P_matrix(Uhat) * L
+
+        blf += self.time_scheme.
+
+        Ft = self.FU.tangential_flux_gradient(u, q, t)
+        self.a += 3/2*1/self.FU.dt * InnerProduct(uhat - 4/3*self.gfu_old.components[1] + 1/3 * self.gfu_old_2.components[1], vhat) * ds(
+            skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
+        self.a += (D * vhat) * ds(skeleton=True,
+                                  definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
+        self.a += ((Ft * t) * vhat) * ds(skeleton=True,
+                                         definedon=self.mesh.Boundaries(self.bnd_data["NRBC"][0]), bonus_intorder=10)
+
+    def _set_inviscid_wall(self, blf, boundary: str, bc: bc.InviscidWall):
+
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+        compile_flag = self.solver_configuration.compile_flag
+
+        region = self.mesh.Boundaries(boundary)
+
+        (U, Uhat, _), (_, Vhat, _) = self.TnT
+        bc = (InnerProduct(self.reflect(U)-Uhat, Vhat)).Compile(compile_flag)
+
+        blf += bc * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
+
+    def _set_isothermal_wall(self, blf, boundary: str, bc: bc.IsothermalWall):
+
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+        compile_flag = self.solver_configuration.compile_flag
+        gamma = self.solver_configuration.heat_capacity_ratio
+
+        region = self.mesh.Boundaries(boundary)
+
+        (U, Uhat, _), (_, Vhat, _) = self.TnT
+
+        rho = self.density(U)
+        rho_E = rho * bc.temperature / gamma
+        bc = InnerProduct(CF((rho, 0, 0, rho_E)) - Uhat, Vhat).Compile(compile_flag)
+
+        blf += bc * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
+
+    def _set_adiabatic_wall(self, blf, boundary: str, bc: bc.IsothermalWall):
+
+        mixed_method = self.solver_configuration.mixed_method
+        if mixed_method is MixedMethods.NONE:
+            raise NotImplementedError(f"Adiabatic wall not implemented for {mixed_method}")
+
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+        compile_flag = self.solver_configuration.compile_flag
+
+        Re = self.solver_configuration.Reynold_number
+        Pr = self.solver_configuration.Prandtl_number
+        n = self.normal
+        tau_dE = self.diffusive_stabilisation_term()[self.mesh.dim+2, self.mesh.dim+2]
+
+        region = self.mesh.Boundaries(boundary)
+
+        (U, Uhat, _), (Q, Vhat, _) = self.TnT
+
+        diff_rho = self.density(U) - self.density(Uhat)
+        diff_rho_u = -self.momentum(Uhat)
+        diff_rho_E = 1/(Re * Pr) * self.temperature_gradient(U, Q)*n - tau_dE * (self.energy(U) - self.energy(Uhat))
+        bc = InnerProduct(CF((diff_rho, diff_rho_u, diff_rho_E)), Vhat).Compile(compile_flag)
+
+        blf += bc * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
     def convective_flux(self, U):
         """
@@ -179,7 +288,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         return CoefficientFunction(flux, dims=(4, 2)).Compile(compile)
 
-    def numerical_convective_flux(self, U, Uhat):
+    def convective_numerical_flux(self, U, Uhat):
         """
         Lax-Friedrichs numerical flux
 
@@ -242,22 +351,24 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         return flux
 
-    def numerical_diffusive_flux(self, U, Uhat, Q):
+    def diffusive_numerical_flux(self, U, Uhat, Q):
 
-        compile = self.solver_configuration.compile_flag
+        n = self.normal
+        tau_d = self.diffusive_stabilisation_term()
+
+        return self.diffusive_flux(Uhat, Q)*n - tau_d * (U-Uhat)
+
+    def diffusive_stabilisation_term(self):
 
         Re = self.solver_configuration.Reynold_number
         Pr = self.solver_configuration.Prandtl_number
 
-        n = self.normal
+        tau_d = CF((0, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1/Pr), dims=(4, 4)) / Re
 
-        C = CoefficientFunction(
-            (0, 0, 0, 0,
-             0, 1/Re, 0, 0,
-             0, 0, 1/Re, 0,
-             0, 0, 0, 1/(Re * Pr)), dims=(4, 4)).Compile(compile)
-
-        return self.diffusive_flux(Uhat, Q)*n - C * (U-Uhat)
+        return tau_d
 
     def f_convective_flux(self, u):
 
@@ -680,7 +791,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             Amplitudes = Lambda * L_inverse * dV/dn,
 
         where Lambda is the eigenvalue matrix, L_inverse is the mapping from
-        primitive variables to charachteristic variables and dV/dn is the 
+        primitive variables to charachteristic variables and dV/dn is the
         derivative normal to the boundary.
         """
         rho = self.rho(uhat)

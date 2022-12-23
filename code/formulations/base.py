@@ -1,8 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, NamedTuple
-from configuration import SolverConfiguration, MixedMethods
+from configuration import SolverConfiguration
+
+from . import MixedMethods
 import boundary_conditions as bc
+from time_schemes import time_scheme_factory
 from ngsolve import *
 
 
@@ -32,7 +35,8 @@ class Formulation(ABC):
 
     def __init__(self, mesh, solver_configuration: SolverConfiguration) -> None:
         self.mesh = mesh
-        self.boundaries = {boundary: None for boundary in set(mesh.GetBoundaries())}
+        self.bcs = bc.BoundaryConditions(mesh.GetBoundaries(), solver_configuration)
+        self.time_scheme = time_scheme_factory(solver_configuration)
         self.solver_configuration = solver_configuration
 
         self._fes = self.get_FESpace()
@@ -50,9 +54,9 @@ class Formulation(ABC):
     def TnT(self):
         return self._TnT
 
-    def set_boundary_conditions(self, blf):
+    def set_boundary_conditions_bilinearform(self, blf):
 
-        for boundary, value in self.boundaries.items():
+        for boundary, value in self.bcs.boundaries.items():
 
             if value is None:
                 raise ValueError(f"Boundary condition for {boundary} has not been set!")
@@ -66,8 +70,17 @@ class Formulation(ABC):
             elif isinstance(value, bc.Outflow):
                 self._set_outflow(blf, boundary, value)
 
-            elif isinstance(value, bc.NROutflow):
+            elif isinstance(value, bc.NonReflectingOutflow):
                 self._set_nonreflecting_outflow(blf, boundary, value)
+
+            elif isinstance(value, bc.InviscidWall):
+                self._set_inviscid_wall(blf, boundary, value)
+
+            elif isinstance(value, bc.IsothermalWall):
+                self._set_isothermal_wall(blf, boundary, value)
+
+            elif isinstance(value, bc.AdiabaticWall):
+                self._set_adiabatic_wall(blf, boundary, value)
 
     @abstractmethod
     def _set_dirichlet(self, blf, boundary, value): ...
@@ -82,10 +95,22 @@ class Formulation(ABC):
     def _set_nonreflecting_outflow(self, blf, boundary, value): ...
 
     @abstractmethod
+    def _set_inviscid_wall(self, blf, boundary, value): ...
+
+    @abstractmethod
+    def _set_isothermal_wall(self, blf, boundary, value): ...
+
+    @abstractmethod
+    def _set_adiabatic_wall(self, blf, boundary, value): ...
+
+    @abstractmethod
     def get_FESpace(self) -> ProductSpace: ...
 
     @abstractmethod
     def get_TnT(self): ...
+
+    @abstractmethod
+    def set_time_bilinearform(self, blf): ...
 
     @abstractmethod
     def set_mixed_bilinearform(self, blf): ...
@@ -326,3 +351,13 @@ class ConservativeFormulation(Formulation):
         gradient_u = gradient_rho_u/rho - rho_u_outer_gradient_rho/rho**2
 
         return gradient_u
+
+    def reflect(self, U):
+
+        n = self.normal
+
+        rho = self.density(U)
+        rho_u = self.momentum(U)
+        rho_E = self.energy(U)
+
+        return CF(tuple(rho, rho_u - InnerProduct(rho_u, n)*n, rho_E))
