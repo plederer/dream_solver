@@ -75,32 +75,6 @@ class compressibleHDGsolver():
 
         self.formulation.set_boundary_conditions_bilinearform(self.a)
 
-        # bnd fluxes
-
-        if "iso_wall" in self.bnd_data:
-            if not self.viscid:
-                raise Exception("iso_val boundary only for viscid flows available")
-            T_w = self.bnd_data["iso_wall"][1]
-            rho_E = u[0] * T_w/self.FU.gamma
-            U = CF((u[0], u[1], u[2], rho_E))
-            Bhat = U - uhat
-            self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["iso_wall"][0]))
-
-        if "ad_wall" in self.bnd_data:
-            if not self.viscid:
-                raise Exception("ad_val boundary only for viscid flows available")
-            tau_d = self.FU.tau_d * 1/self.FU.Re.Get()  # 1/((self.FU.gamma - 1) * self.FU.Minf**2 * self.FU.Re * self.FU.Pr)
-            rho_E = self.FU.mu.Get()/(self.FU.Re.Get()*self.FU.Pr.Get()
-                                      ) * self.FU.gradT(u, q) * n - tau_d * (u[3] - uhat[3])
-            Bhat = CF((u[0] - uhat[0], uhat[1], uhat[2], rho_E))
-            self.a += (InnerProduct(Bhat, vhat)).Compile(self.compile_flag) \
-                * ds(skeleton=True, definedon=self.mesh.Boundaries(self.bnd_data["ad_wall"]))
-
-        # self.a += (   (u-uhat) * vhat) * ds(skeleton = True, \
-        # definedon = self.mesh.Boundaries(self.dirichlet))
-        #######################################################################
-
     def setup(self, force: CF = None):
 
         num_temporary_vectors = self.formulation.time_scheme.num_temporary_vectors
