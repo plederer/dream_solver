@@ -34,7 +34,7 @@ class CompressibleHDGSolver():
 
         self.gfu = GridFunction(self.formulation.fes)
         self.gfu_old = tuple(GridFunction(self.formulation.fes) for num in range(num_temporary_vectors))
-
+    
         self.residual = self.gfu.vec.CreateVector()
         self.temporary = self.gfu.vec.CreateVector()
 
@@ -157,7 +157,7 @@ class CompressibleHDGSolver():
                        density: bool = True,
                        velocity: bool = True,
                        pressure: bool = True,
-                       vorticity: bool = True,
+                       vorticity: bool = False,
                        energy: bool = False,
                        temperature: bool = False,
                        mach: bool = False):
