@@ -69,6 +69,8 @@ class SolverConfiguration:
         """ Represents the ratio between inertial and viscous forces """
         if self.dynamic_viscosity is DynamicViscosity.INVISCID:
             raise Exception("Inviscid solver configuration: Reynolds number not applicable")
+        elif self._Re is None:
+            raise Exception("Viscid solver configuration but no Reynolds number set")
         return self._Re
 
     @Reynold_number.setter
@@ -99,6 +101,8 @@ class SolverConfiguration:
     def Prandtl_number(self) -> Parameter:
         if self.dynamic_viscosity is DynamicViscosity.INVISCID:
             raise Exception("Inviscid solver configuration: Prandtl number not applicable")
+        elif self._Pr is None:
+            raise Exception("Viscid solver configuration but no Prandtl number set")
         return self._Pr
 
     @Prandtl_number.setter
