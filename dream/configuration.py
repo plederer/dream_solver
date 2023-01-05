@@ -21,7 +21,7 @@ class SolverConfiguration:
                  dynamic_viscosity: str = None,
                  Mach_number: Optional[float] = None,
                  Reynold_number: Optional[float] = None,
-                 Prandtl_number: float = 0.72,
+                 Prandtl_number: Optional[float] = None,
                  heat_capacity_ratio: float = 1.4,
                  farfield_temperature: Optional[float] = None,
                  simulation: str = "transient",
@@ -67,12 +67,14 @@ class SolverConfiguration:
     @property
     def Reynold_number(self) -> Parameter:
         """ Represents the ratio between inertial and viscous forces """
+        if self.dynamic_viscosity is DynamicViscosity.INVISCID:
+            raise Exception("Inviscid solver configuration: Reynolds number not applicable")
         return self._Re
 
     @Reynold_number.setter
     def Reynold_number(self, Reynold_number: Optional[float]):
 
-        if self.dynamic_viscosity is DynamicViscosity.INVISCID or Reynold_number is None:
+        if Reynold_number is None:
             self._Re = None
         elif Reynold_number <= 0:
             raise ValueError("Invalid Reynold number. Value has to be > 0!")
@@ -95,12 +97,14 @@ class SolverConfiguration:
 
     @property
     def Prandtl_number(self) -> Parameter:
+        if self.dynamic_viscosity is DynamicViscosity.INVISCID:
+            raise Exception("Inviscid solver configuration: Prandtl number not applicable")
         return self._Pr
 
     @Prandtl_number.setter
     def Prandtl_number(self, Prandtl_number: Optional[float]):
 
-        if self.dynamic_viscosity is DynamicViscosity.INVISCID:
+        if Prandtl_number is None:
             self._Pr = None
         elif Prandtl_number <= 0:
             raise ValueError("Invalid Prandtl_number. Value has to be > 0!")
