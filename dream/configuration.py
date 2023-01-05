@@ -1,9 +1,11 @@
+from __future__ import annotations
 from enum import Enum
 from ngsolve import Parameter
 from typing import Optional
 
-from formulations import CompressibleFormulations, MixedMethods
-from time_schemes import TimeSchemes
+from dream.formulations import CompressibleFormulations, MixedMethods
+from dream.time_schemes import TimeSchemes
+from dream.viscosity import DynamicViscosity, Sutherland
 
 
 class Simulation(Enum):
@@ -11,22 +13,17 @@ class Simulation(Enum):
     TRANSIENT = "transient"
 
 
-class DynamicViscosity(Enum):
-    INVISCID = "inviscid"
-    CONSTANT = "constant"
-    SUTHERLAND = "sutherland"
-
-
 class SolverConfiguration:
 
     def __init__(self,
                  formulation: str = "conservative",
                  mixed_method: str = None,
-                 dynamic_viscosity: str = "inviscid",
+                 dynamic_viscosity: str = None,
                  Mach_number: Optional[float] = None,
                  Reynold_number: Optional[float] = None,
                  Prandtl_number: float = 0.72,
                  heat_capacity_ratio: float = 1.4,
+                 farfield_temperature: Optional[float] = None,
                  simulation: str = "transient",
                  time_scheme: str = "IE",
                  time_step: float = 1e-4,
@@ -34,7 +31,11 @@ class SolverConfiguration:
                  static_condensation: bool = True,
                  bonus_int_order_vol: int = 0,
                  bonus_int_order_bnd: int = 0,
-                 compile_flag: bool = True
+                 compile_flag: bool = False,
+                 max_iterations: int = 10,
+                 convergence_criterion: float = 1e-8,
+                 damping_factor: float = 1,
+                 linear_solver: str = "pardiso"
                  ) -> None:
 
         # Formulation options
@@ -47,11 +48,16 @@ class SolverConfiguration:
         self.heat_capacity_ratio = heat_capacity_ratio
         self.Reynold_number = Reynold_number
         self.Prandtl_number = Prandtl_number
+        self.farfield_temperature = farfield_temperature
 
         # Solver options
         self.simulation = simulation
         self.time_scheme = time_scheme
         self.time_step = time_step
+        self.max_iterations = max_iterations
+        self.convergence_criterion = convergence_criterion
+        self.damping_factor = damping_factor
+        self.linear_solver = linear_solver
         self.static_condensation = static_condensation
         self.order = order
         self.bonus_int_order_vol = bonus_int_order_vol
@@ -116,6 +122,23 @@ class SolverConfiguration:
             self._gamma = Parameter(heat_capacity_ratio)
 
     @property
+    def farfield_temperature(self) -> Parameter:
+        """ Defines the farfield temperature needed for Sutherland's law"""
+        return self._farfield_temperature
+
+    @farfield_temperature.setter
+    def farfield_temperature(self, farfield_temperature: Optional[float]):
+
+        if farfield_temperature is None:
+            self._farfield_temperature = None
+    
+        elif farfield_temperature <= 0:
+            raise ValueError("Invalid farfield temperature. Value has to be > 1!")
+
+        else:
+            self._farfield_temperature = Parameter(farfield_temperature)
+    
+    @property
     def formulation(self) -> CompressibleFormulations:
         return self._formulation
 
@@ -134,14 +157,17 @@ class SolverConfiguration:
         return self._mu
 
     @dynamic_viscosity.setter
-    def dynamic_viscosity(self, value: str):
+    def dynamic_viscosity(self, dynamic_viscosity: str):
+
+        if isinstance(dynamic_viscosity, str):
+            dynamic_viscosity = dynamic_viscosity.lower()
 
         try:
-            self._mu = DynamicViscosity(value.lower())
+            self._mu = DynamicViscosity(dynamic_viscosity)
 
         except ValueError:
             options = [enum.value for enum in DynamicViscosity]
-            raise ValueError(f"'{value.capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
+            raise ValueError(f"'{dynamic_viscosity.capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
 
     @property
     def mixed_method(self) -> MixedMethods:
@@ -224,3 +250,35 @@ class SolverConfiguration:
     @compile_flag.setter
     def compile_flag(self, compile_flag: bool):
         self._compile_flag = bool(compile_flag)
+
+    @property
+    def max_iterations(self) -> int:
+        return self._max_iterations
+
+    @max_iterations.setter
+    def max_iterations(self, max_iterations: int):
+        self._max_iterations = int(max_iterations)
+
+    @property
+    def convergence_criterion(self) -> float:
+        return self._convergence_criterion
+
+    @convergence_criterion.setter
+    def convergence_criterion(self, convergence_criterion: float):
+        self._convergence_criterion = float(convergence_criterion)
+
+    @property
+    def damping_factor(self) -> float:
+        return self._damping_factor
+
+    @damping_factor.setter
+    def damping_factor(self, damping_factor: float):
+        self._damping_factor = float(damping_factor)
+
+    @property
+    def linear_solver(self) -> str:
+        return self._linear_solver
+
+    @linear_solver.setter
+    def linear_solver(self, linear_solver: str):
+        self._linear_solver = str(linear_solver).lower()

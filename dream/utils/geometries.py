@@ -1,6 +1,6 @@
 from ngsolve import *
 from netgen.geom2d import CSG2d, Circle, Rectangle, EdgeInfo as EI, PointInfo as PI, Solid2d
-from netgen.occ import WorkPlane
+from netgen.occ import WorkPlane, OCCGeometry
 
 
 from math import pi, atan2
@@ -29,21 +29,56 @@ def MakeSmoothRectangle(geo, p1, p2, r, bc=None, bcs=None, **args):
     geo.Append(["spline3", pts[8], pts[9], pts[10]], bc=bc, **args)
 
 
-def MakeOCCRectangle(p1, p2, wp=None, bottom="bottom", right="right", top="top", left="left") -> WorkPlane:
-
-    if wp is None:
-        wp = WorkPlane()
+def MakeOCCRectangle(p1, p2, bottom="bottom", right="right", top="top", left="left") -> WorkPlane:
 
     dx = p2[0] - p1[0]
     dy = p2[1] - p1[1]
 
+    wp = WorkPlane()
     wp.MoveTo(*p1)
     wp.Line(dx, name=bottom).Rotate(90)
     wp.Line(dy, name=right).Rotate(90)
     wp.Line(dx, name=top).Rotate(90)
     wp.Line(dy, name=left).Rotate(90)
 
-    return wp
+    geo = OCCGeometry(wp.Face(), dim=2)
+
+    return geo
+
+
+def MakeOCCCircle(center, radius, right="right", left="left") -> OCCGeometry:
+
+    dx, dy = center
+
+    wp = WorkPlane()
+    wp.MoveTo(dx, dy-radius)
+    wp.Arc(r=radius, ang=180)
+    wp.Arc(r=radius, ang=180)
+    face = wp.Face()
+    face.edges[0].name = right
+    face.edges[1].name = left
+
+    geo = OCCGeometry(face, dim=2)
+
+    return geo
+
+
+def MakeOCCCirclePlane(center, radius, bottom="bottom", right="right", top="top", left="left") -> OCCGeometry:
+
+    dx, dy = center
+
+    wp = WorkPlane()
+    wp.MoveTo(dx, dy+radius).Rotate(180)
+    wp.Arc(r=radius, ang=180)
+    wp.Line(radius, name=bottom).Rotate(90)
+    wp.Line(2*radius, name=right).Rotate(90)
+    wp.Line(radius, name=top).Rotate(90)
+    face = wp.Face()
+    face.edges[0].name = left
+
+    geo = OCCGeometry(face, dim=2)
+
+    return geo
 
 
 def MakeRectangle(geo, p1, p2, p3, p4, bc=None, bcs=None, **args):
