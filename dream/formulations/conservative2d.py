@@ -344,11 +344,11 @@ class ConservativeFormulation2D(ConservativeFormulation):
         Re = self.solver_configuration.Reynold_number
         Pr = self.solver_configuration.Prandtl_number
         n = self.normal
-        tau_dE = self.diffusive_stabilisation_term()[self.mesh.dim+2, self.mesh.dim+2]
+        tau_dE = self.diffusive_stabilisation_term()[self.mesh.dim+1, self.mesh.dim+1]
 
         region = self.mesh.Boundaries(boundary)
 
-        (U, Uhat, _), (Q, Vhat, _) = self.TnT
+        (U, Uhat, Q), (V, Vhat, _) = self.TnT
 
         diff_rho = self.density(U) - self.density(Uhat)
         diff_rho_u = -self.momentum(Uhat)
