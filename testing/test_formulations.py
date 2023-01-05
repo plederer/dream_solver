@@ -1,8 +1,11 @@
+from __future__ import annotations
 import unittest
 from ngsolve import *
 from netgen.occ import OCCGeometry, Rectangle
-from formulations import formulation_factory, ConservativeFormulation2D, Formulation
-from configuration import SolverConfiguration, MixedMethods
+
+from dream.formulations import formulation_factory, ConservativeFormulation2D, Formulation, MixedMethods
+from dream.configuration import SolverConfiguration
+
 from abc import ABC, abstractmethod
 
 
@@ -159,6 +162,8 @@ class TestFormulation(unittest.TestCase, ABC):
 
 class Test2DConservativeFormulation(TestFormulation):
 
+    formulation: ConservativeFormulation2D
+
     @classmethod
     def setUpClass(cls):
         config = SolverConfiguration(formulation="conservative", order=10)
@@ -182,6 +187,51 @@ class Test2DConservativeFormulation(TestFormulation):
                                        gamma*(x - x**4*y - 2*x**2*y**3)))
         cls.testing_vector = CF((2, 1))
         cls.testing_matrix = CF((0.5, 1, 1.5, 2), dims=(2, 2))
+
+    def test_transformation_matrices(self):
+
+        U = CF((0.5, x, y, x*y + 4))
+
+        C = 1000
+        test_matrix = CF((1, C, C, C,
+                          C, 1, C, C,
+                          C, C, 1, C,
+                          C, C, C, 1), dims=(4, 4))
+
+        # M-Matrix
+        mat = self.formulation.M_matrix(U)
+        mat_inverse = self.formulation.M_inverse_matrix(U)
+
+        expected_identity = mat_inverse * mat
+        expected_value = Integrate(InnerProduct(expected_identity, test_matrix), self.formulation.mesh)
+        is_value = 8
+
+        error_msg = "M * Minv does not return identity matrix"
+        self.assertAlmostEqual(is_value, expected_value, msg=error_msg)
+
+        # L-Matrix
+        mat = self.formulation.L_matrix(U)
+        mat_inverse = self.formulation.L_inverse_matrix(U)
+
+        expected_identity = mat_inverse * mat
+
+        expected_value = Integrate(InnerProduct(expected_identity, test_matrix), self.formulation.mesh, BND)
+        is_value = 24
+
+        error_msg = "L * Linv does not return identity matrix"
+        self.assertAlmostEqual(is_value, expected_value, msg=error_msg)
+
+        # P-Matrix
+        mat = self.formulation.P_matrix(U)
+        mat_inverse = self.formulation.P_inverse_matrix(U)
+
+        expected_identity = mat_inverse * mat
+
+        expected_value = Integrate(InnerProduct(expected_identity, test_matrix), self.formulation.mesh, BND)
+        is_value = 24
+
+        error_msg = "P * Pinv does not return identity matrix"
+        self.assertAlmostEqual(is_value, expected_value, msg=error_msg)
 
     def density_test(self, U):
 
@@ -243,9 +293,6 @@ class Test2DConservativeFormulation(TestFormulation):
 
     def density_gradient_test(self, U, Q):
 
-        if Q is not None:
-            Q = Q.components
-
         density_gradient = self.formulation.density_gradient(U, Q)
         is_value = Integrate(density_gradient * self.testing_vector, self.formulation.mesh)
 
@@ -255,9 +302,6 @@ class Test2DConservativeFormulation(TestFormulation):
 
     def momentum_gradient_test(self, U, Q):
 
-        if Q is not None:
-            Q = Q.components
-
         momentum_gradient = self.formulation.momentum_gradient(U, Q)
         is_value = Integrate(InnerProduct(momentum_gradient, self.testing_matrix), self.formulation.mesh)
 
@@ -266,9 +310,6 @@ class Test2DConservativeFormulation(TestFormulation):
         return is_value, expected_value
 
     def energy_gradient_test(self, U, Q):
-
-        if Q is not None:
-            Q = Q.components
 
         energy_gradient = self.formulation.energy_gradient(U, Q)
         is_value = Integrate(energy_gradient * self.testing_vector, self.formulation.mesh)
@@ -281,9 +322,6 @@ class Test2DConservativeFormulation(TestFormulation):
 
         gamma = self.formulation.solver_configuration.heat_capacity_ratio.Get()
 
-        if Q is not None:
-            Q = Q.components
-
         pressure_gradient = self.formulation.pressure_gradient(U, Q)
         is_value = Integrate(pressure_gradient * self.testing_vector, self.formulation.mesh)
 
@@ -292,9 +330,6 @@ class Test2DConservativeFormulation(TestFormulation):
         return is_value, expected_value
 
     def velocity_gradient_test(self, U, Q):
-
-        if Q is not None:
-            Q = Q.components
 
         velocity_gradient = self.formulation.velocity_gradient(U, Q)
         is_value = Integrate(InnerProduct(velocity_gradient, self.testing_matrix), self.formulation.mesh)
@@ -306,9 +341,6 @@ class Test2DConservativeFormulation(TestFormulation):
     def temperature_gradient_test(self, U, Q):
 
         gamma = self.formulation.solver_configuration.heat_capacity_ratio.Get()
-
-        if Q is not None:
-            Q = Q.components
 
         temperature_gradient = self.formulation.temperature_gradient(U, Q)
         is_value = Integrate(temperature_gradient * self.testing_vector, self.formulation.mesh)
