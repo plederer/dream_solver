@@ -263,22 +263,24 @@ class ConservativeFormulation2D(ConservativeFormulation):
             L = CF((L[0], L[1], L[2], 0))
 
         elif bc.type is bc.TYPE.POINSOT:
-            c = self.speed_of_sound(Uhat)
-            M = self.mach_number(Uhat)
+            rho = self.density(Uhat)
+            M = self.solver_configuration.Mach_number
             ref_length = bc.reference_length
 
-            L3 = bc.sigma * c * (1 - M)/ref_length * (self.pressure(Uhat) - bc.pressure)
+            L3 = bc.sigma * (1 - M)/ref_length/rho * (self.pressure(Uhat) - bc.pressure)
             L = CF((L[0], L[1], L[2], L3))
 
         elif bc.type is bc.TYPE.PIROZZOLI:
-            c = self.speed_of_sound(Uhat)
+            raise ValueError(f"Implementation details needed {bc.type}")
+            rho = self.density(Uhat)
+            dt = self.solver_configuration.time_step
+            lam = self.Lambda_matrix(Uhat, False)[3, 3]
             M = self.mach_number(Uhat)
-            ref_length = bc.reference_length
 
-            L3 = bc.sigma * c * (1 - M)/ref_length * (self.pressure(Uhat) - bc.pressure)
+            L3 = (1 - M)/(lam * dt * rho) * (self.pressure(Uhat) - bc.pressure)
             L = CF((L[0], L[1], L[2], L3))
 
-        D = (self.P_matrix(Uhat) * L)
+        D = self.P_matrix(Uhat) * L
 
         old_components = tuple(gfu.components[1] for gfu in old_components)
 
@@ -330,7 +332,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += cf.Compile(compile_flag)
 
-    def _add_adiabatic_wall_bilinearform(self, blf, boundary: str, bc: bc.IsothermalWall):
+    def _add_adiabatic_wall_bilinearform(self, blf, boundary: str, bc: bc.AdiabaticWall):
 
         mixed_method = self.solver_configuration.mixed_method
         if mixed_method is MixedMethods.NONE:
