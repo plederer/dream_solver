@@ -6,9 +6,9 @@ from typing import Optional, NamedTuple, TYPE_CHECKING
 
 from ngsolve import *
 
-from dream.time_schemes import time_scheme_factory
-import dream.boundary_conditions as bc
-import dream.viscosity as mu
+from ..time_schemes import time_scheme_factory
+from .. import boundary_conditions as bc
+from .. import viscosity as mu
 
 if TYPE_CHECKING:
     from configuration import SolverConfiguration

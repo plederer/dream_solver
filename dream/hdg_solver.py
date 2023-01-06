@@ -1,12 +1,9 @@
 from __future__ import annotations
 from ngsolve import *
-from dream.configuration import SolverConfiguration, Simulation
-from dream.formulations import formulation_factory, Formulation, MixedMethods
-from dream.viscosity import DynamicViscosity
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    import boundary_conditions as bc
+from .configuration import Simulation, SolverConfiguration
+from .formulations import formulation_factory, Formulation, MixedMethods
+from .viscosity import DynamicViscosity
+from . import boundary_conditions as bc
 
 
 class CompressibleHDGSolver():
@@ -34,7 +31,7 @@ class CompressibleHDGSolver():
 
         self.gfu = GridFunction(self.formulation.fes)
         self.gfu_old = tuple(GridFunction(self.formulation.fes) for num in range(num_temporary_vectors))
-    
+
         self.residual = self.gfu.vec.CreateVector()
         self.temporary = self.gfu.vec.CreateVector()
 

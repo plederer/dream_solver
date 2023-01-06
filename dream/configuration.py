@@ -3,9 +3,9 @@ from enum import Enum
 from ngsolve import Parameter
 from typing import Optional
 
-from dream.formulations import CompressibleFormulations, MixedMethods
-from dream.time_schemes import TimeSchemes
-from dream.viscosity import DynamicViscosity, Sutherland
+from .formulations import CompressibleFormulations, MixedMethods
+from .time_schemes import TimeSchemes
+from .viscosity import DynamicViscosity
 
 
 class Simulation(Enum):
@@ -23,7 +23,7 @@ class SolverConfiguration:
                  Reynold_number: Optional[float] = None,
                  Prandtl_number: Optional[float] = None,
                  heat_capacity_ratio: float = 1.4,
-                 farfield_temperature: Optional[float] = None,
+                 farfield_temperature: float = 293.15,
                  simulation: str = "transient",
                  time_scheme: str = "IE",
                  time_step: float = 1e-4,
@@ -132,20 +132,19 @@ class SolverConfiguration:
     @property
     def farfield_temperature(self) -> Parameter:
         """ Defines the farfield temperature needed for Sutherland's law"""
+        if self.dynamic_viscosity is not DynamicViscosity.SUTHERLAND:
+            raise Exception(f"Farfield temperature requires {DynamicViscosity.SUTHERLAND}")
         return self._farfield_temperature
 
     @farfield_temperature.setter
     def farfield_temperature(self, farfield_temperature: Optional[float]):
 
-        if farfield_temperature is None:
-            self._farfield_temperature = None
-    
-        elif farfield_temperature <= 0:
+        if farfield_temperature <= 0:
             raise ValueError("Invalid farfield temperature. Value has to be > 1!")
 
         else:
             self._farfield_temperature = Parameter(farfield_temperature)
-    
+
     @property
     def formulation(self) -> CompressibleFormulations:
         return self._formulation
@@ -175,7 +174,8 @@ class SolverConfiguration:
 
         except ValueError:
             options = [enum.value for enum in DynamicViscosity]
-            raise ValueError(f"'{dynamic_viscosity.capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
+            raise ValueError(
+                f"'{dynamic_viscosity.capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
 
     @property
     def mixed_method(self) -> MixedMethods:
@@ -290,3 +290,79 @@ class SolverConfiguration:
     @linear_solver.setter
     def linear_solver(self, linear_solver: str):
         self._linear_solver = str(linear_solver).lower()
+
+    def __repr__(self) -> str:
+
+        width = 60
+        half_width = 30
+
+        def header(name: str):
+            header = width * '_' + "\n"
+            header += f"{name:^{width}}" + "\n"
+            header += width * "‾" + "\n"
+            return header
+
+        def subheader(name: str):
+            return f"{'<-- ' + name + ' -->':^{width}}" + "\n\n"
+
+        def entry(name: str, value):
+            return f"{name + ':':>{half_width}} {value:<{half_width}}" + "\n"
+
+        if self._Ma is None:
+            Ma = "Not Specified"
+        else:
+            Ma = self._Ma.Get()
+
+        if self._Re is None:
+            Re = "Not Specified"
+        else:
+            Re = self._Pr.Get()
+
+        if self._Pr is None:
+            Pr = "Not Specified"
+        else:
+            Pr = self._Pr.Get()
+
+        # self.bonus_int_order_vol = bonus_int_order_vol
+        # self.bonus_int_order_bnd = bonus_int_order_bnd
+        # self.compile_flag = compile_flag
+
+        title = header('Solver Configuration')
+
+        subtitle_1 = subheader("Formulation Settings")
+        entry_1 = entry("Formulation", self._formulation.name)
+        entry_1 += entry("Viscosity", self._mu.name)
+        entry_1 += entry("Mixed Method", self._mixed_method.name)
+
+        subtitle_2 = subheader('Flow Settings')
+        entry_2 = entry("Mach Number", Ma)
+        if self._mu is not DynamicViscosity.INVISCID:
+            entry_2 += entry("Reynolds Number", Re)
+            entry_2 += entry("Prandtl Number", Pr)
+        entry_2 += entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
+        if self._mu is DynamicViscosity.SUTHERLAND:
+            entry_2 += entry("Farfield Temperature", self._farfield_temperature.Get())
+
+        subtitle_3 = subheader('Solver Settings')
+        entry_3 = entry('Simulation', self.simulation.name)
+        entry_3 += entry('Time Scheme', self.time_scheme.name)
+        entry_3 += entry('Time Step', self.time_step.Get())
+        entry_3 += entry('Polynomial Order', self._order)
+        entry_3 += entry('Linear Solver', self._linear_solver)
+        entry_3 += entry('Damping Factor', self._damping_factor)
+        entry_3 += entry('Convergence Criterion', self._convergence_criterion)
+        entry_3 += entry('Maximal Iterations', self._max_iterations)
+        entry_3 += entry('Static Condensation', str(self._static_condensation))
+        entry_3 += entry('Compile Flag', str(self._compile_flag))
+        entry_3 += entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
+        entry_3 += entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
+
+        repr = title
+        repr += subtitle_1
+        repr += entry_1 + "\n"
+        repr += subtitle_2
+        repr += entry_2 + "\n"
+        repr += subtitle_3
+        repr += entry_3 + "\n"
+
+        return repr

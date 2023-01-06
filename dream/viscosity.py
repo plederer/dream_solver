@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from ngsolve import CF
 
 if TYPE_CHECKING:
-    from dream.formulations import Formulation
+    from .formulations import Formulation
 
 
 class DynamicViscosity(enum.Enum):
@@ -36,8 +36,6 @@ class _DynamicViscosity(abc.ABC):
     def __init__(self, formulation: Formulation) -> None:
         self.formulation = formulation
         self.solver_configuration = formulation.solver_configuration
-
-        self.solver_configuration.farfield_temperature = None
 
     @abc.abstractmethod
     def get(self, U, Q) -> CF: ...
@@ -74,10 +72,6 @@ class Sutherland(_DynamicViscosity):
         self._S0 = 110.4
         self._T0 = 293.15
         self._mu_0 = 1.716e-5
-
-        T_far = self.solver_configuration.farfield_temperature
-        if T_far is None:
-            self.solver_configuration.farfield_temperature = self._T0
 
     def get(self, U, Q) -> CF:
 

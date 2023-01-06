@@ -4,11 +4,11 @@ import typing
 import enum
 
 if typing.TYPE_CHECKING:
-    from configuration import SolverConfiguration
+    from .configuration import SolverConfiguration
 
 
 class TimeSchemes(enum.Enum):
-    IE = "IE"
+    IMPLICIT_EULER = "IE"
     BDF2 = "BDF2"
 
 
@@ -16,7 +16,7 @@ def time_scheme_factory(solver_configuration: SolverConfiguration) -> _TimeSchem
 
     time_scheme = solver_configuration.time_scheme
 
-    if time_scheme is TimeSchemes.IE:
+    if time_scheme is TimeSchemes.IMPLICIT_EULER:
         return ImplicitEuler(solver_configuration)
     elif time_scheme is TimeSchemes.BDF2:
         return BDF2(solver_configuration)

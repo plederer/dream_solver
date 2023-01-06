@@ -3,8 +3,8 @@ from ngsolve import *
 
 from .base import MixedMethods, Indices, VectorCoordinates, TensorCoordinates
 from .conservative import ConservativeFormulation
-import dream.boundary_conditions as bc
-import dream.viscosity as visc
+from .. import boundary_conditions as bc
+from .. import viscosity as visc
 
 
 class ConservativeFormulation2D(ConservativeFormulation):

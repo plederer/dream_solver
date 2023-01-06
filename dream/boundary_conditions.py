@@ -4,7 +4,7 @@ from typing import Optional, TYPE_CHECKING
 from ngsolve import CF, Parameter, InnerProduct
 
 if TYPE_CHECKING:
-    from configuration import SolverConfiguration
+    from .configuration import SolverConfiguration
 
 
 def extract_pattern(pattern, facets):
