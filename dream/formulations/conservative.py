@@ -171,13 +171,11 @@ class ConservativeFormulation(Formulation):
             gradient_T = gamma * (gradient_rho_E/rho -
                                   gradient_rho*rho_E/rho**2 -
                                   gradient_rho_m.trans*rho_u/rho**2 +
-                                  InnerProduct(rho_u, rho_u)*gradient_rho/(rho**3))
+                                  InnerProduct(rho_u, rho_u)*gradient_rho/rho**3)
 
         return gradient_T
 
     def velocity_gradient(self, U, Q):
-
-        dim = self.mesh.dim
 
         rho = self.density(U)
         rho_u = self.momentum(U)
@@ -185,9 +183,7 @@ class ConservativeFormulation(Formulation):
         gradient_rho = self.density_gradient(U, Q)
         gradient_rho_u = self.momentum_gradient(U, Q)
 
-        rho_u_outer_gradient_rho = CF(tuple(rho_u[dir]*gradient_rho for dir in range(dim)), dims=(dim, dim))
-
-        gradient_u = gradient_rho_u/rho - rho_u_outer_gradient_rho/rho**2
+        gradient_u = gradient_rho_u/rho - OuterProduct(rho_u, gradient_rho)/rho**2
 
         return gradient_u
 
