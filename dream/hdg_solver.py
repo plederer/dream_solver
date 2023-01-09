@@ -7,7 +7,7 @@ from . import boundary_conditions as bc
 
 
 class CompressibleHDGSolver():
-    def __init__(self, mesh, solver_configuration: SolverConfiguration):
+    def __init__(self, mesh: Mesh, solver_configuration: SolverConfiguration):
 
         self.mesh = mesh
         self.solver_configuration = solver_configuration
@@ -187,18 +187,23 @@ class CompressibleHDGSolver():
             Draw(self.formulation.speed_of_sound(U), self.mesh, "c")
             Draw(self.formulation.mach_number(U), self.mesh, "M")
 
-    def CalcForces(self, surf, scale=1):
-        q = self.gfu.components[2]
-        sigma_visc = self.FU.mu.Get()/self.FU.Re.Get() * CF((q[0], q[1], q[1], q[2]), dims=(2, 2))
+    def calculate_forces(self, boundary, scale=1):
 
-        sigma_bnd = BoundaryFromVolumeCF(sigma_visc - self.pressure * Id(2))
-        n = specialcf.normal(2)
-        forces = Integrate(sigma_bnd * n, self.mesh, definedon=self.mesh.Boundaries(surf))
+        region = self.mesh.Boundaries(boundary)
 
-        fd = scale * forces[0]
-        fl = scale * forces[1]
+        U = self.gfu.components[0]
+        if self.solver_configuration.mixed_method is not MixedMethods.NONE:
+            Q = self.gfu.components[2]
 
-        return fd, fl
+        stress = -self.formulation.pressure(U) * Id(self.mesh.dim)
+        if self.solver_configuration.dynamic_viscosity is not DynamicViscosity.INVISCID:
+            stress += self.formulation.deviatoric_stress_tensor(U, Q)
+
+        stress = BoundaryFromVolumeCF(stress)
+        n = self.formulation.normal
+        forces = Integrate(stress * n, self.mesh, definedon=region)
+
+        return scale * forces
 
     def SaveForces(self, t, surf, scale=1, init=False):
         if self.base_dir is None:
@@ -207,6 +212,6 @@ class CompressibleHDGSolver():
             outfile = open(os.path.join(self.forces_dir, "force_file"), 'w')
         else:
             outfile = open(os.path.join(self.forces_dir, "force_file"), 'a')
-        fd, fl = self.CalcForces(surf, scale)
+        fd, fl = self.calculate_forces(surf, scale)
         outfile.write("{}\t{}\t{}\n".format(t, fd, fl))
         outfile.close
