@@ -5,6 +5,17 @@ from ngsolve import *
 
 class ConservativeFormulation(Formulation):
 
+    def get_gridfunction_components(self, gfu):
+        mixed_method = self.solver_configuration.mixed_method
+
+        U = gfu.components[0]
+        Uhat = gfu.components[1]
+        Q = None
+        if mixed_method is not MixedMethods.NONE:
+            Q = gfu.components[2]
+
+        return U, Uhat, Q
+
     def density(self, U):
         return U[self._indices.DENSITY]
 

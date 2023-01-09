@@ -141,10 +141,6 @@ class CompressibleHDGSolver():
 
         self.formulation.time_scheme.update_previous_solution(self.gfu, *self.gfu_old)
         Redraw()
-        # if not self.stationary:
-        #     self.gfu_old.vec.data = self.gfu.vec
-        #     # input()
-        #################################################################################
 
     def draw_solutions(self,
                        density: bool = True,
@@ -155,11 +151,7 @@ class CompressibleHDGSolver():
                        temperature: bool = False,
                        mach: bool = False):
 
-        U = self.gfu.components[0]
-        if self.solver_configuration.mixed_method is not MixedMethods.NONE:
-            Q = self.gfu.components[2]
-        else:
-            Q = None
+        U, _, Q = self.formulation.get_gridfunction_components(self.gfu)
 
         if density:
             Draw(self.formulation.density(U), self.mesh, "rho")
@@ -188,9 +180,7 @@ class CompressibleHDGSolver():
         region = self.mesh.Boundaries(boundary)
         n = self.formulation.normal
 
-        U = self.gfu.components[0]
-        if self.solver_configuration.mixed_method is not MixedMethods.NONE:
-            Q = self.gfu.components[2]
+        U, _, Q = self.formulation.get_gridfunction_components(self.gfu)
 
         stress = -self.formulation.pressure(U) * Id(self.mesh.dim)
         if self.solver_configuration.dynamic_viscosity is not DynamicViscosity.INVISCID:
