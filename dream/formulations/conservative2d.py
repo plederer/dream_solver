@@ -62,17 +62,63 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += (var_form).Compile(compile_flag)
 
-    def add_mixed_bilinearform(self, blf):
+    def add_convective_bilinearform(self, blf):
+
+        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+
+        (U, Uhat, _), (V, Vhat, _) = self.TnT
+
+        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
+        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
+                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
+                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+
+        # Subtract boundary regions
+        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
+        var_form -= InnerProduct(self.convective_numerical_flux(U, Uhat),
+                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+
+        blf += var_form.Compile(compile_flag)
+
+    def add_diffusive_bilinearform(self, blf):
+
+        mixed_method = self.solver_configuration.mixed_method
+        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+
+        (U, Uhat, Q), (V, Vhat, _) = self.TnT
+
+        var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
+        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+
+        # Subtract boundary regions
+        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
+        var_form += InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+
+        blf += var_form.Compile(compile_flag)
+
+        if mixed_method is not MixedMethods.NONE:
+            self._add_mixed_bilinearform(blf)
+
+    def _add_mixed_bilinearform(self, blf):
 
         bonus_vol = self.solver_configuration.bonus_int_order_vol
         bonus_bnd = self.solver_configuration.bonus_int_order_bnd
-        mixed_variant = self.solver_configuration.mixed_method
+        mixed_method = self.solver_configuration.mixed_method
         compile_flag = self.solver_configuration.compile_flag
 
         (U, Uhat, Q), (V, _, P) = self.TnT
         n = self.normal
 
-        if mixed_variant is MixedMethods.STRAIN_HEAT:
+        if mixed_method is MixedMethods.STRAIN_HEAT:
 
             gradient_P = grad(P)
 
@@ -104,53 +150,14 @@ class ConservativeFormulation2D(ConservativeFormulation):
             var_form += InnerProduct(T, div_xi) * dx(bonus_intorder=bonus_vol)
             var_form -= InnerProduct(That, xi*n) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
-        elif mixed_variant is MixedMethods.GRADIENT:
+        elif mixed_method is MixedMethods.GRADIENT:
 
             var_form = InnerProduct(Q, P) * dx(bonus_intorder=bonus_vol)
             var_form += InnerProduct(U, div(P)) * dx(bonus_intorder=bonus_vol)
             var_form -= InnerProduct(Uhat, P*n) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
-        blf += var_form.Compile(compile_flag)
-
-    def add_convective_bilinearform(self, blf):
-
-        compile_flag = self.solver_configuration.compile_flag
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-
-        (U, Uhat, _), (V, Vhat, _) = self.TnT
-
-        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
-        var_form -= InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
-
-        blf += var_form.Compile(compile_flag)
-
-    def add_diffusive_bilinearform(self, blf):
-
-        compile_flag = self.solver_configuration.compile_flag
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-
-        (U, Uhat, Q), (V, Vhat, _) = self.TnT
-
-        var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
-        var_form += InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+        else:
+            raise NotImplementedError(f"Mixed Bilinearform: {mixed_method}")
 
         blf += var_form.Compile(compile_flag)
 

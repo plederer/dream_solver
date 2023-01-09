@@ -58,7 +58,6 @@ class CompressibleHDGSolver():
 
         condense = self.solver_configuration.static_condensation
         viscosity = self.solver_configuration.dynamic_viscosity
-        mixed_method = self.solver_configuration.mixed_method
 
         self.blf = BilinearForm(fes, condense=condense)
 
@@ -67,9 +66,6 @@ class CompressibleHDGSolver():
 
         if viscosity is not DynamicViscosity.INVISCID:
             self.formulation.add_diffusive_bilinearform(self.blf)
-
-        if mixed_method is not MixedMethods.NONE:
-            self.formulation.add_mixed_bilinearform(self.blf)
 
         self.formulation.add_bcs_bilinearform(self.blf, self.gfu_old)
 
@@ -190,6 +186,7 @@ class CompressibleHDGSolver():
     def calculate_forces(self, boundary, scale=1):
 
         region = self.mesh.Boundaries(boundary)
+        n = self.formulation.normal
 
         U = self.gfu.components[0]
         if self.solver_configuration.mixed_method is not MixedMethods.NONE:
@@ -200,7 +197,6 @@ class CompressibleHDGSolver():
             stress += self.formulation.deviatoric_stress_tensor(U, Q)
 
         stress = BoundaryFromVolumeCF(stress)
-        n = self.formulation.normal
         forces = Integrate(stress * n, self.mesh, definedon=region)
 
         return scale * forces

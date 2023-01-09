@@ -189,9 +189,6 @@ class Formulation(abc.ABC):
     def add_time_bilinearform(self, blf): ...
 
     @abc.abstractmethod
-    def add_mixed_bilinearform(self, blf): ...
-
-    @abc.abstractmethod
     def add_convective_bilinearform(self, blf): ...
 
     @abc.abstractmethod
@@ -259,6 +256,9 @@ class Formulation(abc.ABC):
 
     @abc.abstractmethod
     def deviatoric_strain_tensor(self, U, Q): ...
+
+    @abc.abstractmethod
+    def deviatoric_stress_tensor(self, U, Q): ...
 
     def __str__(self) -> str:
         return self.__class__.__name__
