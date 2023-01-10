@@ -6,6 +6,7 @@ from typing import Optional
 from .formulations import CompressibleFormulations, MixedMethods
 from .time_schemes import TimeSchemes
 from .viscosity import DynamicViscosity
+from .IO import Formatter
 
 
 class Simulation(Enum):
@@ -293,21 +294,6 @@ class SolverConfiguration:
 
     def __repr__(self) -> str:
 
-        width = 60
-        half_width = 30
-
-        def header(name: str):
-            header = width * '_' + "\n"
-            header += f"{name:^{width}}" + "\n"
-            header += width * "‾" + "\n"
-            return header
-
-        def subheader(name: str):
-            return f"{'<-- ' + name + ' -->':^{width}}" + "\n\n"
-
-        def entry(name: str, value):
-            return f"{name + ':':>{half_width}} {value:<{half_width}}" + "\n"
-
         if self._Ma is None:
             Ma = "Not Specified"
         else:
@@ -323,46 +309,37 @@ class SolverConfiguration:
         else:
             Pr = self._Pr.Get()
 
-        # self.bonus_int_order_vol = bonus_int_order_vol
-        # self.bonus_int_order_bnd = bonus_int_order_bnd
-        # self.compile_flag = compile_flag
+        formatter = Formatter()
+        formatter.header('Solver Configuration').newline()
+        formatter.subheader("Formulation Settings").newline()
+        formatter.entry("Formulation", self._formulation.name)
+        formatter.entry("Viscosity", self._mu.name)
+        formatter.entry("Mixed Method", self._mixed_method.name)
+        formatter.newline()
 
-        title = header('Solver Configuration')
-
-        subtitle_1 = subheader("Formulation Settings")
-        entry_1 = entry("Formulation", self._formulation.name)
-        entry_1 += entry("Viscosity", self._mu.name)
-        entry_1 += entry("Mixed Method", self._mixed_method.name)
-
-        subtitle_2 = subheader('Flow Settings')
-        entry_2 = entry("Mach Number", Ma)
+        formatter.subheader('Flow Settings').newline()
+        formatter.entry("Mach Number", Ma)
         if self._mu is not DynamicViscosity.INVISCID:
-            entry_2 += entry("Reynolds Number", Re)
-            entry_2 += entry("Prandtl Number", Pr)
-        entry_2 += entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
+            formatter.entry("Reynolds Number", Re)
+            formatter.entry("Prandtl Number", Pr)
+        formatter.entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
         if self._mu is DynamicViscosity.SUTHERLAND:
-            entry_2 += entry("Farfield Temperature", self._farfield_temperature.Get())
+            formatter.entry("Farfield Temperature", self._farfield_temperature.Get())
+        formatter.newline()
 
-        subtitle_3 = subheader('Solver Settings')
-        entry_3 = entry('Simulation', self.simulation.name)
-        entry_3 += entry('Time Scheme', self.time_scheme.name)
-        entry_3 += entry('Time Step', self.time_step.Get())
-        entry_3 += entry('Polynomial Order', self._order)
-        entry_3 += entry('Linear Solver', self._linear_solver)
-        entry_3 += entry('Damping Factor', self._damping_factor)
-        entry_3 += entry('Convergence Criterion', self._convergence_criterion)
-        entry_3 += entry('Maximal Iterations', self._max_iterations)
-        entry_3 += entry('Static Condensation', str(self._static_condensation))
-        entry_3 += entry('Compile Flag', str(self._compile_flag))
-        entry_3 += entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
-        entry_3 += entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
+        formatter.subheader('Solver Settings').newline()
+        formatter.entry('Simulation', self.simulation.name)
+        formatter.entry('Time Scheme', self.time_scheme.name)
+        formatter.entry('Time Step', self.time_step.Get())
+        formatter.entry('Polynomial Order', self._order)
+        formatter.entry('Linear Solver', self._linear_solver)
+        formatter.entry('Damping Factor', self._damping_factor)
+        formatter.entry('Convergence Criterion', self._convergence_criterion)
+        formatter.entry('Maximal Iterations', self._max_iterations)
+        formatter.entry('Static Condensation', str(self._static_condensation))
+        formatter.entry('Compile Flag', str(self._compile_flag))
+        formatter.entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
+        formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
+        formatter.newline()
 
-        repr = title
-        repr += subtitle_1
-        repr += entry_1 + "\n"
-        repr += subtitle_2
-        repr += entry_2 + "\n"
-        repr += subtitle_3
-        repr += entry_3 + "\n"
-
-        return repr
+        return formatter.output

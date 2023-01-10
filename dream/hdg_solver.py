@@ -4,6 +4,7 @@ from .configuration import Simulation, SolverConfiguration
 from .formulations import formulation_factory, Formulation, MixedMethods
 from .viscosity import DynamicViscosity
 from . import boundary_conditions as bc
+from .IO import SolverSaver
 
 
 class CompressibleHDGSolver():
@@ -24,6 +25,9 @@ class CompressibleHDGSolver():
     @property
     def initial_condition(self) -> bc.InitialCondition:
         return self.formulation.ic
+
+    def get_saver(self, directory_name: str = "results", base_path=None):
+        return SolverSaver(self, directory_name, base_path)
 
     def setup(self, force: CF = None):
 
