@@ -429,9 +429,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
             c = self.speed_of_sound(Uhat)
 
             theta = un_abs/(un_abs + c)
-            Theta = CF((1, 0, 0, 0,
+            Theta = CF((theta, 0, 0, 0,
                         0, theta, 0, 0,
-                        0, 0, theta, 0,
+                        0, 0, 1, 0,
                         0, 0, 0, 1), dims=(4, 4))
 
             Theta = self.P_matrix(Uhat) * Theta * self.P_inverse_matrix(Uhat)
