@@ -1,10 +1,10 @@
 from __future__ import annotations
 from ngsolve import *
 from .configuration import Simulation, SolverConfiguration
-from .formulations import formulation_factory, Formulation, MixedMethods
+from .formulations import formulation_factory, Formulation
 from .viscosity import DynamicViscosity
+from .io import SolverSaver, SolverLoader
 from . import boundary_conditions as bc
-from .IO import SolverSaver
 
 
 class CompressibleHDGSolver():
@@ -25,9 +25,6 @@ class CompressibleHDGSolver():
     @property
     def initial_condition(self) -> bc.InitialCondition:
         return self.formulation.ic
-
-    def get_saver(self, directory_name: str = "results", base_path=None):
-        return SolverSaver(self, directory_name, base_path)
 
     def setup(self, force: CF = None):
 
@@ -195,13 +192,20 @@ class CompressibleHDGSolver():
 
         return scale * forces
 
-    def SaveForces(self, t, surf, scale=1, init=False):
-        if self.base_dir is None:
-            self.InitializeDir()
-        if init:
-            outfile = open(os.path.join(self.forces_dir, "force_file"), 'w')
-        else:
-            outfile = open(os.path.join(self.forces_dir, "force_file"), 'a')
-        fd, fl = self.calculate_forces(surf, scale)
-        outfile.write("{}\t{}\t{}\n".format(t, fd, fl))
-        outfile.close
+    def get_saver(self, directory_name: str = "results", base_path=None):
+        saver = SolverSaver(directory_name, base_path)
+        saver.assign_solver(self)
+        return saver
+
+    def get_loader(self, directory_name: str = "results", base_path=None):
+        loader = SolverLoader(directory_name, base_path)
+        loader.assign_solver(self)
+        return loader
+
+    def reset_mesh(self, mesh: Mesh):
+        self.mesh = mesh
+        self._formulation = formulation_factory(mesh, self.solver_configuration)
+
+    def reset_configuration(self, solver_configuration: SolverConfiguration):
+        self.solver_configuration = solver_configuration
+        self._formulation = formulation_factory(self.mesh, solver_configuration)

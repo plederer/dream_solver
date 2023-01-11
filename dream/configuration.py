@@ -6,7 +6,7 @@ from typing import Optional
 from .formulations import CompressibleFormulations, MixedMethods
 from .time_schemes import TimeSchemes
 from .viscosity import DynamicViscosity
-from .IO import Formatter
+from .utils.formatter import Formatter
 
 
 class Simulation(Enum):

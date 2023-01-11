@@ -1,27 +1,33 @@
 from __future__ import annotations
 import pickle
-import textwrap
+import pandas as pd
+
 from datetime import datetime
 from pathlib import Path
+from utils.formatter import Formatter
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from .hdg_solver import CompressibleHDGSolver
+    from .configuration import SolverConfiguration
+    from ngsolve import Mesh
 
 
-class SolverSaver:
+class _SaverLoaderTree:
 
     def __init__(self,
-                 solver: CompressibleHDGSolver,
-                 directory_name: str = "results",
+                 results_directory_name: str = "results",
                  base_path: Optional[Path] = None) -> None:
 
-        self.solver = solver
-        self.directory_name = directory_name
+        self.results_directory_name = results_directory_name
         self.base_path = base_path
 
         self._solutions_directory_name = "solutions"
         self._forces_directory_name = "forces"
+        self.assign_solver()
+
+    def assign_solver(self, solver: Optional[CompressibleHDGSolver] = None):
+        self._solver = solver
 
     @property
     def base_path(self) -> Path:
@@ -44,9 +50,74 @@ class SolverSaver:
         else:
             raise ValueError(f"Type {type(base_path)} not supported!")
 
+
+class SolverLoader(_SaverLoaderTree):
+
+    @property
+    def solver(self) -> Optional[CompressibleHDGSolver]:
+        return self._solver
+
     @property
     def results_path(self):
-        results_path = self.base_path.joinpath(self.directory_name)
+        results_path = self.base_path.joinpath(self.results_directory_name)
+        if not results_path.exists():
+            raise Exception(f"Can not load from {results_path}, as the path does not exist.")
+        return results_path
+
+    @property
+    def solutions_path(self):
+        solutions_path = self.results_path.joinpath(self._solutions_directory_name)
+        if not solutions_path.exists():
+            raise Exception(f"Can not load from {solutions_path}, as the path does not exist.")
+        return solutions_path
+
+    @property
+    def forces_path(self):
+        forces_path = self.results_path.joinpath(self._forces_directory_name)
+        if not forces_path.exists():
+            raise Exception(f"Can not load from {forces_path}, as the path does not exist.")
+        return forces_path
+
+    def load_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> Mesh:
+        file = self.results_path.joinpath(name + suffix)
+        with file.open("rb") as openfile:
+            mesh = pickle.load(openfile)
+
+        if self.solver is not None:
+            self.solver.reset_mesh(mesh)
+
+        return mesh
+
+    def load_configuration(self, name: str = "config", suffix: str = ".pickle") -> SolverConfiguration:
+        file = self.results_path.joinpath(name + suffix)
+        with file.open("rb") as openfile:
+            config = pickle.load(openfile)
+
+        if self.solver is not None:
+            self.solver.reset_configuration(config)
+
+        return config
+
+    def load_state(self, name: str):
+
+        if self.solver is None:
+            raise Exception("Assign solver before loading state")
+
+        file = self.solutions_path.joinpath(name)
+        self.solver.gfu.Load(str(file))
+
+
+class SolverSaver(_SaverLoaderTree):
+
+    @property
+    def solver(self) -> CompressibleHDGSolver:
+        if self._solver is None:
+            raise Exception("Assign a solver to the Saver")
+        return self._solver
+
+    @property
+    def results_path(self):
+        results_path = self.base_path.joinpath(self.results_directory_name)
         if not results_path.exists():
             results_path.mkdir()
         return results_path
@@ -82,14 +153,27 @@ class SolverSaver:
             self._save_txt_configuration(name, comment)
 
     def save_state(self, name: str = "state"):
-
         file = self.solutions_path.joinpath(name)
         self.solver.gfu.Save(str(file))
+
+    def save_forces(self, boundary, time: float, name: str = "force_file", suffix=".csv", scale=1, mode='a'):
+        file = self.forces_path.joinpath(name + suffix)
+
+        header = True
+        if file.exists() and mode != 'w':
+            header = False
+
+        forces = self.solver.calculate_forces(boundary)
+        forces = {dir: value for dir, value in zip(['x', 'y', 'z'], forces)}
+        time = pd.Index([time], name='t')
+
+        df = pd.DataFrame(forces, index=time)
+        df.to_csv(file, header=header, mode=mode)
 
     def _save_txt_configuration(self, name: str, comment: Optional[str] = None):
 
         formatter = Formatter()
-        formatter.column_ratio = (0.3, 0.7)
+        formatter.COLUMN_RATIO = (0.3, 0.7)
 
         formatter.header("Compressible HDG Solver").newline()
         formatter.entry("Authors", "Philip Lederer, Jan Ellmenreich")
@@ -102,7 +186,7 @@ class SolverSaver:
         formatter.add(self.solver.solver_configuration)
 
         if comment is not None:
-            formatter.header("Comment")
+            formatter.header("Comment").newline()
             formatter.text(comment)
 
         file = self.results_path.joinpath(name + ".txt")
@@ -114,51 +198,3 @@ class SolverSaver:
         file = self.results_path.joinpath(name + suffix)
         with file.open("wb") as openfile:
             pickle.dump(self.solver.solver_configuration, openfile)
-
-
-class Formatter:
-
-    TERMINAL_WIDTH: int = 80
-    TEXT_INDENT = 5
-    column_ratio = (0.5, 0.5)
-
-    def __init__(self) -> None:
-        self.reset()
-
-    def header(self, text: str):
-        text = f" {text.upper()} "
-        header = f"{text:─^{self.TERMINAL_WIDTH}}" + "\n"
-        self.output += header
-        return self
-
-    def subheader(self, text: str):
-        text = '─── ' + text.upper() + ' ───'
-        subheader = f"{text:^{self.TERMINAL_WIDTH}}" + "\n"
-        self.output += subheader
-        return self
-
-    def entry(self, text: str, value, equal: str = ":"):
-        txt_width, value_width = tuple(int(self.TERMINAL_WIDTH * ratio) for ratio in self.column_ratio)
-        entry = f"{text + equal:>{txt_width}} {value:<{value_width}}" + "\n"
-        self.output += entry
-        return self
-
-    def text(self, text):
-        width = self.TERMINAL_WIDTH - 2*self.TEXT_INDENT
-        indent = self.TEXT_INDENT * ' '
-        text = textwrap.fill(text, width, initial_indent=indent, subsequent_indent=indent)
-
-        self.output += text + "\n"
-        return self
-
-    def newline(self):
-        self.output += "\n"
-
-    def reset(self):
-        self.output = ""
-
-    def add(self, object):
-        self.output += repr(object)
-
-    def __repr__(self) -> str:
-        return self.output
