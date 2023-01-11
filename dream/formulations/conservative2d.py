@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ngsolve import *
 
-from .base import MixedMethods, Indices, VectorCoordinates, TensorCoordinates
+from .base import MixedMethods, Indices, VectorCoordinates, TensorCoordinates, RiemannSolver
 from .conservative import ConservativeFormulation
 from .. import boundary_conditions as bc
 from .. import viscosity as visc
@@ -390,7 +390,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def convective_numerical_flux(self, U, Uhat):
         """
-        Lax-Friedrichs numerical flux
+        Convective numerical flux
 
         Equation 34, page 16
 
@@ -400,10 +400,46 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Arch Computat Methods Eng 28, 753–784 (2021).
               https://doi.org/10.1007/s11831-020-09508-z
         """
+        riemann_solver = self.solver_configuration.riemann_solver
         n = self.normal
 
-        An = self.P_matrix(Uhat) * self.Lambda_matrix(Uhat, True) * self.P_inverse_matrix(Uhat)
-        return self.convective_flux(Uhat)*n + An * (U-Uhat)
+        if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
+            un = InnerProduct(self.velocity(Uhat), n)
+            un_abs = IfPos(un, un, -un)
+            c = self.speed_of_sound(Uhat)
+            lambda_max = un_abs + c
+
+            stabilisation_matrix = lambda_max * Id(self.mesh.dim + 2)
+
+        elif riemann_solver is RiemannSolver.ROE:
+            An = self.P_matrix(Uhat) * self.Lambda_matrix(Uhat, True) * self.P_inverse_matrix(Uhat)
+
+            stabilisation_matrix = An
+
+        elif riemann_solver is RiemannSolver.HLL:
+            un = InnerProduct(self.velocity(Uhat), n)
+            c = self.speed_of_sound(Uhat)
+            splus = IfPos(un + c, un + c, 0)
+
+            stabilisation_matrix = splus * Id(self.mesh.dim + 2)
+
+        elif riemann_solver is RiemannSolver.HLLEM:
+            un = InnerProduct(self.velocity(Uhat), n)
+            un_abs = IfPos(un, un, -un)
+            c = self.speed_of_sound(Uhat)
+
+            theta = un_abs/(un_abs + c)
+            Theta = CF((1, 0, 0, 0,
+                        0, theta, 0, 0,
+                        0, 0, theta, 0,
+                        0, 0, 0, 1), dims=(4, 4))
+
+            Theta = self.P_matrix(Uhat) * Theta * self.P_inverse_matrix(Uhat)
+            splus = IfPos(un + c, un + c, 0)
+
+            stabilisation_matrix = splus * Theta
+
+        return self.convective_flux(Uhat)*n + stabilisation_matrix * (U-Uhat)
 
     def diffusive_flux(self, U, Q):
         """

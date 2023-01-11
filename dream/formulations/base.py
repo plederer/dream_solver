@@ -25,6 +25,13 @@ class MixedMethods(enum.Enum):
     STRAIN_HEAT = "strain_heat"
 
 
+class RiemannSolver(enum.Enum):
+    LAX_FRIEDRICH = 'lax_friedrich'
+    ROE = 'roe'
+    HLL = 'hll'
+    HLLEM = 'hllem'
+
+
 @dataclasses.dataclass
 class VectorCoordinates:
     X: Optional[int] = None

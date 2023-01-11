@@ -3,7 +3,7 @@ from enum import Enum
 from ngsolve import Parameter
 from typing import Optional
 
-from .formulations import CompressibleFormulations, MixedMethods
+from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
 from .time_schemes import TimeSchemes
 from .viscosity import DynamicViscosity
 from .utils.formatter import Formatter
@@ -29,6 +29,7 @@ class SolverConfiguration:
                  time_scheme: str = "IE",
                  time_step: float = 1e-4,
                  order: int = 2,
+                 riemann_solver: str = 'roe',
                  static_condensation: bool = True,
                  bonus_int_order_vol: int = 0,
                  bonus_int_order_bnd: int = 0,
@@ -43,6 +44,7 @@ class SolverConfiguration:
         self.formulation = formulation
         self.dynamic_viscosity = dynamic_viscosity
         self.mixed_method = mixed_method
+        self.riemann_solver = riemann_solver
 
         # Flow properties
         self.Mach_number = Mach_number
@@ -197,6 +199,20 @@ class SolverConfiguration:
                 f"'{mixed_method.capitalize()}' is not a valid mixed variant. Possible alternatives: {options}")
 
     @property
+    def riemann_solver(self) -> MixedMethods:
+        return self._riemann_solver
+
+    @riemann_solver.setter
+    def riemann_solver(self, riemann_solver: str):
+
+        try:
+            self._riemann_solver = RiemannSolver(riemann_solver.lower())
+        except ValueError:
+            options = [enum.value for enum in MixedMethods]
+            raise ValueError(
+                f"'{riemann_solver.capitalize()}' is not a valid Riemann Solver. Possible alternatives: {options}")
+
+    @property
     def simulation(self) -> Simulation:
         return self._simulation
 
@@ -315,6 +331,7 @@ class SolverConfiguration:
         formatter.entry("Formulation", self._formulation.name)
         formatter.entry("Viscosity", self._mu.name)
         formatter.entry("Mixed Method", self._mixed_method.name)
+        formatter.entry("Riemann Solver", self.riemann_solver.name)
         formatter.newline()
 
         formatter.subheader('Flow Settings').newline()

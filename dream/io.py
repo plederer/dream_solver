@@ -4,7 +4,7 @@ import pandas as pd
 
 from datetime import datetime
 from pathlib import Path
-from utils.formatter import Formatter
+from .utils.formatter import Formatter
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
