@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from ngsolve import Mesh
 
 
-class _SaverLoaderTree:
+class ResultsFolderTree:
 
     def __init__(self,
                  results_directory_name: str = "results",
@@ -51,7 +51,77 @@ class _SaverLoaderTree:
             raise ValueError(f"Type {type(base_path)} not supported!")
 
 
-class SolverLoader(_SaverLoaderTree):
+# class Sensor(ResultsFolderTree):
+
+#     def __init__(self,
+#                  results_directory_name: str = "results",
+#                  base_path: Optional[Path] = None) -> None:
+#         super().__init__(results_directory_name, base_path)
+
+#     @property
+#     def solver(self) -> CompressibleHDGSolver:
+#         if self._solver is None:
+#             raise Exception("Assign a solver to the Sensor")
+#         return self._solver
+
+#     @property
+#     def results_path(self):
+#         results_path = self.base_path.joinpath(self.results_directory_name)
+#         if not results_path.exists():
+#             results_path.mkdir()
+#         return results_path
+
+#     @property
+#     def forces_path(self):
+#         forces_path = self.results_path.joinpath(self._forces_directory_name)
+#         if not forces_path.exists():
+#             forces_path.mkdir()
+#         return forces_path
+
+#     def save_forces(self, boundary, time: float, name: str = "force_file", suffix=".csv", scale=1, mode='a'):
+#         file = self.forces_path.joinpath(name + suffix)
+
+#         header = True
+#         if file.exists() and mode != 'w':
+#             header = False
+
+#         forces = self.solver.calculate_forces(boundary)
+#         forces = {dir: value for dir, value in zip(['x', 'y', 'z'], forces)}
+#         time = pd.Index([time], name='t')
+
+#         df = pd.DataFrame(forces, index=time)
+#         df.to_csv(file, header=header, mode=mode)
+
+#     def calculate_forces(self, boundary, scale=1):
+
+#         region = self.mesh.Boundaries(boundary)
+#         n = self.formulation.normal
+
+#         components = self.formulation.get_gridfunction_components(self.gfu)
+
+#         stress = -self.formulation.pressure(components.PRIMAL) * Id(self.mesh.dim)
+#         if self.solver_configuration.dynamic_viscosity is not DynamicViscosity.INVISCID:
+#             stress += self.formulation.deviatoric_stress_tensor(components.PRIMAL, components.MIXED)
+
+#         stress = BoundaryFromVolumeCF(stress)
+#         forces = Integrate(stress * n, self.mesh, definedon=region)
+
+#         return scale * forces
+
+#     def calculate_pressure(self, boundary=None, point=None):
+#         region = self.mesh.Boundaries(boundary)
+
+#         components = self.formulation.get_gridfunction_components(self.gfu)
+
+#         pressure = self.formulation.pressure(components.PRIMAL)
+
+#         vertices = set(self.mesh[v].point for e in region.Elements() for v in e.vertices)
+#         for vertex in vertices:
+#             # print(pressure(self.mesh(*vertex)))
+#             ...
+
+#     # def add_sensor(self, sensor: )
+class SolverLoader(ResultsFolderTree):
 
     @property
     def solver(self) -> Optional[CompressibleHDGSolver]:
@@ -70,13 +140,6 @@ class SolverLoader(_SaverLoaderTree):
         if not solutions_path.exists():
             raise Exception(f"Can not load from {solutions_path}, as the path does not exist.")
         return solutions_path
-
-    @property
-    def forces_path(self):
-        forces_path = self.results_path.joinpath(self._forces_directory_name)
-        if not forces_path.exists():
-            raise Exception(f"Can not load from {forces_path}, as the path does not exist.")
-        return forces_path
 
     def load_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> Mesh:
         file = self.results_path.joinpath(name + suffix)
@@ -107,7 +170,7 @@ class SolverLoader(_SaverLoaderTree):
         self.solver.gfu.Load(str(file))
 
 
-class SolverSaver(_SaverLoaderTree):
+class SolverSaver(ResultsFolderTree):
 
     @property
     def solver(self) -> CompressibleHDGSolver:
@@ -129,13 +192,6 @@ class SolverSaver(_SaverLoaderTree):
             solutions_path.mkdir()
         return solutions_path
 
-    @property
-    def forces_path(self):
-        forces_path = self.results_path.joinpath(self._forces_directory_name)
-        if not forces_path.exists():
-            forces_path.mkdir()
-        return forces_path
-
     def save_mesh(self, name: str = "mesh", suffix: str = ".pickle"):
         file = self.results_path.joinpath(name + suffix)
         with file.open("wb") as openfile:
@@ -155,20 +211,6 @@ class SolverSaver(_SaverLoaderTree):
     def save_state(self, name: str = "state"):
         file = self.solutions_path.joinpath(name)
         self.solver.gfu.Save(str(file))
-
-    def save_forces(self, boundary, time: float, name: str = "force_file", suffix=".csv", scale=1, mode='a'):
-        file = self.forces_path.joinpath(name + suffix)
-
-        header = True
-        if file.exists() and mode != 'w':
-            header = False
-
-        forces = self.solver.calculate_forces(boundary)
-        forces = {dir: value for dir, value in zip(['x', 'y', 'z'], forces)}
-        time = pd.Index([time], name='t')
-
-        df = pd.DataFrame(forces, index=time)
-        df.to_csv(file, header=header, mode=mode)
 
     def _save_txt_configuration(self, name: str, comment: Optional[str] = None):
 

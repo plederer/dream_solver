@@ -181,16 +181,30 @@ class CompressibleHDGSolver():
         region = self.mesh.Boundaries(boundary)
         n = self.formulation.normal
 
-        U, _, Q = self.formulation.get_gridfunction_components(self.gfu)
+        components = self.formulation.get_gridfunction_components(self.gfu)
 
-        stress = -self.formulation.pressure(U) * Id(self.mesh.dim)
+        stress = -self.formulation.pressure(components.PRIMAL) * Id(self.mesh.dim)
         if self.solver_configuration.dynamic_viscosity is not DynamicViscosity.INVISCID:
-            stress += self.formulation.deviatoric_stress_tensor(U, Q)
+            stress += self.formulation.deviatoric_stress_tensor(components.PRIMAL, components.MIXED)
 
         stress = BoundaryFromVolumeCF(stress)
         forces = Integrate(stress * n, self.mesh, definedon=region)
 
         return scale * forces
+
+    def calculate_pressure(self, boundary=None, point=None):
+        region = self.mesh.Boundaries(boundary)
+
+        components = self.formulation.get_gridfunction_components(self.gfu)
+
+        pressure = self.formulation.pressure(components.PRIMAL)
+
+        vertices = set(self.mesh[v].point for e in region.Elements() for v in e.vertices)
+        for vertex in vertices:
+            # print(pressure(self.mesh(*vertex)))
+            ...
+
+    # def add_sensor(self, sensor: )
 
     def get_saver(self, directory_name: str = "results", base_path=None):
         saver = SolverSaver(directory_name, base_path)
