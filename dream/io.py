@@ -1,6 +1,5 @@
 from __future__ import annotations
 import pickle
-import pandas as pd
 
 from datetime import datetime
 from pathlib import Path
