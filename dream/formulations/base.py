@@ -2,16 +2,17 @@ from __future__ import annotations
 import abc
 import enum
 import dataclasses
-from typing import Optional, NamedTuple, TYPE_CHECKING
+from typing import Optional, NamedTuple, TYPE_CHECKING, Any
 
 from ngsolve import *
 
-from dream.time_schemes import time_scheme_factory
-import dream.boundary_conditions as bc
-import dream.viscosity as mu
+from ..time_schemes import time_scheme_factory
+from .. import boundary_conditions as bc
+from .. import viscosity as mu
 
 if TYPE_CHECKING:
     from configuration import SolverConfiguration
+    from ngsolve.comp import ComponentGridFunction
 
 
 class CompressibleFormulations(enum.Enum):
@@ -23,6 +24,13 @@ class MixedMethods(enum.Enum):
     NONE = None
     GRADIENT = "gradient"
     STRAIN_HEAT = "strain_heat"
+
+
+class RiemannSolver(enum.Enum):
+    LAX_FRIEDRICH = 'lax_friedrich'
+    ROE = 'roe'
+    HLL = 'hll'
+    HLLEM = 'hllem'
 
 
 @dataclasses.dataclass
@@ -79,6 +87,12 @@ class Indices(NamedTuple):
     ENERGY: Optional[int] = None
     TEMPERATURE_GRADIENT: Optional[VectorCoordinates] = None
     STRAIN: Optional[TensorCoordinates] = None
+
+
+class GridFunctionComponents(NamedTuple):
+    PRIMAL: Optional[ComponentGridFunction] = None
+    PRIMAL_FACET: Optional[ComponentGridFunction] = None
+    MIXED: Optional[ComponentGridFunction] = None
 
 
 class Formulation(abc.ABC):
@@ -180,6 +194,9 @@ class Formulation(abc.ABC):
     def get_TnT(self): ...
 
     @abc.abstractmethod
+    def get_gridfunction_components(self, gfu) -> GridFunctionComponents: ...
+
+    @abc.abstractmethod
     def _add_initial_linearform(self, lf, domain, value): ...
 
     @abc.abstractmethod
@@ -187,9 +204,6 @@ class Formulation(abc.ABC):
 
     @abc.abstractmethod
     def add_time_bilinearform(self, blf): ...
-
-    @abc.abstractmethod
-    def add_mixed_bilinearform(self, blf): ...
 
     @abc.abstractmethod
     def add_convective_bilinearform(self, blf): ...
@@ -234,31 +248,34 @@ class Formulation(abc.ABC):
     def mach_number(self, U): ...
 
     @abc.abstractmethod
-    def density_gradient(self, U, Q): ...
+    def density_gradient(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def momentum_gradient(self, U, Q): ...
+    def momentum_gradient(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def energy_gradient(self, U, Q): ...
+    def energy_gradient(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def enthalpy_gradient(self, U, Q): ...
+    def enthalpy_gradient(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def pressure_gradient(self, U, Q): ...
+    def pressure_gradient(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def temperature_gradient(self, U, Q): ...
+    def temperature_gradient(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def velocity_gradient(self, U, Q): ...
+    def velocity_gradient(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def vorticity(self, U, Q): ...
+    def vorticity(self, U, Q=None): ...
 
     @abc.abstractmethod
-    def deviatoric_strain_tensor(self, U, Q): ...
+    def deviatoric_strain_tensor(self, U, Q=None): ...
+
+    @abc.abstractmethod
+    def deviatoric_stress_tensor(self, U, Q=None): ...
 
     def __str__(self) -> str:
         return self.__class__.__name__

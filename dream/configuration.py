@@ -3,9 +3,10 @@ from enum import Enum
 from ngsolve import Parameter
 from typing import Optional
 
-from dream.formulations import CompressibleFormulations, MixedMethods
-from dream.time_schemes import TimeSchemes
-from dream.viscosity import DynamicViscosity, Sutherland
+from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
+from .time_schemes import TimeSchemes
+from .viscosity import DynamicViscosity
+from .utils.formatter import Formatter
 
 
 class Simulation(Enum):
@@ -23,11 +24,12 @@ class SolverConfiguration:
                  Reynold_number: Optional[float] = None,
                  Prandtl_number: Optional[float] = None,
                  heat_capacity_ratio: float = 1.4,
-                 farfield_temperature: Optional[float] = None,
+                 farfield_temperature: float = 293.15,
                  simulation: str = "transient",
                  time_scheme: str = "IE",
                  time_step: float = 1e-4,
                  order: int = 2,
+                 riemann_solver: str = 'roe',
                  static_condensation: bool = True,
                  bonus_int_order_vol: int = 0,
                  bonus_int_order_bnd: int = 0,
@@ -42,6 +44,7 @@ class SolverConfiguration:
         self.formulation = formulation
         self.dynamic_viscosity = dynamic_viscosity
         self.mixed_method = mixed_method
+        self.riemann_solver = riemann_solver
 
         # Flow properties
         self.Mach_number = Mach_number
@@ -132,20 +135,19 @@ class SolverConfiguration:
     @property
     def farfield_temperature(self) -> Parameter:
         """ Defines the farfield temperature needed for Sutherland's law"""
+        if self.dynamic_viscosity is not DynamicViscosity.SUTHERLAND:
+            raise Exception(f"Farfield temperature requires {DynamicViscosity.SUTHERLAND}")
         return self._farfield_temperature
 
     @farfield_temperature.setter
     def farfield_temperature(self, farfield_temperature: Optional[float]):
 
-        if farfield_temperature is None:
-            self._farfield_temperature = None
-    
-        elif farfield_temperature <= 0:
+        if farfield_temperature <= 0:
             raise ValueError("Invalid farfield temperature. Value has to be > 1!")
 
         else:
             self._farfield_temperature = Parameter(farfield_temperature)
-    
+
     @property
     def formulation(self) -> CompressibleFormulations:
         return self._formulation
@@ -175,7 +177,8 @@ class SolverConfiguration:
 
         except ValueError:
             options = [enum.value for enum in DynamicViscosity]
-            raise ValueError(f"'{dynamic_viscosity.capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
+            raise ValueError(
+                f"'{dynamic_viscosity.capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
 
     @property
     def mixed_method(self) -> MixedMethods:
@@ -194,6 +197,20 @@ class SolverConfiguration:
             options = [enum.value for enum in MixedMethods]
             raise ValueError(
                 f"'{mixed_method.capitalize()}' is not a valid mixed variant. Possible alternatives: {options}")
+
+    @property
+    def riemann_solver(self) -> MixedMethods:
+        return self._riemann_solver
+
+    @riemann_solver.setter
+    def riemann_solver(self, riemann_solver: str):
+
+        try:
+            self._riemann_solver = RiemannSolver(riemann_solver.lower())
+        except ValueError:
+            options = [enum.value for enum in MixedMethods]
+            raise ValueError(
+                f"'{riemann_solver.capitalize()}' is not a valid Riemann Solver. Possible alternatives: {options}")
 
     @property
     def simulation(self) -> Simulation:
@@ -290,3 +307,56 @@ class SolverConfiguration:
     @linear_solver.setter
     def linear_solver(self, linear_solver: str):
         self._linear_solver = str(linear_solver).lower()
+
+    def __repr__(self) -> str:
+
+        if self._Ma is None:
+            Ma = "Not Specified"
+        else:
+            Ma = self._Ma.Get()
+
+        if self._Re is None:
+            Re = "Not Specified"
+        else:
+            Re = self._Pr.Get()
+
+        if self._Pr is None:
+            Pr = "Not Specified"
+        else:
+            Pr = self._Pr.Get()
+
+        formatter = Formatter()
+        formatter.header('Solver Configuration').newline()
+        formatter.subheader("Formulation Settings").newline()
+        formatter.entry("Formulation", self._formulation.name)
+        formatter.entry("Viscosity", self._mu.name)
+        formatter.entry("Mixed Method", self._mixed_method.name)
+        formatter.entry("Riemann Solver", self.riemann_solver.name)
+        formatter.newline()
+
+        formatter.subheader('Flow Settings').newline()
+        formatter.entry("Mach Number", Ma)
+        if self._mu is not DynamicViscosity.INVISCID:
+            formatter.entry("Reynolds Number", Re)
+            formatter.entry("Prandtl Number", Pr)
+        formatter.entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
+        if self._mu is DynamicViscosity.SUTHERLAND:
+            formatter.entry("Farfield Temperature", self._farfield_temperature.Get())
+        formatter.newline()
+
+        formatter.subheader('Solver Settings').newline()
+        formatter.entry('Simulation', self.simulation.name)
+        formatter.entry('Time Scheme', self.time_scheme.name)
+        formatter.entry('Time Step', self.time_step.Get())
+        formatter.entry('Polynomial Order', self._order)
+        formatter.entry('Linear Solver', self._linear_solver)
+        formatter.entry('Damping Factor', self._damping_factor)
+        formatter.entry('Convergence Criterion', self._convergence_criterion)
+        formatter.entry('Maximal Iterations', self._max_iterations)
+        formatter.entry('Static Condensation', str(self._static_condensation))
+        formatter.entry('Compile Flag', str(self._compile_flag))
+        formatter.entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
+        formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
+        formatter.newline()
+
+        return formatter.output

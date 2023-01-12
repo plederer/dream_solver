@@ -4,7 +4,15 @@ from typing import Optional, TYPE_CHECKING
 from ngsolve import CF, Parameter, InnerProduct
 
 if TYPE_CHECKING:
-    from configuration import SolverConfiguration
+    from .configuration import SolverConfiguration
+
+
+def extract_pattern(pattern, facets):
+    if isinstance(pattern, str):
+        pattern = pattern.split("|")
+    intersection = set(facets).intersection(pattern)
+
+    return tuple(intersection)
 
 
 class InitialCondition:
@@ -22,7 +30,7 @@ class InitialCondition:
         if domain is None:
             domains = list(self.domains.keys())
         else:
-            domains = self._split_region(domain)
+            domains = extract_pattern(domain, self.domains)
 
         gamma = self.solver_configuration.heat_capacity_ratio
 
@@ -49,7 +57,7 @@ class BoundaryConditions:
                       energy: float = None):
 
         gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self.boundaries[boundary] = Dirichlet(
@@ -64,7 +72,7 @@ class BoundaryConditions:
                      energy: float = None):
 
         gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self.boundaries[boundary] = FarField(density, velocity, temperature, pressure, energy, gamma)
@@ -73,7 +81,7 @@ class BoundaryConditions:
                     boundary,
                     pressure: float):
 
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self.boundaries[boundary] = Outflow(pressure)
@@ -88,7 +96,7 @@ class BoundaryConditions:
                                   tangential_viscous_fluxes: bool = True,
                                   normal_viscous_fluxes: bool = False):
 
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self.boundaries[boundary] = NonReflectingOutflow(
@@ -97,35 +105,30 @@ class BoundaryConditions:
 
     def set_inviscid_wall(self, boundary):
 
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self.boundaries[boundary] = InviscidWall()
 
     def set_symmetry(self, boundary):
 
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self.boundaries[boundary] = InviscidWall()
 
     def set_isothermal_wall(self, boundary, temperature: float):
 
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
         for boundary in boundaries:
             self.boundaries[boundary] = IsothermalWall(temperature)
 
     def set_adiabatic_wall(self, boundary):
 
-        boundaries = self._extract_pattern(boundary)
+        boundaries = extract_pattern(boundary, self.boundaries)
         for boundary in boundaries:
             self.boundaries[boundary] = AdiabaticWall()
 
-    def _extract_pattern(self, boundary):
-        if isinstance(boundary, str):
-            boundary = boundary.split("|")
-        boundaries = set(self.boundaries).intersection(boundary)
-        
         return tuple(boundaries)
 
 

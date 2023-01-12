@@ -1,10 +1,10 @@
 from __future__ import annotations
 from ngsolve import *
 
-from .base import MixedMethods, Indices, VectorCoordinates, TensorCoordinates
+from .base import MixedMethods, Indices, VectorCoordinates, TensorCoordinates, RiemannSolver
 from .conservative import ConservativeFormulation
-import dream.boundary_conditions as bc
-import dream.viscosity as visc
+from .. import boundary_conditions as bc
+from .. import viscosity as visc
 
 
 class ConservativeFormulation2D(ConservativeFormulation):
@@ -62,17 +62,63 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += (var_form).Compile(compile_flag)
 
-    def add_mixed_bilinearform(self, blf):
+    def add_convective_bilinearform(self, blf):
+
+        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+
+        (U, Uhat, _), (V, Vhat, _) = self.TnT
+
+        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
+        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
+                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
+                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+
+        # Subtract boundary regions
+        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
+        var_form -= InnerProduct(self.convective_numerical_flux(U, Uhat),
+                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+
+        blf += var_form.Compile(compile_flag)
+
+    def add_diffusive_bilinearform(self, blf):
+
+        mixed_method = self.solver_configuration.mixed_method
+        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
+        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+
+        (U, Uhat, Q), (V, Vhat, _) = self.TnT
+
+        var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
+        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+
+        # Subtract boundary regions
+        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
+        var_form += InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+
+        blf += var_form.Compile(compile_flag)
+
+        if mixed_method is not MixedMethods.NONE:
+            self._add_mixed_bilinearform(blf)
+
+    def _add_mixed_bilinearform(self, blf):
 
         bonus_vol = self.solver_configuration.bonus_int_order_vol
         bonus_bnd = self.solver_configuration.bonus_int_order_bnd
-        mixed_variant = self.solver_configuration.mixed_method
+        mixed_method = self.solver_configuration.mixed_method
         compile_flag = self.solver_configuration.compile_flag
 
         (U, Uhat, Q), (V, _, P) = self.TnT
         n = self.normal
 
-        if mixed_variant is MixedMethods.STRAIN_HEAT:
+        if mixed_method is MixedMethods.STRAIN_HEAT:
 
             gradient_P = grad(P)
 
@@ -104,53 +150,14 @@ class ConservativeFormulation2D(ConservativeFormulation):
             var_form += InnerProduct(T, div_xi) * dx(bonus_intorder=bonus_vol)
             var_form -= InnerProduct(That, xi*n) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
-        elif mixed_variant is MixedMethods.GRADIENT:
+        elif mixed_method is MixedMethods.GRADIENT:
 
             var_form = InnerProduct(Q, P) * dx(bonus_intorder=bonus_vol)
             var_form += InnerProduct(U, div(P)) * dx(bonus_intorder=bonus_vol)
             var_form -= InnerProduct(Uhat, P*n) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
-        blf += var_form.Compile(compile_flag)
-
-    def add_convective_bilinearform(self, blf):
-
-        compile_flag = self.solver_configuration.compile_flag
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-
-        (U, Uhat, _), (V, Vhat, _) = self.TnT
-
-        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
-        var_form -= InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
-
-        blf += var_form.Compile(compile_flag)
-
-    def add_diffusive_bilinearform(self, blf):
-
-        compile_flag = self.solver_configuration.compile_flag
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-
-        (U, Uhat, Q), (V, Vhat, _) = self.TnT
-
-        var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
-        var_form += InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+        else:
+            raise NotImplementedError(f"Mixed Bilinearform: {mixed_method}")
 
         blf += var_form.Compile(compile_flag)
 
@@ -383,7 +390,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def convective_numerical_flux(self, U, Uhat):
         """
-        Lax-Friedrichs numerical flux
+        Convective numerical flux
 
         Equation 34, page 16
 
@@ -393,10 +400,46 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Arch Computat Methods Eng 28, 753–784 (2021).
               https://doi.org/10.1007/s11831-020-09508-z
         """
+        riemann_solver = self.solver_configuration.riemann_solver
         n = self.normal
 
-        An = self.P_matrix(Uhat) * self.Lambda_matrix(Uhat, True) * self.P_inverse_matrix(Uhat)
-        return self.convective_flux(Uhat)*n + An * (U-Uhat)
+        if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
+            un = InnerProduct(self.velocity(Uhat), n)
+            un_abs = IfPos(un, un, -un)
+            c = self.speed_of_sound(Uhat)
+            lambda_max = un_abs + c
+
+            stabilisation_matrix = lambda_max * Id(self.mesh.dim + 2)
+
+        elif riemann_solver is RiemannSolver.ROE:
+            An = self.P_matrix(Uhat) * self.Lambda_matrix(Uhat, True) * self.P_inverse_matrix(Uhat)
+
+            stabilisation_matrix = An
+
+        elif riemann_solver is RiemannSolver.HLL:
+            un = InnerProduct(self.velocity(Uhat), n)
+            c = self.speed_of_sound(Uhat)
+            splus = IfPos(un + c, un + c, 0)
+
+            stabilisation_matrix = splus * Id(self.mesh.dim + 2)
+
+        elif riemann_solver is RiemannSolver.HLLEM:
+            un = InnerProduct(self.velocity(Uhat), n)
+            un_abs = IfPos(un, un, -un)
+            c = self.speed_of_sound(Uhat)
+
+            theta = un_abs/(un_abs + c)
+            Theta = CF((theta, 0, 0, 0,
+                        0, theta, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1), dims=(4, 4))
+
+            Theta = self.P_matrix(Uhat) * Theta * self.P_inverse_matrix(Uhat)
+            splus = IfPos(un + c, un + c, 0)
+
+            stabilisation_matrix = splus * Theta
+
+        return self.convective_flux(Uhat)*n + stabilisation_matrix * (U-Uhat)
 
     def diffusive_flux(self, U, Q):
         """

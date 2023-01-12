@@ -1,16 +1,14 @@
 from __future__ import annotations
 from ngsolve import *
-from dream.configuration import SolverConfiguration, Simulation
-from dream.formulations import formulation_factory, Formulation, MixedMethods
-from dream.viscosity import DynamicViscosity
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    import boundary_conditions as bc
+from .configuration import Simulation, SolverConfiguration
+from .formulations import formulation_factory, Formulation
+from .viscosity import DynamicViscosity
+from .io import SolverSaver, SolverLoader
+from . import boundary_conditions as bc
 
 
 class CompressibleHDGSolver():
-    def __init__(self, mesh, solver_configuration: SolverConfiguration):
+    def __init__(self, mesh: Mesh, solver_configuration: SolverConfiguration):
 
         self.mesh = mesh
         self.solver_configuration = solver_configuration
@@ -34,7 +32,7 @@ class CompressibleHDGSolver():
 
         self.gfu = GridFunction(self.formulation.fes)
         self.gfu_old = tuple(GridFunction(self.formulation.fes) for num in range(num_temporary_vectors))
-    
+
         self.residual = self.gfu.vec.CreateVector()
         self.temporary = self.gfu.vec.CreateVector()
 
@@ -61,7 +59,6 @@ class CompressibleHDGSolver():
 
         condense = self.solver_configuration.static_condensation
         viscosity = self.solver_configuration.dynamic_viscosity
-        mixed_method = self.solver_configuration.mixed_method
 
         self.blf = BilinearForm(fes, condense=condense)
 
@@ -70,9 +67,6 @@ class CompressibleHDGSolver():
 
         if viscosity is not DynamicViscosity.INVISCID:
             self.formulation.add_diffusive_bilinearform(self.blf)
-
-        if mixed_method is not MixedMethods.NONE:
-            self.formulation.add_mixed_bilinearform(self.blf)
 
         self.formulation.add_bcs_bilinearform(self.blf, self.gfu_old)
 
@@ -148,10 +142,6 @@ class CompressibleHDGSolver():
 
         self.formulation.time_scheme.update_previous_solution(self.gfu, *self.gfu_old)
         Redraw()
-        # if not self.stationary:
-        #     self.gfu_old.vec.data = self.gfu.vec
-        #     # input()
-        #################################################################################
 
     def draw_solutions(self,
                        density: bool = True,
@@ -162,11 +152,7 @@ class CompressibleHDGSolver():
                        temperature: bool = False,
                        mach: bool = False):
 
-        U = self.gfu.components[0]
-        if self.solver_configuration.mixed_method is not MixedMethods.NONE:
-            Q = self.gfu.components[2]
-        else:
-            Q = None
+        U, _, Q = self.formulation.get_gridfunction_components(self.gfu)
 
         if density:
             Draw(self.formulation.density(U), self.mesh, "rho")
@@ -190,26 +176,50 @@ class CompressibleHDGSolver():
             Draw(self.formulation.speed_of_sound(U), self.mesh, "c")
             Draw(self.formulation.mach_number(U), self.mesh, "M")
 
-    def CalcForces(self, surf, scale=1):
-        q = self.gfu.components[2]
-        sigma_visc = self.FU.mu.Get()/self.FU.Re.Get() * CF((q[0], q[1], q[1], q[2]), dims=(2, 2))
+    def calculate_forces(self, boundary, scale=1):
 
-        sigma_bnd = BoundaryFromVolumeCF(sigma_visc - self.pressure * Id(2))
-        n = specialcf.normal(2)
-        forces = Integrate(sigma_bnd * n, self.mesh, definedon=self.mesh.Boundaries(surf))
+        region = self.mesh.Boundaries(boundary)
+        n = self.formulation.normal
 
-        fd = scale * forces[0]
-        fl = scale * forces[1]
+        components = self.formulation.get_gridfunction_components(self.gfu)
 
-        return fd, fl
+        stress = -self.formulation.pressure(components.PRIMAL) * Id(self.mesh.dim)
+        if self.solver_configuration.dynamic_viscosity is not DynamicViscosity.INVISCID:
+            stress += self.formulation.deviatoric_stress_tensor(components.PRIMAL, components.MIXED)
 
-    def SaveForces(self, t, surf, scale=1, init=False):
-        if self.base_dir is None:
-            self.InitializeDir()
-        if init:
-            outfile = open(os.path.join(self.forces_dir, "force_file"), 'w')
-        else:
-            outfile = open(os.path.join(self.forces_dir, "force_file"), 'a')
-        fd, fl = self.CalcForces(surf, scale)
-        outfile.write("{}\t{}\t{}\n".format(t, fd, fl))
-        outfile.close
+        stress = BoundaryFromVolumeCF(stress)
+        forces = Integrate(stress * n, self.mesh, definedon=region)
+
+        return scale * forces
+
+    def calculate_pressure(self, boundary=None, point=None):
+        region = self.mesh.Boundaries(boundary)
+
+        components = self.formulation.get_gridfunction_components(self.gfu)
+
+        pressure = self.formulation.pressure(components.PRIMAL)
+
+        vertices = set(self.mesh[v].point for e in region.Elements() for v in e.vertices)
+        for vertex in vertices:
+            # print(pressure(self.mesh(*vertex)))
+            ...
+
+    # def add_sensor(self, sensor: )
+
+    def get_saver(self, directory_name: str = "results", base_path=None):
+        saver = SolverSaver(directory_name, base_path)
+        saver.assign_solver(self)
+        return saver
+
+    def get_loader(self, directory_name: str = "results", base_path=None):
+        loader = SolverLoader(directory_name, base_path)
+        loader.assign_solver(self)
+        return loader
+
+    def reset_mesh(self, mesh: Mesh):
+        self.mesh = mesh
+        self._formulation = formulation_factory(mesh, self.solver_configuration)
+
+    def reset_configuration(self, solver_configuration: SolverConfiguration):
+        self.solver_configuration = solver_configuration
+        self._formulation = formulation_factory(self.mesh, solver_configuration)
