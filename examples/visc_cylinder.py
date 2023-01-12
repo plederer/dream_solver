@@ -17,12 +17,13 @@ Draw(mesh)
 cfg = SolverConfiguration()
 
 cfg.formulation = "conservative"
-cfg.simulation = "steady"
+cfg.simulation = "stationary"
 cfg.dynamic_viscosity = "constant"
 cfg.mixed_method = "strain_heat"
+cfg.riemann_solver = "lax_friedrich"
 
-cfg.Reynold_number = 1
-cfg.Prandtl_number = 0.72
+cfg.Reynold_number = 10
+cfg.Prandtl_number = 1 #0.72
 cfg.Mach_number = 0.3
 cfg.heat_capacity_ratio = 1.4
 
@@ -64,3 +65,4 @@ with TaskManager():
 
     solver.solve_timestep(True, max_dt=1)
     Redraw()
+    
