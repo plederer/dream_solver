@@ -1,20 +1,24 @@
 from __future__ import annotations
-from .base import Formulation, MixedMethods
+from .base import Formulation, MixedMethods, GridFunctionComponents
 from ngsolve import *
 
 
 class ConservativeFormulation(Formulation):
 
-    def get_gridfunction_components(self, gfu):
+    def get_gridfunction_components(self, gfu: GridFunction):
         mixed_method = self.solver_configuration.mixed_method
 
-        U = gfu.components[0]
-        Uhat = gfu.components[1]
-        Q = None
         if mixed_method is not MixedMethods.NONE:
-            Q = gfu.components[2]
+            comp = GridFunctionComponents(
+                PRIMAL=gfu.components[0],
+                PRIMAL_FACET=gfu.components[1],
+                MIXED=gfu.components[2])
+        else:
+            comp = GridFunctionComponents(
+                PRIMAL=gfu.components[0],
+                PRIMAL_FACET=gfu.components[1])
 
-        return U, Uhat, Q
+        return comp
 
     def density(self, U):
         return U[self._indices.DENSITY]

@@ -12,6 +12,7 @@ from .. import viscosity as mu
 
 if TYPE_CHECKING:
     from configuration import SolverConfiguration
+    from ngsolve.comp import ComponentGridFunction
 
 
 class CompressibleFormulations(enum.Enum):
@@ -86,6 +87,12 @@ class Indices(NamedTuple):
     ENERGY: Optional[int] = None
     TEMPERATURE_GRADIENT: Optional[VectorCoordinates] = None
     STRAIN: Optional[TensorCoordinates] = None
+
+
+class GridFunctionComponents(NamedTuple):
+    PRIMAL: Optional[ComponentGridFunction] = None
+    PRIMAL_FACET: Optional[ComponentGridFunction] = None
+    MIXED: Optional[ComponentGridFunction] = None
 
 
 class Formulation(abc.ABC):
@@ -187,7 +194,7 @@ class Formulation(abc.ABC):
     def get_TnT(self): ...
 
     @abc.abstractmethod
-    def get_gridfunction_components(self, gfu) -> tuple[Any, Any, Any]: ...
+    def get_gridfunction_components(self, gfu) -> GridFunctionComponents: ...
 
     @abc.abstractmethod
     def _add_initial_linearform(self, lf, domain, value): ...
