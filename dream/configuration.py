@@ -9,7 +9,7 @@ from dream.viscosity import DynamicViscosity, Sutherland
 
 
 class Simulation(Enum):
-    STATIONARY = "steady"
+    STATIONARY = "stationary"
     TRANSIENT = "transient"
 
 
