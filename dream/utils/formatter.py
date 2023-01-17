@@ -29,12 +29,13 @@ class Formatter:
         self.output += entry
         return self
 
-    def text(self, text):
+    def text(self, text: str):
         width = self.TERMINAL_WIDTH - 2*self.TEXT_INDENT
         indent = self.TEXT_INDENT * ' '
-        text = textwrap.fill(text, width, initial_indent=indent, subsequent_indent=indent)
-
-        self.output += text + "\n"
+        for line in text.split('\n'):
+            wrap_line = textwrap.fill(line, width, initial_indent=indent, subsequent_indent=indent,
+                                      replace_whitespace=False, drop_whitespace=False)
+            self.output += wrap_line + "\n"
         return self
 
     def newline(self):

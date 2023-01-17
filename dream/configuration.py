@@ -225,7 +225,7 @@ class SolverConfiguration:
         return self._time_step
 
     @time_step.setter
-    def time_step(self, time_step: str):
+    def time_step(self, time_step: float):
         self._time_step = Parameter(time_step)
 
     @property
