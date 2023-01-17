@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import pickle
 from pathlib import Path
 from datetime import datetime
@@ -8,6 +9,8 @@ from .utils.formatter import Formatter
 
 if TYPE_CHECKING:
     from ngsolve import Mesh
+    from pandas import DataFrame
+    from .sensor import Sensor
     from .hdg_solver import CompressibleHDGSolver
     from .configuration import SolverConfiguration
 
@@ -92,8 +95,15 @@ class SolverLoader:
             raise Exception(f"Can not load from {state_path}, as the path does not exist.")
         return state_path
 
-    def load_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> Mesh:
-        file = self.main_path.joinpath(name + suffix)
+    @property
+    def sensor_path(self) -> Path:
+        sensor_path = self.tree.sensor_path
+        if not sensor_path.exists():
+            raise Exception(f"Can not load from {sensor_path}, as the path does not exist.")
+        return sensor_path
+
+    def load_mesh(self, name: str = "mesh") -> Mesh:
+        file = self.main_path.joinpath(name + '.pickle')
         with file.open("rb") as openfile:
             mesh = pickle.load(openfile)
 
@@ -102,8 +112,8 @@ class SolverLoader:
 
         return mesh
 
-    def load_configuration(self, name: str = "config", suffix: str = ".pickle") -> SolverConfiguration:
-        file = self.main_path.joinpath(name + suffix)
+    def load_configuration(self, name: str = "config") -> SolverConfiguration:
+        file = self.main_path.joinpath(name + '.pickle')
         with file.open("rb") as openfile:
             config = pickle.load(openfile)
 
@@ -119,6 +129,16 @@ class SolverLoader:
 
         file = self.state_path.joinpath(name)
         self.solver.gfu.Load(str(file))
+
+    def load_sensor_data(self, name: str) -> DataFrame:
+
+        file = self.sensor_path.joinpath(name + ".pickle")
+        if not file.exists():
+            raise Exception(f"Can not load {file}, as it does not exists!")
+        with file.open("rb") as openfile:
+            df = pickle.load(openfile)
+
+        return df
 
     def __repr__(self) -> str:
         return repr(self.tree)
@@ -146,27 +166,57 @@ class SolverSaver:
             state_path.mkdir()
         return state_path
 
-    def save_mesh(self, name: str = "mesh", suffix: str = ".pickle"):
+    def save_mesh(self, mesh: Optional[Mesh] = None,
+                  name: str = "mesh",
+                  suffix: str = ".pickle"):
+
+        if mesh is None:
+            mesh = self.solver.mesh
+
         file = self.main_path.joinpath(name + suffix)
         with file.open("wb") as openfile:
-            pickle.dump(self.solver.mesh, openfile)
+            pickle.dump(mesh, openfile)
 
     def save_configuration(self,
+                           configuration: Optional[SolverConfiguration] = None,
                            name: str = "config",
                            comment: Optional[str] = None,
-                           pickle: bool = True,
-                           txt: bool = True):
+                           save_pickle: bool = True,
+                           save_txt: bool = True):
 
-        if pickle:
-            self._save_pickle_configuration(name)
-        if txt:
-            self._save_txt_configuration(name, comment)
+        if configuration is None:
+            configuration = self.solver.solver_configuration
+
+        if save_pickle:
+            self._save_pickle_configuration(configuration, name)
+        if save_txt:
+            self._save_txt_configuration(configuration, name, comment)
 
     def save_state(self, name: str = "state"):
         file = self.solutions_path.joinpath(name)
         self.solver.gfu.Save(str(file))
 
-    def _save_txt_configuration(self, name: str, comment: Optional[str] = None):
+    def save_sensors_data(self,
+                          sensors: Optional[list[Sensor]] = None,
+                          time_index=None,
+                          save_dataframe: bool = True):
+
+        if sensors is None:
+            sensors = self.solver.sensors
+
+        for sensor in sensors:
+            filename = sensor.name
+            file = sensor.sensor_path.joinpath(filename + '.csv')
+
+            df = sensor.convert_samples_to_dataframe(time_index)
+            df.to_csv(file)
+
+            if save_dataframe:
+                file = sensor.sensor_path.joinpath(filename + '.pickle')
+                with file.open("wb") as openfile:
+                    pickle.dump(df, openfile)
+
+    def _save_txt_configuration(self, configuration: SolverConfiguration, name: str, comment: Optional[str] = None):
 
         formatter = Formatter()
         formatter.COLUMN_RATIO = (0.3, 0.7)
@@ -179,22 +229,23 @@ class SolverSaver:
         formatter.entry("Github", "https://github.com/plederer/dream_solver")
         formatter.entry("Date", datetime.now().strftime('%Hh:%Mm:%Ss %d/%m/%Y')).newline()
 
-        formatter.add(self.solver.solver_configuration)
-        formatter.add(self.tree)
+        formatter.add(configuration)
 
         if comment is not None:
             formatter.header("Comment").newline()
-            formatter.text(comment)
+            formatter.text(comment).newline()
+
+        formatter.add(self.tree)
 
         file = self.main_path.joinpath(name + ".txt")
 
         with file.open("w") as openfile:
             openfile.write(formatter.output)
 
-    def _save_pickle_configuration(self, name: str, suffix: str = ".pickle"):
+    def _save_pickle_configuration(self, configuration: SolverConfiguration, name: str, suffix: str = ".pickle"):
         file = self.main_path.joinpath(name + suffix)
         with file.open("wb") as openfile:
-            pickle.dump(self.solver.solver_configuration, openfile)
+            pickle.dump(configuration, openfile)
 
     def __repr__(self) -> str:
         return repr(self.tree)

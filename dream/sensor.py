@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import abc
 import dataclasses
 import numpy as np
 import pandas as pd
-from typing import TYPE_CHECKING, Optional,  Callable
+from typing import TYPE_CHECKING, Optional, Callable
 
 from ngsolve import *
 from .viscosity import DynamicViscosity
@@ -34,13 +35,9 @@ class Sensor(abc.ABC):
 
     def __init__(self,
                  name: Optional[str] = "Sensor",
-                 save_results: bool = True,
-                 print_results: bool = True,
                  tree: Optional[ResultsDirectoryTree] = None) -> None:
 
         self.name = name
-        self.save_results = save_results
-        self.print_results = print_results
         if tree is None:
             tree = ResultsDirectoryTree()
         self.tree = tree
@@ -60,15 +57,6 @@ class Sensor(abc.ABC):
         if not sensor_path.exists():
             sensor_path.mkdir()
         return sensor_path
-
-    def save_samples(self, filename: str = None, time=None):
-
-        if filename is None:
-            filename = self.name
-        filepath = self.sensor_path.joinpath(filename + '.csv')
-
-        df = self.convert_samples_to_dataframe(time)
-        df.to_csv(filepath)
 
     def take_single_sample(self):
 
@@ -132,7 +120,7 @@ class Sensor(abc.ABC):
             components = solver.formulation.get_gridfunction_components(solver.gfu)
             pressure = solver.formulation.pressure(components.PRIMAL)
 
-            cp = (pressure - reference_pressure)/(reference_density * reference_velocity**2)
+            cp = (pressure - reference_pressure)/(reference_density * reference_velocity**2 / 2)
             return self._evaluate_CF(cp, solver)
 
         sample = Sample(name, calculate_pressure_coefficient)
@@ -142,7 +130,7 @@ class Sensor(abc.ABC):
     def _evaluate_CF(self, cf: CF, solver: CompressibleHDGSolver): ...
 
     @abc.abstractmethod
-    def convert_samples_to_dataframe(self, time=None) -> pd.DataFrame: ...
+    def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame: ...
 
 
 class PointSensor(Sensor):
@@ -157,16 +145,14 @@ class PointSensor(Sensor):
     def __init__(self,
                  points: list[tuple[float, ...]],
                  name: Optional[str] = "Sensor",
-                 save_results: bool = True,
-                 print_results: bool = True,
                  tree: Optional[ResultsDirectoryTree] = None) -> None:
         self.points = points
-        super().__init__(name, save_results, print_results, tree)
+        super().__init__(name, tree)
 
     def _evaluate_CF(self, cf: CF, solver: CompressibleHDGSolver):
         return tuple(cf(solver.mesh(*vertex)) for vertex in self.points)
 
-    def convert_samples_to_dataframe(self, time=None) -> pd.DataFrame:
+    def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame:
 
         numpy_2d_arrays = []
         columns = []
@@ -180,8 +166,8 @@ class PointSensor(Sensor):
         columns = pd.MultiIndex.from_tuples(columns, names=["quantity", "point", "dir"])
         df = pd.DataFrame(np.hstack(numpy_2d_arrays), columns=columns)
 
-        if time is not None:
-            index = pd.Index(time, name="time")
+        if time_index is not None:
+            index = pd.Index(time_index, name="time")
             df.set_index(index, inplace=True)
 
         df.sort_index(level=0, axis=1, inplace=True)
@@ -194,15 +180,13 @@ class BoundarySensor(Sensor):
     def __init__(self,
                  boundaries: str,
                  name: Optional[str] = "Sensor",
-                 save_results: bool = True,
-                 print_results: bool = True,
                  tree: Optional[ResultsDirectoryTree] = None) -> None:
 
         if isinstance(boundaries, str):
             boundaries = boundaries.split("|")
         self.boundaries = boundaries
 
-        super().__init__(name, save_results, print_results, tree)
+        super().__init__(name, tree)
 
     def sample_forces(self, scale=1, name: str = 'forces'):
 
@@ -227,7 +211,7 @@ class BoundarySensor(Sensor):
         regions = tuple(solver.mesh.Boundaries(boundary) for boundary in self.boundaries)
         return tuple(Integrate(cf, solver.mesh, definedon=region, order=order) for region in regions)
 
-    def convert_samples_to_dataframe(self, time=None) -> pd.DataFrame:
+    def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame:
 
         numpy_2d_arrays = []
         columns = []
@@ -242,8 +226,8 @@ class BoundarySensor(Sensor):
         columns = pd.MultiIndex.from_tuples(columns, names=["quantity", "boundary", "dir"])
         df = pd.DataFrame(np.hstack(numpy_2d_arrays), columns=columns)
 
-        if time is not None:
-            index = pd.Index(time, name="time")
+        if time_index is not None:
+            index = pd.Index(time_index, name="time")
             df.set_index(index, inplace=True)
 
         df.sort_index(level=0, axis=1, inplace=True)

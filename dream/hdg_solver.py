@@ -17,7 +17,7 @@ class CompressibleHDGSolver:
         self.mesh = mesh
         self.solver_configuration = solver_configuration
         self._formulation = formulation_factory(mesh, solver_configuration)
-        self._sensors: list[Sensor] = []
+        self._sensors = []
 
     @property
     def formulation(self) -> Formulation:
@@ -30,6 +30,10 @@ class CompressibleHDGSolver:
     @property
     def initial_condition(self) -> bc.InitialCondition:
         return self.formulation.ic
+
+    @property
+    def sensors(self) -> list[Sensor]:
+        return self._sensors
 
     def setup(self, force: CF = None):
 
@@ -189,7 +193,7 @@ class CompressibleHDGSolver:
 
     def assign_sensor(self, sensor: Sensor):
         sensor.assign_solver(self)
-        self._sensors.append(sensor)
+        self.sensors.append(sensor)
 
     def get_saver(self, directory_tree: Optional[io.ResultsDirectoryTree] = None):
         saver = io.SolverSaver(self, directory_tree)
