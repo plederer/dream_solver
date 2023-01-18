@@ -70,16 +70,16 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         (U, Uhat, _), (V, Vhat, _) = self.TnT
 
+        # Subtract boundary regions
+        indicator = GridFunction(FacetFESpace(self.mesh, order=0))
+        indicator.Set(1, definedon=self.mesh.Boundaries(self.bcs.ngs_pattern))
+        indicator = 1 - indicator
+
         var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
         var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
-        var_form -= InnerProduct(self.convective_numerical_flux(U, Uhat),
-                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+        var_form += indicator * InnerProduct(self.convective_numerical_flux(U, Uhat),
+                                             Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
 
         blf += var_form.Compile(compile_flag)
 
@@ -92,16 +92,16 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         (U, Uhat, Q), (V, Vhat, _) = self.TnT
 
+        # Subtract boundary regions
+        indicator = GridFunction(FacetFESpace(self.mesh, order=0))
+        indicator.Set(1, definedon=self.mesh.Boundaries(self.bcs.ngs_pattern))
+        indicator = 1 - indicator
+
         var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
         var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        # Subtract boundary regions
-        regions = self.mesh.Boundaries("|".join(self.bcs.boundaries.keys()))
-        var_form += InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
-                                 Vhat) * ds(skeleton=True, definedon=regions, bonus_intorder=bonus_order_bnd)
+        var_form -= indicator * InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+                                             Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
 
         blf += var_form.Compile(compile_flag)
 
