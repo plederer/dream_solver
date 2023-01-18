@@ -53,8 +53,7 @@ mesh = Mesh(Get_Omesh(R, R_farfield, 32, 16, geom=1.9))
 mesh.Curve(cfg.order)
 
 tree = ResultsDirectoryTree()
-points = PointSensor.vertices_from_boundaries('cyl', mesh)
-sensor = PointSensor(points, "pressure_coefficient", tree)
+sensor = PointSensor.from_boundary('cyl', mesh, 'pressure_coefficient', tree)
 sensor.sample_pressure_coefficient(p_inf, reference_velocity=1, reference_density=rho_inf, name="c_p")
 
 solver = CompressibleHDGSolver(mesh, cfg)

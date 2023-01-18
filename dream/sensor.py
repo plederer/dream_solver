@@ -135,12 +135,20 @@ class Sensor(abc.ABC):
 
 class PointSensor(Sensor):
 
-    @staticmethod
-    def vertices_from_boundaries(boundaries: str, mesh: Mesh):
+    @classmethod
+    def from_boundary(cls,
+                      boundaries: str,
+                      mesh: Mesh,
+                      name: Optional[str] = "Sensor",
+                      tree: Optional[ResultsDirectoryTree] = None) -> PointSensor:
+
         if isinstance(boundaries, str):
             boundaries = boundaries.split("|")
+
         regions = tuple(mesh.Boundaries(boundary) for boundary in boundaries)
-        return tuple(set(mesh[v].point for region in regions for e in region.Elements() for v in e.vertices))
+        points = tuple(set(mesh[v].point for region in regions for e in region.Elements() for v in e.vertices))
+
+        return cls(points, name, tree)
 
     def __init__(self,
                  points: list[tuple[float, ...]],
@@ -148,9 +156,6 @@ class PointSensor(Sensor):
                  tree: Optional[ResultsDirectoryTree] = None) -> None:
         self.points = points
         super().__init__(name, tree)
-
-    def _evaluate_CF(self, cf: CF, solver: CompressibleHDGSolver):
-        return tuple(cf(solver.mesh(*vertex)) for vertex in self.points)
 
     def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame:
 
@@ -173,6 +178,16 @@ class PointSensor(Sensor):
         df.sort_index(level=0, axis=1, inplace=True)
 
         return df
+
+    def _evaluate_CF(self, cf: CF, solver: CompressibleHDGSolver):
+        return tuple(cf(solver.mesh(*vertex)) for vertex in self.points)
+
+    @staticmethod
+    def vertices_from_boundaries(boundaries: str, mesh: Mesh):
+        if isinstance(boundaries, str):
+            boundaries = boundaries.split("|")
+        regions = tuple(mesh.Boundaries(boundary) for boundary in boundaries)
+        return tuple(set(mesh[v].point for region in regions for e in region.Elements() for v in e.vertices))
 
 
 class BoundarySensor(Sensor):
