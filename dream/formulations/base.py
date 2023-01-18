@@ -130,7 +130,7 @@ class Formulation(abc.ABC):
 
     def add_bcs_bilinearform(self, blf, old_components):
 
-        for boundary, value in self.bcs.boundaries.items():
+        for boundary, value in self.bcs.items():
 
             if value is None:
                 raise ValueError(f"Boundary condition for {boundary} has not been set!")
@@ -158,7 +158,7 @@ class Formulation(abc.ABC):
 
     def add_ic_linearform(self, lf):
 
-        for domain, value in self.ic.domains.items():
+        for domain, value in self.ic.items():
 
             if value is None:
                 raise ValueError(f"Initial condition for {domain} has not been set!")

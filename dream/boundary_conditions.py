@@ -1,5 +1,6 @@
 from __future__ import annotations
 import enum
+from collections import UserDict
 from typing import Optional, TYPE_CHECKING
 from ngsolve import CF, Parameter, InnerProduct
 
@@ -7,7 +8,7 @@ if TYPE_CHECKING:
     from .configuration import SolverConfiguration
 
 
-def extract_pattern(pattern, facets):
+def extract_from_ngs_pattern(pattern, facets):
     if isinstance(pattern, str):
         pattern = pattern.split("|")
     intersection = set(facets).intersection(pattern)
@@ -15,38 +16,46 @@ def extract_pattern(pattern, facets):
     return tuple(intersection)
 
 
-class InitialCondition:
+class InitialCondition(UserDict):
 
     def __init__(self, domains, solver_configuration: SolverConfiguration) -> None:
-        self._domains = {domain: None for domain in set(domains)}
+        super().__init__({domain: None for domain in set(domains)})
         self.solver_configuration = solver_configuration
 
     @property
-    def domains(self):
-        return self._domains
+    def domains(self) -> tuple[str, ...]:
+        return tuple(self)
+
+    @property
+    def ngs_pattern(self) -> str:
+        return "|".join(self.domains)
 
     def set(self, density, velocity, temperature=None, pressure=None, energy=None, domain=None):
 
         if domain is None:
-            domains = list(self.domains.keys())
+            domains = self.domains
         else:
-            domains = extract_pattern(domain, self.domains)
+            domains = extract_from_ngs_pattern(domain, self.domains)
 
         gamma = self.solver_configuration.heat_capacity_ratio
 
         for domain in domains:
-            self.domains[domain] = Initial(density, velocity, temperature, pressure, energy, gamma)
+            self[domain] = Initial(density, velocity, temperature, pressure, energy, gamma)
 
 
-class BoundaryConditions:
+class BoundaryConditions(UserDict):
 
     def __init__(self, boundaries, solver_configuration: SolverConfiguration) -> None:
-        self._boundaries = {boundary: None for boundary in set(boundaries)}
+        super().__init__({boundary: None for boundary in set(boundaries)})
         self.solver_configuration = solver_configuration
 
     @property
-    def boundaries(self):
-        return self._boundaries
+    def boundaries(self) -> tuple[str, ...]:
+        return tuple(self)
+
+    @property
+    def ngs_pattern(self) -> str:
+        return "|".join(self.boundaries)
 
     def set_dirichlet(self,
                       boundary,
@@ -57,11 +66,10 @@ class BoundaryConditions:
                       energy: float = None):
 
         gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
-            self.boundaries[boundary] = Dirichlet(
-                density, velocity, temperature, pressure, energy, gamma)
+            self[boundary] = Dirichlet(density, velocity, temperature, pressure, energy, gamma)
 
     def set_farfield(self,
                      boundary,
@@ -72,19 +80,19 @@ class BoundaryConditions:
                      energy: float = None):
 
         gamma = self.solver_configuration.heat_capacity_ratio
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
-            self.boundaries[boundary] = FarField(density, velocity, temperature, pressure, energy, gamma)
+            self[boundary] = FarField(density, velocity, temperature, pressure, energy, gamma)
 
     def set_outflow(self,
                     boundary,
                     pressure: float):
 
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
-            self.boundaries[boundary] = Outflow(pressure)
+            self[boundary] = Outflow(pressure)
 
     def set_nonreflecting_outflow(self,
                                   boundary,
@@ -96,40 +104,38 @@ class BoundaryConditions:
                                   tangential_viscous_fluxes: bool = True,
                                   normal_viscous_fluxes: bool = False):
 
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
-            self.boundaries[boundary] = NonReflectingOutflow(
-                pressure, type, sigma, reference_length, tangential_convective_fluxes, tangential_viscous_fluxes,
-                normal_viscous_fluxes)
+            self[boundary] = NonReflectingOutflow(pressure, type, sigma, reference_length,
+                                                  tangential_convective_fluxes, tangential_viscous_fluxes,
+                                                  normal_viscous_fluxes)
 
     def set_inviscid_wall(self, boundary):
 
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
-            self.boundaries[boundary] = InviscidWall()
+            self[boundary] = InviscidWall()
 
     def set_symmetry(self, boundary):
 
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
-            self.boundaries[boundary] = InviscidWall()
+            self[boundary] = InviscidWall()
 
     def set_isothermal_wall(self, boundary, temperature: float):
 
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
         for boundary in boundaries:
-            self.boundaries[boundary] = IsothermalWall(temperature)
+            self[boundary] = IsothermalWall(temperature)
 
     def set_adiabatic_wall(self, boundary):
 
-        boundaries = extract_pattern(boundary, self.boundaries)
+        boundaries = extract_from_ngs_pattern(boundary, self.boundaries)
         for boundary in boundaries:
-            self.boundaries[boundary] = AdiabaticWall()
-
-        return tuple(boundaries)
+            self[boundary] = AdiabaticWall()
 
 
 def convert_to_pressure(density, temperature=None, velocity=None, energy=None, gamma=1.4) -> CF:
@@ -191,7 +197,10 @@ def convert_to_pressure_temperature_energy(density, velocity, temperature=None, 
 class Condition:
 
     def __str__(self) -> str:
-        self.__class__.__name__
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
 
 
 class Dirichlet(Condition):
