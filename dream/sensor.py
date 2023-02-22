@@ -110,6 +110,19 @@ class Sensor(abc.ABC):
         sample = Sample(name, calculate_pressure)
         self._sample_dictionary[name] = sample
 
+    def sample_acoustic_pressure(self, mean_pressure: float, name: str = 'acoustic_pressure'):
+
+        def calculate_acoustic_pressure(solver: CompressibleHDGSolver):
+            components = solver.formulation.get_gridfunction_components(solver.gfu)
+            pressure = solver.formulation.pressure(components.PRIMAL)
+
+            acoustic_pressure = pressure - mean_pressure
+
+            return self._evaluate_CF(acoustic_pressure, solver)
+
+        sample = Sample(name, calculate_acoustic_pressure)
+        self._sample_dictionary[name] = sample
+
     def sample_pressure_coefficient(self,
                                     reference_pressure: float,
                                     reference_velocity: float,
