@@ -33,8 +33,8 @@ class TestFormulation(unittest.TestCase, ABC):
 
     def test_variables(self):
 
-        test_gfu = GridFunction(self.formulation.get_FESpace())
-        U = test_gfu.components[0]
+        test_gfu = GridFunction(self.formulation._initialize_FE_space())
+        U = self.formulation.get_gridfunction_components(test_gfu).PRIMAL
         U.Set(self.testing_U)
 
         # Density
@@ -72,21 +72,16 @@ class TestFormulation(unittest.TestCase, ABC):
         def mixed_variables_gradients():
 
             mixed_method = self.formulation.solver_configuration.mixed_method
-
-            test_gfu = GridFunction(self.formulation.get_FESpace())
-            U = test_gfu.components[0]
+            self.formulation._fes = self.formulation._initialize_FE_space()
+            test_gfu = GridFunction(self.formulation.fes)
+            U = self.formulation.get_gridfunction_components(test_gfu).PRIMAL
+            Q = self.formulation.get_gridfunction_components(test_gfu).MIXED
             U.Set(self.testing_U)
 
-            if mixed_method is MixedMethods.NONE:
-                Q = None
-            elif mixed_method is MixedMethods.GRADIENT:
-                Q = test_gfu.components[2]
+            if mixed_method is MixedMethods.GRADIENT:
                 Q.Set(self.testing_gradient_U)
             elif mixed_method is MixedMethods.STRAIN_HEAT:
-                Q = test_gfu.components[2]
                 Q.Set(self.testing_mixed_heat_Q)
-            else:
-                raise NotImplementedError()
 
             # Density Gradient
             error_msg = f"Wrong density gradient returned by {self.formulation} - {mixed_method}"

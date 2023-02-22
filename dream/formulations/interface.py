@@ -12,7 +12,7 @@ from .. import viscosity as mu
 
 if TYPE_CHECKING:
     from configuration import SolverConfiguration
-    from ngsolve.comp import ComponentGridFunction
+    from ngsolve.comp import ComponentGridFunction, ProxyFunction
 
 
 class CompressibleFormulations(enum.Enum):
@@ -95,6 +95,13 @@ class GridFunctionComponents(NamedTuple):
     MIXED: Optional[ComponentGridFunction] = None
 
 
+@dataclasses.dataclass
+class TestAndTrialFunction:
+    PRIMAL: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+    PRIMAL_FACET: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+    MIXED: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+
+
 class Formulation(abc.ABC):
 
     _indices: Indices
@@ -109,8 +116,8 @@ class Formulation(abc.ABC):
         self.mu = mu.viscosity_factory(self)
         self.time_scheme = time_scheme_factory(solver_configuration)
 
-        self._fes = self.get_FESpace()
-        self._TnT = self.get_TnT()
+        self._fes = self._initialize_FE_space()
+        self._TnT = self._initialize_TnT()
 
         self.normal = specialcf.normal(mesh.dim)
         self.tangential = specialcf.tangential(mesh.dim)
@@ -125,36 +132,39 @@ class Formulation(abc.ABC):
         return self._fes
 
     @property
-    def TnT(self):
+    def TnT(self) -> TestAndTrialFunction:
         return self._TnT
 
     def add_bcs_bilinearform(self, blf, old_components):
 
-        for boundary, value in self.bcs.items():
+        for boundary, condition in self.bcs.items():
 
-            if value is None:
-                raise ValueError(f"Boundary condition for {boundary} has not been set!")
+            if condition is None:
+                raise ValueError(f"Boundary condition for '{boundary}' has not been set!")
 
-            elif isinstance(value, bc.Dirichlet):
-                self._add_dirichlet_bilinearform(blf, boundary, value)
+            elif isinstance(condition, bc.Dirichlet):
+                self._add_dirichlet_bilinearform(blf, boundary, condition)
 
-            elif isinstance(value, bc.FarField):
-                self._add_farfield_bilinearform(blf, boundary, value)
+            elif isinstance(condition, bc.FarField):
+                self._add_farfield_bilinearform(blf, boundary, condition)
 
-            elif isinstance(value, bc.Outflow):
-                self._add_outflow_bilinearform(blf, boundary, value)
+            elif isinstance(condition, bc.Outflow):
+                self._add_outflow_bilinearform(blf, boundary, condition)
 
-            elif isinstance(value, bc.NonReflectingOutflow):
-                self._add_nonreflecting_outflow_bilinearform(blf, boundary, value, old_components)
+            elif isinstance(condition, bc.NRBC_Outflow):
+                self._add_nonreflecting_outflow_bilinearform(blf, boundary, condition, old_components)
 
-            elif isinstance(value, bc.InviscidWall):
-                self._add_inviscid_wall_bilinearform(blf, boundary, value)
+            elif isinstance(condition, bc.NRBC_Inflow):
+                self._add_nonreflecting_inflow_bilinearform(blf, boundary, condition, old_components)
 
-            elif isinstance(value, bc.IsothermalWall):
-                self._add_isothermal_wall_bilinearform(blf, boundary, value)
+            elif isinstance(condition, bc.InviscidWall):
+                self._add_inviscid_wall_bilinearform(blf, boundary, condition)
 
-            elif isinstance(value, bc.AdiabaticWall):
-                self._add_adiabatic_wall_bilinearform(blf, boundary, value)
+            elif isinstance(condition, bc.IsothermalWall):
+                self._add_isothermal_wall_bilinearform(blf, boundary, condition)
+
+            elif isinstance(condition, bc.AdiabaticWall):
+                self._add_adiabatic_wall_bilinearform(blf, boundary, condition)
 
     def add_ic_linearform(self, lf):
 
@@ -167,31 +177,34 @@ class Formulation(abc.ABC):
                 self._add_initial_linearform(lf, domain, value)
 
     @abc.abstractmethod
-    def _add_dirichlet_bilinearform(self, blf, boundary, value): ...
+    def _add_dirichlet_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def _add_farfield_bilinearform(self, blf, boundary, value): ...
+    def _add_farfield_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def _add_outflow_bilinearform(self, blf, boundary, value): ...
+    def _add_outflow_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, value): ...
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition, old_components): ...
 
     @abc.abstractmethod
-    def _add_inviscid_wall_bilinearform(self, blf, boundary, value): ...
+    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition, old_components): ...
 
     @abc.abstractmethod
-    def _add_isothermal_wall_bilinearform(self, blf, boundary, value): ...
+    def _add_inviscid_wall_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def _add_adiabatic_wall_bilinearform(self, blf, boundary, value): ...
+    def _add_isothermal_wall_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def get_FESpace(self) -> ProductSpace: ...
+    def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def get_TnT(self): ...
+    def _initialize_FE_space(self) -> ProductSpace: ...
+
+    @abc.abstractmethod
+    def _initialize_TnT(self) -> TestAndTrialFunction: ...
 
     @abc.abstractmethod
     def get_gridfunction_components(self, gfu) -> GridFunctionComponents: ...

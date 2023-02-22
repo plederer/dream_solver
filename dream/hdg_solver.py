@@ -54,8 +54,7 @@ class CompressibleHDGSolver:
         TnT = self.formulation.TnT
 
         bonus_int_order = self.solver_configuration.bonus_int_order_vol
-
-        (_, _, _), (V, _, _) = TnT
+        _, V = TnT.PRIMAL
 
         self.f = LinearForm(fes)
         if force is not None:
@@ -97,7 +96,7 @@ class CompressibleHDGSolver:
         self.gfu.vec.data = blf_inverse * lf.vec
         self.formulation.time_scheme.set_initial_solution(self.gfu, *self.gfu_old)
 
-        for sensor in self._sensors:
+        for sensor in self.sensors:
             sensor.take_single_sample()
 
     def solve_timestep(self, printing=True, stop=False, max_dt=1, stat_step=10):
@@ -152,7 +151,7 @@ class CompressibleHDGSolver:
             if stop:
                 input()
 
-        for sensor in self._sensors:
+        for sensor in self.sensors:
             sensor.take_single_sample()
 
         self.formulation.time_scheme.update_previous_solution(self.gfu, *self.gfu_old)

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .base import CompressibleFormulations, MixedMethods, Formulation, RiemannSolver
+from .interface import CompressibleFormulations, MixedMethods, Formulation, RiemannSolver
 from .conservative2d import ConservativeFormulation2D
 
 
