@@ -37,7 +37,8 @@ class SolverConfiguration:
                  max_iterations: int = 10,
                  convergence_criterion: float = 1e-8,
                  damping_factor: float = 1,
-                 linear_solver: str = "pardiso"
+                 linear_solver: str = "pardiso",
+                 periodic: bool = False
                  ) -> None:
 
         # Formulation options
@@ -66,6 +67,9 @@ class SolverConfiguration:
         self.bonus_int_order_vol = bonus_int_order_vol
         self.bonus_int_order_bnd = bonus_int_order_bnd
         self.compile_flag = compile_flag
+
+        # Domain properties
+        self.periodic = periodic
 
     @property
     def Reynold_number(self) -> Parameter:
@@ -208,7 +212,7 @@ class SolverConfiguration:
         try:
             self._riemann_solver = RiemannSolver(riemann_solver.lower())
         except ValueError:
-            options = [enum.value for enum in MixedMethods]
+            options = [enum.value for enum in RiemannSolver]
             raise ValueError(
                 f"'{riemann_solver.capitalize()}' is not a valid Riemann Solver. Possible alternatives: {options}")
 
@@ -318,7 +322,7 @@ class SolverConfiguration:
         if self._Re is None:
             Re = "Not Specified"
         else:
-            Re = self._Pr.Get()
+            Re = self._Re.Get()
 
         if self._Pr is None:
             Pr = "Not Specified"
