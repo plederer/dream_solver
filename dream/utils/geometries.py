@@ -29,7 +29,7 @@ def MakeSmoothRectangle(geo, p1, p2, r, bc=None, bcs=None, **args):
     geo.Append(["spline3", pts[8], pts[9], pts[10]], bc=bc, **args)
 
 
-def MakeOCCRectangle(p1, p2, bottom="bottom", right="right", top="top", left="left") -> WorkPlane:
+def MakeOCCRectangle(p1, p2, bottom="bottom", right="right", top="top", left="left") -> OCCGeometry:
 
     dx = p2[0] - p1[0]
     dy = p2[1] - p1[1]
@@ -46,17 +46,21 @@ def MakeOCCRectangle(p1, p2, bottom="bottom", right="right", top="top", left="le
     return geo
 
 
-def MakeOCCCircle(center, radius, right="right", left="left") -> OCCGeometry:
+def MakeOCCCircle(center, radius, br="right", tr="right", tl="left", bl="left") -> OCCGeometry:
 
     dx, dy = center
 
     wp = WorkPlane()
     wp.MoveTo(dx, dy-radius)
-    wp.Arc(r=radius, ang=180)
-    wp.Arc(r=radius, ang=180)
+    wp.Arc(r=radius, ang=90)
+    wp.Arc(r=radius, ang=90)
+    wp.Arc(r=radius, ang=90)
+    wp.Arc(r=radius, ang=90)
     face = wp.Face()
-    face.edges[0].name = right
-    face.edges[1].name = left
+    face.edges[0].name = br
+    face.edges[1].name = tr
+    face.edges[2].name = tl
+    face.edges[3].name = bl
 
     geo = OCCGeometry(face, dim=2)
 
