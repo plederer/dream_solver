@@ -1,11 +1,12 @@
 from __future__ import annotations
+from .utils.formatter import Formatter
 
 import pickle
+import logging
 from pathlib import Path
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from .utils.formatter import Formatter
 
 if TYPE_CHECKING:
     from ngsolve import Mesh
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from .sensor import Sensor
     from .hdg_solver import CompressibleHDGSolver
     from .configuration import SolverConfiguration
+    from ngsolve import GridFunction
 
 
 class ResultsDirectoryTree:
@@ -73,13 +75,12 @@ class ResultsDirectoryTree:
         return formatter.output
 
 
-class SolverLoader:
+class Loader:
 
-    def __init__(self, solver: Optional[CompressibleHDGSolver] = None, tree: Optional[ResultsDirectoryTree] = None):
+    def __init__(self, tree: Optional[ResultsDirectoryTree] = None) -> None:
         if tree is None:
-            tree = ResultsDirectoryTree()
+            self.tree = ResultsDirectoryTree()
         self.tree = tree
-        self.solver = solver
 
     @property
     def main_path(self) -> Path:
@@ -107,9 +108,6 @@ class SolverLoader:
         with file.open("rb") as openfile:
             mesh = pickle.load(openfile)
 
-        if self.solver is not None:
-            self.solver.reset_mesh(mesh)
-
         return mesh
 
     def load_configuration(self, name: str = "config") -> SolverConfiguration:
@@ -117,18 +115,11 @@ class SolverLoader:
         with file.open("rb") as openfile:
             config = pickle.load(openfile)
 
-        if self.solver is not None:
-            self.solver.reset_configuration(config)
-
         return config
 
-    def load_state(self, name: str):
-
-        if self.solver is None:
-            raise Exception("Assign solver before loading state")
-
+    def load_state(self, gfu: GridFunction, name: str) -> None:
         file = self.state_path.joinpath(name)
-        self.solver.gfu.Load(str(file))
+        gfu.Load(str(file))
 
     def load_sensor_data(self, name: str) -> DataFrame:
 
@@ -144,77 +135,96 @@ class SolverLoader:
         return repr(self.tree)
 
 
-class SolverSaver:
+class SolverLoader(Loader):
 
-    def __init__(self, solver: CompressibleHDGSolver, tree: Optional[ResultsDirectoryTree] = None):
+    def __init__(self, solver: CompressibleHDGSolver):
+        self.solver = solver
+        super().__init__(solver.directory_tree)
+
+    def load_mesh(self, name: str = "mesh") -> Mesh:
+        mesh = super().load_mesh(name)
+        self.solver.reset_mesh(mesh)
+
+    def load_configuration(self, name: str = "config") -> None:
+        config = super().load_configuration(name)
+        self.solver.reset_configuration(config)
+
+    def load_state(self, name: str, load_time_scheme_components: bool = False) -> None:
+        super().load_state(self.solver.gfu, name)
+
+        if load_time_scheme_components:
+            time_scheme = self.solver.solver_configuration.time_scheme.name
+
+            for idx, gfu in enumerate(self.solver.gfu_old):
+                super().load_state(gfu, f"{name}_{time_scheme}_{idx}")
+
+
+class Saver:
+
+    def __init__(self, tree: Optional[ResultsDirectoryTree] = None) -> None:
         if tree is None:
             tree = ResultsDirectoryTree()
         self.tree = tree
-        self.solver = solver
 
     @property
     def main_path(self) -> Path:
         main_path = self.tree.main_path
         if not main_path.exists():
-            main_path.mkdir()
+            main_path.mkdir(parents=True)
         return main_path
 
     @property
-    def solutions_path(self) -> Path:
+    def state_path(self) -> Path:
         state_path = self.tree.state_path
         if not state_path.exists():
-            state_path.mkdir()
+            state_path.mkdir(parents=True)
         return state_path
 
-    def save_mesh(self, mesh: Optional[Mesh] = None,
-                  name: str = "mesh",
-                  suffix: str = ".pickle"):
+    @property
+    def sensor_path(self):
+        sensor_path = self.tree.sensor_path
+        if not sensor_path.exists():
+            sensor_path.mkdir(parents=True)
+        return sensor_path
 
-        if mesh is None:
-            mesh = self.solver.mesh
+    def save_mesh(self, mesh: Mesh,
+                  name: str = "mesh",
+                  suffix: str = ".pickle") -> None:
 
         file = self.main_path.joinpath(name + suffix)
         with file.open("wb") as openfile:
             pickle.dump(mesh, openfile)
 
     def save_configuration(self,
-                           configuration: Optional[SolverConfiguration] = None,
+                           configuration: SolverConfiguration,
                            name: str = "config",
                            comment: Optional[str] = None,
                            save_pickle: bool = True,
                            save_txt: bool = True):
-
-        if configuration is None:
-            configuration = self.solver.solver_configuration
 
         if save_pickle:
             self._save_pickle_configuration(configuration, name)
         if save_txt:
             self._save_txt_configuration(configuration, name, comment)
 
-    def save_state(self, name: str = "state"):
-        file = self.solutions_path.joinpath(name)
-        self.solver.gfu.Save(str(file))
+    def save_state(self, gfu: GridFunction, name: str = "state") -> None:
+        file = self.state_path.joinpath(name)
+        gfu.Save(str(file))
 
-    def save_sensors_data(self,
-                          sensors: Optional[list[Sensor]] = None,
-                          time_index=None,
-                          save_dataframe: bool = True):
+    def save_sensor_data(self,
+                         sensor: Sensor,
+                         time_period=None,
+                         save_dataframe: bool = True):
 
-        if sensors is None:
-            sensors = self.solver.sensors
+        file = self.sensor_path.joinpath(f"{sensor.name}.csv")
 
-        for sensor in sensors:
-            filename = sensor.name
-            file = sensor.sensor_path.joinpath(filename + '.csv')
+        df = sensor.convert_samples_to_dataframe(time_period)
+        df.to_csv(file)
 
-            df = sensor.convert_samples_to_dataframe(time_index)
-            df.to_csv(file)
-
-            if save_dataframe:
-                file = sensor.sensor_path.joinpath(filename + '.pickle')
-                with file.open("wb") as openfile:
-                    pickle.dump(df, openfile)
+        if save_dataframe:
+            file = self.sensor_path.joinpath(f"{sensor.name}.pickle")
+            with file.open("wb") as openfile:
+                pickle.dump(df, openfile)
 
     def _save_txt_configuration(self, configuration: SolverConfiguration, name: str, comment: Optional[str] = None):
 
@@ -249,3 +259,110 @@ class SolverSaver:
 
     def __repr__(self) -> str:
         return repr(self.tree)
+
+
+class SolverSaver(Saver):
+
+    def __init__(self, solver: CompressibleHDGSolver):
+        self.solver = solver
+        super().__init__(solver.directory_tree)
+
+    def save_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> None:
+        super().save_mesh(self.solver.mesh, name, suffix)
+
+    def save_configuration(self,
+                           name: str = "config",
+                           comment: Optional[str] = None,
+                           save_pickle: bool = True,
+                           save_txt: bool = True):
+        super().save_configuration(self.solver.solver_configuration, name, comment, save_pickle, save_txt)
+
+    def save_state(self, name: str = "state", save_time_scheme_components: bool = False):
+        super().save_state(self.solver.gfu, name)
+
+        if save_time_scheme_components:
+            time_scheme = self.solver.solver_configuration.time_scheme.name
+
+            for idx, gfu in enumerate(self.solver.gfu_old):
+                super().save_state(gfu, f"{name}_{time_scheme}_{idx}")
+
+    def save_sensor_data(self, time_period=None, save_dataframe: bool = True):
+        for sensor in self.solver.sensors:
+            super().save_sensor_data(sensor, time_period, save_dataframe)
+
+
+class DreAmLogger:
+
+    _iteration_error_digit: int = 8
+    _time_step_digit: int = 6
+
+    def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
+        self.logger = logging.getLogger("DreAm")
+        self.tree = ResultsDirectoryTree()
+
+        self.stream_handler = logging.NullHandler()
+        self.file_handler = logging.NullHandler()
+        self.formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        self.filename = "log.txt"
+
+        self.log_to_terminal = log_to_terminal
+        self.log_to_file = log_to_file
+
+    @property
+    def filepath(self):
+        if not self.tree.main_path.exists():
+            self.tree.main_path.mkdir(parents=True)
+        return self.tree.main_path.joinpath(self.filename)
+
+    def set_level(self, level):
+        self.logger.setLevel(level)
+
+    def silence_logger(self):
+        self.log_to_file = False
+        self.log_to_terminal = False
+
+    @property
+    def log_to_terminal(self):
+        return self._log_to_terminal
+
+    @log_to_terminal.setter
+    def log_to_terminal(self, value: bool):
+        if value:
+            self.stream_handler = logging.StreamHandler()
+            self.stream_handler.setLevel(self.logger.level)
+            self.stream_handler.setFormatter(self.formatter)
+            self.logger.addHandler(self.stream_handler)
+        else:
+            self.logger.removeHandler(self.stream_handler)
+            self.stream_handler = logging.NullHandler()
+        self._log_to_terminal = value
+
+    @property
+    def log_to_file(self):
+        return self._log_to_file
+
+    @log_to_file.setter
+    def log_to_file(self, value: bool):
+        if value:
+            self.file_handler = logging.FileHandler(self.filepath, delay=True)
+            self.file_handler.setLevel(self.logger.level)
+            self.file_handler.setFormatter(self.formatter)
+            self.logger.addHandler(self.file_handler)
+        else:
+            self.logger.removeHandler(self.file_handler)
+            self.file_handler = logging.NullHandler()
+        self._log_to_file = value
+
+    @classmethod
+    def get_iteration_error_log(cls,
+                                error: float,
+                                time_step: Optional[float] = None,
+                                iteration_number: Optional[int] = None) -> str:
+
+        log = f"Iteration Error: {error:{cls._iteration_error_digit}e}"
+        if time_step is not None:
+            log += f" - Time Step: {time_step:.{cls._time_step_digit}f}"
+        if iteration_number is not None:
+            log += f" - Iteration Number: {iteration_number}"
+
+        return log

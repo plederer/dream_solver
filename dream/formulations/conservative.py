@@ -214,7 +214,7 @@ class ConservativeFormulation(Formulation):
 
     def heat_flux(self, U, Q):
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.solver_configuration.Reynolds_number
         Pr = self.solver_configuration.Prandtl_number
 
         gradient_T = self.temperature_gradient(U, Q)
@@ -224,7 +224,7 @@ class ConservativeFormulation(Formulation):
 
     def heat_flux_gradient(self, U, Q):
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.solver_configuration.Reynolds_number
         Pr = self.solver_configuration.Prandtl_number
         mixed_method = self.solver_configuration.mixed_method
         dim = self.mesh.dim
@@ -278,12 +278,12 @@ class ConservativeFormulation(Formulation):
 
     def deviatoric_stress_tensor(self, U, Q):
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.solver_configuration.Reynolds_number
         return self.mu.get(U, Q)/Re * self.deviatoric_strain_tensor(U, Q)
 
     def deviatoric_stress_tensor_gradient(self, U, Q):
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.solver_configuration.Reynolds_number
         dim = self.mesh.dim
 
         strain = self.deviatoric_strain_tensor(U, Q)

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Optional, Callable
 
 from ngsolve import *
 from .viscosity import DynamicViscosity
-from .io import ResultsDirectoryTree
 
 if TYPE_CHECKING:
     from .hdg_solver import CompressibleHDGSolver
@@ -33,15 +32,9 @@ class Sample:
 
 class Sensor(abc.ABC):
 
-    def __init__(self,
-                 name: Optional[str] = "Sensor",
-                 tree: Optional[ResultsDirectoryTree] = None) -> None:
+    def __init__(self, name: Optional[str] = "Sensor") -> None:
 
         self.name = name
-        if tree is None:
-            tree = ResultsDirectoryTree()
-        self.tree = tree
-
         self._sample_dictionary: dict[str, Sample] = {}
         self._solver = None
 
@@ -50,13 +43,6 @@ class Sensor(abc.ABC):
         if self._solver is None:
             raise ValueError("Assign Solver to Sensor!")
         return self._solver
-
-    @property
-    def sensor_path(self):
-        sensor_path = self.tree.sensor_path
-        if not sensor_path.exists():
-            sensor_path.mkdir()
-        return sensor_path
 
     def take_single_sample(self):
 
@@ -152,8 +138,7 @@ class PointSensor(Sensor):
     def from_boundary(cls,
                       boundaries: str,
                       mesh: Mesh,
-                      name: Optional[str] = "Sensor",
-                      tree: Optional[ResultsDirectoryTree] = None) -> PointSensor:
+                      name: Optional[str] = "Sensor") -> PointSensor:
 
         if isinstance(boundaries, str):
             boundaries = boundaries.split("|")
@@ -161,14 +146,13 @@ class PointSensor(Sensor):
         regions = tuple(mesh.Boundaries(boundary) for boundary in boundaries)
         points = tuple(set(mesh[v].point for region in regions for e in region.Elements() for v in e.vertices))
 
-        return cls(points, name, tree)
+        return cls(points, name)
 
     def __init__(self,
                  points: list[tuple[float, ...]],
-                 name: Optional[str] = "Sensor",
-                 tree: Optional[ResultsDirectoryTree] = None) -> None:
+                 name: Optional[str] = "Sensor") -> None:
         self.points = points
-        super().__init__(name, tree)
+        super().__init__(name)
 
     def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame:
 
@@ -207,14 +191,13 @@ class BoundarySensor(Sensor):
 
     def __init__(self,
                  boundaries: str,
-                 name: Optional[str] = "Sensor",
-                 tree: Optional[ResultsDirectoryTree] = None) -> None:
+                 name: Optional[str] = "Sensor") -> None:
 
         if isinstance(boundaries, str):
             boundaries = boundaries.split("|")
         self.boundaries = boundaries
 
-        super().__init__(name, tree)
+        super().__init__(name)
 
     def sample_forces(self, scale=1, name: str = 'forces'):
 

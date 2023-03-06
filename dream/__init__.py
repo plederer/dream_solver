@@ -1,8 +1,8 @@
 __all__ = [
     'CompressibleHDGSolver',
     'SolverConfiguration',
-    'SolverLoader',
-    'SolverSaver',
+    'Loader',
+    'Saver',
     'ResultsDirectoryTree',
     'PointSensor',
     'BoundarySensor'
@@ -10,5 +10,8 @@ __all__ = [
 
 from .hdg_solver import CompressibleHDGSolver
 from .configuration import SolverConfiguration
-from .io import SolverLoader, SolverSaver, ResultsDirectoryTree
+from .io import ResultsDirectoryTree, DreAmLogger, Loader, Saver
 from .sensor import PointSensor, BoundarySensor
+
+logger = DreAmLogger(True, False)
+logger.set_level('INFO')

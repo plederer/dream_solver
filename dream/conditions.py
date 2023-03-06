@@ -1,7 +1,8 @@
 from __future__ import annotations
 import enum
+import dataclasses
 from collections import UserDict
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, ItemsView
 from ngsolve import CF, Parameter, InnerProduct
 
 if TYPE_CHECKING:
@@ -16,10 +17,17 @@ def extract_boundaries_from_pattern(pattern, facets):
     return tuple(intersection)
 
 
-class InitialCondition(UserDict):
+@dataclasses.dataclass
+class DomainConditionsContainer:
+    initial: Optional[Initial] = None
+    sponge: Optional[SpongeLayer] = None
+    pml: Optional[PML] = None
+
+
+class DomainConditions(UserDict):
 
     def __init__(self, domains, solver_configuration: SolverConfiguration) -> None:
-        super().__init__({domain: None for domain in set(domains)})
+        super().__init__({domain: DomainConditionsContainer() for domain in set(domains)})
         self.solver_configuration = solver_configuration
 
     @property
@@ -30,7 +38,13 @@ class InitialCondition(UserDict):
     def ngs_pattern(self) -> str:
         return "|".join(self.domains)
 
-    def set(self, density, velocity, temperature=None, pressure=None, energy=None, domain=None):
+    def set_initial(self,
+                    density: float,
+                    velocity: tuple[float, ...],
+                    temperature: Optional[float] = None,
+                    pressure: Optional[float] = None,
+                    energy: Optional[float] = None,
+                    domain: Optional[str] = None):
 
         if domain is None:
             domains = self.domains
@@ -40,7 +54,32 @@ class InitialCondition(UserDict):
         gamma = self.solver_configuration.heat_capacity_ratio
 
         for domain in domains:
-            self[domain] = Initial(density, velocity, temperature, pressure, energy, gamma)
+            self[domain].initial = Initial(density, velocity, temperature, pressure, energy, gamma)
+
+    def set_sponge_layer(self,
+                         domain: str,
+                         weight_function: CF,
+                         density: float,
+                         velocity: tuple[float, ...],
+                         temperature: float = None,
+                         pressure: float = None,
+                         energy: float = None,
+                         weight_function_order: int = 3):
+
+        domains = extract_boundaries_from_pattern(domain, self.domains)
+
+        gamma = self.solver_configuration.heat_capacity_ratio
+
+        for domain in domains:
+            self[domain].sponge = SpongeLayer(weight_function, density,
+                                              velocity, temperature, pressure, energy,
+                                              weight_function_order, gamma)
+
+    def __getitem__(self, key: str) -> DomainConditionsContainer:
+        return super().__getitem__(key)
+
+    def items(self) -> ItemsView[str, DomainConditionsContainer]:
+        return super().items()
 
 
 class BoundaryConditions(UserDict):
@@ -55,10 +94,10 @@ class BoundaryConditions(UserDict):
 
     @property
     def pattern(self) -> str:
-        return "|".join([boundary for boundary, bc in self.items() if not isinstance(bc, Periodic)])
+        return "|".join([boundary for boundary, bc in self.items() if isinstance(bc, Condition)])
 
     def set_dirichlet(self,
-                      boundary,
+                      boundary: str,
                       density: float,
                       velocity: tuple[float, ...],
                       temperature: float = None,
@@ -72,7 +111,7 @@ class BoundaryConditions(UserDict):
             self[boundary] = Dirichlet(density, velocity, temperature, pressure, energy, gamma)
 
     def set_farfield(self,
-                     boundary,
+                     boundary: str,
                      density: float,
                      velocity: tuple[float, ...],
                      temperature: float = None,
@@ -86,7 +125,7 @@ class BoundaryConditions(UserDict):
             self[boundary] = FarField(density, velocity, temperature, pressure, energy, gamma)
 
     def set_outflow(self,
-                    boundary,
+                    boundary: str,
                     pressure: float):
 
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
@@ -95,7 +134,7 @@ class BoundaryConditions(UserDict):
             self[boundary] = Outflow(pressure)
 
     def set_nonreflecting_outflow(self,
-                                  boundary,
+                                  boundary: str,
                                   pressure: float,
                                   type: str = "perfect",
                                   sigma: float = 0.25,
@@ -112,7 +151,7 @@ class BoundaryConditions(UserDict):
                                           normal_viscous_fluxes)
 
     def set_nonreflecting_inflow(self,
-                                 boundary,
+                                 boundary: str,
                                  density: float,
                                  velocity: tuple[float, ...],
                                  temperature: float = None,
@@ -142,34 +181,34 @@ class BoundaryConditions(UserDict):
                                          tangential_viscous_fluxes,
                                          normal_viscous_fluxes)
 
-    def set_inviscid_wall(self, boundary):
+    def set_inviscid_wall(self, boundary: str):
 
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self[boundary] = InviscidWall()
 
-    def set_periodic(self, boundary):
+    def set_periodic(self, boundary: str):
 
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self[boundary] = Periodic()
 
-    def set_symmetry(self, boundary):
+    def set_symmetry(self, boundary: str):
 
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
             self[boundary] = InviscidWall()
 
-    def set_isothermal_wall(self, boundary, temperature: float):
+    def set_isothermal_wall(self, boundary: str, temperature: float):
 
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
         for boundary in boundaries:
             self[boundary] = IsothermalWall(temperature)
 
-    def set_adiabatic_wall(self, boundary):
+    def set_adiabatic_wall(self, boundary: str):
 
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
         for boundary in boundaries:
@@ -365,10 +404,6 @@ class InviscidWall(Condition):
     ...
 
 
-class Periodic(Condition):
-    ...
-
-
 class IsothermalWall(Condition):
     def __init__(self, temperature) -> None:
         self.temperature = CF(temperature)
@@ -402,3 +437,39 @@ class Initial(Condition):
         self.temperature = temperature
         self.pressure = pressure
         self.energy = energy
+
+
+class SpongeLayer(Condition):
+
+    def __init__(self,
+                 weight_function: CF,
+                 density: float,
+                 velocity: tuple[float, ...],
+                 temperature: Optional[float] = None,
+                 pressure: Optional[float] = None,
+                 energy: Optional[float] = None,
+                 weight_function_order: int = 3,
+                 gamma: float = 1.4) -> None:
+
+        density = CF(density)
+        velocity = CF(velocity)
+
+        pressure, temperature, energy = convert_to_pressure_temperature_energy(
+            density, velocity, temperature, pressure, energy, gamma)
+
+        self.weight_function = weight_function
+        self.weight_function_order = weight_function_order
+        self.density = density
+        self.velocity = velocity
+        self.momentum = density * velocity
+        self.temperature = temperature
+        self.pressure = pressure
+        self.energy = energy
+
+
+class PML(Condition):
+    ...
+
+
+class Periodic:
+    ...

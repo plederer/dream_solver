@@ -3,7 +3,7 @@ from ngsolve import *
 
 from .interface import MixedMethods, Indices, VectorCoordinates, TensorCoordinates, RiemannSolver, TestAndTrialFunction
 from .conservative import ConservativeFormulation
-from .. import boundary_conditions as bc
+from .. import conditions as co
 from .. import viscosity as visc
 
 
@@ -160,7 +160,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += var_form.Compile(compile_flag)
 
-    def _add_initial_linearform(self, lf, domain, value: bc.Initial):
+    def _add_initial_linearform(self, lf, domain, value: co.Initial):
 
         mixed_method = self.solver_configuration.mixed_method
         bonus_order_vol = self.solver_configuration.bonus_int_order_vol
@@ -201,7 +201,21 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         lf += cf.Compile(compile_flag)
 
-    def _add_dirichlet_bilinearform(self, blf, boundary: str, bc: bc.Dirichlet):
+    def _add_sponge_bilinearform(self, blf, domain: str, dc: co.SpongeLayer):
+
+        compile_flag = self.solver_configuration.compile_flag
+
+        region = self.mesh.Materials(domain)
+
+        reference_values = CF((dc.density, dc.momentum, dc.energy))
+
+        U, V = self.TnT.PRIMAL
+        cf = dc.weight_function * (U - reference_values)
+        cf = cf * V * dx(definedon=region, bonus_intorder=dc.weight_function_order)
+
+        blf += cf.Compile(compile_flag)
+
+    def _add_dirichlet_bilinearform(self, blf, boundary: str, bc: co.Dirichlet):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -216,7 +230,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * Vhat * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
-    def _add_farfield_bilinearform(self, blf,  boundary: str, bc: bc.FarField):
+    def _add_farfield_bilinearform(self, blf,  boundary: str, bc: co.FarField):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -229,12 +243,12 @@ class ConservativeFormulation2D(ConservativeFormulation):
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
         cf = self.An_matrix_outgoing(Uhat) * (U - Uhat)
-        cf += self.An_matrix_incoming(Uhat) * (farfield - Uhat)
+        cf -= self.An_matrix_incoming(Uhat) * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)
 
-    def _add_outflow_bilinearform(self, blf, boundary: str, bc: bc.Outflow):
+    def _add_outflow_bilinearform(self, blf, boundary: str, bc: co.Outflow):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -256,7 +270,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += cf.Compile(compile_flag)
 
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: str, bc: bc.NRBC_Inflow, old_components):
+    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Inflow, old_components):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -318,7 +332,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: str, bc: bc.NRBC_Outflow, old_components):
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Outflow, old_components):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -391,7 +405,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
-    def _add_inviscid_wall_bilinearform(self, blf, boundary: str, bc: bc.InviscidWall):
+    def _add_inviscid_wall_bilinearform(self, blf, boundary: str, bc: co.InviscidWall):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -406,7 +420,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += cf.Compile(compile_flag)
 
-    def _add_isothermal_wall_bilinearform(self, blf, boundary: str, bc: bc.IsothermalWall):
+    def _add_isothermal_wall_bilinearform(self, blf, boundary: str, bc: co.IsothermalWall):
 
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
@@ -425,7 +439,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += cf.Compile(compile_flag)
 
-    def _add_adiabatic_wall_bilinearform(self, blf, boundary: str, bc: bc.AdiabaticWall):
+    def _add_adiabatic_wall_bilinearform(self, blf, boundary: str, bc: co.AdiabaticWall):
 
         mixed_method = self.solver_configuration.mixed_method
         if mixed_method is MixedMethods.NONE:
@@ -434,16 +448,17 @@ class ConservativeFormulation2D(ConservativeFormulation):
         bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
         compile_flag = self.solver_configuration.compile_flag
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.solver_configuration.Reynolds_number
         Pr = self.solver_configuration.Prandtl_number
         n = self.normal
-        tau_dE = self.diffusive_stabilisation_term()[self.mesh.dim+1, self.mesh.dim+1]
 
         region = self.mesh.Boundaries(boundary)
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
+
+        tau_dE = self.diffusive_stabilisation_term(Uhat, Q)[self.mesh.dim+1, self.mesh.dim+1]
 
         diff_rho = self.density(U) - self.density(Uhat)
         diff_rho_u = -self.momentum(Uhat)
@@ -515,7 +530,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def diffusive_stabilisation_term(self, Uhat, Q):
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.solver_configuration.Reynolds_number
         Pr = self.solver_configuration.Prandtl_number
         mu = self.mu.get(Uhat, Q)
 
