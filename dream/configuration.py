@@ -2,9 +2,11 @@ from __future__ import annotations
 from enum import Enum
 from ngsolve import Parameter
 from typing import Optional
+import numpy as np
 
+from . import io
 from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
-from .time_schemes import TimeSchemes
+from .time_schemes import TimeSchemes, TimePeriod
 from .viscosity import DynamicViscosity
 from .utils.formatter import Formatter
 
@@ -16,125 +18,92 @@ class Simulation(Enum):
 
 class SolverConfiguration:
 
-    def __init__(self,
-                 formulation: str = "conservative",
-                 mixed_method: str = None,
-                 dynamic_viscosity: str = None,
-                 Mach_number: Optional[float] = None,
-                 Reynold_number: Optional[float] = None,
-                 Prandtl_number: Optional[float] = None,
-                 heat_capacity_ratio: float = 1.4,
-                 farfield_temperature: float = 293.15,
-                 simulation: str = "transient",
-                 time_scheme: str = "IE",
-                 time_step: float = 1e-4,
-                 order: int = 2,
-                 riemann_solver: str = 'roe',
-                 static_condensation: bool = True,
-                 bonus_int_order_vol: int = 0,
-                 bonus_int_order_bnd: int = 0,
-                 compile_flag: bool = False,
-                 max_iterations: int = 10,
-                 convergence_criterion: float = 1e-8,
-                 damping_factor: float = 1,
-                 linear_solver: str = "pardiso",
-                 periodic: bool = False
-                 ) -> None:
+    def __init__(self) -> None:
 
-        # Formulation options
-        self.formulation = formulation
-        self.dynamic_viscosity = dynamic_viscosity
-        self.mixed_method = mixed_method
-        self.riemann_solver = riemann_solver
+        # Formulation Settings
+        self.formulation = "conservative"
+        self.dynamic_viscosity = None
+        self.mixed_method = None
+        self.riemann_solver = 'roe'
 
-        # Flow properties
-        self.Mach_number = Mach_number
-        self.heat_capacity_ratio = heat_capacity_ratio
-        self.Reynold_number = Reynold_number
-        self.Prandtl_number = Prandtl_number
-        self.farfield_temperature = farfield_temperature
+        # Flow Settings'
+        self._Mach_number = Parameter(0.3)
+        self._Reynolds_number = Parameter(1)
+        self._Prandtl_number = Parameter(0.72)
+        self._heat_capacity_ratio = Parameter(1.4)
+        self._farfield_temperature = Parameter(293.15)
 
         # Solver options
-        self.simulation = simulation
-        self.time_scheme = time_scheme
-        self.time_step = time_step
-        self.max_iterations = max_iterations
-        self.convergence_criterion = convergence_criterion
-        self.damping_factor = damping_factor
-        self.linear_solver = linear_solver
-        self.static_condensation = static_condensation
-        self.order = order
-        self.bonus_int_order_vol = bonus_int_order_vol
-        self.bonus_int_order_bnd = bonus_int_order_bnd
-        self.compile_flag = compile_flag
+        self.simulation = "transient"
+        self.time_scheme = "IE"
+        self._time_step = Parameter(1e-4)
+        self.time_period = (0, 1)
+        self.time_step_max = 1
+        self.order = 2
+        self.static_condensation = True
+        self.bonus_int_order_vol = 0
+        self.bonus_int_order_bnd = 0
+        self.compile_flag = True
+        self.max_iterations = 10
+        self.convergence_criterion = 1e-8
+        self.damping_factor = 1
+        self.linear_solver = "pardiso"
 
         # Domain properties
-        self.periodic = periodic
+        self.periodic = False
+
+        # Output options
+        self.save_iteration = False
+        self.save_state = False
 
     @property
-    def Reynold_number(self) -> Parameter:
+    def Reynolds_number(self) -> Parameter:
         """ Represents the ratio between inertial and viscous forces """
         if self.dynamic_viscosity is DynamicViscosity.INVISCID:
             raise Exception("Inviscid solver configuration: Reynolds number not applicable")
-        elif self._Re is None:
-            raise Exception("Viscid solver configuration but no Reynolds number set")
-        return self._Re
+        return self._Reynolds_number
 
-    @Reynold_number.setter
-    def Reynold_number(self, Reynold_number: Optional[float]):
-
-        if Reynold_number is None:
-            self._Re = None
-        elif Reynold_number <= 0:
+    @Reynolds_number.setter
+    def Reynolds_number(self, Reynolds_number: Optional[float]):
+        if Reynolds_number <= 0:
             raise ValueError("Invalid Reynold number. Value has to be > 0!")
         else:
-            self._Re = Parameter(Reynold_number)
+            self._Reynolds_number.Set(Reynolds_number)
 
     @property
     def Mach_number(self) -> Parameter:
-        return self._Ma
+        return self._Mach_number
 
     @Mach_number.setter
     def Mach_number(self, Mach_number: Optional[float]):
-
-        if Mach_number is None:
-            self._Ma = None
-        elif Mach_number <= 0:
+        if Mach_number <= 0:
             raise ValueError("Invalid Mach number. Value has to be > 0!")
         else:
-            self._Ma = Parameter(Mach_number)
+            self._Mach_number.Set(Mach_number)
 
     @property
     def Prandtl_number(self) -> Parameter:
         if self.dynamic_viscosity is DynamicViscosity.INVISCID:
             raise Exception("Inviscid solver configuration: Prandtl number not applicable")
-        elif self._Pr is None:
-            raise Exception("Viscid solver configuration but no Prandtl number set")
-        return self._Pr
+        return self._Prandtl_number
 
     @Prandtl_number.setter
     def Prandtl_number(self, Prandtl_number: Optional[float]):
-
-        if Prandtl_number is None:
-            self._Pr = None
-        elif Prandtl_number <= 0:
+        if Prandtl_number <= 0:
             raise ValueError("Invalid Prandtl_number. Value has to be > 0!")
         else:
-            self._Pr = Parameter(Prandtl_number)
+            self._Prandtl_number.Set(Prandtl_number)
 
     @property
     def heat_capacity_ratio(self) -> Parameter:
-        return self._gamma
+        return self._heat_capacity_ratio
 
     @heat_capacity_ratio.setter
     def heat_capacity_ratio(self, heat_capacity_ratio: Optional[float]):
-
-        if heat_capacity_ratio is None:
-            self._gamma = None
-        elif heat_capacity_ratio <= 1:
+        if heat_capacity_ratio <= 1:
             raise ValueError("Invalid heat capacity ratio. Value has to be > 1!")
         else:
-            self._gamma = Parameter(heat_capacity_ratio)
+            self._heat_capacity_ratio.Set(heat_capacity_ratio)
 
     @property
     def farfield_temperature(self) -> Parameter:
@@ -145,12 +114,10 @@ class SolverConfiguration:
 
     @farfield_temperature.setter
     def farfield_temperature(self, farfield_temperature: Optional[float]):
-
         if farfield_temperature <= 0:
             raise ValueError("Invalid farfield temperature. Value has to be > 1!")
-
         else:
-            self._farfield_temperature = Parameter(farfield_temperature)
+            self._farfield_temperature.Set(farfield_temperature)
 
     @property
     def formulation(self) -> CompressibleFormulations:
@@ -230,7 +197,32 @@ class SolverConfiguration:
 
     @time_step.setter
     def time_step(self, time_step: float):
-        self._time_step = Parameter(time_step)
+        self._time_step.Set(time_step)
+        io.DreAmLogger._time_step_digit = int(np.abs(np.log10(time_step)))
+
+    @property
+    def time_period(self) -> TimePeriod:
+        return self._time_period
+
+    @time_period.setter
+    def time_period(self, value: tuple[float, float]):
+        if len(value) != 2:
+            raise ValueError("Time period must be a container of length 2!")
+
+        start, end = value
+
+        if start > end:
+            raise ValueError("Start time is greater than end time!")
+
+        self._time_period = TimePeriod(start, end, self.time_step)
+
+    @property
+    def time_step_max(self) -> float:
+        return self._time_step_max
+
+    @time_step_max.setter
+    def time_step_max(self, time_step_max: float):
+        self._time_step_max = float(time_step_max)
 
     @property
     def time_scheme(self) -> TimeSchemes:
@@ -314,21 +306,6 @@ class SolverConfiguration:
 
     def __repr__(self) -> str:
 
-        if self._Ma is None:
-            Ma = "Not Specified"
-        else:
-            Ma = self._Ma.Get()
-
-        if self._Re is None:
-            Re = "Not Specified"
-        else:
-            Re = self._Re.Get()
-
-        if self._Pr is None:
-            Pr = "Not Specified"
-        else:
-            Pr = self._Pr.Get()
-
         formatter = Formatter()
         formatter.header('Solver Configuration').newline()
         formatter.subheader("Formulation Settings").newline()
@@ -339,28 +316,38 @@ class SolverConfiguration:
         formatter.newline()
 
         formatter.subheader('Flow Settings').newline()
-        formatter.entry("Mach Number", Ma)
+        formatter.entry("Mach Number", self.Mach_number.Get())
         if self._mu is not DynamicViscosity.INVISCID:
-            formatter.entry("Reynolds Number", Re)
-            formatter.entry("Prandtl Number", Pr)
+            formatter.entry("Reynolds Number", self.Reynolds_number.Get())
+            formatter.entry("Prandtl Number", self.Mach_number.Get())
         formatter.entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
         if self._mu is DynamicViscosity.SUTHERLAND:
-            formatter.entry("Farfield Temperature", self._farfield_temperature.Get())
+            formatter.entry("Farfield Temperature", self.farfield_temperature.Get())
         formatter.newline()
 
-        formatter.subheader('Solver Settings').newline()
+        formatter.subheader('Finite Element Settings').newline()
+        formatter.entry('Polynomial Order', self._order)
+        formatter.entry('Static Condensation', str(self._static_condensation))
+        formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
+        formatter.entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
+        formatter.newline()
+
+        formatter.subheader('Solution Routine Settings').newline()
         formatter.entry('Simulation', self.simulation.name)
         formatter.entry('Time Scheme', self.time_scheme.name)
         formatter.entry('Time Step', self.time_step.Get())
-        formatter.entry('Polynomial Order', self._order)
+        if self.simulation is Simulation.TRANSIENT:
+            formatter.entry('Time Period', f"({self.time_period.start}, {self.time_period.end}]")
+        elif self.simulation is Simulation.STATIONARY:
+            formatter.entry('Max Time Step', self.time_step_max)
         formatter.entry('Linear Solver', self._linear_solver)
         formatter.entry('Damping Factor', self._damping_factor)
         formatter.entry('Convergence Criterion', self._convergence_criterion)
         formatter.entry('Maximal Iterations', self._max_iterations)
-        formatter.entry('Static Condensation', str(self._static_condensation))
+        formatter.newline()
+
+        formatter.subheader('Various Settings').newline()
         formatter.entry('Compile Flag', str(self._compile_flag))
-        formatter.entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
-        formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
         formatter.newline()
 
         return formatter.output

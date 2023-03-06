@@ -2,9 +2,37 @@ from __future__ import annotations
 import abc
 import typing
 import enum
+import numpy as np
+import dataclasses
+from ngsolve import Parameter
 
 if typing.TYPE_CHECKING:
     from .configuration import SolverConfiguration
+
+
+@dataclasses.dataclass
+class TimePeriod:
+    start: float
+    end: float
+    step: Parameter
+
+    def __iter__(self):
+        dt = self.step.Get()
+        num = round((self.end - self.start)/dt) + 1
+        for i in range(1, num):
+            yield self.start + i * dt
+
+    def array(self, include_start_time: bool = False) -> np.ndarray:
+        dt = self.step.Get()
+        num = int((self.end - self.start)/dt) + 1
+
+        time_period = np.linspace(self.start, self.end, num)
+        if not include_start_time:
+            time_period = time_period[1:]
+        return time_period
+
+    def __repr__(self) -> str:
+        return f"Interval: ({self.start}, {self.end}], Time Step: {self.step.Get()}"
 
 
 class TimeSchemes(enum.Enum):
