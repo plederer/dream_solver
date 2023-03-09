@@ -622,8 +622,18 @@ class FlowUtils():
               https://doi.org/10.1007/s11831-020-09508-z
         """
 
-        An = self.P_matrix(uhat, n) * self.Lambda_matrix(uhat, n, True) * self.P_inverse_matrix(uhat, n)
-        return self.convective_flux(uhat)*n + An * (u-uhat)
+        # Roe
+        # An = self.P_matrix(uhat, n) * self.Lambda_matrix(uhat, n, True) * self.P_inverse_matrix(uhat, n)
+        # return self.convective_flux(uhat)*n + An * (u-uhat)
+
+        # LF
+        vel = self.vel(uhat)
+        c = self.c(uhat)
+
+        vn = InnerProduct(vel, n)
+        
+        lam_max = IfPos(vn, vn, -vn) + c
+        return self.convective_flux(uhat)*n + lam_max * (u-uhat)
 
     def diffusive_flux(self, u, q):
         """
