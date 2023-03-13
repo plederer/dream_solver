@@ -366,8 +366,3 @@ class CompressibleHDGSolver:
     def reset_mesh(self, mesh: Mesh):
         self.mesh = mesh
         self._formulation = formulation_factory(mesh, self.solver_configuration)
-
-    def reset_configuration(self, solver_configuration: SolverConfiguration):
-        self.solver_configuration = solver_configuration
-        self._formulation = formulation_factory(self.mesh, solver_configuration)
-        self._status = SolverStatus(solver_configuration)
