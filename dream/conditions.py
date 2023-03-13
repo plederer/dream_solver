@@ -35,7 +35,7 @@ class DomainConditions(UserDict):
         return tuple(self)
 
     @property
-    def ngs_pattern(self) -> str:
+    def pattern(self) -> str:
         return "|".join(self.domains)
 
     def set_initial(self,
@@ -213,6 +213,11 @@ class BoundaryConditions(UserDict):
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
         for boundary in boundaries:
             self[boundary] = AdiabaticWall()
+
+    def set_custom(self, boundary):
+        boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
+        for boundary in boundaries:
+            self[boundary] = Condition()
 
 
 def convert_to_pressure(density, temperature=None, velocity=None, energy=None, gamma=1.4) -> CF:
