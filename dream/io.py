@@ -147,7 +147,7 @@ class SolverLoader(Loader):
 
     def load_configuration(self, name: str = "config") -> None:
         config = super().load_configuration(name)
-        self.solver.reset_configuration(config)
+        self.solver.solver_configuration.update(config)
 
     def load_state(self, name: str, load_time_scheme_components: bool = False) -> None:
         super().load_state(self.solver.gfu, name)
