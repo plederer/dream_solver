@@ -64,7 +64,10 @@ class SolverConfiguration:
         return self._Reynolds_number
 
     @Reynolds_number.setter
-    def Reynolds_number(self, Reynolds_number: Optional[float]):
+    def Reynolds_number(self, Reynolds_number: float):
+        if isinstance(Reynolds_number, Parameter):
+            Reynolds_number = Reynolds_number.Get()
+
         if Reynolds_number <= 0:
             raise ValueError("Invalid Reynold number. Value has to be > 0!")
         else:
@@ -75,7 +78,10 @@ class SolverConfiguration:
         return self._Mach_number
 
     @Mach_number.setter
-    def Mach_number(self, Mach_number: Optional[float]):
+    def Mach_number(self, Mach_number: float):
+        if isinstance(Mach_number, Parameter):
+            Mach_number = Mach_number.Get()
+
         if Mach_number <= 0:
             raise ValueError("Invalid Mach number. Value has to be > 0!")
         else:
@@ -88,7 +94,10 @@ class SolverConfiguration:
         return self._Prandtl_number
 
     @Prandtl_number.setter
-    def Prandtl_number(self, Prandtl_number: Optional[float]):
+    def Prandtl_number(self, Prandtl_number: float):
+        if isinstance(Prandtl_number, Parameter):
+            Prandtl_number = Prandtl_number.Get()
+
         if Prandtl_number <= 0:
             raise ValueError("Invalid Prandtl_number. Value has to be > 0!")
         else:
@@ -99,7 +108,10 @@ class SolverConfiguration:
         return self._heat_capacity_ratio
 
     @heat_capacity_ratio.setter
-    def heat_capacity_ratio(self, heat_capacity_ratio: Optional[float]):
+    def heat_capacity_ratio(self, heat_capacity_ratio: float):
+        if isinstance(heat_capacity_ratio, Parameter):
+            heat_capacity_ratio = heat_capacity_ratio.Get()
+
         if heat_capacity_ratio <= 1:
             raise ValueError("Invalid heat capacity ratio. Value has to be > 1!")
         else:
@@ -113,7 +125,10 @@ class SolverConfiguration:
         return self._farfield_temperature
 
     @farfield_temperature.setter
-    def farfield_temperature(self, farfield_temperature: Optional[float]):
+    def farfield_temperature(self, farfield_temperature: float):
+        if isinstance(farfield_temperature, Parameter):
+            farfield_temperature = farfield_temperature.Get()
+
         if farfield_temperature <= 0:
             raise ValueError("Invalid farfield temperature. Value has to be > 1!")
         else:
@@ -126,12 +141,16 @@ class SolverConfiguration:
     @formulation.setter
     def formulation(self, value: str):
 
+        if isinstance(value, str):
+            value = value.lower()
+
         try:
-            self._formulation = CompressibleFormulations(value.lower())
+            self._formulation = CompressibleFormulations(value)
 
         except ValueError:
             options = [enum.value for enum in CompressibleFormulations]
-            raise ValueError(f"'{value.capitalize()}' is not a valid formulation. Possible alternatives: {options}")
+            raise ValueError(
+                f"'{str(value).capitalize()}' is not a valid formulation. Possible alternatives: {options}")
 
     @property
     def dynamic_viscosity(self) -> DynamicViscosity:
@@ -149,7 +168,7 @@ class SolverConfiguration:
         except ValueError:
             options = [enum.value for enum in DynamicViscosity]
             raise ValueError(
-                f"'{dynamic_viscosity.capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
+                f"'{str(dynamic_viscosity).capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
 
     @property
     def mixed_method(self) -> MixedMethods:
@@ -167,7 +186,7 @@ class SolverConfiguration:
         except ValueError:
             options = [enum.value for enum in MixedMethods]
             raise ValueError(
-                f"'{mixed_method.capitalize()}' is not a valid mixed variant. Possible alternatives: {options}")
+                f"'{str(mixed_method).capitalize()}' is not a valid mixed variant. Possible alternatives: {options}")
 
     @property
     def riemann_solver(self) -> MixedMethods:
@@ -176,12 +195,15 @@ class SolverConfiguration:
     @riemann_solver.setter
     def riemann_solver(self, riemann_solver: str):
 
+        if isinstance(riemann_solver, str):
+            riemann_solver = riemann_solver.lower()
+
         try:
-            self._riemann_solver = RiemannSolver(riemann_solver.lower())
+            self._riemann_solver = RiemannSolver(riemann_solver)
         except ValueError:
             options = [enum.value for enum in RiemannSolver]
             raise ValueError(
-                f"'{riemann_solver.capitalize()}' is not a valid Riemann Solver. Possible alternatives: {options}")
+                f"'{str(riemann_solver).capitalize()}' is not a valid Riemann Solver. Possible alternatives: {options}")
 
     @property
     def simulation(self) -> Simulation:
@@ -189,7 +211,15 @@ class SolverConfiguration:
 
     @simulation.setter
     def simulation(self, simulation: str):
-        self._simulation = Simulation(simulation)
+        if isinstance(simulation, str):
+            simulation = simulation.lower()
+
+        try:
+            self._simulation = Simulation(simulation)
+        except ValueError:
+            options = [enum.value for enum in Simulation]
+            raise ValueError(
+                f"'{str(simulation).capitalize()}' is not a valid Simulation. Possible alternatives: {options}")
 
     @property
     def time_step(self) -> Parameter:
@@ -197,6 +227,9 @@ class SolverConfiguration:
 
     @time_step.setter
     def time_step(self, time_step: float):
+        if isinstance(time_step, Parameter):
+            time_step = time_step.Get()
+
         self._time_step.Set(time_step)
         io.DreAmLogger._time_step_digit = int(np.abs(np.log10(time_step)))
 
@@ -206,7 +239,9 @@ class SolverConfiguration:
 
     @time_period.setter
     def time_period(self, value: tuple[float, float]):
-        if len(value) != 2:
+        if isinstance(value, TimePeriod):
+            value = (value.start, value.end)
+        elif len(value) != 2:
             raise ValueError("Time period must be a container of length 2!")
 
         start, end = value
@@ -230,7 +265,15 @@ class SolverConfiguration:
 
     @time_scheme.setter
     def time_scheme(self, time_scheme: str):
-        self._time_scheme = TimeSchemes(time_scheme.upper())
+        if isinstance(time_scheme, str):
+            time_scheme = time_scheme.upper()
+
+        try:
+            self._time_scheme = TimeSchemes(time_scheme)
+        except ValueError:
+            options = [enum.value for enum in TimeSchemes]
+            raise ValueError(
+                f"'{str(time_scheme).capitalize()}' is not a valid Time scheme. Possible alternatives: {options}")
 
     @property
     def order(self) -> int:
@@ -304,6 +347,10 @@ class SolverConfiguration:
     def linear_solver(self, linear_solver: str):
         self._linear_solver = str(linear_solver).lower()
 
+    def update(self, configuration: SolverConfiguration):
+        for key, value in vars(configuration).items():
+            setattr(self, key[1:], value)
+
     def __repr__(self) -> str:
 
         formatter = Formatter()
@@ -319,7 +366,7 @@ class SolverConfiguration:
         formatter.entry("Mach Number", self.Mach_number.Get())
         if self._mu is not DynamicViscosity.INVISCID:
             formatter.entry("Reynolds Number", self.Reynolds_number.Get())
-            formatter.entry("Prandtl Number", self.Mach_number.Get())
+            formatter.entry("Prandtl Number", self.Prandtl_number.Get())
         formatter.entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
         if self._mu is DynamicViscosity.SUTHERLAND:
             formatter.entry("Farfield Temperature", self.farfield_temperature.Get())
