@@ -161,7 +161,9 @@ class Test2DConservativeFormulation(TestFormulation):
 
     @classmethod
     def setUpClass(cls):
-        config = SolverConfiguration(formulation="conservative", order=10)
+        config = SolverConfiguration()
+        config.formulation = "conservative"
+        config.order = 10
         mesh = Mesh(OCCGeometry(Rectangle(2, 1).Face(), dim=2).GenerateMesh(maxh=0.5))
         cls.formulation = ConservativeFormulation2D(mesh, config)
 
