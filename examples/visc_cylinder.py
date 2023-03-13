@@ -22,7 +22,7 @@ cfg.dynamic_viscosity = "constant"
 cfg.mixed_method = "strain_heat"
 cfg.riemann_solver = "lax_friedrich"
 
-cfg.Reynold_number = 10
+cfg.Reynolds_number = 10
 cfg.Prandtl_number = 1 #0.72
 cfg.Mach_number = 0.3
 cfg.heat_capacity_ratio = 1.4
@@ -51,7 +51,7 @@ solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set_farfield("inflow", rho_inf, u_inf, pressure=p_inf)
 solver.boundary_conditions.set_outflow("outflow", pressure=p_inf)
 solver.boundary_conditions.set_adiabatic_wall("cyl")
-solver.initial_condition.set(rho_inf, u_inf, pressure=p_inf)
+solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_inf)
 
 with TaskManager():
     solver.setup()
@@ -63,6 +63,6 @@ with TaskManager():
     Draw(formulation.pressure(solver.gfu.components[0]) - p_inf, mesh, "p'")
     Draw(formulation.velocity(solver.gfu.components[0]) - u_inf, mesh, "u'")
 
-    solver.solve_timestep(True, max_dt=1)
+    solver._solve_timestep(True, max_dt=1)
     Redraw()
     

@@ -17,7 +17,7 @@ cfg.simulation = "transient"
 cfg.dynamic_viscosity = "constant"
 cfg.mixed_method = "strain_heat"
 
-cfg.Reynold_number = 1
+cfg.Reynolds_number = 1
 cfg.Mach_number = 0.3
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
@@ -62,7 +62,7 @@ solver.boundary_conditions.set_nonreflecting_outflow(
     "right|bottom|top", pressure=p_inf, tangential_convective_fluxes=True, tangential_viscous_fluxes=True,
     normal_viscous_fluxes=False)
 # solver.boundary_conditions.set_dirichlet("left|bottom|right|top", rho_inf, (u_inf, v_inf), pressure=p_inf)
-solver.initial_condition.set(rho_inf, u_inf, pressure=p_0)
+solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_0)
 
 t = 0
 tend = 40
@@ -78,4 +78,4 @@ with TaskManager():
 
     while t < tend:
         t += solver.solver_configuration.time_step.Get()
-        solver.solve_timestep(True)
+        solver._solve_timestep(True)
