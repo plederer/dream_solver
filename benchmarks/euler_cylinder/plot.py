@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from dream import SolverLoader
+from dream import Loader
 
 # Load Dataframe
-loader = SolverLoader()
+loader = Loader()
 df = loader.load_sensor_data('pressure_coefficient')
 
 # Extract Coords and Pressure Coefficient
