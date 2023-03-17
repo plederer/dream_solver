@@ -17,9 +17,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _initialize_FE_space(self) -> ProductSpace:
 
-        order = self.solver_configuration.order
-        mixed_method = self.solver_configuration.mixed_method
-        periodic = self.solver_configuration.periodic
+        order = self.cfg.order
+        mixed_method = self.cfg.mixed_method
+        periodic = self.cfg.periodic
 
         V = L2(self.mesh, order=order)
         VHAT = FacetFESpace(self.mesh, order=order)
@@ -44,23 +44,23 @@ class ConservativeFormulation2D(ConservativeFormulation):
     def _initialize_TnT(self) -> TestAndTrialFunction:
         return TestAndTrialFunction(*zip(*self.fes.TnT()))
 
-    def add_time_bilinearform(self, blf, old_components):
+    def add_time_bilinearform(self, blf):
 
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_vol = self.cfg.bonus_int_order_vol
+        compile_flag = self.cfg.compile_flag
 
         U, V = self.TnT.PRIMAL
 
-        old_components = tuple(gfu.components[0] for gfu in old_components)
+        old_components = tuple(gfu.components[0] for gfu in self._gfu_old)
         var_form = InnerProduct(self.time_scheme(U, *old_components), V) * dx(bonus_intorder=bonus_order_vol)
 
         blf += (var_form).Compile(compile_flag)
 
     def add_convective_bilinearform(self, blf):
 
-        compile_flag = self.solver_configuration.compile_flag
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
+        bonus_order_vol = self.cfg.bonus_int_order_vol
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -80,10 +80,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def add_diffusive_bilinearform(self, blf):
 
-        mixed_method = self.solver_configuration.mixed_method
-        compile_flag = self.solver_configuration.compile_flag
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
+        mixed_method = self.cfg.mixed_method
+        compile_flag = self.cfg.compile_flag
+        bonus_order_vol = self.cfg.bonus_int_order_vol
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -107,10 +107,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_mixed_bilinearform(self, blf):
 
-        bonus_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_bnd = self.solver_configuration.bonus_int_order_bnd
-        mixed_method = self.solver_configuration.mixed_method
-        compile_flag = self.solver_configuration.compile_flag
+        bonus_vol = self.cfg.bonus_int_order_vol
+        bonus_bnd = self.cfg.bonus_int_order_bnd
+        mixed_method = self.cfg.mixed_method
+        compile_flag = self.cfg.compile_flag
         n = self.normal
 
         U, V = self.TnT.PRIMAL
@@ -162,10 +162,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_initial_linearform(self, lf, domain, value: co.Initial):
 
-        mixed_method = self.solver_configuration.mixed_method
-        bonus_order_vol = self.solver_configuration.bonus_int_order_vol
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
+        mixed_method = self.cfg.mixed_method
+        bonus_order_vol = self.cfg.bonus_int_order_vol
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
 
         region = self.mesh.Materials(domain)
         _, V = self.TnT.PRIMAL
@@ -203,7 +203,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_sponge_bilinearform(self, blf, domain: str, dc: co.SpongeLayer):
 
-        compile_flag = self.solver_configuration.compile_flag
+        compile_flag = self.cfg.compile_flag
 
         region = self.mesh.Materials(domain)
 
@@ -217,8 +217,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_dirichlet_bilinearform(self, blf, boundary: str, bc: co.Dirichlet):
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
 
         region = self.mesh.Boundaries(boundary)
 
@@ -232,8 +232,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_farfield_bilinearform(self, blf,  boundary: str, bc: co.FarField):
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
 
         region = self.mesh.Boundaries(boundary)
 
@@ -250,9 +250,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_outflow_bilinearform(self, blf, boundary: str, bc: co.Outflow):
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
-        gamma = self.solver_configuration.heat_capacity_ratio
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
+        gamma = self.cfg.heat_capacity_ratio
 
         region = self.mesh.Boundaries(boundary)
 
@@ -270,20 +270,21 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += cf.Compile(compile_flag)
 
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Inflow, old_components):
+    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Inflow):
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
-        viscosity = self.solver_configuration.dynamic_viscosity
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
+        viscosity = self.cfg.dynamic_viscosity
 
         n = self.normal
         t = self.tangential
         region = self.mesh.Boundaries(boundary)
 
-        old_components = tuple(gfu.components[1] for gfu in old_components)
+        old_components = tuple(gfu.components[1] for gfu in self._gfu_old)
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Q, _ = self.TnT.MIXED
 
         cf = InnerProduct(self.time_scheme(Uhat, *old_components), Vhat)
 
@@ -297,7 +298,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             diff_u = self.velocity(Uhat) - bc.velocity
             rho = self.density(Uhat)
             c = self.speed_of_sound(Uhat)
-            M = self.solver_configuration.Mach_number
+            M = self.cfg.Mach_number
             entropy_amp = bc.sigma * c/bc.reference_length * (self.pressure(Uhat) - bc.pressure)
             contact_amp = bc.sigma * c/bc.reference_length * (diff_u[1] * n[0] - diff_u[0] * n[1])
             acoustic_amp = bc.sigma * rho * c**2 * (1-M**2)/bc.reference_length * InnerProduct(diff_u, n)
@@ -332,20 +333,21 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Outflow, old_components):
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Outflow):
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
-        viscosity = self.solver_configuration.dynamic_viscosity
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
+        viscosity = self.cfg.dynamic_viscosity
 
         n = self.normal
         t = self.tangential
         region = self.mesh.Boundaries(boundary)
 
-        old_components = tuple(gfu.components[1] for gfu in old_components)
+        old_components = tuple(gfu.components[1] for gfu in self._gfu_old)
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Q, _ = self.TnT.MIXED
 
         cf = InnerProduct(self.time_scheme(Uhat, *old_components), Vhat)
 
@@ -357,7 +359,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         elif bc.type is bc.TYPE.PARTIALLY:
             c = self.speed_of_sound(Uhat)
-            M = self.solver_configuration.Mach_number
+            M = self.cfg.Mach_number
             ref_length = bc.reference_length
             rho = self.density(Uhat)
 
@@ -367,7 +369,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         elif bc.type is bc.TYPE.PIROZZOLI:
             raise ValueError(f"Implementation details needed {bc.type}")
             rho = self.density(Uhat)
-            dt = self.solver_configuration.time_step
+            dt = self.cfg.time_step
             lam = self.characteristic_velocities(Uhat, False)[3, 3]
             M = self.mach_number(Uhat)
 
@@ -407,8 +409,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_inviscid_wall_bilinearform(self, blf, boundary: str, bc: co.InviscidWall):
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
 
         region = self.mesh.Boundaries(boundary)
 
@@ -422,9 +424,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_isothermal_wall_bilinearform(self, blf, boundary: str, bc: co.IsothermalWall):
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
-        gamma = self.solver_configuration.heat_capacity_ratio
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
+        gamma = self.cfg.heat_capacity_ratio
 
         region = self.mesh.Boundaries(boundary)
 
@@ -441,15 +443,15 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_adiabatic_wall_bilinearform(self, blf, boundary: str, bc: co.AdiabaticWall):
 
-        mixed_method = self.solver_configuration.mixed_method
+        mixed_method = self.cfg.mixed_method
         if mixed_method is MixedMethods.NONE:
             raise NotImplementedError(f"Adiabatic wall not implemented for {mixed_method}")
 
-        bonus_order_bnd = self.solver_configuration.bonus_int_order_bnd
-        compile_flag = self.solver_configuration.compile_flag
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
 
-        Re = self.solver_configuration.Reynolds_number
-        Pr = self.solver_configuration.Prandtl_number
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
         n = self.normal
 
         region = self.mesh.Boundaries(boundary)
@@ -480,7 +482,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Arch Computat Methods Eng 28, 753–784 (2021).
               https://doi.org/10.1007/s11831-020-09508-z
         """
-        riemann_solver = self.solver_configuration.riemann_solver
+        riemann_solver = self.cfg.riemann_solver
         n = self.normal
 
         if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
@@ -530,8 +532,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def diffusive_stabilisation_term(self, Uhat, Q):
 
-        Re = self.solver_configuration.Reynolds_number
-        Pr = self.solver_configuration.Prandtl_number
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
         mu = self.mu.get(Uhat, Q)
 
         tau_d = CF((0, 0, 0, 0,
@@ -555,7 +557,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
               ISBN: 978-0-471-92452-4
         """
 
-        gamma = self.solver_configuration.heat_capacity_ratio
+        gamma = self.cfg.heat_capacity_ratio
 
         rho = self.density(U)
         u = self.velocity(U)
@@ -582,7 +584,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
               ISBN: 978-0-471-92452-4
         """
 
-        gamma = self.solver_configuration.heat_capacity_ratio
+        gamma = self.cfg.heat_capacity_ratio
 
         rho = self.density(U)
         u = self.velocity(U)

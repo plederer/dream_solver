@@ -92,16 +92,23 @@ class CompressibleHDGSolver:
         if directory_tree is None:
             directory_tree = io.ResultsDirectoryTree()
 
-        self.mesh = mesh
-        self.solver_configuration = solver_configuration
         self._formulation = formulation_factory(mesh, solver_configuration)
-        self._status = SolverStatus(solver_configuration)
+        self._status = SolverStatus(self.solver_configuration)
         self._sensors = []
+        self._drawer = io.Drawer(self.formulation)
         self._directory_tree = directory_tree
 
     @property
     def formulation(self) -> Formulation:
         return self._formulation
+
+    @property
+    def mesh(self) -> Mesh:
+        return self.formulation.mesh
+
+    @property
+    def solver_configuration(self) -> SolverConfiguration:
+        return self.formulation.cfg
 
     @property
     def boundary_conditions(self) -> co.BoundaryConditions:
@@ -120,18 +127,19 @@ class CompressibleHDGSolver:
         return self._status
 
     @property
+    def drawer(self) -> io.Drawer:
+        return self._drawer
+
+    @property
     def directory_tree(self) -> io.ResultsDirectoryTree:
         return self._directory_tree
 
     def setup(self, force: CF = None):
 
-        num_temporary_vectors = self.formulation.time_scheme.num_temporary_vectors
+        self.formulation.initialize()
 
-        self.gfu = GridFunction(self.formulation.fes)
-        self.gfu_old = tuple(GridFunction(self.formulation.fes) for num in range(num_temporary_vectors))
-
-        self.residual = self.gfu.vec.CreateVector()
-        self.temporary = self.gfu.vec.CreateVector()
+        self.residual = self.formulation.gfu.vec.CreateVector()
+        self.temporary = self.formulation.gfu.vec.CreateVector()
 
         self._set_linearform(force)
         self._set_bilinearform()
@@ -158,32 +166,32 @@ class CompressibleHDGSolver:
 
         self.blf = BilinearForm(fes, condense=condense)
 
-        self.formulation.add_time_bilinearform(self.blf, self.gfu_old)
+        self.formulation.add_time_bilinearform(self.blf)
         self.formulation.add_convective_bilinearform(self.blf)
 
         if viscosity is not DynamicViscosity.INVISCID:
             self.formulation.add_diffusive_bilinearform(self.blf)
 
-        self.formulation.add_bcs_bilinearform(self.blf, self.gfu_old)
+        self.formulation.add_bcs_bilinearform(self.blf)
         self.formulation.add_dcs_bilinearform(self.blf)
 
     def solve_initial(self):
 
-        fes = self.formulation.fes
+        formulation = self.formulation
 
-        blf = BilinearForm(fes)
-        self.formulation.add_mass_bilinearform(blf)
+        blf = BilinearForm(formulation.fes)
+        formulation.add_mass_bilinearform(blf)
 
-        lf = LinearForm(fes)
-        self.formulation.add_initial_linearform(lf)
+        lf = LinearForm(formulation.fes)
+        formulation.add_initial_linearform(lf)
 
         blf.Assemble()
         lf.Assemble()
 
-        blf_inverse = blf.mat.Inverse(fes.FreeDofs(), inverse="sparsecholesky")
+        blf_inverse = blf.mat.Inverse(formulation.fes.FreeDofs(), inverse="sparsecholesky")
 
-        self.gfu.vec.data = blf_inverse * lf.vec
-        self.formulation.time_scheme.set_initial_solution(self.gfu, *self.gfu_old)
+        formulation.gfu.vec.data = blf_inverse * lf.vec
+        formulation.update_gridfunctions(initial_value=True)
 
         for sensor in self.sensors:
             sensor.take_single_sample()
@@ -192,10 +200,11 @@ class CompressibleHDGSolver:
 
         linear_solver = self.solver_configuration.linear_solver
         fes = self.formulation.fes
+        gfu = self.formulation.gfu
 
-        self.blf.Apply(self.gfu.vec, self.residual)
+        self.blf.Apply(gfu.vec, self.residual)
         self.residual.data -= self.f.vec
-        self.blf.AssembleLinearization(self.gfu.vec)
+        self.blf.AssembleLinearization(gfu.vec)
 
         inv = self.blf.mat.Inverse(fes.FreeDofs(self.blf.condense), inverse=linear_solver)
         if self.blf.condense:
@@ -208,8 +217,9 @@ class CompressibleHDGSolver:
 
     def _update_solution(self):
         damping_factor = self.solver_configuration.damping_factor
+        gfu = self.formulation.gfu
 
-        self.gfu.vec.data -= damping_factor * self.temporary
+        gfu.vec.data -= damping_factor * self.temporary
 
     def _update_pseudo_time_step(self,
                                  iteration_number: int,
@@ -243,7 +253,7 @@ class CompressibleHDGSolver:
 
         for it in range(max_iterations):
 
-            self.formulation.time_scheme.update_previous_solution(self.gfu, *self.gfu_old)
+            self.formulation.update_gridfunctions()
             self._update_pseudo_time_step(it, increment_at_iteration, increment_time_step_factor)
 
             self._solve_update_step()
@@ -268,10 +278,11 @@ class CompressibleHDGSolver:
         if self.solver_configuration.save_state:
             saver.save_state(state_name)
 
-        self.formulation.time_scheme.update_previous_solution(self.gfu, *self.gfu_old)
         Redraw()
 
-    def solve_transient(self, state_name: str = "state",  save_state_at_step: int = 1):
+        self.formulation.update_gridfunctions()
+
+    def solve_transient(self, state_name: str = "state",  save_state_every_num_step: int = 1):
 
         self.status.reset()
         saver = self.get_saver()
@@ -283,7 +294,7 @@ class CompressibleHDGSolver:
                 sensor.take_single_sample()
 
             if self.solver_configuration.save_state:
-                if idx % save_state_at_step == 0:
+                if idx % save_state_every_num_step == 0:
                     saver.save_state(f"{state_name}_{t:.{io.DreAmLogger._time_step_digit}f}")
 
             if self.status.is_nan:
@@ -311,41 +322,9 @@ class CompressibleHDGSolver:
             if self.status.is_converged:
                 break
 
-        self.formulation.time_scheme.update_previous_solution(self.gfu, *self.gfu_old)
+        self.formulation.update_gridfunctions()
+
         Redraw()
-
-    def draw_solutions(self,
-                       density: bool = True,
-                       velocity: bool = True,
-                       pressure: bool = True,
-                       vorticity: bool = False,
-                       energy: bool = False,
-                       temperature: bool = False,
-                       mach: bool = False):
-
-        U, _, Q = self.formulation.get_gridfunction_components(self.gfu)
-
-        if density:
-            Draw(self.formulation.density(U), self.mesh, "rho")
-
-        if velocity:
-            Draw(self.formulation.velocity(U), self.mesh, "u")
-
-        if pressure:
-            Draw(self.formulation.pressure(U), self.mesh, "p")
-
-        if vorticity:
-            Draw(self.formulation.vorticity(U, Q), self.mesh, "omega")
-
-        if energy:
-            Draw(self.formulation.energy(U), self.mesh, "rho E")
-
-        if temperature:
-            Draw(self.formulation.temperature(U), self.mesh, "T")
-
-        if mach:
-            Draw(self.formulation.speed_of_sound(U), self.mesh, "c")
-            Draw(self.formulation.mach_number(U), self.mesh, "M")
 
     def add_sensor(self, sensor: Sensor):
         sensor.assign_solver(self)
@@ -362,7 +341,3 @@ class CompressibleHDGSolver:
         if directory_tree is not None:
             loader.tree = directory_tree
         return loader
-
-    def reset_mesh(self, mesh: Mesh):
-        self.mesh = mesh
-        self._formulation = formulation_factory(mesh, self.solver_configuration)

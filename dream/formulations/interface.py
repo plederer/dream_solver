@@ -111,34 +111,57 @@ class Formulation(abc.ABC):
 
     def __init__(self, mesh: Mesh, solver_configuration: SolverConfiguration) -> None:
 
-        self.mesh = mesh
-        self._solver_configuration = solver_configuration
+        self._mesh = mesh
+        self._cfg = solver_configuration
 
         self.bcs = co.BoundaryConditions(mesh.GetBoundaries(), solver_configuration)
         self.dcs = co.DomainConditions(mesh.GetMaterials(), solver_configuration)
         self.mu = mu.viscosity_factory(self)
         self.time_scheme = time_scheme_factory(solver_configuration)
 
-        self._fes = self._initialize_FE_space()
-        self._TnT = self._initialize_TnT()
+        self._gfu = None
+        self._fes = None
+        self._TnT = None
 
         self.normal = specialcf.normal(mesh.dim)
         self.tangential = specialcf.tangential(mesh.dim)
         self.meshsize = specialcf.mesh_size
 
     @property
-    def solver_configuration(self) -> SolverConfiguration:
-        return self._solver_configuration
+    def mesh(self) -> Mesh:
+        return self._mesh
+
+    @property
+    def cfg(self) -> SolverConfiguration:
+        return self._cfg
+
+    @property
+    def gfu(self) -> GridFunction:
+        if self._gfu is None:
+            raise RuntimeError("Call 'formulation.initialize()' before accessing the GridFunction")
+        return self._gfu
 
     @property
     def fes(self) -> ProductSpace:
+        if self._fes is None:
+            raise RuntimeError("Call 'formulation.initialize()' before accessing the Finite Element space")
         return self._fes
 
     @property
     def TnT(self) -> TestAndTrialFunction:
+        if self._fes is None:
+            raise RuntimeError("Call 'formulation.initialize()' before accessing the TestAndTrialFunctions")
         return self._TnT
 
-    def add_bcs_bilinearform(self, blf, old_components):
+    def initialize(self):
+        self._fes = self._initialize_FE_space()
+        self._TnT = self._initialize_TnT()
+
+        num_temporary_vectors = self.time_scheme.num_temporary_vectors
+        self._gfu = GridFunction(self.fes)
+        self._gfu_old = tuple(GridFunction(self.fes) for num in range(num_temporary_vectors))
+
+    def add_bcs_bilinearform(self, blf):
 
         for boundary, condition in self.bcs.items():
 
@@ -155,10 +178,10 @@ class Formulation(abc.ABC):
                 self._add_outflow_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, co.NRBC_Outflow):
-                self._add_nonreflecting_outflow_bilinearform(blf, boundary, condition, old_components)
+                self._add_nonreflecting_outflow_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, co.NRBC_Inflow):
-                self._add_nonreflecting_inflow_bilinearform(blf, boundary, condition, old_components)
+                self._add_nonreflecting_inflow_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, co.InviscidWall):
                 self._add_inviscid_wall_bilinearform(blf, boundary, condition)
@@ -183,6 +206,12 @@ class Formulation(abc.ABC):
             if isinstance(condition.sponge, co.SpongeLayer):
                 self._add_sponge_bilinearform(blf, domain, condition.sponge)
 
+    def update_gridfunctions(self, initial_value: bool = False):
+        if initial_value:
+            self.time_scheme.update_initial_solution(self.gfu, *self._gfu_old)
+        else:
+            self.time_scheme.update_previous_solution(self.gfu, *self._gfu_old)
+
     @abc.abstractmethod
     def _add_dirichlet_bilinearform(self, blf, boundary, condition): ...
 
@@ -193,10 +222,10 @@ class Formulation(abc.ABC):
     def _add_outflow_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition, old_components): ...
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition, old_components): ...
+    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
     def _add_inviscid_wall_bilinearform(self, blf, boundary, condition): ...
@@ -218,9 +247,6 @@ class Formulation(abc.ABC):
 
     @abc.abstractmethod
     def _initialize_TnT(self) -> TestAndTrialFunction: ...
-
-    @abc.abstractmethod
-    def get_gridfunction_components(self, gfu) -> GridFunctionComponents: ...
 
     @abc.abstractmethod
     def add_mass_bilinearform(self, blf): ...
@@ -293,6 +319,9 @@ class Formulation(abc.ABC):
 
     @abc.abstractmethod
     def vorticity(self, U, Q=None): ...
+
+    @abc.abstractmethod
+    def heat_flux(self, U, Q=None): ...
 
     @abc.abstractmethod
     def deviatoric_strain_tensor(self, U, Q=None): ...
