@@ -23,7 +23,8 @@ def circular_cylinder_mesh(radius: float = 0.5,
                            bc_outflow: str = "outflow",
                            bc_cylinder: str = "cylinder",
                            bc_sponge: str = "sponge",
-                           curve_layers: bool = False):
+                           curve_layers: bool = False,
+                           grading: float = 0.3):
 
     if boundary_layer_thickness < 0:
         raise ValueError(f"Boundary Layer Thickness needs to be greater equal Zero!")
@@ -100,7 +101,7 @@ def circular_cylinder_mesh(radius: float = 0.5,
         geo = Glue([geo, boundary_layer])
 
     geo = OCCGeometry(geo, dim=2)
-    mesh = geo.GenerateMesh(maxh=sponge_maxh)
+    mesh = geo.GenerateMesh(maxh=sponge_maxh, grading=grading)
 
     if not curve_layers:
 
@@ -169,7 +170,8 @@ def angular_cylinder_mesh(radius: float = 0.5,
                           bc_cylinder: str = "cylinder",
                           bc_wake: str = "outflow",
                           bc_sponge: str = "sponge",
-                          curve_layers: bool = False):
+                          curve_layers: bool = False,
+                          grading: float = 0.3):
 
     if boundary_layer_thickness < 0:
         raise ValueError(f"Boundary Layer Thickness needs to be greater equal Zero!")
@@ -261,7 +263,7 @@ def angular_cylinder_mesh(radius: float = 0.5,
         geo = Glue([geo, boundary_layer])
 
     geo = OCCGeometry(geo, dim=2)
-    mesh = geo.GenerateMesh(maxh=sponge_maxh)
+    mesh = geo.GenerateMesh(maxh=sponge_maxh, grading=grading)
 
     if not curve_layers:
 
