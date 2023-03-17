@@ -68,7 +68,7 @@ saver = solver.get_saver()
 with TaskManager():
     solver.setup()
     solver.solve_initial()
-    solver.draw_solutions()
+    solver.drawer.draw()
     solver.solve_stationary()
 
 saver.save_configuration(comment=__doc__)
