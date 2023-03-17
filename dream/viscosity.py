@@ -16,7 +16,7 @@ class DynamicViscosity(enum.Enum):
 
 def viscosity_factory(formulation: Formulation) -> _DynamicViscosity:
 
-    mu = formulation.solver_configuration.dynamic_viscosity
+    mu = formulation.cfg.dynamic_viscosity
 
     if mu is DynamicViscosity.INVISCID:
         return Inviscid(formulation)
@@ -35,7 +35,7 @@ class _DynamicViscosity(abc.ABC):
 
     def __init__(self, formulation: Formulation) -> None:
         self.formulation = formulation
-        self.solver_configuration = formulation.solver_configuration
+        self.solver_configuration = formulation.cfg
 
     @abc.abstractmethod
     def get(self, U, Q) -> CF: ...
@@ -67,7 +67,7 @@ class Sutherland(_DynamicViscosity):
 
     def __init__(self, formulation: Formulation) -> None:
         self.formulation = formulation
-        self.solver_configuration = formulation.solver_configuration
+        self.solver_configuration = formulation.cfg
 
         self._S0 = 110.4
         self._T0 = 293.15
@@ -75,8 +75,8 @@ class Sutherland(_DynamicViscosity):
 
     def get(self, U, Q) -> CF:
 
-        gamma = self.formulation.solver_configuration.heat_capacity_ratio
-        M = self.formulation.solver_configuration.Mach_number
+        gamma = self.formulation.cfg.heat_capacity_ratio
+        M = self.formulation.cfg.Mach_number
         T_farfield = self.solver_configuration.farfield_temperature
 
         T_ = self.formulation.temperature(U)

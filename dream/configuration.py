@@ -2,7 +2,6 @@ from __future__ import annotations
 from enum import Enum
 from ngsolve import Parameter
 from typing import Optional
-import numpy as np
 
 from . import io
 from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
@@ -37,7 +36,7 @@ class SolverConfiguration:
         self.simulation = "transient"
         self.time_scheme = "IE"
         self._time_step = Parameter(1e-4)
-        self.time_period = (0, 1)
+        self._time_period = TimePeriod(0, 1, self._time_step)
         self.time_step_max = 1
         self.order = 2
         self.static_condensation = True
@@ -231,7 +230,7 @@ class SolverConfiguration:
             time_step = time_step.Get()
 
         self._time_step.Set(time_step)
-        io.DreAmLogger._time_step_digit = int(np.abs(np.log10(time_step)))
+        io.DreAmLogger.set_time_step_digit(time_step)
 
     @property
     def time_period(self) -> TimePeriod:
@@ -249,7 +248,8 @@ class SolverConfiguration:
         if start > end:
             raise ValueError("Start time is greater than end time!")
 
-        self._time_period = TimePeriod(start, end, self.time_step)
+        self._time_period.start = start
+        self._time_period.end = end
 
     @property
     def time_step_max(self) -> float:

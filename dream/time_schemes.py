@@ -17,14 +17,18 @@ class TimePeriod:
     step: Parameter
 
     def __iter__(self):
+        for t in self.generator(step=1):
+            yield t
+
+    def generator(self, step: int = 1):
         dt = self.step.Get()
         num = round((self.end - self.start)/dt) + 1
-        for i in range(1, num):
+        for i in range(1, num, step):
             yield self.start + i * dt
 
     def array(self, include_start_time: bool = False) -> np.ndarray:
         dt = self.step.Get()
-        num = int((self.end - self.start)/dt) + 1
+        num = round((self.end - self.start)/dt) + 1
 
         time_period = np.linspace(self.start, self.end, num)
         if not include_start_time:
@@ -64,7 +68,7 @@ class _TimeSchemes(abc.ABC):
     def update_previous_solution(self, new, *old_components): ...
 
     @abc.abstractmethod
-    def set_initial_solution(self, new, *old_components): ...
+    def update_initial_solution(self, new, *old_components): ...
 
     def __call__(self, U, *old_components):
         return self.apply_scheme(U, *old_components)
@@ -81,7 +85,7 @@ class ImplicitEuler(_TimeSchemes):
     def update_previous_solution(self, new, *old_components):
         old_components[0].vec.data = new.vec
 
-    def set_initial_solution(self, new, *old_components):
+    def update_initial_solution(self, new, *old_components):
         self.update_previous_solution(new, *old_components)
 
 
@@ -97,6 +101,6 @@ class BDF2(_TimeSchemes):
         old_components[1].vec.data = old_components[0].vec
         old_components[0].vec.data = new.vec
 
-    def set_initial_solution(self, new, *old_components):
+    def update_initial_solution(self, new, *old_components):
         old_components[0].vec.data = new.vec
         old_components[1].vec.data = new.vec

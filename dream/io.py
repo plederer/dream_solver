@@ -3,17 +3,24 @@ from .utils.formatter import Formatter
 
 import pickle
 import logging
+
+from math import log10
 from pathlib import Path
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from ngsolve import Draw, CF, Redraw
+from typing import TYPE_CHECKING, Optional, Generator
+import time
 
+import logging
+logger = logging.getLogger("DreAm.IO")
 
 if TYPE_CHECKING:
     from ngsolve import Mesh
     from pandas import DataFrame
     from .sensor import Sensor
-    from .hdg_solver import CompressibleHDGSolver
     from .configuration import SolverConfiguration
+    from .hdg_solver import CompressibleHDGSolver
+    from .formulations import Formulation
     from ngsolve import GridFunction
 
 
@@ -79,7 +86,7 @@ class Loader:
 
     def __init__(self, tree: Optional[ResultsDirectoryTree] = None) -> None:
         if tree is None:
-            self.tree = ResultsDirectoryTree()
+            tree = ResultsDirectoryTree()
         self.tree = tree
 
     @property
@@ -114,12 +121,25 @@ class Loader:
         file = self.main_path.joinpath(name + '.pickle')
         with file.open("rb") as openfile:
             config = pickle.load(openfile)
-
+        DreAmLogger.set_time_step_digit(config.time_step.Get())
         return config
 
     def load_state(self, gfu: GridFunction, name: str) -> None:
         file = self.state_path.joinpath(name)
         gfu.Load(str(file))
+
+    def load_state_time_sequence(self,
+                                 gfu: GridFunction,
+                                 solver_configuration: SolverConfiguration,
+                                 name: str,
+                                 sleep_time: float = 0,
+                                 load_step: int = 1) -> Generator[float, None, None]:
+
+        for t in solver_configuration.time_period.generator(load_step):
+            self.load_state(gfu, f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
+            Redraw()
+            time.sleep(sleep_time)
+            yield t
 
     def load_sensor_data(self, name: str) -> DataFrame:
 
@@ -141,22 +161,27 @@ class SolverLoader(Loader):
         self.solver = solver
         super().__init__(solver.directory_tree)
 
-    def load_mesh(self, name: str = "mesh") -> Mesh:
-        mesh = super().load_mesh(name)
-        self.solver.reset_mesh(mesh)
-
     def load_configuration(self, name: str = "config") -> None:
         config = super().load_configuration(name)
         self.solver.solver_configuration.update(config)
 
     def load_state(self, name: str, load_time_scheme_components: bool = False) -> None:
-        super().load_state(self.solver.gfu, name)
+        formulation = self.solver.formulation
+        super().load_state(formulation.gfu, name)
 
         if load_time_scheme_components:
-            time_scheme = self.solver.solver_configuration.time_scheme.name
+            time_scheme = formulation.cfg.time_scheme.name
 
-            for idx, gfu in enumerate(self.solver.gfu_old):
+            for idx, gfu in enumerate(formulation._gfu_old):
                 super().load_state(gfu, f"{name}_{time_scheme}_{idx}")
+
+    def load_state_time_sequence(self, name: str, sleep_time: float = 0, load_step: int = 1) -> Generator[float, None, None]:
+        cfg = self.solver.solver_configuration
+        for t in cfg.time_period.generator(load_step):
+            self.load_state(f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
+            Redraw()
+            time.sleep(sleep_time)
+            yield t
 
 
 class Saver:
@@ -268,7 +293,12 @@ class SolverSaver(Saver):
         super().__init__(solver.directory_tree)
 
     def save_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> None:
-        super().save_mesh(self.solver.mesh, name, suffix)
+        mesh = self.solver.formulation.mesh
+        super().save_mesh(mesh, name, suffix)
+
+    def save_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> None:
+        mesh = self.solver.formulation.mesh
+        super().save_mesh(mesh, name, suffix)
 
     def save_configuration(self,
                            name: str = "config",
@@ -278,12 +308,13 @@ class SolverSaver(Saver):
         super().save_configuration(self.solver.solver_configuration, name, comment, save_pickle, save_txt)
 
     def save_state(self, name: str = "state", save_time_scheme_components: bool = False):
-        super().save_state(self.solver.gfu, name)
+        formulation = self.solver.formulation
+        super().save_state(formulation.gfu, name)
 
         if save_time_scheme_components:
             time_scheme = self.solver.solver_configuration.time_scheme.name
 
-            for idx, gfu in enumerate(self.solver.gfu_old):
+            for idx, gfu in enumerate(formulation._gfu_old):
                 super().save_state(gfu, f"{name}_{time_scheme}_{idx}")
 
     def save_sensor_data(self, time_period=None, save_dataframe: bool = True):
@@ -291,10 +322,95 @@ class SolverSaver(Saver):
             super().save_sensor_data(sensor, time_period, save_dataframe)
 
 
+class Drawer:
+
+    def __init__(self, formulation: Formulation):
+        self._formulation = formulation
+
+    @property
+    def formulation(self):
+        return self._formulation
+
+    def draw(self,
+             density: bool = True,
+             velocity: bool = True,
+             pressure: bool = True,
+             energy: bool = False,
+             temperature: bool = False,
+             momentum: bool = False):
+
+        if density:
+            self.draw_density()
+
+        if velocity:
+            self.draw_velocity()
+
+        if energy:
+            self.draw_energy()
+
+        if pressure:
+            self.draw_pressure()
+
+        if temperature:
+            self.draw_temperature()
+
+        if momentum:
+            self.draw_momentum()
+
+    def draw_density(self, label: str = "rho", **kwargs):
+        Draw(self.formulation.density(), self.formulation.mesh, label, **kwargs)
+
+    def draw_momentum(self, label: str = "rho_u", **kwargs):
+        Draw(self.formulation.momentum(), self.formulation.mesh, label, **kwargs)
+
+    def draw_energy(self, label: str = "rho_E", **kwargs):
+        Draw(self.formulation.energy(), self.formulation.mesh, label, **kwargs)
+
+    def draw_pressure(self, label: str = "p", **kwargs):
+        Draw(self.formulation.pressure(), self.formulation.mesh, label, **kwargs)
+
+    def draw_temperature(self, label: str = "T", **kwargs):
+        Draw(self.formulation.temperature(), self.formulation.mesh, label, **kwargs)
+
+    def draw_velocity(self, label: str = "u", **kwargs):
+        Draw(self.formulation.velocity(), self.formulation.mesh, label, **kwargs)
+
+    def draw_vorticity(self, label: str = "omega", **kwargs):
+        Draw(self.formulation.vorticity(), self.formulation.mesh, label, **kwargs)
+
+    def draw_mach_number(self, label: str = "Mach", **kwargs):
+        Draw(self.formulation.mach_number(), self.formulation.mesh, label, **kwargs)
+
+    def draw_speed_of_sound(self, label: str = "c", **kwargs):
+        Draw(self.formulation.speed_of_sound(), self.formulation.mesh, label, **kwargs)
+
+    def draw_deviatoric_strain_tensor(self, label: str = "epsilon", **kwargs):
+        Draw(self.formulation.deviatoric_strain_tensor(), self.formulation.mesh, label, **kwargs)
+
+    def draw_deviatoric_stress_tensor(self, label: str = "tau", **kwargs):
+        Draw(self.formulation.deviatoric_stress_tensor(), self.formulation.mesh, label, **kwargs)
+
+    def draw_heat_flux(self, label: str = "q", **kwargs):
+        Draw(self.formulation.heat_flux(), self.formulation.mesh, label, **kwargs)
+
+    def draw_acoustic_density(self, mean_density: float, label: str = "rho'", **kwargs):
+        Draw(self.formulation.density() - mean_density, self.formulation.mesh, label, **kwargs)
+
+    def draw_acoustic_pressure(self, mean_pressure: float, label: str = "p'", **kwargs):
+        Draw(self.formulation.pressure() - mean_pressure, self.formulation.mesh, label, **kwargs)
+
+    def draw_particle_velocity(self, mean_velocity: tuple[float, ...], label: str = "u'", **kwargs):
+        Draw(self.formulation.velocity() - CF(mean_velocity), self.formulation.mesh, label, **kwargs)
+
+
 class DreAmLogger:
 
     _iteration_error_digit: int = 8
     _time_step_digit: int = 6
+
+    @classmethod
+    def set_time_step_digit(cls, time_step):
+        cls._time_step_digit = int(abs(log10(time_step)))
 
     def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
         self.logger = logging.getLogger("DreAm")
