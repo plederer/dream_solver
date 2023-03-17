@@ -10,21 +10,22 @@ from ngsolve import *
 from .viscosity import DynamicViscosity
 
 if TYPE_CHECKING:
+    from .formulations import Formulation
     from .hdg_solver import CompressibleHDGSolver
 
 
 @dataclasses.dataclass
 class Sample:
     name: str
-    func: Callable[[CompressibleHDGSolver]]
+    func: Callable[[Formulation]]
     values: list = dataclasses.field(default_factory=list)
     components: tuple[str, ...] = ("",)
 
-    def take(self, solver: CompressibleHDGSolver) -> None:
-        self.values.append(self.func(solver))
+    def take(self) -> None:
+        self.values.append(self.func())
 
-    def __call__(self, solver: CompressibleHDGSolver) -> None:
-        self.take(solver)
+    def __call__(self) -> None:
+        self.take()
 
     def __str__(self) -> str:
         return self.name
@@ -36,77 +37,70 @@ class Sensor(abc.ABC):
 
         self.name = name
         self._sample_dictionary: dict[str, Sample] = {}
-        self._solver = None
+        self._formulation = None
 
     @property
-    def solver(self) -> CompressibleHDGSolver:
-        if self._solver is None:
+    def formulation(self) -> Formulation:
+        if self._formulation is None:
             raise ValueError("Assign Solver to Sensor!")
-        return self._solver
+        return self._formulation
 
     def take_single_sample(self):
 
         for sample in self._sample_dictionary.values():
-            sample.take(self.solver)
+            sample.take()
 
     def assign_solver(self, solver: CompressibleHDGSolver):
-        self._solver = solver
+        self._formulation = solver.formulation
 
     def sample_density(self, name: str = 'density'):
 
-        def calculate_density(solver: CompressibleHDGSolver):
-            components = solver.formulation.get_gridfunction_components(solver.gfu)
-            density = solver.formulation.density(components.PRIMAL)
-
-            return self._evaluate_CF(density, solver)
+        def calculate_density():
+            return self._evaluate_CF(self.formulation.density())
 
         sample = Sample(name, calculate_density)
         self._sample_dictionary[name] = sample
 
     def sample_momentum(self, name: str = 'momentum'):
 
-        def calculate_momentum(solver: CompressibleHDGSolver):
-            components = solver.formulation.get_gridfunction_components(solver.gfu)
-            momentum = solver.formulation.momentum(components.PRIMAL)
-
-            return self._evaluate_CF(momentum, solver)
+        def calculate_momentum():
+            return self._evaluate_CF(self.formulation.momentum())
 
         sample = Sample(name, calculate_momentum, components=('x', 'y', 'z'))
         self._sample_dictionary[name] = sample
 
     def sample_energy(self, name: str = 'energy'):
 
-        def calculate_energy(solver: CompressibleHDGSolver):
-            components = solver.formulation.get_gridfunction_components(solver.gfu)
-            energy = solver.formulation.energy(components.PRIMAL)
-
-            return self._evaluate_CF(energy, solver)
+        def calculate_energy():
+            return self._evaluate_CF(self.formulation.energy())
 
         sample = Sample(name, calculate_energy)
         self._sample_dictionary[name] = sample
 
     def sample_pressure(self, name: str = 'pressure'):
 
-        def calculate_pressure(solver: CompressibleHDGSolver):
-            components = solver.formulation.get_gridfunction_components(solver.gfu)
-            pressure = solver.formulation.pressure(components.PRIMAL)
-
-            return self._evaluate_CF(pressure, solver)
+        def calculate_pressure():
+            return self._evaluate_CF(self.formulation.pressure())
 
         sample = Sample(name, calculate_pressure)
         self._sample_dictionary[name] = sample
 
     def sample_acoustic_pressure(self, mean_pressure: float, name: str = 'acoustic_pressure'):
 
-        def calculate_acoustic_pressure(solver: CompressibleHDGSolver):
-            components = solver.formulation.get_gridfunction_components(solver.gfu)
-            pressure = solver.formulation.pressure(components.PRIMAL)
-
-            acoustic_pressure = pressure - mean_pressure
-
-            return self._evaluate_CF(acoustic_pressure, solver)
+        def calculate_acoustic_pressure():
+            acoustic_pressure = self.formulation.pressure() - mean_pressure
+            return self._evaluate_CF(acoustic_pressure)
 
         sample = Sample(name, calculate_acoustic_pressure)
+        self._sample_dictionary[name] = sample
+
+    def sample_particle_velocity(self, mean_velocity: tuple[float, ...], name: str = 'particle_velocity'):
+
+        def calculate_particle_velocity():
+            particle_velocity = self.formulation.velocity() - CF(mean_velocity)
+            return self._evaluate_CF(particle_velocity)
+
+        sample = Sample(name, calculate_particle_velocity, components=('x', 'y', 'z'))
         self._sample_dictionary[name] = sample
 
     def sample_pressure_coefficient(self,
@@ -115,18 +109,16 @@ class Sensor(abc.ABC):
                                     reference_density: float,
                                     name: str = 'pressure_coefficient'):
 
-        def calculate_pressure_coefficient(solver: CompressibleHDGSolver):
-            components = solver.formulation.get_gridfunction_components(solver.gfu)
-            pressure = solver.formulation.pressure(components.PRIMAL)
-
+        def calculate_pressure_coefficient():
+            pressure = self.formulation.pressure()
             cp = (pressure - reference_pressure)/(reference_density * reference_velocity**2 / 2)
-            return self._evaluate_CF(cp, solver)
+            return self._evaluate_CF(cp)
 
         sample = Sample(name, calculate_pressure_coefficient)
         self._sample_dictionary[name] = sample
 
     @abc.abstractmethod
-    def _evaluate_CF(self, cf: CF, solver: CompressibleHDGSolver): ...
+    def _evaluate_CF(self, cf: CF): ...
 
     @abc.abstractmethod
     def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame: ...
@@ -176,8 +168,9 @@ class PointSensor(Sensor):
 
         return df
 
-    def _evaluate_CF(self, cf: CF, solver: CompressibleHDGSolver):
-        return tuple(cf(solver.mesh(*vertex)) for vertex in self.points)
+    def _evaluate_CF(self, cf: CF):
+        mesh = self.formulation.mesh
+        return tuple(cf(mesh(*vertex)) for vertex in self.points)
 
     @staticmethod
     def vertices_from_boundaries(boundaries: str, mesh: Mesh):
@@ -201,26 +194,27 @@ class BoundarySensor(Sensor):
 
     def sample_forces(self, scale=1, name: str = 'forces'):
 
-        def calculate_forces(solver: CompressibleHDGSolver):
+        def calculate_forces():
 
-            dynamic_viscosity = solver.solver_configuration.dynamic_viscosity
-            components = solver.formulation.get_gridfunction_components(solver.gfu)
-            stress = -solver.formulation.pressure(components.PRIMAL)
+            dynamic_viscosity = self.formulation.cfg.dynamic_viscosity
+            stress = -self.formulation.pressure() * Id(self.formulation.mesh.dim)
             if dynamic_viscosity is not DynamicViscosity.INVISCID:
-                stress += solver.formulation.deviatoric_stress_tensor(components.PRIMAL, components.MIXED)
+                stress += self.formulation.deviatoric_stress_tensor()
 
-            normal_stress = scale * stress * solver.formulation.normal
-            return self._evaluate_CF(normal_stress, solver)
+            normal_stress = scale * stress * self.formulation.normal
+            return self._evaluate_CF(normal_stress)
 
         sample = Sample(name, calculate_forces, components=('x', 'y', 'z'))
         self._sample_dictionary[name] = sample
 
-    def _evaluate_CF(self, cf: CF, solver: CompressibleHDGSolver):
-        order = solver.solver_configuration.order + 5
+    def _evaluate_CF(self, cf: CF):
+        mesh = self.formulation.mesh
+        order = self.formulation.cfg.order + 5
+
         cf = BoundaryFromVolumeCF(cf)
 
-        regions = tuple(solver.mesh.Boundaries(boundary) for boundary in self.boundaries)
-        return tuple(Integrate(cf, solver.mesh, definedon=region, order=order) for region in regions)
+        regions = tuple(mesh.Boundaries(boundary) for boundary in self.boundaries)
+        return tuple(Integrate(cf, mesh, definedon=region, order=order) for region in regions)
 
     def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame:
 
