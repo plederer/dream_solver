@@ -344,7 +344,8 @@ class compressibleHDGsolver():
         if "ad_wall" in self.bnd_data:
             if not self.viscid:
                 raise Exception("ad_val boundary only for viscid flows available")
-            tau_d = self.FU.tau_d * 1/self.FU.Re.Get()  # 1/((self.FU.gamma - 1) * self.FU.Minf**2 * self.FU.Re * self.FU.Pr)
+            # tau_d = self.FU.tau_d * 1/self.FU.Re.Get()  # 1/((self.FU.gamma - 1) * self.FU.Minf**2 * self.FU.Re * self.FU.Pr)
+            tau_d = 1/(self.FU.Re * self.FU.Pr)
             rho_E = self.FU.mu.Get()/(self.FU.Re.Get()*self.FU.Pr.Get()
                                       ) * self.FU.gradT(u, q) * n - tau_d * (u[3] - uhat[3])
             Bhat = CF((u[0] - uhat[0], uhat[1], uhat[2], rho_E))
