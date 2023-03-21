@@ -259,7 +259,7 @@ class CompressibleHDGSolver:
             self._solve_update_step()
             self.status.check_convergence(self.temporary, self.residual, iteration_number=it)
 
-            Redraw()
+            self.drawer.redraw()
 
             if stop_at_iteration:
                 input("Iteration stopped. Hit any key to continue.")
@@ -278,11 +278,11 @@ class CompressibleHDGSolver:
         if self.solver_configuration.save_state:
             saver.save_state(state_name)
 
-        Redraw()
+        self.drawer.redraw()
 
         self.formulation.update_gridfunctions()
 
-    def solve_transient(self, state_name: str = "state",  save_state_every_num_step: int = 1):
+    def solve_transient(self, state_name: str = "transient",  save_state_every_num_step: int = 1):
 
         self.status.reset()
         saver = self.get_saver()
@@ -324,7 +324,7 @@ class CompressibleHDGSolver:
 
         self.formulation.update_gridfunctions()
 
-        Redraw()
+        self.drawer.redraw()
 
     def add_sensor(self, sensor: Sensor):
         sensor.assign_solver(self)

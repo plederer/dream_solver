@@ -94,6 +94,15 @@ class Sensor(abc.ABC):
         sample = Sample(name, calculate_acoustic_pressure)
         self._sample_dictionary[name] = sample
 
+    def sample_acoustic_density(self, mean_density: float, name: str = 'acoustic_density'):
+
+        def calculate_acoustic_density():
+            acoustic_density = self.formulation.density() - mean_density
+            return self._evaluate_CF(acoustic_density)
+
+        sample = Sample(name, calculate_acoustic_density)
+        self._sample_dictionary[name] = sample
+
     def sample_particle_velocity(self, mean_velocity: tuple[float, ...], name: str = 'particle_velocity'):
 
         def calculate_particle_velocity():
@@ -115,6 +124,14 @@ class Sensor(abc.ABC):
             return self._evaluate_CF(cp)
 
         sample = Sample(name, calculate_pressure_coefficient)
+        self._sample_dictionary[name] = sample
+
+    def sample_voritcity(self, name: str = 'vorticity'):
+
+        def calculate_vorticity():
+            return self._evaluate_CF(self.formulation.vorticity())
+
+        sample = Sample(name, calculate_vorticity)
         self._sample_dictionary[name] = sample
 
     @abc.abstractmethod
@@ -205,6 +222,56 @@ class BoundarySensor(Sensor):
             return self._evaluate_CF(normal_stress)
 
         sample = Sample(name, calculate_forces, components=('x', 'y', 'z'))
+        self._sample_dictionary[name] = sample
+
+    def sample_drag_coefficient(self,
+                                reference_density: float,
+                                reference_velocity: float,
+                                reference_area: float,
+                                drag_direction: tuple[float, ...],
+                                scale: int = 1,
+                                name: str = 'drag_coefficient'):
+
+        def calculate_drag_coefficient():
+
+            dynamic_viscosity = self.formulation.cfg.dynamic_viscosity
+            stress = -self.formulation.pressure() * Id(self.formulation.mesh.dim)
+            if dynamic_viscosity is not DynamicViscosity.INVISCID:
+                stress += self.formulation.deviatoric_stress_tensor()
+
+            normal_stress = scale * stress * self.formulation.normal
+
+            drag_coefficient = InnerProduct(normal_stress, drag_direction)
+            drag_coefficient *= 2/(reference_density * reference_velocity**2 * reference_area)
+
+            return self._evaluate_CF(drag_coefficient)
+
+        sample = Sample(name, calculate_drag_coefficient)
+        self._sample_dictionary[name] = sample
+
+    def sample_lift_coefficient(self,
+                                reference_density: float,
+                                reference_velocity: float,
+                                reference_area: float,
+                                lift_direction: tuple[float, ...],
+                                scale: int = 1,
+                                name: str = 'lift_coefficient'):
+
+        def calculate_lift_coefficient():
+
+            dynamic_viscosity = self.formulation.cfg.dynamic_viscosity
+            stress = -self.formulation.pressure() * Id(self.formulation.mesh.dim)
+            if dynamic_viscosity is not DynamicViscosity.INVISCID:
+                stress += self.formulation.deviatoric_stress_tensor()
+
+            normal_stress = scale * stress * self.formulation.normal
+
+            lift_coefficient = InnerProduct(normal_stress, lift_direction)
+            lift_coefficient *= 2/(reference_density * reference_velocity**2 * reference_area)
+
+            return self._evaluate_CF(lift_coefficient)
+
+        sample = Sample(name, calculate_lift_coefficient)
         self._sample_dictionary[name] = sample
 
     def _evaluate_CF(self, cf: CF):

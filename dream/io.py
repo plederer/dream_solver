@@ -1,18 +1,24 @@
 from __future__ import annotations
-from .utils.formatter import Formatter
+from .utils import is_notebook, Formatter
 
 import pickle
 import logging
 
-from math import log10
+from math import log10, ceil
 from pathlib import Path
 from datetime import datetime
-from ngsolve import Draw, CF, Redraw
+from ngsolve import CF
 from typing import TYPE_CHECKING, Optional, Generator
 import time
 
 import logging
 logger = logging.getLogger("DreAm.IO")
+
+if is_notebook():
+    from ngsolve.webgui import Draw, WebGLScene
+else:
+    from ngsolve import Draw, Redraw
+
 
 if TYPE_CHECKING:
     from ngsolve import Mesh
@@ -137,7 +143,6 @@ class Loader:
 
         for t in solver_configuration.time_period.generator(load_step):
             self.load_state(gfu, f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
-            Redraw()
             time.sleep(sleep_time)
             yield t
 
@@ -175,11 +180,13 @@ class SolverLoader(Loader):
             for idx, gfu in enumerate(formulation._gfu_old):
                 super().load_state(gfu, f"{name}_{time_scheme}_{idx}")
 
-    def load_state_time_sequence(self, name: str, sleep_time: float = 0, load_step: int = 1) -> Generator[float, None, None]:
+    def load_state_time_sequence(
+            self, name: str = "transient", sleep_time: float = 0, load_step: int = 1) -> Generator[
+            float, None, None]:
         cfg = self.solver.solver_configuration
         for t in cfg.time_period.generator(load_step):
             self.load_state(f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
-            Redraw()
+            self.solver.drawer.redraw()
             time.sleep(sleep_time)
             yield t
 
@@ -326,6 +333,7 @@ class Drawer:
 
     def __init__(self, formulation: Formulation):
         self._formulation = formulation
+        self._scenes: list[WebGLScene] = []
 
     @property
     def formulation(self):
@@ -357,50 +365,76 @@ class Drawer:
         if momentum:
             self.draw_momentum()
 
+    def redraw(self):
+        if self._scenes:
+            for scene in self._scenes:
+                scene.Redraw()
+        else:
+            Redraw()
+
     def draw_density(self, label: str = "rho", **kwargs):
-        Draw(self.formulation.density(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.density(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_momentum(self, label: str = "rho_u", **kwargs):
-        Draw(self.formulation.momentum(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.momentum(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_energy(self, label: str = "rho_E", **kwargs):
-        Draw(self.formulation.energy(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.energy(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_pressure(self, label: str = "p", **kwargs):
-        Draw(self.formulation.pressure(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.pressure(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_temperature(self, label: str = "T", **kwargs):
-        Draw(self.formulation.temperature(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.temperature(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_velocity(self, label: str = "u", **kwargs):
-        Draw(self.formulation.velocity(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.velocity(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_vorticity(self, label: str = "omega", **kwargs):
-        Draw(self.formulation.vorticity(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.vorticity(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_mach_number(self, label: str = "Mach", **kwargs):
-        Draw(self.formulation.mach_number(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.mach_number(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_speed_of_sound(self, label: str = "c", **kwargs):
-        Draw(self.formulation.speed_of_sound(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.speed_of_sound(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_deviatoric_strain_tensor(self, label: str = "epsilon", **kwargs):
-        Draw(self.formulation.deviatoric_strain_tensor(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.deviatoric_strain_tensor(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_deviatoric_stress_tensor(self, label: str = "tau", **kwargs):
-        Draw(self.formulation.deviatoric_stress_tensor(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.deviatoric_stress_tensor(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_heat_flux(self, label: str = "q", **kwargs):
-        Draw(self.formulation.heat_flux(), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.heat_flux(), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_acoustic_density(self, mean_density: float, label: str = "rho'", **kwargs):
-        Draw(self.formulation.density() - mean_density, self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.density() - mean_density, self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_acoustic_pressure(self, mean_pressure: float, label: str = "p'", **kwargs):
-        Draw(self.formulation.pressure() - mean_pressure, self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.pressure() - mean_pressure, self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
 
     def draw_particle_velocity(self, mean_velocity: tuple[float, ...], label: str = "u'", **kwargs):
-        Draw(self.formulation.velocity() - CF(mean_velocity), self.formulation.mesh, label, **kwargs)
+        scene = Draw(self.formulation.velocity() - CF(mean_velocity), self.formulation.mesh, label, **kwargs)
+        self._append_scene(scene)
+
+    def _append_scene(self, scene):
+        if scene is not None:
+            self._scenes.append(scene)
 
 
 class DreAmLogger:
@@ -410,7 +444,7 @@ class DreAmLogger:
 
     @classmethod
     def set_time_step_digit(cls, time_step):
-        cls._time_step_digit = int(abs(log10(time_step)))
+        cls._time_step_digit = ceil(abs(log10(time_step)))
 
     def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
         self.logger = logging.getLogger("DreAm")
