@@ -170,9 +170,11 @@ class SolverLoader(Loader):
         config = super().load_configuration(name)
         self.solver.solver_configuration.update(config)
 
-    def load_state(self, name: str, load_time_scheme_components: bool = False) -> None:
+    def load_state(self, gfu: GridFunction = None, name: str = "state", load_time_scheme_components: bool = False) -> None:
+        if gfu is None:
+            gfu = self.solver.formulation.gfu
         formulation = self.solver.formulation
-        super().load_state(formulation.gfu, name)
+        super().load_state(gfu, name)
 
         if load_time_scheme_components:
             time_scheme = formulation.cfg.time_scheme.name
@@ -185,7 +187,7 @@ class SolverLoader(Loader):
             float, None, None]:
         cfg = self.solver.solver_configuration
         for t in cfg.time_period.generator(load_step):
-            self.load_state(f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
+            self.load_state(name=f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
             self.solver.drawer.redraw()
             time.sleep(sleep_time)
             yield t
@@ -314,9 +316,12 @@ class SolverSaver(Saver):
                            save_txt: bool = True):
         super().save_configuration(self.solver.solver_configuration, name, comment, save_pickle, save_txt)
 
-    def save_state(self, name: str = "state", save_time_scheme_components: bool = False):
+    def save_state(self, gfu:GridFunction = None, name: str = "state", save_time_scheme_components: bool = False):
+        if gfu is None:
+            gfu = self.solver.formulation.gfu
+        
         formulation = self.solver.formulation
-        super().save_state(formulation.gfu, name)
+        super().save_state(gfu, name)
 
         if save_time_scheme_components:
             time_scheme = self.solver.solver_configuration.time_scheme.name
@@ -425,8 +430,10 @@ class Drawer:
         self._append_scene(scene)
 
     def draw_acoustic_pressure(self, mean_pressure: float, label: str = "p'", **kwargs):
-        scene = Draw(self.formulation.pressure() - mean_pressure, self.formulation.mesh, label, **kwargs)
+        acc_pressure = self.formulation.pressure() - mean_pressure
+        scene = Draw(acc_pressure, self.formulation.mesh, label, **kwargs)
         self._append_scene(scene)
+        return acc_pressure
 
     def draw_particle_velocity(self, mean_velocity: tuple[float, ...], label: str = "u'", **kwargs):
         scene = Draw(self.formulation.velocity() - CF(mean_velocity), self.formulation.mesh, label, **kwargs)
