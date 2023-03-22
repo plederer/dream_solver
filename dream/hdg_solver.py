@@ -295,7 +295,7 @@ class CompressibleHDGSolver:
 
             if self.solver_configuration.save_state:
                 if idx % save_state_every_num_step == 0:
-                    saver.save_state(f"{state_name}_{t:.{io.DreAmLogger._time_step_digit}f}")
+                    saver.save_state(name=f"{state_name}_{t:.{io.DreAmLogger._time_step_digit}f}")
 
             if self.status.is_nan:
                 break
