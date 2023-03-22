@@ -65,7 +65,7 @@ solver.domain_conditions.set_sponge_layer('sponge', weight_function, rho_inf,
 
 
 # # Solve Stationary
-cfg.time_step = 0.01cd .
+cfg.time_step = 0.01
 cfg.time_step_max = 10
 cfg.convergence_criterion = 1e-10
 with TaskManager():
