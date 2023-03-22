@@ -65,7 +65,7 @@ solver.domain_conditions.set_sponge_layer('sponge', weight_function, rho_inf,
 
 
 # # Solve Stationary
-cfg.time_step = 0.01
+cfg.time_step = 0.01cd .
 cfg.time_step_max = 10
 cfg.convergence_criterion = 1e-10
 with TaskManager():
@@ -77,8 +77,8 @@ loader = solver.get_loader()
 saver = solver.get_saver()
 saver.save_mesh(name='mesh')
 
-# saver.save_configuration(name='steady_configuration')
-# saver.save_state(name='intermediate_0', save_time_scheme_components=True)
+saver.save_configuration(name='steady_configuration')
+saver.save_state(name='intermediate_0', save_time_scheme_components=True)
 
 solver.drawer.draw()
 
@@ -123,13 +123,21 @@ solver.formulation.time_scheme.update_initial_solution(solver.formulation.gfu, *
 
 Redraw()
 
-# Solve fine transient
+
 cfg.time_step = 0.01
-cfg.time_period = (50, 150)
 cfg.convergence_criterion = 1e-8
+
+cfg.time_period = (0, 50)
+with TaskManager():
+    solver.solve_transient()
+
+saver.save_configuration(name="transient_configuration_coarse")
+saver.save_state(name=f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
+
+cfg.time_period = (50, 150)
 cfg.save_state = True
 
 with TaskManager():
     solver.solve_transient(save_state_every_num_step=10)
 saver.save_configuration(name="transient_configuration_fine")
-saver.save_state(f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
+saver.save_state(name=f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
