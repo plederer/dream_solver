@@ -7,7 +7,7 @@ import logging
 from math import log10, ceil
 from pathlib import Path
 from datetime import datetime
-from ngsolve import CF
+from ngsolve import CF, Redraw
 from typing import TYPE_CHECKING, Optional, Generator
 import time
 
@@ -17,7 +17,7 @@ logger = logging.getLogger("DreAm.IO")
 if is_notebook():
     from ngsolve.webgui import Draw, WebGLScene
 else:
-    from ngsolve import Draw, Redraw
+    from ngsolve import Draw
 
 
 if TYPE_CHECKING:
@@ -366,11 +366,9 @@ class Drawer:
             self.draw_momentum()
 
     def redraw(self):
-        if self._scenes:
-            for scene in self._scenes:
+        for scene in self._scenes:
                 scene.Redraw()
-        else:
-            Redraw()
+        Redraw()
 
     def draw_density(self, label: str = "rho", **kwargs):
         scene = Draw(self.formulation.density(), self.formulation.mesh, label, **kwargs)
