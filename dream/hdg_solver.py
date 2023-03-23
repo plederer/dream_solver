@@ -243,7 +243,7 @@ class CompressibleHDGSolver:
     def solve_stationary(self,
                          increment_at_iteration: int = 10,
                          increment_time_step_factor: int = 10,
-                         state_name: str = "state",
+                         state_name: str = "stationary",
                          stop_at_iteration: bool = False) -> bool:
 
         max_iterations = self.solver_configuration.max_iterations
@@ -276,7 +276,7 @@ class CompressibleHDGSolver:
             sensor.take_single_sample()
 
         if self.solver_configuration.save_state:
-            saver.save_state(state_name)
+            saver.save_state(name=state_name)
 
         self.drawer.redraw()
 

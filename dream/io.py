@@ -178,7 +178,7 @@ class SolverLoader(Loader):
 
     def load_state_time_scheme(self, name: str = "time_level"):
         gfus = self.solver.formulation._gfus
-        for time_level, gfu in gfus:
+        for time_level, gfu in gfus.items():
             super().load_state(gfu, f"{name}_{time_level}")
 
     def load_state_time_sequence(self,
@@ -323,7 +323,7 @@ class SolverSaver(Saver):
 
     def save_state_time_scheme(self, name: str = "time_level"):
         gfus = self.solver.formulation._gfus
-        for time_level, gfu in gfus:
+        for time_level, gfu in gfus.items():
             super().save_state(gfu, f"{name}_{time_level}")
 
     def save_sensor_data(self, time_period=None, save_dataframe: bool = True):
