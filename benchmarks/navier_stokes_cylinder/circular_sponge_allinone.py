@@ -28,50 +28,61 @@ u_inf = CF((1, 0))
 p_inf = 1/(cfg.Mach_number**2 * cfg.heat_capacity_ratio)
 
 
+farfield_radial_factor = 100
+sponge_radial_factor = 200
+
 mesh = circular_cylinder_mesh(radius=0.5,
-                              sponge_layer=False,
+                              sponge_layer=True,
                               boundary_layer_levels=1,
                               boundary_layer_thickness=0.08,
                               transition_layer_levels=2,
                               transition_layer_growth=1.2,
                               transition_radial_factor=8,
-                              farfield_radial_factor=100,
-                              sponge_radial_factor=200,
+                              farfield_radial_factor=farfield_radial_factor,
+                              sponge_radial_factor=sponge_radial_factor,
                               wake_maxh=1,
-                              farfield_maxh=5)
+                              farfield_maxh=5, 
+                              sponge_maxh=20)
 mesh = Mesh(mesh)
 mesh.Curve(cfg.order)
-
-directory_name = f"Re{int(cfg.Reynolds_number.Get())}_no_sponge_{cfg.order}"
+# input()
+directory_name = f"Re{int(cfg.Reynolds_number.Get())}_sponge_{cfg.order}"
 tree = ResultsDirectoryTree(directory_name)
+
+
+r = sqrt(x**2 + y**2)
+sponge_start = 0.5 * farfield_radial_factor
+sponge_length = (sponge_radial_factor - farfield_radial_factor) * 0.5
+
+weight_function = ((r - sponge_start)/sponge_length)**3
 
 solver = CompressibleHDGSolver(mesh, cfg, tree)
 solver.boundary_conditions.set_farfield('inflow|outflow', rho_inf, u_inf, pressure=p_inf)
 solver.boundary_conditions.set_adiabatic_wall('cylinder')
 solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_inf)
+solver.domain_conditions.set_sponge_layer('sponge', weight_function, rho_inf,
+                                              u_inf, pressure=p_inf, weight_function_order=3)
 
 
-loader = solver.get_loader()
-saver = solver.get_saver()
-saver.save_mesh(name='mesh')
-
-
-# Solve Stationary
+# # Solve Stationary
 cfg.time_step = 0.01
 cfg.time_step_max = 10
-cfg.convergence_criterion = 1e-12
+cfg.convergence_criterion = 1e-10
 with TaskManager():
     solver.setup()
     solver.solve_initial()
     solver.solve_stationary(increment_at_iteration=10, increment_time_step_factor=10)
 
+loader = solver.get_loader()
+saver = solver.get_saver()
+saver.save_mesh(name='mesh')
+
 saver.save_configuration(name='steady_configuration')
 saver.save_state(name='intermediate_0', save_time_scheme_components=True)
 
-solver.setup()
 solver.drawer.draw()
 
-loader.load_state('intermediate_0', False)
+loader.load_state(name='intermediate_0', load_time_scheme_components=False)
 
 Gamma = 1
 Rv = 1
@@ -113,24 +124,20 @@ solver.formulation.time_scheme.update_initial_solution(solver.formulation.gfu, *
 Redraw()
 
 
-# Solve coarse transient
-cfg.time_step = 0.1
-cfg.time_period = (0, 100)
+cfg.time_step = 0.01
 cfg.convergence_criterion = 1e-8
 
+cfg.time_period = (0, 50)
 with TaskManager():
     solver.solve_transient()
 
 saver.save_configuration(name="transient_configuration_coarse")
-saver.save_state(f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
+saver.save_state(name=f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
 
-# Solve fine transient
-cfg.time_step = 0.01
-cfg.time_period = (100, 300)
-cfg.convergence_criterion = 1e-12
+cfg.time_period = (50, 150)
 cfg.save_state = True
 
 with TaskManager():
-    solver.solve_transient()
+    solver.solve_transient(save_state_every_num_step=10)
 saver.save_configuration(name="transient_configuration_fine")
-saver.save_state(f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
+saver.save_state(name=f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
