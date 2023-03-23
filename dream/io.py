@@ -130,7 +130,7 @@ class Loader:
         DreAmLogger.set_time_step_digit(config.time_step.Get())
         return config
 
-    def load_state(self, gfu: GridFunction, name: str) -> None:
+    def load_state(self, gfu: GridFunction, name: str = "state") -> None:
         file = self.state_path.joinpath(name)
         gfu.Load(str(file))
 
@@ -141,7 +141,7 @@ class Loader:
                                  sleep_time: float = 0,
                                  load_step: int = 1) -> Generator[float, None, None]:
 
-        for t in solver_configuration.time_period.generator(load_step):
+        for t in solver_configuration.time_period.range(load_step):
             self.load_state(gfu, f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
             time.sleep(sleep_time)
             yield t
@@ -170,23 +170,23 @@ class SolverLoader(Loader):
         config = super().load_configuration(name)
         self.solver.solver_configuration.update(config)
 
-    def load_state(self, gfu: GridFunction = None, name: str = "state", load_time_scheme_components: bool = False) -> None:
-        if gfu is None:
-            gfu = self.solver.formulation.gfu
+    def load_state(self, gfu: GridFunction = None, name: str = "state") -> None:
         formulation = self.solver.formulation
+        if gfu is None:
+            gfu = formulation.gfu
         super().load_state(gfu, name)
 
-        if load_time_scheme_components:
-            time_scheme = formulation.cfg.time_scheme.name
+    def load_state_time_scheme(self, name: str = "time_level"):
+        gfus = self.solver.formulation._gfus
+        for time_level, gfu in gfus:
+            super().load_state(gfu, f"{name}_{time_level}")
 
-            for idx, gfu in enumerate(formulation._gfu_old):
-                super().load_state(gfu, f"{name}_{time_scheme}_{idx}")
-
-    def load_state_time_sequence(
-            self, name: str = "transient", sleep_time: float = 0, load_step: int = 1) -> Generator[
-            float, None, None]:
+    def load_state_time_sequence(self,
+                                 name: str = "transient",
+                                 sleep_time: float = 0,
+                                 load_step: int = 1) -> Generator[float, None, None]:
         cfg = self.solver.solver_configuration
-        for t in cfg.time_period.generator(load_step):
+        for t in cfg.time_period.range(load_step):
             self.load_state(name=f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
             self.solver.drawer.redraw()
             time.sleep(sleep_time)
@@ -316,18 +316,15 @@ class SolverSaver(Saver):
                            save_txt: bool = True):
         super().save_configuration(self.solver.solver_configuration, name, comment, save_pickle, save_txt)
 
-    def save_state(self, gfu:GridFunction = None, name: str = "state", save_time_scheme_components: bool = False):
+    def save_state(self, gfu: GridFunction = None, name: str = "state"):
         if gfu is None:
             gfu = self.solver.formulation.gfu
-        
-        formulation = self.solver.formulation
         super().save_state(gfu, name)
 
-        if save_time_scheme_components:
-            time_scheme = self.solver.solver_configuration.time_scheme.name
-
-            for idx, gfu in enumerate(formulation._gfu_old):
-                super().save_state(gfu, f"{name}_{time_scheme}_{idx}")
+    def save_state_time_scheme(self, name: str = "time_level"):
+        gfus = self.solver.formulation._gfus
+        for time_level, gfu in gfus:
+            super().save_state(gfu, f"{name}_{time_level}")
 
     def save_sensor_data(self, time_period=None, save_dataframe: bool = True):
         for sensor in self.solver.sensors:
@@ -372,7 +369,7 @@ class Drawer:
 
     def redraw(self):
         for scene in self._scenes:
-                scene.Redraw()
+            scene.Redraw()
         Redraw()
 
     def draw_density(self, label: str = "rho", **kwargs):

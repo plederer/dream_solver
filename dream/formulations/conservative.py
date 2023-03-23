@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .interface import Formulation, MixedMethods, GridFunctionComponents
+from .interface import Formulation, MixedMethods
 from ngsolve import *
 from typing import Optional
 

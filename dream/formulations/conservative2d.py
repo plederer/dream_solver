@@ -51,8 +51,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         U, V = self.TnT.PRIMAL
 
-        old_components = tuple(gfu.components[0] for gfu in self._gfu_old)
-        var_form = InnerProduct(self.time_scheme(U, *old_components), V) * dx(bonus_intorder=bonus_order_vol)
+        time_levels_gfu = self._gfus.get_component(0)
+        time_levels_gfu['n+1'] = U
+
+        var_form = InnerProduct(self.time_scheme.apply(time_levels_gfu), V) * dx(bonus_intorder=bonus_order_vol)
 
         blf += (var_form).Compile(compile_flag)
 
@@ -280,13 +282,14 @@ class ConservativeFormulation2D(ConservativeFormulation):
         t = self.tangential
         region = self.mesh.Boundaries(boundary)
 
-        old_components = tuple(gfu.components[1] for gfu in self._gfu_old)
-
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
 
-        cf = InnerProduct(self.time_scheme(Uhat, *old_components), Vhat)
+        time_levels_gfu = self._gfus.get_component(1)
+        time_levels_gfu['n+1'] = Uhat
+
+        cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
 
         amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat)
         I_in = self.identity_matrix_incoming(Uhat)
@@ -343,13 +346,14 @@ class ConservativeFormulation2D(ConservativeFormulation):
         t = self.tangential
         region = self.mesh.Boundaries(boundary)
 
-        old_components = tuple(gfu.components[1] for gfu in self._gfu_old)
-
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
 
-        cf = InnerProduct(self.time_scheme(Uhat, *old_components), Vhat)
+        time_levels_gfu = self._gfus.get_component(1)
+        time_levels_gfu['n+1'] = Uhat
+
+        cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
 
         amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat)
         I_in = self.identity_matrix_incoming(Uhat)
