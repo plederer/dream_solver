@@ -6,7 +6,7 @@ from typing import Optional, NamedTuple, TYPE_CHECKING, Any
 
 from ngsolve import *
 
-from ..time_schemes import time_scheme_factory
+from ..time_schemes import time_scheme_factory, TimeLevelsGridfunction
 from .. import conditions as co
 from .. import viscosity as mu
 
@@ -92,12 +92,6 @@ class Indices(NamedTuple):
     STRAIN: Optional[TensorCoordinates] = None
 
 
-class GridFunctionComponents(NamedTuple):
-    PRIMAL: Optional[ComponentGridFunction] = None
-    PRIMAL_FACET: Optional[ComponentGridFunction] = None
-    MIXED: Optional[ComponentGridFunction] = None
-
-
 @dataclasses.dataclass
 class TestAndTrialFunction:
     PRIMAL: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
@@ -119,7 +113,7 @@ class Formulation(abc.ABC):
         self.mu = mu.viscosity_factory(self)
         self.time_scheme = time_scheme_factory(solver_configuration)
 
-        self._gfu = None
+        self._gfus = None
         self._fes = None
         self._TnT = None
 
@@ -137,9 +131,9 @@ class Formulation(abc.ABC):
 
     @property
     def gfu(self) -> GridFunction:
-        if self._gfu is None:
+        if self._gfus is None:
             raise RuntimeError("Call 'formulation.initialize()' before accessing the GridFunction")
-        return self._gfu
+        return self._gfus['n+1']
 
     @property
     def fes(self) -> ProductSpace:
@@ -156,10 +150,7 @@ class Formulation(abc.ABC):
     def initialize(self):
         self._fes = self._initialize_FE_space()
         self._TnT = self._initialize_TnT()
-
-        num_temporary_vectors = self.time_scheme.num_temporary_vectors
-        self._gfu = GridFunction(self.fes)
-        self._gfu_old = tuple(GridFunction(self.fes) for num in range(num_temporary_vectors))
+        self._gfus = TimeLevelsGridfunction([GridFunction(self.fes) for i in range(self.time_scheme.time_levels)])
 
     def add_bcs_bilinearform(self, blf):
 
@@ -208,9 +199,9 @@ class Formulation(abc.ABC):
 
     def update_gridfunctions(self, initial_value: bool = False):
         if initial_value:
-            self.time_scheme.update_initial_solution(self.gfu, *self._gfu_old)
+            self.time_scheme.update_initial_solution(self._gfus)
         else:
-            self.time_scheme.update_previous_solution(self.gfu, *self._gfu_old)
+            self.time_scheme.update_previous_solution(self._gfus)
 
     @abc.abstractmethod
     def _add_dirichlet_bilinearform(self, blf, boundary, condition): ...

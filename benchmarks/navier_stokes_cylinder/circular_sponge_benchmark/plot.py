@@ -13,7 +13,6 @@ solver = CompressibleHDGSolver(mesh, cfg, tree)
 solver.formulation.initialize()
 
 
-
 sensor = BoundarySensor("cylinder")
 sensor.assign_solver(solver)
 
@@ -26,16 +25,16 @@ loader = solver.get_loader(tree)
 # u_mean.vec.data /= cfg.time_period.array().size
 
 # saver.save_state(p_mean, "p_mean")
-
+solver.drawer.draw()
 solver.drawer.draw_acoustic_pressure(solver.formulation.pressure(p_mean.components[0]))
 Draw(solver.formulation.pressure(p_mean.components[0]), mesh, "p_mean")
-# solver.drawer.draw_particle_velocity(solver.formulation.pressure(p_mean.components[0]))
+solver.drawer.draw_particle_velocity(CF((1, 0)))
 
 sensor.sample_drag_coefficient(1, 1, 1, (1, 0))
 sensor.sample_lift_coefficient(1, 1, 1, (0, 1))
 
-cfg.time_period=(650, 700)
-for t in loader.load_state_time_sequence(sleep_time=0, load_step=1):
+cfg.time_period = (600, 800)
+for t in loader.load_state_time_sequence(sleep_time=0.05, load_step=1):
     # Do whatever here
     print(t)
     sensor.take_single_sample()

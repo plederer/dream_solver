@@ -4,7 +4,8 @@ import typing
 import enum
 import numpy as np
 import dataclasses
-from ngsolve import Parameter
+from collections import UserDict
+from ngsolve import Parameter, GridFunction, CF
 
 if typing.TYPE_CHECKING:
     from .configuration import SolverConfiguration
@@ -17,10 +18,10 @@ class TimePeriod:
     step: Parameter
 
     def __iter__(self):
-        for t in self.generator(step=1):
+        for t in self.range(step=1):
             yield t
 
-    def generator(self, step: int = 1):
+    def range(self, step: int = 1):
         dt = self.step.Get()
         num = round((self.end - self.start)/dt) + 1
         for i in range(1, num, step):
@@ -37,6 +38,23 @@ class TimePeriod:
 
     def __repr__(self) -> str:
         return f"Interval: ({self.start}, {self.end}], Time Step: {self.step.Get()}"
+
+
+class TimeLevelsGridfunction(UserDict):
+
+    def __init__(self, gfus: tuple[GridFunction, ...]) -> None:
+        time_levels = ['n+1', 'n'] + [f'n{i}' for i in range(-1, 1-len(gfus), -1)]
+        super().__init__({time_level: gfu for time_level, gfu in zip(time_levels, gfus)})
+
+    def get_component(self, component: int) -> TimeLevelsGridfunction:
+        components = tuple(gfu.components[component] for gfu in self.values())
+        return type(self)(components)
+
+    def __getitem__(self, level: str) -> GridFunction:
+        return super().__getitem__(level)
+
+    def items(self) -> typing.ItemsView[str, GridFunction]:
+        return super().items()
 
 
 class TimeSchemes(enum.Enum):
@@ -56,51 +74,46 @@ def time_scheme_factory(solver_configuration: SolverConfiguration) -> _TimeSchem
 
 class _TimeSchemes(abc.ABC):
 
-    num_temporary_vectors: int
+    time_levels: int = 2
 
     def __init__(self, solver_configuration: SolverConfiguration) -> None:
         self.solver_configuration = solver_configuration
 
     @abc.abstractmethod
-    def apply_scheme(self, U, *old_components): ...
+    def apply(self, cf: TimeLevelsGridfunction) -> CF: ...
 
     @abc.abstractmethod
-    def update_previous_solution(self, new, *old_components): ...
+    def update_previous_solution(self, cf: TimeLevelsGridfunction): ...
 
     @abc.abstractmethod
-    def update_initial_solution(self, new, *old_components): ...
-
-    def __call__(self, U, *old_components):
-        return self.apply_scheme(U, *old_components)
+    def update_initial_solution(self, cf: TimeLevelsGridfunction): ...
 
 
 class ImplicitEuler(_TimeSchemes):
 
-    num_temporary_vectors: int = 1
-
-    def apply_scheme(self, U, *old_components):
+    def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.solver_configuration.time_step
-        return 1/dt * (U - old_components[0])
+        return 1/dt * (cf['n+1'] - cf['n'])
 
-    def update_previous_solution(self, new, *old_components):
-        old_components[0].vec.data = new.vec
+    def update_previous_solution(self, cf: TimeLevelsGridfunction):
+        cf['n'].vec.data = cf['n+1'].vec
 
-    def update_initial_solution(self, new, *old_components):
-        self.update_previous_solution(new, *old_components)
+    def update_initial_solution(self, cf: TimeLevelsGridfunction):
+        self.update_previous_solution(cf)
 
 
 class BDF2(_TimeSchemes):
 
-    num_temporary_vectors: int = 2
+    time_levels: int = 3
 
-    def apply_scheme(self, U, *old_components):
+    def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.solver_configuration.time_step
-        return (3*U - 4 * old_components[0] + old_components[1]) / (2 * dt)
+        return (3*cf['n+1'] - 4 * cf['n'] + cf['n-1']) / (2 * dt)
 
-    def update_previous_solution(self, new, *old_components):
-        old_components[1].vec.data = old_components[0].vec
-        old_components[0].vec.data = new.vec
+    def update_previous_solution(self, cf: TimeLevelsGridfunction):
+        cf['n-1'].vec.data = cf['n'].vec
+        cf['n'].vec.data = cf['n+1'].vec
 
-    def update_initial_solution(self, new, *old_components):
-        old_components[0].vec.data = new.vec
-        old_components[1].vec.data = new.vec
+    def update_initial_solution(self, cf: TimeLevelsGridfunction):
+        cf['n'].vec.data = cf['n+1'].vec
+        cf['n-1'].vec.data = cf['n+1'].vec
