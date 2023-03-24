@@ -183,12 +183,12 @@ class SolverLoader(Loader):
                 super().load_state(gfu, f"{name}_{time_scheme}_{idx}")
 
     def load_state_time_sequence(
-            self, name: str = "transient", sleep_time: float = 0, load_step: int = 1) -> Generator[
+            self, name: str = "transient", sleep_time: float = 0, load_step: int = 1, blocking: bool = False) -> Generator[
             float, None, None]:
         cfg = self.solver.solver_configuration
         for t in cfg.time_period.generator(load_step):
             self.load_state(name=f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
-            self.solver.drawer.redraw()
+            self.solver.drawer.redraw(blocking)
             time.sleep(sleep_time)
             yield t
 
@@ -370,10 +370,10 @@ class Drawer:
         if momentum:
             self.draw_momentum()
 
-    def redraw(self):
+    def redraw(self, blocking=False):
         if self._scenes:
             for scene in self._scenes:
-                scene.Redraw()
+                scene.Redraw(blocking=blocking)
         else:
             Redraw()
 
