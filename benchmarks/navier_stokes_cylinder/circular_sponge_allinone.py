@@ -46,7 +46,7 @@ mesh = circular_cylinder_mesh(radius=0.5,
 mesh = Mesh(mesh)
 mesh.Curve(cfg.order)
 # input()
-directory_name = f"Re{int(cfg.Reynolds_number.Get())}_sponge_{cfg.order}"
+directory_name = f"Re{int(cfg.Reynolds_number.Get())}_sponge_{sponge_radial_factor}_{cfg.order}"
 tree = ResultsDirectoryTree(directory_name)
 
 
