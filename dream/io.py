@@ -367,19 +367,10 @@ class Drawer:
         if momentum:
             self.draw_momentum()
 
-<<<<<<< HEAD
-    def redraw(self, blocking=False):
-        if self._scenes:
-            for scene in self._scenes:
-                scene.Redraw(blocking=blocking)
-        else:
-            Redraw()
-=======
-    def redraw(self):
+    def redraw(self, blocking: bool = False):
         for scene in self._scenes:
-            scene.Redraw()
-        Redraw()
->>>>>>> 11446729ea9b16e5386367b75814a55d46ab77d8
+            scene.Redraw(blocking)
+        Redraw(blocking)
 
     def draw_density(self, label: str = "rho", **kwargs):
         scene = Draw(self.formulation.density(), self.formulation.mesh, label, **kwargs)
