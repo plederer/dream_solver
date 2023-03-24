@@ -29,7 +29,7 @@ p_inf = 1/(cfg.Mach_number**2 * cfg.heat_capacity_ratio)
 
 
 farfield_radial_factor = 100
-sponge_radial_factor = 200
+sponge_radial_factor = 400
 
 mesh = circular_cylinder_mesh(radius=0.5,
                               sponge_layer=True,
@@ -78,11 +78,11 @@ saver = solver.get_saver()
 saver.save_mesh(name='mesh')
 
 saver.save_configuration(name='steady_configuration')
-saver.save_state(name='intermediate_0', save_time_scheme_components=True)
+saver.save_state(name='intermediate_0')
 
 solver.drawer.draw()
 
-loader.load_state(name='intermediate_0', load_time_scheme_components=False)
+loader.load_state(name='intermediate_0')
 
 Gamma = 1
 Rv = 1
@@ -119,25 +119,25 @@ minv = m.mat.Inverse(fes.FreeDofs())
 gfu_pert.vec.data = minv * f.vec
 
 solver.formulation.gfu.vec.data += gfu_pert.vec
-solver.formulation.time_scheme.update_initial_solution(solver.formulation.gfu, *solver.formulation._gfu_old)
-
+# solver.formulation.time_scheme.update_initial_solution(solver.formulation.gfu, *solver.formulation._gfu_old)
+solver.formulation.update_gridfunctions(initial_value=True)
 Redraw()
 
 
 cfg.time_step = 0.01
 cfg.convergence_criterion = 1e-8
 
-cfg.time_period = (0, 50)
+cfg.time_period = (0, 100)
 with TaskManager():
     solver.solve_transient()
 
-saver.save_configuration(name="transient_configuration_coarse")
-saver.save_state(name=f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
+saver.save_configuration(name="transient_configuration_initial")
+saver.save_state_time_scheme(name=f"intermediate_{cfg.time_period.end}")
 
-cfg.time_period = (50, 150)
+cfg.time_period = (100, 200)
 cfg.save_state = True
 
 with TaskManager():
     solver.solve_transient(save_state_every_num_step=10)
-saver.save_configuration(name="transient_configuration_fine")
-saver.save_state(name=f"intermediate_{cfg.time_period.end}", save_time_scheme_components=True)
+saver.save_configuration(name="transient_configuration_periodic")
+saver.save_state_time_scheme(name=f"intermediate_{cfg.time_period.end}")
