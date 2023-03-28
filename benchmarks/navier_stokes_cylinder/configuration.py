@@ -210,7 +210,8 @@ def time_advancing_routine(solver: CompressibleHDGSolver,
     loader = solver.get_loader()
     saver = solver.get_saver()
     saver.save_mesh(name='mesh')
-    solver.setup()
+    with TaskManager():
+        solver.setup()
 
     if draw:
         solver.draw_solutions()
@@ -224,7 +225,6 @@ def time_advancing_routine(solver: CompressibleHDGSolver,
     cfg.simulation = "stationary"
     if stationary:
         with TaskManager():
-            solver.solve_initial()
             solver.solve_stationary(increment_at_iteration=10, increment_time_step_factor=10)
 
         saver.save_configuration(name='steady_configuration')

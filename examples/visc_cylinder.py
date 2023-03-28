@@ -56,7 +56,6 @@ solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_inf)
 
 with TaskManager():
     solver.setup()
-    solver.solve_initial()
 
     solver.drawer.draw_acoustic_pressure(p_inf)
     solver.drawer.draw_particle_velocity(u_inf)

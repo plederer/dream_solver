@@ -43,10 +43,15 @@ cfg.compile_flag = True
 
 R = 1
 R_farfield = R * 30
-
 rho_inf = 1
-u_inf = CF((1, 0))
-p_inf = 1/(cfg.Mach_number**2 * cfg.heat_capacity_ratio)
+u_inf = (1, 0)
+p_inf = 1/(cfg.Mach_number.Get()**2 * cfg.heat_capacity_ratio.Get())
+
+cfg.info['Cylinder Radius'] = R
+cfg.info['Farfield Radius'] = R_farfield
+cfg.info['Farfield Density'] = rho_inf
+cfg.info['Farfield Velocity'] = u_inf
+cfg.info['Farfield Pressure'] = p_inf
 
 mesh = Mesh(Get_Omesh(R, R_farfield, 28, 12, geom=1.8))
 mesh.Curve(cfg.order)
@@ -67,7 +72,6 @@ saver = solver.get_saver()
 
 with TaskManager():
     solver.setup()
-    solver.solve_initial()
     solver.drawer.draw()
     solver.solve_stationary()
 
