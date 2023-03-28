@@ -481,5 +481,5 @@ class PML(_Domain):
     ...
 
 
-class Periodic:
+class Periodic(Condition):
     ...

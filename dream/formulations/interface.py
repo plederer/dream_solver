@@ -160,7 +160,7 @@ class Formulation(abc.ABC):
 
         for boundary, condition in self.bcs.items():
 
-            if not isinstance(condition, (co._Boundary, co.Periodic)):
+            if not isinstance(condition, co.Condition):
                 logger.warn(f"Boundary condition for '{boundary}' has not been set!")
 
             elif isinstance(condition, co.Dirichlet):
