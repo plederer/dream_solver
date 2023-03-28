@@ -162,12 +162,11 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += var_form.Compile(compile_flag)
 
-    def _add_initial_linearform(self, lf, domain, value: co.Initial):
+    def _add_linearform(self, lf, domain, value: co._Domain):
 
         mixed_method = self.cfg.mixed_method
         bonus_order_vol = self.cfg.bonus_int_order_vol
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
-        compile_flag = self.cfg.compile_flag
 
         region = self.mesh.Materials(domain)
         _, V = self.TnT.PRIMAL
@@ -178,30 +177,31 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = initial_U * V * dx(definedon=region, bonus_intorder=bonus_order_vol)
         cf += initial_U * Vhat * dx(element_boundary=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
-        if mixed_method is MixedMethods.GRADIENT:
-            initial_Q = CF(tuple(initial_U.Diff(dir) for dir in (x, y)), dims=(2, 4)).trans
-            cf += InnerProduct(initial_Q, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
+        # Does not work as expected. Maybe needs revisiting
+        # if mixed_method is MixedMethods.GRADIENT:
+        #     initial_Q = CF(tuple(initial_U.Diff(dir) for dir in (x, y)), dims=(2, 4)).trans
+        #     cf += InnerProduct(initial_Q, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
 
-        elif mixed_method is MixedMethods.STRAIN_HEAT:
-            velocity = self.velocity(initial_U)
-            velocity_gradient = CF(tuple(velocity.Diff(dir) for dir in (x, y)), dims=(2, 2)).trans
+        # elif mixed_method is MixedMethods.STRAIN_HEAT:
+        #     velocity = self.velocity(initial_U)
+        #     velocity_gradient = CF(tuple(velocity.Diff(dir) for dir in (x, y)), dims=(2, 2)).trans
 
-            strain = velocity_gradient + velocity_gradient.trans
-            strain -= 2/3 * (velocity_gradient[0, 0] + velocity_gradient[1, 1]) * Id(2)
+        #     strain = velocity_gradient + velocity_gradient.trans
+        #     strain -= 2/3 * (velocity_gradient[0, 0] + velocity_gradient[1, 1]) * Id(2)
 
-            temperature = self.temperature(initial_U)
-            temperature_gradient = CF(tuple(temperature.Diff(dir) for dir in (x, y)))
+        #     temperature = self.temperature(initial_U)
+        #     temperature_gradient = CF(tuple(temperature.Diff(dir) for dir in (x, y)))
 
-            initial_Q = CF(
-                (strain[0, 0],
-                 strain[0, 1],
-                 strain[1, 1],
-                 temperature_gradient[0],
-                 temperature_gradient[1]))
+        #     initial_Q = CF(
+        #         (strain[0, 0],
+        #          strain[0, 1],
+        #          strain[1, 1],
+        #          temperature_gradient[0],
+        #          temperature_gradient[1]))
 
-            cf += InnerProduct(initial_Q, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
+        #     cf += InnerProduct(initial_Q, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
 
-        lf += cf.Compile(compile_flag)
+        lf += cf
 
     def _add_sponge_bilinearform(self, blf, domain: str, dc: co.SpongeLayer):
 

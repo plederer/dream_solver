@@ -42,12 +42,8 @@ class TimePeriod:
 
 class TimeLevelsGridfunction(UserDict):
 
-    def __init__(self, gfus: tuple[GridFunction, ...]) -> None:
-        time_levels = ['n+1', 'n'] + [f'n{i}' for i in range(-1, 1-len(gfus), -1)]
-        super().__init__({time_level: gfu for time_level, gfu in zip(time_levels, gfus)})
-
     def get_component(self, component: int) -> TimeLevelsGridfunction:
-        components = tuple(gfu.components[component] for gfu in self.values())
+        components = {level: gfu.components[component] for level, gfu in self.items()}
         return type(self)(components)
 
     def __getitem__(self, level: str) -> GridFunction:
@@ -74,7 +70,7 @@ def time_scheme_factory(solver_configuration: SolverConfiguration) -> _TimeSchem
 
 class _TimeSchemes(abc.ABC):
 
-    time_levels: int = 2
+    time_levels: tuple[str, ...] = None
 
     def __init__(self, solver_configuration: SolverConfiguration) -> None:
         self.solver_configuration = solver_configuration
@@ -91,6 +87,8 @@ class _TimeSchemes(abc.ABC):
 
 class ImplicitEuler(_TimeSchemes):
 
+    time_levels = ('n+1', 'n')
+
     def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.solver_configuration.time_step
         return 1/dt * (cf['n+1'] - cf['n'])
@@ -104,7 +102,7 @@ class ImplicitEuler(_TimeSchemes):
 
 class BDF2(_TimeSchemes):
 
-    time_levels: int = 3
+    time_levels = ('n+1', 'n', 'n-1')
 
     def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.solver_configuration.time_step

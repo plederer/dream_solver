@@ -131,9 +131,13 @@ class Formulation(abc.ABC):
 
     @property
     def gfu(self) -> GridFunction:
+        return self.gridfunctions['n+1']
+
+    @property
+    def gridfunctions(self) -> TimeLevelsGridfunction:
         if self._gfus is None:
             raise RuntimeError("Call 'formulation.initialize()' before accessing the GridFunction")
-        return self._gfus['n+1']
+        return self._gfus
 
     @property
     def fes(self) -> ProductSpace:
@@ -150,13 +154,13 @@ class Formulation(abc.ABC):
     def initialize(self):
         self._fes = self._initialize_FE_space()
         self._TnT = self._initialize_TnT()
-        self._gfus = TimeLevelsGridfunction([GridFunction(self.fes) for i in range(self.time_scheme.time_levels)])
+        self._gfus = TimeLevelsGridfunction({level: GridFunction(self.fes) for level in self.time_scheme.time_levels})
 
     def add_bcs_bilinearform(self, blf):
 
         for boundary, condition in self.bcs.items():
 
-            if not isinstance(condition, (co.Condition, co.Periodic)):
+            if not isinstance(condition, (co._Boundary, co.Periodic)):
                 logger.warn(f"Boundary condition for '{boundary}' has not been set!")
 
             elif isinstance(condition, co.Dirichlet):
@@ -183,11 +187,15 @@ class Formulation(abc.ABC):
             elif isinstance(condition, co.AdiabaticWall):
                 self._add_adiabatic_wall_bilinearform(blf, boundary, condition)
 
+    def add_perturbation_linearform(self, lf, perturbation: co.Perturbation):
+        for domain, _ in self.dcs.items():
+            self._add_linearform(lf, domain, perturbation)
+
     def add_initial_linearform(self, lf):
         for domain, condition in self.dcs.items():
 
             if isinstance(condition.initial, co.Initial):
-                self._add_initial_linearform(lf, domain, condition.initial)
+                self._add_linearform(lf, domain, condition.initial)
             else:
                 logger.warn(f"Initial condition for '{domain}' has not been set!")
 
@@ -228,7 +236,7 @@ class Formulation(abc.ABC):
     def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition): ...
 
     @abc.abstractmethod
-    def _add_initial_linearform(self, lf, domain, condition): ...
+    def _add_linearform(self, lf, domain, condition): ...
 
     @abc.abstractmethod
     def _add_sponge_bilinearform(self, blf, domain, condition): ...

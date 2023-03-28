@@ -144,6 +144,9 @@ class CompressibleHDGSolver:
         self._set_linearform(force)
         self._set_bilinearform()
 
+        if self.domain_conditions.has_initial_condition:
+            self._solve_initial()
+
     def _set_linearform(self, force):
 
         fes = self.formulation.fes
@@ -175,26 +178,39 @@ class CompressibleHDGSolver:
         self.formulation.add_bcs_bilinearform(self.blf)
         self.formulation.add_dcs_bilinearform(self.blf)
 
-    def solve_initial(self):
-
+    def _solve_mass(self, linearform: LinearForm) -> GridFunction:
         formulation = self.formulation
+        gfu = GridFunction(formulation.fes)
 
         blf = BilinearForm(formulation.fes)
         formulation.add_mass_bilinearform(blf)
 
-        lf = LinearForm(formulation.fes)
-        formulation.add_initial_linearform(lf)
-
         blf.Assemble()
-        lf.Assemble()
+        linearform.Assemble()
 
         blf_inverse = blf.mat.Inverse(formulation.fes.FreeDofs(), inverse="sparsecholesky")
 
-        formulation.gfu.vec.data = blf_inverse * lf.vec
-        formulation.update_gridfunctions(initial_value=True)
+        gfu.vec.data = blf_inverse * linearform.vec
+        return gfu
 
-        for sensor in self.sensors:
-            sensor.take_single_sample()
+    def _solve_initial(self):
+        lf = LinearForm(self.formulation.fes)
+        self.formulation.add_initial_linearform(lf)
+        self.formulation.gfu.vec.data = self._solve_mass(lf).vec
+        self.formulation.update_gridfunctions(initial_value=True)
+
+    def add_perturbation(self, perturbation: co.Perturbation) -> GridFunction:
+        lf = LinearForm(self.formulation.fes)
+        self.formulation.add_perturbation_linearform(lf, perturbation)
+        perturbation_gfu = self._solve_mass(lf)
+        for gfu in self.formulation.gridfunctions.values():
+            gfu.vec.data += perturbation_gfu.vec
+
+        self.drawer.redraw()
+
+        logger.info("Perturbation applied!")
+
+        return perturbation_gfu
 
     def _solve_update_step(self):
 
@@ -246,6 +262,7 @@ class CompressibleHDGSolver:
                          state_name: str = "stationary",
                          stop_at_iteration: bool = False) -> bool:
 
+        self.solver_configuration.simulation = 'stationary'
         max_iterations = self.solver_configuration.max_iterations
 
         self.status.reset()
@@ -283,6 +300,8 @@ class CompressibleHDGSolver:
         self.formulation.update_gridfunctions()
 
     def solve_transient(self, state_name: str = "transient",  save_state_every_num_step: int = 1):
+
+        self.solver_configuration.simulation = 'transient'
 
         self.status.reset()
         saver = self.get_saver()

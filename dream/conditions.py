@@ -38,6 +38,10 @@ class DomainConditions(UserDict):
     def pattern(self) -> str:
         return "|".join(self.domains)
 
+    @property
+    def has_initial_condition(self) -> bool:
+        return bool([True for _, condition in self.items() if condition.initial is not None])
+
     def set_initial(self,
                     density: float,
                     velocity: tuple[float, ...],
@@ -94,7 +98,7 @@ class BoundaryConditions(UserDict):
 
     @property
     def pattern(self) -> str:
-        return "|".join([boundary for boundary, bc in self.items() if isinstance(bc, Condition)])
+        return "|".join([boundary for boundary, bc in self.items() if isinstance(bc, _Boundary)])
 
     def set_dirichlet(self,
                       boundary: str,
@@ -217,7 +221,7 @@ class BoundaryConditions(UserDict):
     def set_custom(self, boundary):
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
         for boundary in boundaries:
-            self[boundary] = Condition()
+            self[boundary] = _Boundary()
 
 
 def convert_to_pressure(density, temperature=None, velocity=None, energy=None, gamma=1.4) -> CF:
@@ -285,7 +289,11 @@ class Condition:
         return self.__class__.__name__
 
 
-class Dirichlet(Condition):
+class _Boundary(Condition):
+    ...
+
+
+class Dirichlet(_Boundary):
 
     def __init__(self,
                  density: float,
@@ -309,7 +317,7 @@ class Dirichlet(Condition):
         self.energy = energy
 
 
-class FarField(Condition):
+class FarField(_Boundary):
 
     def __init__(self,
                  density: float,
@@ -333,13 +341,13 @@ class FarField(Condition):
         self.energy = energy
 
 
-class Outflow(Condition):
+class Outflow(_Boundary):
 
     def __init__(self, pressure) -> None:
         self.pressure = CF(pressure)
 
 
-class NRBC_Outflow(Condition):
+class NRBC_Outflow(_Boundary):
     class TYPE(enum.Enum):
         PERFECT = "perfect"
         PARTIALLY = "partially"
@@ -363,7 +371,7 @@ class NRBC_Outflow(Condition):
         self.norm_visc_flux = normal_viscous_fluxes
 
 
-class NRBC_Inflow(Condition):
+class NRBC_Inflow(_Boundary):
 
     class TYPE(enum.Enum):
         PERFECT = "perfect"
@@ -405,22 +413,22 @@ class NRBC_Inflow(Condition):
         self.norm_visc_flux = normal_viscous_fluxes
 
 
-class InviscidWall(Condition):
+class InviscidWall(_Boundary):
     ...
 
 
-class IsothermalWall(Condition):
+class IsothermalWall(_Boundary):
     def __init__(self, temperature) -> None:
         self.temperature = CF(temperature)
 
 
-class AdiabaticWall(Condition):
+class AdiabaticWall(_Boundary):
 
     def __init__(self) -> None:
         pass
 
 
-class Initial(Condition):
+class _Domain(Condition):
 
     def __init__(self,
                  density: float,
@@ -444,7 +452,15 @@ class Initial(Condition):
         self.energy = energy
 
 
-class SpongeLayer(Condition):
+class Initial(_Domain):
+    ...
+
+
+class Perturbation(_Domain):
+    ...
+
+
+class SpongeLayer(_Domain):
 
     def __init__(self,
                  weight_function: CF,
@@ -456,23 +472,12 @@ class SpongeLayer(Condition):
                  weight_function_order: int = 3,
                  gamma: float = 1.4) -> None:
 
-        density = CF(density)
-        velocity = CF(velocity)
-
-        pressure, temperature, energy = convert_to_pressure_temperature_energy(
-            density, velocity, temperature, pressure, energy, gamma)
-
+        super().__init__(density, velocity, temperature, pressure, energy, gamma)
         self.weight_function = weight_function
         self.weight_function_order = weight_function_order
-        self.density = density
-        self.velocity = velocity
-        self.momentum = density * velocity
-        self.temperature = temperature
-        self.pressure = pressure
-        self.energy = energy
 
 
-class PML(Condition):
+class PML(_Domain):
     ...
 
 
