@@ -1,5 +1,6 @@
 from __future__ import annotations
 from .utils import is_notebook, Formatter
+from .configuration import SolverConfiguration
 
 import pickle
 import logging
@@ -24,7 +25,6 @@ if TYPE_CHECKING:
     from ngsolve import Mesh
     from pandas import DataFrame
     from .sensor import Sensor
-    from .configuration import SolverConfiguration
     from .hdg_solver import CompressibleHDGSolver
     from .formulations import Formulation
     from ngsolve import GridFunction
@@ -124,11 +124,14 @@ class Loader:
         return mesh
 
     def load_configuration(self, name: str = "config") -> SolverConfiguration:
+        solver_configuration = SolverConfiguration()
         file = self.main_path.joinpath(name + '.pickle')
+
         with file.open("rb") as openfile:
-            config = pickle.load(openfile)
-        DreAmLogger.set_time_step_digit(config.time_step.Get())
-        return config
+            dictionary = pickle.load(openfile)
+
+        solver_configuration.update(dictionary)
+        return solver_configuration
 
     def load_state(self, gfu: GridFunction, name: str = "state") -> None:
         file = self.state_path.joinpath(name)
@@ -166,9 +169,10 @@ class SolverLoader(Loader):
         self.solver = solver
         super().__init__(solver.directory_tree)
 
-    def load_configuration(self, name: str = "config") -> None:
+    def load_configuration(self, name: str = "config") -> SolverConfiguration:
         config = super().load_configuration(name)
         self.solver.solver_configuration.update(config)
+        return self.solver.solver_configuration
 
     def load_state(self, gfu: GridFunction = None, name: str = "state") -> None:
         formulation = self.solver.formulation
@@ -288,8 +292,10 @@ class Saver:
 
     def _save_pickle_configuration(self, configuration: SolverConfiguration, name: str, suffix: str = ".pickle"):
         file = self.main_path.joinpath(name + suffix)
+        dictionary = configuration.to_dict()
+
         with file.open("wb") as openfile:
-            pickle.dump(configuration, openfile)
+            pickle.dump(dictionary, openfile)
 
     def __repr__(self) -> str:
         return repr(self.tree)
@@ -310,11 +316,14 @@ class SolverSaver(Saver):
         super().save_mesh(mesh, name, suffix)
 
     def save_configuration(self,
+                           configuration: SolverConfiguration = None,
                            name: str = "config",
                            comment: Optional[str] = None,
                            save_pickle: bool = True,
                            save_txt: bool = True):
-        super().save_configuration(self.solver.solver_configuration, name, comment, save_pickle, save_txt)
+        if configuration is None:
+            configuration = self.solver.solver_configuration
+        super().save_configuration(configuration, name, comment, save_pickle, save_txt)
 
     def save_state(self, gfu: GridFunction = None, name: str = "state"):
         if gfu is None:

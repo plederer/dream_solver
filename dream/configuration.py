@@ -1,13 +1,16 @@
 from __future__ import annotations
 from enum import Enum
 from ngsolve import Parameter
-from typing import Optional
+from typing import Optional, Any
 
 from . import io
 from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
 from .time_schemes import TimeSchemes, TimePeriod
 from .viscosity import DynamicViscosity
 from .utils.formatter import Formatter
+
+import logging
+logger = logging.getLogger('DreAm.Configuration')
 
 
 class Simulation(Enum):
@@ -16,6 +19,33 @@ class Simulation(Enum):
 
 
 class SolverConfiguration:
+
+    __slots__ = ("_formulation",
+                 "_dynamic_viscosity",
+                 "_mixed_method",
+                 "_riemann_solver",
+                 "_Mach_number",
+                 "_Reynolds_number",
+                 "_Prandtl_number",
+                 "_heat_capacity_ratio",
+                 "_farfield_temperature",
+                 "_order",
+                 "_static_condensation",
+                 "_bonus_int_order_vol",
+                 "_bonus_int_order_bnd",
+                 "_periodic",
+                 "_simulation",
+                 "_time_scheme",
+                 "_time_step",
+                 "_time_period",
+                 "_time_step_max",
+                 "_compile_flag",
+                 "_max_iterations",
+                 "_convergence_criterion",
+                 "_damping_factor",
+                 "_linear_solver",
+                 "_save_state",
+                 "_info")
 
     def __init__(self) -> None:
 
@@ -32,28 +62,30 @@ class SolverConfiguration:
         self._heat_capacity_ratio = Parameter(1.4)
         self._farfield_temperature = Parameter(293.15)
 
-        # Solver options
+        # Finite Element settings
+        self.order = 2
+        self.static_condensation = True
+        self.bonus_int_order_vol = 0
+        self.bonus_int_order_bnd = 0
+        self.periodic = False
+
+        # Solution routine settings
         self.simulation = "transient"
         self.time_scheme = "IE"
         self._time_step = Parameter(1e-4)
         self._time_period = TimePeriod(0, 1, self._time_step)
         self.time_step_max = 1
-        self.order = 2
-        self.static_condensation = True
-        self.bonus_int_order_vol = 0
-        self.bonus_int_order_bnd = 0
         self.compile_flag = True
         self.max_iterations = 10
         self.convergence_criterion = 1e-8
         self.damping_factor = 1
         self.linear_solver = "pardiso"
 
-        # Domain properties
-        self.periodic = False
-
         # Output options
-        self.save_iteration = False
         self.save_state = False
+
+        # Simulation Info
+        self._info = {}
 
     @property
     def Reynolds_number(self) -> Parameter:
@@ -153,7 +185,7 @@ class SolverConfiguration:
 
     @property
     def dynamic_viscosity(self) -> DynamicViscosity:
-        return self._mu
+        return self._dynamic_viscosity
 
     @dynamic_viscosity.setter
     def dynamic_viscosity(self, dynamic_viscosity: str):
@@ -162,7 +194,7 @@ class SolverConfiguration:
             dynamic_viscosity = dynamic_viscosity.lower()
 
         try:
-            self._mu = DynamicViscosity(dynamic_viscosity)
+            self._dynamic_viscosity = DynamicViscosity(dynamic_viscosity)
 
         except ValueError:
             options = [enum.value for enum in DynamicViscosity]
@@ -347,9 +379,47 @@ class SolverConfiguration:
     def linear_solver(self, linear_solver: str):
         self._linear_solver = str(linear_solver).lower()
 
-    def update(self, configuration: SolverConfiguration):
-        for key, value in vars(configuration).items():
-            setattr(self, key[1:], value)
+    @property
+    def periodic(self) -> bool:
+        return self._periodic
+
+    @periodic.setter
+    def periodic(self, value: bool):
+        self._periodic = bool(value)
+
+    @property
+    def save_state(self) -> bool:
+        return self._save_state
+
+    @save_state.setter
+    def save_state(self, value: bool):
+        self._save_state = bool(value)
+
+    @property
+    def info(self) -> dict[str, Any]:
+        """ Info returns a dictionary reserved for the storage of user defined parameters. """
+        return self._info
+
+    @info.setter
+    def info(self, info: dict[str, Any]):
+        self._info.update(info)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {key: getattr(self, key) for key in self.__slots__}
+
+    def update(self, configuration: dict[str, Any]):
+        if isinstance(configuration, SolverConfiguration):
+            configuration = configuration.to_dict()
+
+        for key, value in configuration.items():
+            if key.startswith("_"):
+                key = key[1:]
+            try:
+                setattr(self, key, value)
+            except AttributeError:
+                msg = f"Trying to set '{key}' attribute in configuration. "
+                msg += "It is either deprecated or not supported"
+                logger.warning(msg)
 
     def __repr__(self) -> str:
 
@@ -357,18 +427,18 @@ class SolverConfiguration:
         formatter.header('Solver Configuration').newline()
         formatter.subheader("Formulation Settings").newline()
         formatter.entry("Formulation", self._formulation.name)
-        formatter.entry("Viscosity", self._mu.name)
+        formatter.entry("Viscosity", self._dynamic_viscosity.name)
         formatter.entry("Mixed Method", self._mixed_method.name)
         formatter.entry("Riemann Solver", self.riemann_solver.name)
         formatter.newline()
 
         formatter.subheader('Flow Settings').newline()
         formatter.entry("Mach Number", self.Mach_number.Get())
-        if self._mu is not DynamicViscosity.INVISCID:
+        if self._dynamic_viscosity is not DynamicViscosity.INVISCID:
             formatter.entry("Reynolds Number", self.Reynolds_number.Get())
             formatter.entry("Prandtl Number", self.Prandtl_number.Get())
         formatter.entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
-        if self._mu is DynamicViscosity.SUTHERLAND:
+        if self._dynamic_viscosity is DynamicViscosity.SUTHERLAND:
             formatter.entry("Farfield Temperature", self.farfield_temperature.Get())
         formatter.newline()
 
@@ -377,6 +447,7 @@ class SolverConfiguration:
         formatter.entry('Static Condensation', str(self._static_condensation))
         formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
         formatter.entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
+        formatter.entry('Periodic', str(self._periodic))
         formatter.newline()
 
         formatter.subheader('Solution Routine Settings').newline()
@@ -395,6 +466,21 @@ class SolverConfiguration:
 
         formatter.subheader('Various Settings').newline()
         formatter.entry('Compile Flag', str(self._compile_flag))
+        formatter.entry('Save State', str(self._save_state))
         formatter.newline()
+
+        if self.info:
+            formatter.subheader('Simulation Info').newline()
+
+            for key, value in self.info.items():
+                if hasattr(value, '__str__'):
+                    value = str(value)
+                elif hasattr(value, '__repr__'):
+                    value = repr(value)
+                else:
+                    value = f"Type: {type(value)} not displayable"
+
+                formatter.entry(str(key), value)
+            formatter.newline()
 
         return formatter.output
