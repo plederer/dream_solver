@@ -188,11 +188,11 @@ class SolverLoader(Loader):
     def load_state_time_sequence(self,
                                  name: str = "transient",
                                  sleep_time: float = 0,
-                                 load_step: int = 1) -> Generator[float, None, None]:
+                                 load_step: int = 1, blocking: bool = False) -> Generator[float, None, None]:
         cfg = self.solver.solver_configuration
         for t in cfg.time_period.range(load_step):
             self.load_state(name=f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
-            self.solver.drawer.redraw()
+            self.solver.drawer.redraw(blocking)
             time.sleep(sleep_time)
             yield t
 
@@ -376,10 +376,10 @@ class Drawer:
         if momentum:
             self.draw_momentum()
 
-    def redraw(self):
+    def redraw(self, blocking: bool = False):
         for scene in self._scenes:
-            scene.Redraw()
-        Redraw()
+            scene.Redraw(blocking)
+        Redraw(blocking)
 
     def draw_density(self, label: str = "rho", **kwargs):
         scene = Draw(self.formulation.density(), self.formulation.mesh, label, **kwargs)
