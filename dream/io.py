@@ -378,7 +378,7 @@ class Drawer:
 
     def redraw(self, blocking: bool = False):
         for scene in self._scenes:
-            scene.Redraw(blocking)
+            scene.Redraw()
         Redraw(blocking)
 
     def draw_density(self, label: str = "rho", **kwargs):
