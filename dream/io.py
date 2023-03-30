@@ -8,7 +8,7 @@ import logging
 from math import log10, ceil
 from pathlib import Path
 from datetime import datetime
-from ngsolve import CF, Redraw
+from ngsolve import CF, Redraw, VTKOutput
 from typing import TYPE_CHECKING, Optional, Generator
 import time
 
@@ -36,12 +36,14 @@ class ResultsDirectoryTree:
                  directory_name: str = "results",
                  state_directory_name: str = "states",
                  sensor_directory_name: str = "sensor",
+                 vtk_directory_name: str = "vtk",
                  parent_path: Optional[Path] = None) -> None:
 
         self.parent_path = parent_path
         self.directory_name = directory_name
         self.state_directory_name = state_directory_name
         self.sensor_directory_name = sensor_directory_name
+        self.vtk_directory_name = vtk_directory_name
 
     @property
     def main_path(self) -> Path:
@@ -56,25 +58,29 @@ class ResultsDirectoryTree:
         return self.main_path.joinpath(self.sensor_directory_name)
 
     @property
+    def vtk_path(self) -> Path:
+        return self.main_path.joinpath(self.vtk_directory_name)
+
+    @property
     def parent_path(self) -> Path:
         return self._parent_path
 
     @parent_path.setter
-    def parent_path(self, base_path: Path):
+    def parent_path(self, parent_path: Path):
 
-        if base_path is None:
+        if parent_path is None:
             self._parent_path = Path.cwd()
 
-        elif isinstance(base_path, (str, Path)):
-            base_path = Path(base_path)
+        elif isinstance(parent_path, (str, Path)):
+            parent_path = Path(parent_path)
 
-            if not base_path.exists():
-                raise ValueError(f"Path {base_path} does not exist!")
+            if not parent_path.exists():
+                raise ValueError(f"Path {parent_path} does not exist!")
 
-            self._parent_path = base_path
+            self._parent_path = parent_path
 
         else:
-            raise ValueError(f"Type {type(base_path)} not supported!")
+            raise ValueError(f"Type {type(parent_path)} not supported!")
 
     def __repr__(self) -> str:
         formatter = Formatter()
@@ -115,6 +121,13 @@ class Loader:
         if not sensor_path.exists():
             raise Exception(f"Can not load from {sensor_path}, as the path does not exist.")
         return sensor_path
+
+    @property
+    def vtk_path(self) -> Path:
+        vtk_path = self.tree.vtk_path
+        if not vtk_path.exists():
+            raise Exception(f"Can not load from {vtk_path}, as the path does not exist.")
+        return vtk_path
 
     def load_mesh(self, name: str = "mesh") -> Mesh:
         file = self.main_path.joinpath(name + '.pickle')
@@ -203,6 +216,7 @@ class Saver:
         if tree is None:
             tree = ResultsDirectoryTree()
         self.tree = tree
+        self._vtk = None
 
     @property
     def main_path(self) -> Path:
@@ -224,6 +238,26 @@ class Saver:
         if not sensor_path.exists():
             sensor_path.mkdir(parents=True)
         return sensor_path
+
+    @property
+    def vtk_path(self):
+        vtk_path = self.tree.vtk_path
+        if not vtk_path.exists():
+            vtk_path.mkdir(parents=True)
+        return vtk_path
+
+    def initialize_vtk_handler(self,
+                               fields: dict[str, GridFunction],
+                               mesh: Mesh,
+                               filename: str = "vtk",
+                               subdivision: int = 2,
+                               **kwargs) -> None:
+
+        self._vtk = VTKOutput(ma=mesh,
+                              coefs=list(fields.values()),
+                              names=list(fields.keys()),
+                              filename=str(self.vtk_path.joinpath(filename)),
+                              subdivision=subdivision, **kwargs)
 
     def save_mesh(self, mesh: Mesh,
                   name: str = "mesh",
@@ -263,6 +297,11 @@ class Saver:
             file = self.sensor_path.joinpath(f"{sensor.name}.pickle")
             with file.open("wb") as openfile:
                 pickle.dump(df, openfile)
+
+    def save_vtk(self, time: float = -1, region=None, **kwargs) -> Path:
+        if self._vtk is None:
+            raise ValueError("Call 'saver.initialize_vtk_handler()' before saving vtk")
+        return self._vtk.Do(time, drawelems=region, **kwargs)
 
     def _save_txt_configuration(self, configuration: SolverConfiguration, name: str, comment: Optional[str] = None):
 
@@ -306,6 +345,13 @@ class SolverSaver(Saver):
     def __init__(self, solver: CompressibleHDGSolver):
         self.solver = solver
         super().__init__(solver.directory_tree)
+
+    def initialize_vtk_handler(self,
+                               fields: dict[str, GridFunction],
+                               filename: str = "vtk",
+                               subdivision: int = 2,
+                               **kwargs) -> None:
+        super().initialize_vtk_handler(fields, self.solver.mesh, filename, subdivision, **kwargs)
 
     def save_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> None:
         mesh = self.solver.formulation.mesh
