@@ -207,7 +207,7 @@ class SolverLoader(Loader):
             self.load_state(name=f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
             self.solver.drawer.redraw(blocking)
             time.sleep(sleep_time)
-            yield t
+            yield round(t, DreAmLogger._time_step_digit)
 
 
 class Saver:
