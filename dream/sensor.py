@@ -135,6 +135,19 @@ class Sensor(abc.ABC):
         else:
             logger.warning(f"Can not sample '{name}', since no components have been selected!")
 
+    def sample_velocity(self, components: Sequence = "x|y", name: str = 'velocity'):
+
+        components = VectorComponents.from_pattern(components)
+
+        if components:
+            def calculate_velocity():
+                return self._evaluate_vector_CF(self.formulation.velocity(), components)
+
+            sample = Sample(name, calculate_velocity, components)
+            self._sample_dictionary[name] = sample
+        else:
+            logger.warning(f"Can not sample '{name}', since no components have been selected!")
+
     def sample_energy(self, name: str = 'energy'):
 
         def calculate_energy():
@@ -263,11 +276,13 @@ class BoundarySensor(Sensor):
 
     def __init__(self,
                  boundaries: str,
+                 bonus_integration_order: int = 5,
                  name: Optional[str] = "Sensor") -> None:
 
         if isinstance(boundaries, str):
             boundaries = boundaries.split("|")
         super().__init__(boundaries, name)
+        self.bonus_integration_order = bonus_integration_order
 
     def sample_forces(self, components: Sequence = 'x|y', scale=1, name: str = 'forces'):
 
@@ -338,7 +353,7 @@ class BoundarySensor(Sensor):
 
     def _evaluate_scalar_CF(self, cf: CF) -> np.ndarray:
         mesh = self.formulation.mesh
-        order = self.formulation.cfg.order + 5
+        order = self.formulation.cfg.order + self.bonus_integration_order
 
         cf = BoundaryFromVolumeCF(cf)
 
