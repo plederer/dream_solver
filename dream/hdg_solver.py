@@ -310,7 +310,7 @@ class CompressibleHDGSolver:
             self._solve_timestep(time_step=t)
 
             for sensor in self.sensors:
-                sensor.take_single_sample()
+                sensor.take_single_sample(t)
 
             if self.solver_configuration.save_state:
                 if idx % save_state_every_num_step == 0:

@@ -283,14 +283,11 @@ class Saver:
         file = self.state_path.joinpath(name)
         gfu.Save(str(file))
 
-    def save_sensor_data(self,
-                         sensor: Sensor,
-                         time_period=None,
-                         save_dataframe: bool = True):
+    def save_sensor_data(self, sensor: Sensor, save_dataframe: bool = True):
 
         file = self.sensor_path.joinpath(f"{sensor.name}.csv")
 
-        df = sensor.convert_samples_to_dataframe(time_period)
+        df = sensor.to_dataframe_all()
         df.to_csv(file)
 
         if save_dataframe:
@@ -381,9 +378,9 @@ class SolverSaver(Saver):
         for time_level, gfu in gfus.items():
             super().save_state(gfu, f"{name}_{time_level}")
 
-    def save_sensor_data(self, time_period=None, save_dataframe: bool = True):
+    def save_sensor_data(self, save_dataframe: bool = True):
         for sensor in self.solver.sensors:
-            super().save_sensor_data(sensor, time_period, save_dataframe)
+            super().save_sensor_data(sensor, save_dataframe)
 
 
 class Drawer:

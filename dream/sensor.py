@@ -4,8 +4,8 @@ import abc
 import dataclasses
 import numpy as np
 import pandas as pd
-from typing import TYPE_CHECKING, Optional, Callable
 
+from typing import *
 from ngsolve import *
 from .viscosity import DynamicViscosity
 
@@ -13,19 +13,76 @@ if TYPE_CHECKING:
     from .formulations import Formulation
     from .hdg_solver import CompressibleHDGSolver
 
+import logging
+logger = logging.getLogger('DreAm.Sensor')
+
+
+class ScalarComponent(NamedTuple):
+    VALUE: bool = True
+
+    @property
+    def label(self) -> list[str]:
+        return ['']
+
+    def __bool__(self) -> bool:
+        return self.VALUE
+
+    def __len__(self) -> int:
+        return 1
+
+
+class VectorComponents(NamedTuple):
+    X: bool = False
+    Y: bool = False
+    Z: bool = False
+    MAG: bool = False
+
+    @property
+    def indices(self) -> list[int]:
+        return [index for index, flag in enumerate([self.X, self.Y, self.Z]) if flag]
+
+    @property
+    def label(self) -> list[str]:
+        return [label for label, flag in zip(['X', 'Y', 'Z', 'MAG'], self) if flag]
+
+    @classmethod
+    def from_pattern(cls, components: Sequence[str]):
+        flags = {'X': False, 'Y': False, 'Z': False, 'MAG': False}
+
+        if isinstance(components, str):
+            components = components.split("|")
+
+        for component in components:
+            component = str(component)
+            try:
+                if not flags[component.upper()]:
+                    flags[component.upper()] = True
+            except KeyError:
+                logger.warning(f"Component {component} is not valid! Possible alternatives: {list(flags.keys())}")
+
+        return cls(**flags)
+
+    def __bool__(self):
+        return self.X | self.Y | self.Z | self.MAG
+
+    def __len__(self):
+        return len(self.label)
+
 
 @dataclasses.dataclass
 class Sample:
     name: str
     func: Callable[[Formulation]]
-    values: list = dataclasses.field(default_factory=list)
-    components: tuple[str, ...] = ("",)
+    components: ScalarComponent = ScalarComponent()
+    data: dict[int, np.ndarray] = dataclasses.field(default_factory=dict)
 
-    def take(self) -> None:
-        self.values.append(self.func())
+    def take(self, key: Optional[float] = None) -> None:
+        if key is None:
+            key = len(self.data)
+        self.data[key] = self.func()
 
-    def __call__(self) -> None:
-        self.take()
+    def __call__(self, time: Optional[float] = None) -> None:
+        self.take(time)
 
     def __str__(self) -> str:
         return self.name
@@ -33,9 +90,10 @@ class Sample:
 
 class Sensor(abc.ABC):
 
-    def __init__(self, name: Optional[str] = "Sensor") -> None:
+    def __init__(self, location: list[Any], name: Optional[str] = "Sensor") -> None:
 
         self.name = name
+        self._location = location
         self._sample_dictionary: dict[str, Sample] = {}
         self._formulation = None
 
@@ -45,10 +103,13 @@ class Sensor(abc.ABC):
             raise ValueError("Assign Solver to Sensor!")
         return self._formulation
 
-    def take_single_sample(self):
+    @abc.abstractmethod
+    def _evaluate_scalar_CF(self, cf: CF): ...
+
+    def take_single_sample(self, time: Optional[float] = None):
 
         for sample in self._sample_dictionary.values():
-            sample.take()
+            sample.take(time)
 
     def assign_solver(self, solver: CompressibleHDGSolver):
         self._formulation = solver.formulation
@@ -56,23 +117,28 @@ class Sensor(abc.ABC):
     def sample_density(self, name: str = 'density'):
 
         def calculate_density():
-            return self._evaluate_CF(self.formulation.density())
+            return self._evaluate_scalar_CF(self.formulation.density())
 
         sample = Sample(name, calculate_density)
         self._sample_dictionary[name] = sample
 
-    def sample_momentum(self, name: str = 'momentum'):
+    def sample_momentum(self, components: Sequence = "x|y", name: str = 'momentum'):
 
-        def calculate_momentum():
-            return self._evaluate_CF(self.formulation.momentum())
+        components = VectorComponents.from_pattern(components)
 
-        sample = Sample(name, calculate_momentum, components=('x', 'y', 'z'))
-        self._sample_dictionary[name] = sample
+        if components:
+            def calculate_momentum():
+                return self._evaluate_vector_CF(self.formulation.momentum(), components)
+
+            sample = Sample(name, calculate_momentum, components)
+            self._sample_dictionary[name] = sample
+        else:
+            logger.warning(f"Can not sample '{name}', since no components have been selected!")
 
     def sample_energy(self, name: str = 'energy'):
 
         def calculate_energy():
-            return self._evaluate_CF(self.formulation.energy())
+            return self._evaluate_scalar_CF(self.formulation.energy())
 
         sample = Sample(name, calculate_energy)
         self._sample_dictionary[name] = sample
@@ -80,7 +146,7 @@ class Sensor(abc.ABC):
     def sample_pressure(self, name: str = 'pressure'):
 
         def calculate_pressure():
-            return self._evaluate_CF(self.formulation.pressure())
+            return self._evaluate_scalar_CF(self.formulation.pressure())
 
         sample = Sample(name, calculate_pressure)
         self._sample_dictionary[name] = sample
@@ -89,7 +155,7 @@ class Sensor(abc.ABC):
 
         def calculate_acoustic_pressure():
             acoustic_pressure = self.formulation.pressure() - mean_pressure
-            return self._evaluate_CF(acoustic_pressure)
+            return self._evaluate_scalar_CF(acoustic_pressure)
 
         sample = Sample(name, calculate_acoustic_pressure)
         self._sample_dictionary[name] = sample
@@ -98,19 +164,27 @@ class Sensor(abc.ABC):
 
         def calculate_acoustic_density():
             acoustic_density = self.formulation.density() - mean_density
-            return self._evaluate_CF(acoustic_density)
+            return self._evaluate_scalar_CF(acoustic_density)
 
         sample = Sample(name, calculate_acoustic_density)
         self._sample_dictionary[name] = sample
 
-    def sample_particle_velocity(self, mean_velocity: tuple[float, ...], name: str = 'particle_velocity'):
+    def sample_particle_velocity(self,
+                                 mean_velocity: tuple[float, ...],
+                                 components: str = 'x|y',
+                                 name: str = 'particle_velocity'):
 
-        def calculate_particle_velocity():
-            particle_velocity = self.formulation.velocity() - CF(mean_velocity)
-            return self._evaluate_CF(particle_velocity)
+        components = VectorComponents.from_pattern(components)
 
-        sample = Sample(name, calculate_particle_velocity, components=('x', 'y', 'z'))
-        self._sample_dictionary[name] = sample
+        if components:
+            def calculate_particle_velocity():
+                particle_velocity = self.formulation.velocity() - CF(mean_velocity)
+                return self._evaluate_vector_CF(particle_velocity, components)
+
+            sample = Sample(name, calculate_particle_velocity, components)
+            self._sample_dictionary[name] = sample
+        else:
+            logger.warning(f"Can not sample '{name}', since no components have been selected!")
 
     def sample_pressure_coefficient(self,
                                     reference_pressure: float,
@@ -121,7 +195,7 @@ class Sensor(abc.ABC):
         def calculate_pressure_coefficient():
             pressure = self.formulation.pressure()
             cp = (pressure - reference_pressure)/(reference_density * reference_velocity**2 / 2)
-            return self._evaluate_CF(cp)
+            return self._evaluate_scalar_CF(cp)
 
         sample = Sample(name, calculate_pressure_coefficient)
         self._sample_dictionary[name] = sample
@@ -129,16 +203,34 @@ class Sensor(abc.ABC):
     def sample_voritcity(self, name: str = 'vorticity'):
 
         def calculate_vorticity():
-            return self._evaluate_CF(self.formulation.vorticity())
+            return self._evaluate_scalar_CF(self.formulation.vorticity())
 
         sample = Sample(name, calculate_vorticity)
         self._sample_dictionary[name] = sample
 
-    @abc.abstractmethod
-    def _evaluate_CF(self, cf: CF): ...
+    def _evaluate_vector_CF(self, cf: CF, components: VectorComponents):
+        values = self._evaluate_scalar_CF(cf)
+        output = values[:, components.indices]
+        if components.MAG:
+            magnitude = np.sqrt(np.sum(np.square(values), axis=1))
+            output = np.column_stack([output, magnitude])
+        return output.T.flatten()
 
-    @abc.abstractmethod
-    def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame: ...
+    def to_dataframe(self, name: str) -> pd.DataFrame:
+        sample = self._sample_dictionary[name]
+        array = np.array(list(sample.data.values()))
+        index = np.array(list(sample.data.keys()))
+        columns = [(sample.name, dir, loc) for dir in sample.components.label for loc in self._location]
+        columns = pd.MultiIndex.from_tuples(columns, names=["quantity", "component", "location"])
+        df = pd.DataFrame(array, columns=columns, index=index)
+        df.sort_index(level=0, axis=1, inplace=True)
+        return df
+
+    def to_dataframe_all(self) -> pd.DataFrame:
+        df = [self.to_dataframe(name) for name in self._sample_dictionary]
+        df = pd.concat(df, axis=1)
+        df.sort_index(level=0, axis=1, inplace=True)
+        return df
 
 
 class PointSensor(Sensor):
@@ -160,41 +252,11 @@ class PointSensor(Sensor):
     def __init__(self,
                  points: list[tuple[float, ...]],
                  name: Optional[str] = "Sensor") -> None:
-        self.points = points
-        super().__init__(name)
+        super().__init__(points, name)
 
-    def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame:
-
-        numpy_2d_arrays = []
-        columns = []
-        for sample in self._sample_dictionary.values():
-            array = np.atleast_3d(sample.values)
-            n_samples, n_loc, n_dir = array.shape
-            numpy_2d_arrays.append(array.reshape((n_samples, n_loc * n_dir)))
-
-            columns += [(sample.name, loc, dir) for loc in self.points for dir in sample.components[:n_dir]]
-
-        columns = pd.MultiIndex.from_tuples(columns, names=["quantity", "point", "dir"])
-        df = pd.DataFrame(np.hstack(numpy_2d_arrays), columns=columns)
-
-        if time_index is not None:
-            index = pd.Index(time_index, name="time")
-            df.set_index(index, inplace=True)
-
-        df.sort_index(level=0, axis=1, inplace=True)
-
-        return df
-
-    def _evaluate_CF(self, cf: CF):
+    def _evaluate_scalar_CF(self, cf: CF) -> np.ndarray:
         mesh = self.formulation.mesh
-        return tuple(cf(mesh(*vertex)) for vertex in self.points)
-
-    @staticmethod
-    def vertices_from_boundaries(boundaries: str, mesh: Mesh):
-        if isinstance(boundaries, str):
-            boundaries = boundaries.split("|")
-        regions = tuple(mesh.Boundaries(boundary) for boundary in boundaries)
-        return tuple(set(mesh[v].point for region in regions for e in region.Elements() for v in e.vertices))
+        return np.array([cf(mesh(*vertex)) for vertex in self._location])
 
 
 class BoundarySensor(Sensor):
@@ -205,11 +267,11 @@ class BoundarySensor(Sensor):
 
         if isinstance(boundaries, str):
             boundaries = boundaries.split("|")
-        self.boundaries = boundaries
+        super().__init__(boundaries, name)
 
-        super().__init__(name)
+    def sample_forces(self, components: Sequence = 'x|y', scale=1, name: str = 'forces'):
 
-    def sample_forces(self, scale=1, name: str = 'forces'):
+        components = VectorComponents.from_pattern(components)
 
         def calculate_forces():
 
@@ -219,9 +281,9 @@ class BoundarySensor(Sensor):
                 stress += self.formulation.deviatoric_stress_tensor()
 
             normal_stress = scale * stress * self.formulation.normal
-            return self._evaluate_CF(normal_stress)
+            return self._evaluate_vector_CF(normal_stress, components)
 
-        sample = Sample(name, calculate_forces, components=('x', 'y', 'z'))
+        sample = Sample(name, calculate_forces, components)
         self._sample_dictionary[name] = sample
 
     def sample_drag_coefficient(self,
@@ -244,7 +306,7 @@ class BoundarySensor(Sensor):
             drag_coefficient = InnerProduct(normal_stress, drag_direction)
             drag_coefficient *= 2/(reference_density * reference_velocity**2 * reference_area)
 
-            return self._evaluate_CF(drag_coefficient)
+            return self._evaluate_scalar_CF(drag_coefficient)
 
         sample = Sample(name, calculate_drag_coefficient)
         self._sample_dictionary[name] = sample
@@ -269,39 +331,16 @@ class BoundarySensor(Sensor):
             lift_coefficient = InnerProduct(normal_stress, lift_direction)
             lift_coefficient *= 2/(reference_density * reference_velocity**2 * reference_area)
 
-            return self._evaluate_CF(lift_coefficient)
+            return self._evaluate_scalar_CF(lift_coefficient)
 
         sample = Sample(name, calculate_lift_coefficient)
         self._sample_dictionary[name] = sample
 
-    def _evaluate_CF(self, cf: CF):
+    def _evaluate_scalar_CF(self, cf: CF) -> np.ndarray:
         mesh = self.formulation.mesh
         order = self.formulation.cfg.order + 5
 
         cf = BoundaryFromVolumeCF(cf)
 
-        regions = tuple(mesh.Boundaries(boundary) for boundary in self.boundaries)
-        return tuple(Integrate(cf, mesh, definedon=region, order=order) for region in regions)
-
-    def convert_samples_to_dataframe(self, time_index=None) -> pd.DataFrame:
-
-        numpy_2d_arrays = []
-        columns = []
-        for sample in self._sample_dictionary.values():
-
-            array = np.atleast_3d(sample.values)
-            n_samples, n_loc, n_dir = array.shape
-            numpy_2d_arrays.append(array.reshape((n_samples, n_loc * n_dir)))
-
-            columns += [(sample.name, loc, dir) for loc in self.boundaries for dir in sample.components[:n_dir]]
-
-        columns = pd.MultiIndex.from_tuples(columns, names=["quantity", "boundary", "dir"])
-        df = pd.DataFrame(np.hstack(numpy_2d_arrays), columns=columns)
-
-        if time_index is not None:
-            index = pd.Index(time_index, name="time")
-            df.set_index(index, inplace=True)
-
-        df.sort_index(level=0, axis=1, inplace=True)
-
-        return df
+        regions = tuple(mesh.Boundaries(boundary) for boundary in self._location)
+        return np.array([Integrate(cf, mesh, definedon=region, order=order) for region in regions])
