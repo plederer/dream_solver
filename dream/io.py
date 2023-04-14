@@ -1,6 +1,7 @@
 from __future__ import annotations
 from .utils import is_notebook, Formatter
 from .configuration import SolverConfiguration
+from .sensor import Sensor
 
 import pickle
 import logging
@@ -24,7 +25,6 @@ else:
 if TYPE_CHECKING:
     from ngsolve import Mesh
     from pandas import DataFrame
-    from .sensor import Sensor
     from .hdg_solver import CompressibleHDGSolver
     from .formulations import Formulation
     from ngsolve import GridFunction
@@ -378,8 +378,16 @@ class SolverSaver(Saver):
         for time_level, gfu in gfus.items():
             super().save_state(gfu, f"{name}_{time_level}")
 
-    def save_sensor_data(self, save_dataframe: bool = True):
-        for sensor in self.solver.sensors:
+    def save_sensor_data(self, sensor: Optional[Sensor] = None, save_dataframe: bool = True):
+
+        if sensor is None:
+            sensors = self.solver.sensors
+        elif isinstance(sensor, Sensor):
+            sensors = [sensor]
+        else:
+            sensors = list(sensor)
+
+        for sensor in sensors:
             super().save_sensor_data(sensor, save_dataframe)
 
 
