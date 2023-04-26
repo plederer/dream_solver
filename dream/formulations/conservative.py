@@ -1,149 +1,166 @@
 from __future__ import annotations
-from .interface import Formulation, MixedMethods, GridFunctionComponents
 from ngsolve import *
+from typing import Optional, NamedTuple
+
+from .interface import Formulation, MixedMethods, VectorIndices, TensorIndices
+
+
+class Indices(NamedTuple):
+    DENSITY: Optional[int] = None
+    MOMENTUM: Optional[VectorIndices] = None
+    ENERGY: Optional[int] = None
+    TEMPERATURE_GRADIENT: Optional[VectorIndices] = None
+    STRAIN: Optional[TensorIndices] = None
 
 
 class ConservativeFormulation(Formulation):
 
-    def get_gridfunction_components(self, gfu: GridFunction):
-        return GridFunctionComponents(*[gfu.components[i] for i in range(len(self.fes.components))])
+    _indices: Indices
 
-    def density(self, U):
+    def density(self, U: Optional[CF] = None):
+        U = self._if_none_replace_with_gfu(U)
         return U[self._indices.DENSITY]
 
-    def momentum(self, U):
+    def momentum(self, U: Optional[CF] = None):
+        U = self._if_none_replace_with_gfu(U)
         return CF(tuple(U[index] for index in self._indices.MOMENTUM))
 
-    def energy(self, U):
+    def energy(self, U: Optional[CF] = None):
+        U = self._if_none_replace_with_gfu(U)
         return U[self._indices.ENERGY]
 
-    def velocity(self, U):
-
+    def velocity(self, U: Optional[CF] = None):
         rho = self.density(U)
         rho_u = self.momentum(U)
 
         return rho_u/rho
 
-    def specific_energy(self, U):
+    def specific_energy(self, U: Optional[CF] = None):
 
         rho = self.density(U)
         rho_E = self.energy(U)
 
         return rho_E/rho
 
-    def kinetic_energy(self, U):
+    def kinetic_energy(self, U: Optional[CF] = None):
         rho = self.density(U)
         rho_u = self.momentum(U)
         return InnerProduct(rho_u, rho_u)/(2 * rho)
 
-    def specific_kinetic_energy(self, U):
+    def specific_kinetic_energy(self, U: Optional[CF] = None):
         rho = self.density(U)
         rho_Ek = self.kinetic_energy(U)
         return rho_Ek/rho
 
-    def inner_energy(self, U):
+    def inner_energy(self, U: Optional[CF] = None):
         rho_Ek = self.kinetic_energy(U)
         rho_E = self.energy(U)
 
         return rho_E - rho_Ek
 
-    def specific_inner_energy(self, U):
+    def specific_inner_energy(self, U: Optional[CF] = None):
 
         rho = self.density(U)
         rho_Ei = self.inner_energy(U)
 
         return rho_Ei/rho
 
-    def pressure(self, U):
+    def pressure(self, U: Optional[CF] = None):
 
         rho_Ei = self.inner_energy(U)
-        gamma = self.solver_configuration.heat_capacity_ratio
+        gamma = self.cfg.heat_capacity_ratio
 
         return (gamma-1) * rho_Ei
 
-    def temperature(self, U):
+    def temperature(self, U: Optional[CF] = None):
 
         rho = self.density(U)
         rho_Ei = self.inner_energy(U)
-        gamma = self.solver_configuration.heat_capacity_ratio
+        gamma = self.cfg.heat_capacity_ratio
 
         return gamma/rho * rho_Ei
 
-    def enthalpy(self, U):
+    def enthalpy(self, U: Optional[CF] = None):
 
         p = self.pressure(U)
         rho_E = self.energy(U)
 
         return rho_E + p
 
-    def specific_enthalpy(self, U):
+    def specific_enthalpy(self, U: Optional[CF] = None):
 
         rho_H = self.enthalpy(U)
         rho = self.density(U)
 
         return rho_H/rho
 
-    def speed_of_sound(self, U):
+    def speed_of_sound(self, U: Optional[CF] = None):
 
         p = self.pressure(U)
         rho = self.density(U)
-        gamma = self.solver_configuration.heat_capacity_ratio
+        gamma = self.cfg.heat_capacity_ratio
 
         return sqrt(gamma * p/rho)
 
-    def mach_number(self, U):
+    def mach_number(self, U: Optional[CF] = None):
 
         u = self.velocity(U)
         c = self.speed_of_sound(U)
 
         return sqrt(InnerProduct(u, u)) / c
 
-    def density_gradient(self, U, Q):
+    def density_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        mixed_method = self.solver_configuration.mixed_method
+        mixed_method = self.cfg.mixed_method
 
         if mixed_method is MixedMethods.GRADIENT:
+            Q = self._if_none_replace_with_gfu(Q, index=2)
             gradient_rho = Q[self._indices.DENSITY, :]
         else:
+            U = self._if_none_replace_with_gfu(U)
             gradient_U = grad(U)
             gradient_rho = gradient_U[self._indices.DENSITY, :]
 
         return gradient_rho
 
-    def momentum_gradient(self, U, Q):
+    def momentum_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        mixed_method = self.solver_configuration.mixed_method
+        mixed_method = self.cfg.mixed_method
         dim = self.mesh.dim
 
         if mixed_method is MixedMethods.GRADIENT:
+            Q = self._if_none_replace_with_gfu(Q, index=2)
             gradient_rho_u = CF(tuple(Q[index, :] for index in self._indices.MOMENTUM), dims=(dim, dim))
         else:
+            U = self._if_none_replace_with_gfu(U)
             gradient_U = grad(U)
             gradient_rho_u = CF(tuple(gradient_U[index, :] for index in self._indices.MOMENTUM), dims=(dim, dim))
 
         return gradient_rho_u
 
-    def energy_gradient(self, U, Q):
+    def energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        mixed_method = self.solver_configuration.mixed_method
+        mixed_method = self.cfg.mixed_method
 
         if mixed_method is MixedMethods.GRADIENT:
+            Q = self._if_none_replace_with_gfu(Q, index=2)
             gradient_rho_E = Q[self._indices.ENERGY, :]
         else:
+            U = self._if_none_replace_with_gfu(U)
             gradient_U = grad(U)
             gradient_rho_E = gradient_U[self._indices.ENERGY, :]
 
         return gradient_rho_E
 
-    def enthalpy_gradient(self, U, Q):
+    def enthalpy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
         gradient_rho_E = self.energy_gradient(U, Q)
         gradient_p = self.pressure_gradient(U, Q)
         return gradient_rho_E + gradient_p
 
-    def pressure_gradient(self, U, Q):
+    def pressure_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        mixed_method = self.solver_configuration.mixed_method
-        gamma = self.solver_configuration.heat_capacity_ratio
+        mixed_method = self.cfg.mixed_method
+        gamma = self.cfg.heat_capacity_ratio
 
         rho = self.density(U)
         gradient_rho = self.density_gradient(U, Q)
@@ -166,12 +183,13 @@ class ConservativeFormulation(Formulation):
 
         return gradient_p
 
-    def temperature_gradient(self, U, Q):
+    def temperature_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        mixed_method = self.solver_configuration.mixed_method
-        gamma = self.solver_configuration.heat_capacity_ratio
+        mixed_method = self.cfg.mixed_method
+        gamma = self.cfg.heat_capacity_ratio
 
         if mixed_method is MixedMethods.STRAIN_HEAT:
+            Q = self._if_none_replace_with_gfu(Q, 2)
             gradient_T = CF(tuple(Q[index] for index in self._indices.TEMPERATURE_GRADIENT))
 
         else:
@@ -190,7 +208,7 @@ class ConservativeFormulation(Formulation):
 
         return gradient_T
 
-    def velocity_gradient(self, U, Q):
+    def velocity_gradient(self,  U: Optional[CF] = None, Q: Optional[CF] = None):
 
         rho = self.density(U)
         rho_u = self.momentum(U)
@@ -202,7 +220,7 @@ class ConservativeFormulation(Formulation):
 
         return gradient_u
 
-    def vorticity(self, U, Q):
+    def vorticity(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
         gradient_u = self.velocity_gradient(U, Q)
         rate_of_rotation = gradient_u - gradient_u.trans
@@ -212,24 +230,25 @@ class ConservativeFormulation(Formulation):
         elif self.mesh.dim == 3:
             return CF(tuple(rate_of_rotation[2, 1], rate_of_rotation[0, 2], rate_of_rotation[1, 0]))
 
-    def heat_flux(self, U, Q):
+    def heat_flux(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        Re = self.solver_configuration.Reynold_number
-        Pr = self.solver_configuration.Prandtl_number
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
 
         gradient_T = self.temperature_gradient(U, Q)
         k = self.mu.get(U, Q) / (Re * Pr)
 
         return -k * gradient_T
 
-    def heat_flux_gradient(self, U, Q):
+    def heat_flux_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        Re = self.solver_configuration.Reynold_number
-        Pr = self.solver_configuration.Prandtl_number
-        mixed_method = self.solver_configuration.mixed_method
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
+        mixed_method = self.cfg.mixed_method
         dim = self.mesh.dim
 
         if mixed_method is MixedMethods.STRAIN_HEAT:
+            Q = self._if_none_replace_with_gfu(Q, 2)
             gradient_Q = grad(Q)
             phi = self.temperature_gradient(U, Q)
             gradient_phi = CF(tuple(gradient_Q[index, :]
@@ -244,12 +263,13 @@ class ConservativeFormulation(Formulation):
 
         return gradient_heat
 
-    def deviatoric_strain_tensor(self, U, Q):
+    def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        mixed_method = self.solver_configuration.mixed_method
+        mixed_method = self.cfg.mixed_method
         dim = self.mesh.dim
 
         if mixed_method is MixedMethods.STRAIN_HEAT:
+            Q = self._if_none_replace_with_gfu(Q, 2)
             strain = CF(tuple(Q[index] for index in self._indices.STRAIN), dims=(dim, dim))
 
         elif mixed_method is MixedMethods.GRADIENT:
@@ -262,12 +282,13 @@ class ConservativeFormulation(Formulation):
 
         return strain
 
-    def deviatoric_strain_tensor_gradient(self, U, Q):
+    def deviatoric_strain_tensor_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        mixed_method = self.solver_configuration.mixed_method
+        mixed_method = self.cfg.mixed_method
         dim = self.mesh.dim
 
         if mixed_method is MixedMethods.STRAIN_HEAT:
+            Q = self._if_none_replace_with_gfu(Q, 2)
             gradient_Q = grad(Q)
             strain_gradient = CF(tuple(gradient_Q[index, :] for index in self._indices.STRAIN), dims=(dim, dim, dim))
 
@@ -276,14 +297,14 @@ class ConservativeFormulation(Formulation):
 
         return strain_gradient
 
-    def deviatoric_stress_tensor(self, U, Q):
+    def deviatoric_stress_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.cfg.Reynolds_number
         return self.mu.get(U, Q)/Re * self.deviatoric_strain_tensor(U, Q)
 
-    def deviatoric_stress_tensor_gradient(self, U, Q):
+    def deviatoric_stress_tensor_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        Re = self.solver_configuration.Reynold_number
+        Re = self.cfg.Reynolds_number
         dim = self.mesh.dim
 
         strain = self.deviatoric_strain_tensor(U, Q)
@@ -405,7 +426,7 @@ class ConservativeFormulation(Formulation):
 
     def add_mass_bilinearform(self, blf):
 
-        mixed_method = self.solver_configuration.mixed_method
+        mixed_method = self.cfg.mixed_method
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -416,3 +437,8 @@ class ConservativeFormulation(Formulation):
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
             blf += InnerProduct(Q, P) * dx
+
+    def _if_none_replace_with_gfu(self, cf, index: int = 0):
+        if cf is None:
+            cf = self.gfu.components[index]
+        return cf

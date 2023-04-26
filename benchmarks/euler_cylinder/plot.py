@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from dream import SolverLoader
+from dream import Loader
 
 # Load Dataframe
-loader = SolverLoader()
-df = loader.load_sensor_data('pressure_coefficient')
+loader = Loader()
+df = loader.load_sensor_data('pressure_coefficient')['c_p', '']
 
 # Extract Coords and Pressure Coefficient
-coords = np.array([point for point in df.columns.levels[1]])
+coords = np.array([point for point in df])
 x, y = coords[:, 0], coords[:, 1]
 c_p = df.iloc[-1].to_numpy()
 

@@ -28,13 +28,13 @@ class TestFormulation(unittest.TestCase, ABC):
     testing_gradient_U: CF
 
     def test_factory_function(self):
-        formulation = formulation_factory(self.formulation.mesh, self.formulation.solver_configuration)
+        formulation = formulation_factory(self.formulation.mesh, self.formulation.cfg)
         self.assertIsInstance(formulation, type(self.formulation))
 
     def test_variables(self):
 
         test_gfu = GridFunction(self.formulation._initialize_FE_space())
-        U = self.formulation.get_gridfunction_components(test_gfu).PRIMAL
+        U = test_gfu.components[0]
         U.Set(self.testing_U)
 
         # Density
@@ -71,16 +71,18 @@ class TestFormulation(unittest.TestCase, ABC):
 
         def mixed_variables_gradients():
 
-            mixed_method = self.formulation.solver_configuration.mixed_method
+            mixed_method = self.formulation.cfg.mixed_method
             self.formulation._fes = self.formulation._initialize_FE_space()
             test_gfu = GridFunction(self.formulation.fes)
-            U = self.formulation.get_gridfunction_components(test_gfu).PRIMAL
-            Q = self.formulation.get_gridfunction_components(test_gfu).MIXED
+            U = test_gfu.components[0]
+            Q = None
             U.Set(self.testing_U)
 
             if mixed_method is MixedMethods.GRADIENT:
+                Q = test_gfu.components[2]
                 Q.Set(self.testing_gradient_U)
             elif mixed_method is MixedMethods.STRAIN_HEAT:
+                Q = test_gfu.components[2]
                 Q.Set(self.testing_mixed_heat_Q)
 
             # Density Gradient
@@ -115,7 +117,7 @@ class TestFormulation(unittest.TestCase, ABC):
 
         # Loop over all MixedMethods
         for mixed_method in MixedMethods:
-            self.formulation.solver_configuration.mixed_method = mixed_method.value
+            self.formulation.cfg.mixed_method = mixed_method.value
             mixed_variables_gradients()
 
     @abstractmethod
@@ -161,7 +163,9 @@ class Test2DConservativeFormulation(TestFormulation):
 
     @classmethod
     def setUpClass(cls):
-        config = SolverConfiguration(formulation="conservative", order=10)
+        config = SolverConfiguration()
+        config.formulation = "conservative"
+        config.order = 10
         mesh = Mesh(OCCGeometry(Rectangle(2, 1).Face(), dim=2).GenerateMesh(maxh=0.5))
         cls.formulation = ConservativeFormulation2D(mesh, config)
 
@@ -205,8 +209,8 @@ class Test2DConservativeFormulation(TestFormulation):
         self.assertAlmostEqual(is_value, expected_value, msg=error_msg)
 
         # L-Matrix
-        mat = self.formulation.L_matrix(U)
-        mat_inverse = self.formulation.L_inverse_matrix(U)
+        mat = self.formulation.L_matrix(U, self.formulation.normal)
+        mat_inverse = self.formulation.L_inverse_matrix(U, self.formulation.normal)
 
         expected_identity = mat_inverse * mat
 
@@ -217,8 +221,8 @@ class Test2DConservativeFormulation(TestFormulation):
         self.assertAlmostEqual(is_value, expected_value, msg=error_msg)
 
         # P-Matrix
-        mat = self.formulation.P_matrix(U)
-        mat_inverse = self.formulation.P_inverse_matrix(U)
+        mat = self.formulation.P_matrix(U, self.formulation.normal)
+        mat_inverse = self.formulation.P_inverse_matrix(U, self.formulation.normal)
 
         expected_identity = mat_inverse * mat
 
@@ -257,7 +261,7 @@ class Test2DConservativeFormulation(TestFormulation):
 
     def pressure_test(self, U):
 
-        gamma = self.formulation.solver_configuration.heat_capacity_ratio.Get()
+        gamma = self.formulation.cfg.heat_capacity_ratio.Get()
 
         pressure = self.formulation.pressure(U.components)
         is_value = Integrate(pressure, self.formulation.mesh)
@@ -277,7 +281,7 @@ class Test2DConservativeFormulation(TestFormulation):
 
     def temperature_test(self, U):
 
-        gamma = self.formulation.solver_configuration.heat_capacity_ratio.Get()
+        gamma = self.formulation.cfg.heat_capacity_ratio.Get()
 
         temperature = self.formulation.temperature(U.components)
         is_value = Integrate(temperature, self.formulation.mesh)
@@ -315,7 +319,7 @@ class Test2DConservativeFormulation(TestFormulation):
 
     def pressure_gradient_test(self, U, Q):
 
-        gamma = self.formulation.solver_configuration.heat_capacity_ratio.Get()
+        gamma = self.formulation.cfg.heat_capacity_ratio.Get()
 
         pressure_gradient = self.formulation.pressure_gradient(U, Q)
         is_value = Integrate(pressure_gradient * self.testing_vector, self.formulation.mesh)
@@ -335,7 +339,7 @@ class Test2DConservativeFormulation(TestFormulation):
 
     def temperature_gradient_test(self, U, Q):
 
-        gamma = self.formulation.solver_configuration.heat_capacity_ratio.Get()
+        gamma = self.formulation.cfg.heat_capacity_ratio.Get()
 
         temperature_gradient = self.formulation.temperature_gradient(U, Q)
         is_value = Integrate(temperature_gradient * self.testing_vector, self.formulation.mesh)

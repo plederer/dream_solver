@@ -34,6 +34,7 @@ cfg.order = 3
 cfg.damping_factor = 1.0
 cfg.time_scheme = 'BDF2'
 cfg.time_step = 0.001
+cfg.time_step_max = 10
 cfg.max_iterations = 300
 cfg.convergence_criterion = 1e-12
 cfg.linear_solver = 'pardiso'
@@ -42,36 +43,38 @@ cfg.compile_flag = True
 
 R = 1
 R_farfield = R * 30
-r = sqrt(x**2 + y**2)
-
 rho_inf = 1
-u_inf = CF((1, 0))
-p_inf = 1/(cfg.Mach_number**2 * cfg.heat_capacity_ratio)
-u_0 = (r - R)/(R_farfield - R) * u_inf
+u_inf = (1, 0)
+p_inf = 1/(cfg.Mach_number.Get()**2 * cfg.heat_capacity_ratio.Get())
 
-mesh = Mesh(Get_Omesh(R, R_farfield, 32, 16, geom=1.9))
+cfg.info['Cylinder Radius'] = R
+cfg.info['Farfield Radius'] = R_farfield
+cfg.info['Farfield Density'] = rho_inf
+cfg.info['Farfield Velocity'] = u_inf
+cfg.info['Farfield Pressure'] = p_inf
+
+mesh = Mesh(Get_Omesh(R, R_farfield, 28, 12, geom=1.8))
 mesh.Curve(cfg.order)
 
 tree = ResultsDirectoryTree()
-sensor = PointSensor.from_boundary('cyl', mesh, 'pressure_coefficient', tree)
-sensor.sample_pressure_coefficient(p_inf, reference_velocity=1, reference_density=rho_inf, name="c_p")
 
-solver = CompressibleHDGSolver(mesh, cfg)
+solver = CompressibleHDGSolver(mesh, cfg, tree)
 solver.boundary_conditions.set_farfield('inflow', rho_inf, u_inf, pressure=p_inf)
 solver.boundary_conditions.set_outflow('outflow', p_inf)
-solver.boundary_conditions.set_inviscid_wall('cyl')
-solver.initial_condition.set(rho_inf, u_0, pressure=p_inf)
+solver.boundary_conditions.set_inviscid_wall('cylinder')
+solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_inf)
 
-sensor.assign_solver(solver)
-saver = solver.get_saver(tree)
+sensor = PointSensor.from_boundary('cylinder', mesh, 'pressure_coefficient')
+sensor.sample_pressure_coefficient(p_inf, reference_velocity=1, reference_density=rho_inf, name="c_p")
+solver.add_sensor(sensor)
+
+saver = solver.get_saver()
 
 with TaskManager():
     solver.setup()
-    solver.solve_initial()
-    solver.draw_solutions()
-    solver.solve_timestep(True, stat_step=50)
+    solver.drawer.draw()
+    solver.solve_stationary()
 
-sensor.take_single_sample()
 saver.save_configuration(comment=__doc__)
 saver.save_mesh()
-saver.save_sensors_data([sensor])
+saver.save_sensor_data()
