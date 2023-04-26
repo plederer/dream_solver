@@ -1,10 +1,21 @@
 from __future__ import annotations
-from .interface import Formulation, MixedMethods
 from ngsolve import *
-from typing import Optional
+from typing import Optional, NamedTuple
+
+from .interface import Formulation, MixedMethods, VectorIndices, TensorIndices
+
+
+class Indices(NamedTuple):
+    DENSITY: Optional[int] = None
+    MOMENTUM: Optional[VectorIndices] = None
+    ENERGY: Optional[int] = None
+    TEMPERATURE_GRADIENT: Optional[VectorIndices] = None
+    STRAIN: Optional[TensorIndices] = None
 
 
 class ConservativeFormulation(Formulation):
+
+    _indices: Indices
 
     def density(self, U: Optional[CF] = None):
         U = self._if_none_replace_with_gfu(U)

@@ -1,8 +1,8 @@
 from __future__ import annotations
 from ngsolve import *
 
-from .interface import MixedMethods, Indices, VectorCoordinates, TensorCoordinates, RiemannSolver, TestAndTrialFunction
-from .conservative import ConservativeFormulation
+from .interface import MixedMethods, VectorIndices, TensorIndices, RiemannSolver, TestAndTrialFunction
+from .conservative import ConservativeFormulation, Indices
 from .. import conditions as co
 from .. import viscosity as visc
 
@@ -10,10 +10,10 @@ from .. import viscosity as visc
 class ConservativeFormulation2D(ConservativeFormulation):
 
     _indices = Indices(DENSITY=0,
-                       MOMENTUM=VectorCoordinates(X=1, Y=2),
+                       MOMENTUM=VectorIndices(X=1, Y=2),
                        ENERGY=3,
-                       STRAIN=TensorCoordinates(XX=0, XY=1, YX=1, YY=2),
-                       TEMPERATURE_GRADIENT=VectorCoordinates(X=3, Y=4))
+                       STRAIN=TensorIndices(XX=0, XY=1, YX=1, YY=2),
+                       TEMPERATURE_GRADIENT=VectorIndices(X=3, Y=4))
 
     def _initialize_FE_space(self) -> ProductSpace:
 
@@ -23,6 +23,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         V = L2(self.mesh, order=order)
         VHAT = FacetFESpace(self.mesh, order=order)
+        # VHAT = H1(self.mesh, order=order, orderinner=0)
         Q = VectorL2(self.mesh, order=order)
 
         if periodic:
@@ -73,9 +74,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
         mask.vec[~mask_fes.GetDofs(self.mesh.Boundaries(self.bcs.pattern))] = 1
 
         var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat),
+        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form += mask * InnerProduct(self.convective_numerical_flux(U, Uhat),
+        var_form += mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
                                         Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
 
         blf += var_form.Compile(compile_flag)
@@ -97,9 +98,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
         mask.vec[~mask_fes.GetDofs(self.mesh.Boundaries(self.bcs.pattern))] = 1
 
         var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form -= mask * InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q),
+        var_form -= mask * InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
                                         Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
 
         blf += var_form.Compile(compile_flag)
@@ -244,8 +245,11 @@ class ConservativeFormulation2D(ConservativeFormulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        cf = self.An_matrix_outgoing(Uhat) * (U - Uhat)
-        cf -= self.An_matrix_incoming(Uhat) * (farfield - Uhat)
+        An_out = self.conservative_convective_jacobian_outgoing(Uhat, self.normal)
+        An_in = self.conservative_convective_jacobian_incoming(Uhat, self.normal)
+
+        cf = An_out * (U - Uhat)
+        cf -= An_in * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)
@@ -345,6 +349,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         n = self.normal
         t = self.tangential
         region = self.mesh.Boundaries(boundary)
+        M = self.cfg.Mach_number
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -355,58 +360,60 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
 
-        amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat)
-        I_in = self.identity_matrix_incoming(Uhat)
+        amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat, self.normal)
 
         if bc.type is bc.TYPE.PERFECT:
             amplitude_in = CF((0, 0, 0, 0))
 
         elif bc.type is bc.TYPE.PARTIALLY:
             c = self.speed_of_sound(Uhat)
-            M = self.cfg.Mach_number
             ref_length = bc.reference_length
-            rho = self.density(Uhat)
 
             amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(Uhat) - bc.pressure)
-            amplitude_in = I_in * CF((0, 0, 0, amp))
+            amplitude_in = CF((amp, 0, 0, 0))
 
-        elif bc.type is bc.TYPE.PIROZZOLI:
-            raise ValueError(f"Implementation details needed {bc.type}")
-            rho = self.density(Uhat)
-            dt = self.cfg.time_step
-            lam = self.characteristic_velocities(Uhat, False)[3, 3]
-            M = self.mach_number(Uhat)
 
-            L3 = (1 - M)/(lam * dt * rho) * (self.pressure(Uhat) - bc.pressure)
-            amplitude_out = CF((amplitude_out[0], amplitude_out[1], amplitude_out[2], L3))
-
-        P_inverse_inc = I_in * self.P_inverse_matrix(Uhat)
         if bc.tang_conv_flux:
-            conv_flux_gradient = self.convective_flux_gradient(U, Q)
-            conv_flux_gradient_tang = sum([conv_flux_gradient[:, i, :] * t[i] for i in range(2)]) * t
-            cf += conv_flux_gradient_tang * Vhat
-            amplitude_in -= P_inverse_inc * conv_flux_gradient_tang
+
+            cf += self.conservative_convective_jacobian(Uhat, t) * (grad(U) * t) * Vhat
+
+            if bc.tang_conv_flux:
+                rho = self.density(Uhat)
+                c = self.speed_of_sound(Uhat)
+                ut = InnerProduct(self.velocity(Uhat), t)
+
+                gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
+                gradient_u_t = self.velocity_gradient(U, Q) * t
+
+                beta_l = 1
+                beta_t = sqrt((self.velocity(Uhat) * n)**2)/c
+                # beta_t = M
+
+                amp_t = (1 - beta_l) * (gradient_p_t*ut - c*rho*ut*InnerProduct(gradient_u_t, n))
+                amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
+
+                amplitude_in -= CF((amp_t, 0, 0, 0))
 
         if viscosity is not visc.DynamicViscosity.INVISCID:
 
             Q, _ = self.TnT.MIXED
 
             diff_flux_gradient = self.diffusive_flux_gradient(U, Q)
-            diff_flux_gradient_normal = self.diffusive_flux_gradient_normal(U, Q)
+            #diff_flux_gradient_normal = self.diffusive_flux_gradient_normal(U, Q)
 
             if bc.tang_visc_flux:
                 visc_flux_gradient_tang = fem.Einsum('ijk,k->ij', diff_flux_gradient, t) * t
                 cf -= visc_flux_gradient_tang * Vhat
-                amplitude_in += P_inverse_inc * visc_flux_gradient_tang
+                amplitude_in += P_inverse_in * visc_flux_gradient_tang
 
             if bc.norm_visc_flux:
                 visc_flux_gradient_norm = fem.Einsum('ijk,k->ij', diff_flux_gradient, n) * n
                 cf -= visc_flux_gradient_norm * Vhat
                 visc_flux_gradient_norm = fem.Einsum('ijk,k->ij', diff_flux_gradient_normal, n) * n
-                amplitude_in += P_inverse_inc * visc_flux_gradient_norm
+                amplitude_in += P_inverse_in * visc_flux_gradient_norm
 
-        amplitudes = amplitude_out + amplitude_in
-        cf += self.P_matrix(Uhat) * amplitudes * Vhat
+        amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
+        cf += self.P_matrix(Uhat, self.normal) * amplitudes * Vhat
 
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
@@ -474,7 +481,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
-    def convective_numerical_flux(self, U, Uhat):
+    def convective_numerical_flux(self, U, Uhat, unit_vector: CF):
         """
         Convective numerical flux
 
@@ -487,52 +494,43 @@ class ConservativeFormulation2D(ConservativeFormulation):
               https://doi.org/10.1007/s11831-020-09508-z
         """
         riemann_solver = self.cfg.riemann_solver
-        n = self.normal
+        un = InnerProduct(self.velocity(Uhat), unit_vector)
+        un_abs = IfPos(un, un, -un)
+        c = self.speed_of_sound(Uhat)
 
         if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
-            un = InnerProduct(self.velocity(Uhat), n)
-            un_abs = IfPos(un, un, -un)
-            c = self.speed_of_sound(Uhat)
             lambda_max = un_abs + c
-
             stabilisation_matrix = lambda_max * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.ROE:
-            stabilisation_matrix = self.An_matrix(Uhat, absolute_value=True)
+            P = self.P_matrix(Uhat, unit_vector)
+            Lambda_abs = self.characteristic_velocities(Uhat, unit_vector, absolute_value=True)
+            P_inv = self.P_inverse_matrix(Uhat, unit_vector)
+            stabilisation_matrix = P * Lambda_abs * P_inv
 
         elif riemann_solver is RiemannSolver.HLL:
-            un = InnerProduct(self.velocity(Uhat), n)
-            c = self.speed_of_sound(Uhat)
             splus = IfPos(un + c, un + c, 0)
-
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            un = InnerProduct(self.velocity(Uhat), n)
-            un_abs = IfPos(un, un, -un)
-            c = self.speed_of_sound(Uhat)
-
-            theta_0 = 1e-6
+            theta_0 = 1e-8
             theta = un_abs/(un_abs + c)
             IfPos(theta - theta_0, theta, theta_0)
-            Theta = CF((theta, 0, 0, 0,
+            Theta = CF((1, 0, 0, 0,
                         0, theta, 0, 0,
-                        0, 0, 1, 0,
+                        0, 0, theta, 0,
                         0, 0, 0, 1), dims=(4, 4))
 
-            Theta = self.P_matrix(Uhat) * Theta * self.P_inverse_matrix(Uhat)
+            Theta = self.P_matrix(Uhat, unit_vector) * Theta * self.P_inverse_matrix(Uhat, unit_vector)
             splus = IfPos(un + c, un + c, 0)
 
             stabilisation_matrix = splus * Theta
 
-        return self.convective_flux(Uhat)*n + stabilisation_matrix * (U-Uhat)
+        return self.convective_flux(Uhat)*unit_vector + stabilisation_matrix * (U-Uhat)
 
-    def diffusive_numerical_flux(self, U, Uhat, Q):
-
-        n = self.normal
+    def diffusive_numerical_flux(self, U, Uhat, Q, unit_vector: CF):
         tau_d = self.diffusive_stabilisation_term(Uhat, Q)
-
-        return self.diffusive_flux(Uhat, Q)*n - tau_d * (U-Uhat)
+        return self.diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U-Uhat)
 
     def diffusive_stabilisation_term(self, Uhat, Q):
 
@@ -547,7 +545,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         return tau_d
 
-    def M_matrix(self, U):
+    def M_matrix(self, U) -> CF:
         """
         The M matrix transforms primitive variables to conservative variables
 
@@ -574,7 +572,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         return M
 
-    def M_inverse_matrix(self, U):
+    def M_inverse_matrix(self, U) -> CF:
         """
         The M inverse matrix transforms conservative variables to primitive variables
 
@@ -602,7 +600,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         return Minv
 
-    def L_matrix(self, U):
+    def L_matrix(self, U, unit_vector: CF) -> CF:
         """
         The L matrix transforms characteristic variables to primitive variables
 
@@ -615,21 +613,19 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-
         rho = self.density(U)
         c = self.speed_of_sound(U)
 
-        n = self.normal
-        nx, ny = n[0], n[1]
+        d0, d1 = unit_vector[0], unit_vector[1]
 
-        L = CF((1/c**2, 0, 0.5/c**2, 0.5/c**2,
-                0, -ny, nx/(2*c*rho), -nx/(2*c*rho),
-                0, nx, ny/(2*c*rho), -ny/(2*c*rho),
-                0, 0, 0.5, 0.5), dims=(4, 4))
+        L = CF((0.5/c**2, 1/c**2, 0, 0.5/c**2,
+                -d0/(2*c*rho), 0, -d1, d0/(2*c*rho),
+                -d1/(2*c*rho), 0, d0, d1/(2*c*rho),
+                0.5, 0, 0, 0.5), dims=(4, 4))
 
         return L
 
-    def L_inverse_matrix(self, U):
+    def L_inverse_matrix(self, U, unit_vector: CF) -> CF:
         """
         The L inverse matrix transforms primitive variables to charactersitic variables
 
@@ -642,21 +638,19 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-
         rho = self.density(U)
         c = self.speed_of_sound(U)
 
-        n = self.normal
-        nx, ny = n[0], n[1]
+        d0, d1 = unit_vector[0], unit_vector[1]
 
-        Linv = CF((c**2, 0, 0, -1,
-                   0, -ny, nx, 0,
-                   0, rho*c*nx, rho*c*ny, 1,
-                   0, -rho*c*nx, -rho*c*ny, 1), dims=(4, 4))
+        Linv = CF((0, -rho*c*d0, -rho*c*d1, 1,
+                   c**2, 0, 0, -1,
+                   0, -d1, d0, 0,
+                   0, rho*c*d0, rho*c*d1, 1), dims=(4, 4))
 
         return Linv
 
-    def P_matrix(self, U):
+    def P_matrix(self, U, unit_vector: CF) -> CF:
         """
         The P matrix transforms characteristic variables to conservative variables
 
@@ -669,9 +663,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        return self.M_matrix(U) * self.L_matrix(U)
+        return self.M_matrix(U) * self.L_matrix(U, unit_vector)
 
-    def P_inverse_matrix(self, U):
+    def P_inverse_matrix(self, U, unit_vector: CF) -> CF:
         """
         The P inverse matrix transforms conservative variables to characteristic variables
 
@@ -684,18 +678,114 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        return self.L_inverse_matrix(U) * self.M_inverse_matrix(U)
+        return self.L_inverse_matrix(U, unit_vector) * self.M_inverse_matrix(U)
 
-    def An_matrix(self, U, absolute_value: bool = False):
-        return self.P_matrix(U) * self.characteristic_velocities(U, absolute_value) * self.P_inverse_matrix(U)
+    def primitive_convective_jacobian_x(self, U) -> CF:
 
-    def An_matrix_outgoing(self, U):
-        return self.P_matrix(U) * self.characteristic_velocities_outgoing(U) * self.P_inverse_matrix(U)
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+        u = self.velocity(U)[0]
 
-    def An_matrix_incoming(self, U):
-        return self.P_matrix(U) * self.characteristic_velocities_incoming(U) * self.P_inverse_matrix(U)
+        A = CF((
+            u, rho, 0, 0,
+            0, u, 0, 1/rho,
+            0, 0, u, 0,
+            0, rho*c**2, 0, u),
+            dims=(4, 4))
 
-    def characteristic_variables(self, U, Q, Uhat):
+        return A
+
+    def primitive_convective_jacobian_y(self, U) -> CF:
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+        v = self.velocity(U)[1]
+
+        B = CF((v, 0, rho, 0,
+                0, v, 0, 0,
+                0, 0, v, 1/rho,
+                0, 0, rho*c**2, v),
+               dims=(4, 4))
+
+        return B
+
+    def primitive_convective_jacobian(self, U, unit_vector: CF) -> CF:
+        A = self.primitive_convective_jacobian_x(U)
+        B = self.primitive_convective_jacobian_y(U)
+        return A * unit_vector[0] + B * unit_vector[1]
+
+    def conservative_convective_jacobian_x(self, U) -> CF:
+        '''
+        First Jacobian of the convective Euler Fluxes F_c = (f_c, g_c) for conservative variables U
+        A = \partial f_c / \partial U
+        input: u = (rho, rho * u, rho * E)
+        See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2 
+        '''
+
+        gamma = self.cfg.heat_capacity_ratio
+        velocity = self.velocity(U)
+        ux, uy = velocity[0], velocity[1]
+        u = InnerProduct(velocity, velocity)
+        E = self.specific_energy(U)
+
+        A = CF((
+            0, 1, 0, 0,
+            (gamma - 3)/2 * ux**2 + (gamma - 1)/2 * uy**2, (3 - gamma) * ux, -(gamma - 1) * uy, gamma - 1,
+            -ux*uy, uy, ux, 0,
+            -gamma*ux*E + (gamma - 1)*ux*u, gamma*E - (gamma - 1)/2 * (uy**2 + 3*ux**2), -(gamma - 1)*ux*uy, gamma*ux),
+            dims=(4, 4))
+
+        return A
+
+    def conservative_convective_jacobian_y(self, U) -> CF:
+        '''
+        Second Jacobian of the convective Euler Fluxes F_c = (f_c, g_c)for conservative variables U
+        B = \partial g_c / \partial U
+        input: u = (rho, rho * u, rho * E)
+        See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2 
+        '''
+        gamma = self.cfg.heat_capacity_ratio
+        velocity = self.velocity(U)
+        ux, uy = velocity[0], velocity[1]
+        u = InnerProduct(velocity, velocity)
+        E = self.specific_energy(U)
+
+        B = CF(
+            (0, 0, 1, 0, -ux * uy, uy, ux, 0, (gamma - 3) / 2 * uy ** 2 + (gamma - 1) / 2 * ux ** 2, -(gamma - 1) * ux,
+             (3 - gamma) * uy, gamma - 1, -gamma * uy * E + (gamma - 1) * uy * u, -(gamma - 1) * ux * uy, gamma * E -
+             (gamma - 1) / 2 * (ux ** 2 + 3 * uy ** 2),
+             gamma * uy),
+            dims=(4, 4))
+
+        return B
+
+    def conservative_convective_jacobian(self, U, unit_vector: CF) -> CF:
+        A = self.conservative_convective_jacobian_x(U)
+        B = self.conservative_convective_jacobian_y(U)
+        return A * unit_vector[0] + B * unit_vector[1]
+
+    def primitive_to_conservative(self, matrix, U) -> CF:
+        return self.M_matrix(U) * matrix * self.M_inverse_matrix(U)
+
+    def conservative_to_primitive(self, matrix, U) -> CF:
+        return self.M_inverse_matrix(U) * matrix * self.M_matrix(U)
+
+    def conservative_convective_jacobian_outgoing(self, U, unit_vector: CF) -> CF:
+
+        P = self.P_matrix(U, unit_vector=unit_vector)
+        Lambda = self.characteristic_velocities_outgoing(U, unit_vector=unit_vector)
+        Pinv = self.P_inverse_matrix(U, unit_vector=unit_vector)
+
+        return P * Lambda * Pinv
+
+    def conservative_convective_jacobian_incoming(self, U, unit_vector: CF) -> CF:
+
+        P = self.P_matrix(U, unit_vector=unit_vector)
+        Lambda = self.characteristic_velocities_incoming(U, unit_vector=unit_vector)
+        Pinv = self.P_inverse_matrix(U, unit_vector=unit_vector)
+
+        return P * Lambda * Pinv
+
+    def characteristic_variables(self, U, Q, Uhat, unit_vector: CF) -> CF:
         """
         The charachteristic amplitudes are defined as
 
@@ -707,22 +797,21 @@ class ConservativeFormulation2D(ConservativeFormulation):
         """
         rho = self.density(Uhat)
         c = self.speed_of_sound(Uhat)
-        n = self.normal
 
-        gradient_rho_normal = InnerProduct(self.density_gradient(U, Q), n)
-        gradient_p_normal = InnerProduct(self.pressure_gradient(U, Q), n)
-        gradient_u_normal = self.velocity_gradient(U, Q) * n
+        gradient_rho_dir = InnerProduct(self.density_gradient(U, Q), unit_vector)
+        gradient_p_dir = InnerProduct(self.pressure_gradient(U, Q), unit_vector)
+        gradient_u_dir = self.velocity_gradient(U, Q) * unit_vector
 
         variables = CF((
-            gradient_rho_normal * c**2 - gradient_p_normal,
-            gradient_u_normal[1] * n[0] - gradient_u_normal[0] * n[1],
-            gradient_p_normal + InnerProduct(gradient_u_normal, n) * (c * rho),
-            gradient_p_normal - InnerProduct(gradient_u_normal, n) * (c * rho)
+            gradient_p_dir - InnerProduct(gradient_u_dir, unit_vector) * c * rho,
+            gradient_rho_dir * c**2 - gradient_p_dir,
+            gradient_u_dir[1] * unit_vector[0] - gradient_u_dir[0] * unit_vector[1],
+            gradient_p_dir + InnerProduct(gradient_u_dir, unit_vector) * c * rho
         ))
 
         return variables
 
-    def characteristic_velocities(self, U, absolute_value: bool = False) -> CF:
+    def characteristic_velocities(self, U, unit_vector: CF, absolute_value: bool = False) -> CF:
         """
         The Lambda matrix contains the eigenvalues of the Jacobian matrices
 
@@ -735,66 +824,71 @@ class ConservativeFormulation2D(ConservativeFormulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-
         c = self.speed_of_sound(U)
-        vn = InnerProduct(self.velocity(U), self.normal)
+        u_dir = InnerProduct(self.velocity(U), unit_vector)
 
-        lam = vn
-        lam_p_c = vn + c
-        lam_m_c = vn - c
+        lam_m_c = u_dir - c
+        lam = u_dir
+        lam_p_c = u_dir + c
 
         if absolute_value:
+            lam_m_c = IfPos(lam_m_c, lam_m_c, -lam_m_c)
             lam = IfPos(lam, lam, -lam)
             lam_p_c = IfPos(lam_p_c, lam_p_c, -lam_p_c)
-            lam_m_c = IfPos(lam_m_c, lam_m_c, -lam_m_c)
 
-        Lambda = CF((lam, 0, 0, 0,
+        Lambda = CF((lam_m_c, 0, 0, 0,
                      0, lam, 0, 0,
-                     0, 0, lam_p_c, 0,
-                     0, 0, 0, lam_m_c), dims=(4, 4))
+                     0, 0, lam, 0,
+                     0, 0, 0, lam_p_c), dims=(4, 4))
 
         return Lambda
 
-    def characteristic_velocities_incoming(self, U, absolute_value=False):
-        I_in = self.identity_matrix_incoming(U)
-        return I_in * self.characteristic_velocities(U, absolute_value)
-
-    def characteristic_velocities_outgoing(self, U, absolute_value=False):
-        I_out = self.identity_matrix_outgoing(U)
-        return I_out * self.characteristic_velocities(U, absolute_value)
-
-    def identity_matrix_outgoing(self, U):
+    def identity_matrix_outgoing(self, U, unit_vector: CF) -> CF:
         c = self.speed_of_sound(U)
-        vn = InnerProduct(self.velocity(U), self.normal)
+        u_dir = InnerProduct(self.velocity(U), unit_vector)
 
-        lam = IfPos(vn, 1, 0)
-        lam_p_c = IfPos(vn + c, 1, 0)
-        lam_m_c = IfPos(vn - c, 1, 0)
+        lam_m_c = IfPos(u_dir - c, 1, 0)
+        lam = IfPos(u_dir, 1, 0)
+        lam_p_c = IfPos(u_dir + c, 1, 0)
 
-        identity = CF((lam, 0, 0, 0,
+        identity = CF((lam_m_c, 0, 0, 0,
                        0, lam, 0, 0,
-                       0, 0, lam_p_c, 0,
-                       0, 0, 0, lam_m_c), dims=(4, 4))
+                       0, 0, lam, 0,
+                       0, 0, 0, lam_p_c), dims=(4, 4))
 
         return identity
 
-    def identity_matrix_incoming(self, U):
+    def identity_matrix_incoming(self, U, unit_vector: CF) -> CF:
         c = self.speed_of_sound(U)
-        vn = InnerProduct(self.velocity(U), self.normal)
+        u_dir = InnerProduct(self.velocity(U), unit_vector)
 
-        lam = IfPos(vn, 0, 1)
-        lam_p_c = IfPos(vn + c, 0, 1)
-        lam_m_c = IfPos(vn - c, 0, 1)
+        lam_m_c = IfPos(u_dir - c, 0, 1)
+        lam = IfPos(u_dir, 0, 1)
+        lam_p_c = IfPos(u_dir + c, 0, 1)
 
-        identity = CF((lam, 0, 0, 0,
+        identity = CF((lam_m_c, 0, 0, 0,
                        0, lam, 0, 0,
-                       0, 0, lam_p_c, 0,
-                       0, 0, 0, lam_m_c), dims=(4, 4))
+                       0, 0, lam, 0,
+                       0, 0, 0, lam_p_c), dims=(4, 4))
 
         return identity
 
-    def characteristic_amplitudes_outgoing(self, U, Q, Uhat):
-        return self.characteristic_velocities_outgoing(Uhat) * self.characteristic_variables(U, Q, Uhat)
+    def characteristic_velocities_outgoing(self, U, unit_vector: CF, absolute_value: bool = False) -> CF:
+        I_out = self.identity_matrix_outgoing(U, unit_vector)
+        Lambda = self.characteristic_velocities(U, unit_vector, absolute_value)
+        return I_out * Lambda
 
-    def characteristic_amplitudes_incoming(self, U, Q, Uhat):
-        return self.characteristic_velocities_incoming(Uhat) * self.characteristic_variables(U, Q, Uhat)
+    def characteristic_velocities_incoming(self, U, unit_vector: CF, absolute_value: bool = False) -> CF:
+        I_in = self.identity_matrix_incoming(U, unit_vector)
+        Lambda = self.characteristic_velocities(U, unit_vector, absolute_value)
+        return I_in * Lambda
+
+    def characteristic_amplitudes_outgoing(self, U, Q, Uhat, unit_vector: CF) -> CF:
+        Lambda_out = self.characteristic_velocities_outgoing(Uhat, unit_vector)
+        W = self.characteristic_variables(U, Q, Uhat, unit_vector)
+        return Lambda_out * W
+
+    def characteristic_amplitudes_incoming(self, U, Q, Uhat, unit_vector: CF) -> CF:
+        Lambda_in = self.characteristic_velocities_incoming(Uhat, unit_vector)
+        W = self.characteristic_variables(U, Q, Uhat, unit_vector)
+        return Lambda_in * W

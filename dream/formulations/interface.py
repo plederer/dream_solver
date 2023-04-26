@@ -2,7 +2,7 @@ from __future__ import annotations
 import abc
 import enum
 import dataclasses
-from typing import Optional, NamedTuple, TYPE_CHECKING, Any
+from typing import Optional, TYPE_CHECKING
 
 from ngsolve import *
 
@@ -15,7 +15,7 @@ logger = logging.getLogger("DreAm.Formulations")
 
 if TYPE_CHECKING:
     from configuration import SolverConfiguration
-    from ngsolve.comp import ComponentGridFunction, ProxyFunction
+    from ngsolve.comp import ProxyFunction
 
 
 class CompressibleFormulations(enum.Enum):
@@ -37,7 +37,7 @@ class RiemannSolver(enum.Enum):
 
 
 @dataclasses.dataclass
-class VectorCoordinates:
+class VectorIndices:
     X: Optional[int] = None
     Y: Optional[int] = None
     Z: Optional[int] = None
@@ -57,7 +57,7 @@ class VectorCoordinates:
 
 
 @dataclasses.dataclass
-class TensorCoordinates:
+class TensorIndices:
     XX: Optional[int] = None
     XY: Optional[int] = None
     XZ: Optional[int] = None
@@ -82,16 +82,6 @@ class TensorCoordinates:
             yield value
 
 
-class Indices(NamedTuple):
-    DENSITY: Optional[int] = None
-    MOMENTUM: Optional[VectorCoordinates] = None
-    VELOCITY: Optional[VectorCoordinates] = None
-    PRESSURE: Optional[int] = None
-    ENERGY: Optional[int] = None
-    TEMPERATURE_GRADIENT: Optional[VectorCoordinates] = None
-    STRAIN: Optional[TensorCoordinates] = None
-
-
 @dataclasses.dataclass
 class TestAndTrialFunction:
     PRIMAL: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
@@ -100,8 +90,6 @@ class TestAndTrialFunction:
 
 
 class Formulation(abc.ABC):
-
-    _indices: Indices
 
     def __init__(self, mesh: Mesh, solver_configuration: SolverConfiguration) -> None:
 

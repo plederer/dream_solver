@@ -209,8 +209,8 @@ class Test2DConservativeFormulation(TestFormulation):
         self.assertAlmostEqual(is_value, expected_value, msg=error_msg)
 
         # L-Matrix
-        mat = self.formulation.L_matrix(U)
-        mat_inverse = self.formulation.L_inverse_matrix(U)
+        mat = self.formulation.L_matrix(U, self.formulation.normal)
+        mat_inverse = self.formulation.L_inverse_matrix(U, self.formulation.normal)
 
         expected_identity = mat_inverse * mat
 
@@ -221,8 +221,8 @@ class Test2DConservativeFormulation(TestFormulation):
         self.assertAlmostEqual(is_value, expected_value, msg=error_msg)
 
         # P-Matrix
-        mat = self.formulation.P_matrix(U)
-        mat_inverse = self.formulation.P_inverse_matrix(U)
+        mat = self.formulation.P_matrix(U, self.formulation.normal)
+        mat_inverse = self.formulation.P_inverse_matrix(U, self.formulation.normal)
 
         expected_identity = mat_inverse * mat
 
