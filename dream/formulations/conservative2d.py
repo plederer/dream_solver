@@ -266,10 +266,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
         rho = self.density(U)
-        rho_m = self.momentum(U)
+        rho_u = self.momentum(U)
 
-        energy = bc.pressure/(gamma - 1) + 1/(2*rho) * InnerProduct(rho_m, rho_m)
-        outflow = CF((rho, rho_m, energy))
+        energy = bc.pressure/(gamma - 1) + 1/(2*rho) * InnerProduct(rho_u, rho_u)
+        outflow = CF((rho, rho_u, energy))
 
         cf = InnerProduct(outflow - Uhat, Vhat)
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
