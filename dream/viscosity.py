@@ -38,7 +38,7 @@ class _DynamicViscosity(abc.ABC):
         self.solver_configuration = formulation.cfg
 
     @abc.abstractmethod
-    def get(self, U, Q) -> CF: ...
+    def get(self, U) -> CF: ...
 
     @abc.abstractmethod
     def get_gradient(self, U, Q) -> CF: ...
@@ -46,16 +46,16 @@ class _DynamicViscosity(abc.ABC):
 
 class Inviscid(_DynamicViscosity):
 
-    def get(self, U, Q):
+    def get(self, U):
         raise ValueError("Invalid for inviscid fluid!")
 
-    def get_gradient(self, U, Q):
+    def get_gradient(self, U):
         raise ValueError("Invalid for inviscid fluid!")
 
 
 class Constant(_DynamicViscosity):
 
-    def get(self, U, Q) -> CF:
+    def get(self, U) -> CF:
         return CF((1))
 
     def get_gradient(self, U, Q) -> CF:
@@ -73,7 +73,7 @@ class Sutherland(_DynamicViscosity):
         self._T0 = 293.15
         self._mu_0 = 1.716e-5
 
-    def get(self, U, Q) -> CF:
+    def get(self, U) -> CF:
 
         gamma = self.formulation.cfg.heat_capacity_ratio
         M = self.formulation.cfg.Mach_number
