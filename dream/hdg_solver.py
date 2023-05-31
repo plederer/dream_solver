@@ -7,7 +7,7 @@ from . import conditions as co
 from .sensor import Sensor
 from .viscosity import DynamicViscosity
 from .formulations import formulation_factory, Formulation
-from .configuration import SolverConfiguration
+from .configuration import SolverConfiguration, DreAmLogger
 from math import isnan
 
 import logging
@@ -17,18 +17,18 @@ logger = logging.getLogger('DreAm.Solver')
 class IterationError(NamedTuple):
     error: float
     iteration_number: Optional[int]
-    time_step: Optional[float]
+    time: Optional[float]
 
     def __repr__(self) -> str:
 
-        error_digit = io.DreAmLogger._iteration_error_digit
-        time_step_digit = io.DreAmLogger._time_step_digit
+        error_digit = DreAmLogger._iteration_error_digit
+        time_step_digit = DreAmLogger._time_step_digit
 
         string = f"Iteration Error: {self.error:{error_digit}e}"
         if self.iteration_number is not None:
             string += f" - Iteration Number: {self.iteration_number}"
-        if self.time_step is not None:
-            string += f" - Time Step: {self.time_step:.{time_step_digit}f}"
+        if self.time is not None:
+            string += f" - Time Step: {self.time:.{time_step_digit}f}"
 
         return string
 
@@ -73,11 +73,11 @@ class SolverStatus:
     def check_convergence(self,
                           step_direction,
                           residual,
-                          time_step: Optional[float] = None,
+                          time: Optional[float] = None,
                           iteration_number: Optional[int] = None) -> None:
 
         error = sqrt(InnerProduct(step_direction, residual)**2)
-        self.iteration_error = IterationError(error, iteration_number, time_step)
+        self.iteration_error = IterationError(error, iteration_number, time)
 
         if logger.hasHandlers():
             logger.info(self.iteration_error)
@@ -241,9 +241,11 @@ class CompressibleHDGSolver:
                                  iteration_number: int,
                                  increment_at_iteration: int = 10,
                                  increment_time_step_factor: int = 10):
+        
+        cfg = self.solver_configuration.time
 
-        max_time_step = self.solver_configuration.time_step_max
-        old_time_step = self.solver_configuration.time_step.Get()
+        max_time_step = cfg.max_step
+        old_time_step = cfg.step.Get()
 
         if max_time_step > old_time_step:
             if (iteration_number % increment_at_iteration == 0) and (iteration_number > 0):
@@ -252,7 +254,7 @@ class CompressibleHDGSolver:
                 if new_time_step > max_time_step:
                     new_time_step = max_time_step
 
-                self.solver_configuration.time_step = new_time_step
+                cfg.step = new_time_step
                 logger.info(f"Successfully updated time step at iteration {iteration_number}")
                 logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
 
@@ -262,7 +264,7 @@ class CompressibleHDGSolver:
                          state_name: str = "stationary",
                          stop_at_iteration: bool = False) -> bool:
 
-        self.solver_configuration.simulation = 'stationary'
+        self.solver_configuration.time.simulation = 'stationary'
         max_iterations = self.solver_configuration.max_iterations
 
         self.status.reset()
@@ -301,25 +303,25 @@ class CompressibleHDGSolver:
 
     def solve_transient(self, state_name: str = "transient",  save_state_every_num_step: int = 1):
 
-        self.solver_configuration.simulation = 'transient'
+        self.solver_configuration.time.simulation = 'transient'
 
         self.status.reset()
         saver = self.get_saver()
 
-        for idx, t in enumerate(self.solver_configuration.time_period):
-            self._solve_timestep(time_step=t)
+        for idx, t in enumerate(self.solver_configuration.time):
+            self._solve_timestep(t)
 
             for sensor in self.sensors:
                 sensor.take_single_sample(t)
 
             if self.solver_configuration.save_state:
                 if idx % save_state_every_num_step == 0:
-                    saver.save_state(name=f"{state_name}_{t:.{io.DreAmLogger._time_step_digit}f}")
+                    saver.save_state(name=f"{state_name}_{t}")
 
             if self.status.is_nan:
                 break
 
-    def _solve_timestep(self, stop_at_iteration: bool = False, time_step: Optional[float] = None) -> bool:
+    def _solve_timestep(self, time, stop_at_iteration: bool = False) -> bool:
 
         max_iterations = self.solver_configuration.max_iterations
 
@@ -328,7 +330,7 @@ class CompressibleHDGSolver:
         for it in range(max_iterations):
 
             self._solve_update_step()
-            self.status.check_convergence(self.temporary, self.residual, time_step, it)
+            self.status.check_convergence(self.temporary, self.residual, time, it)
 
             if stop_at_iteration:
                 input("Iteration stopped. Hit any key to continue.")

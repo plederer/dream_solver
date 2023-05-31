@@ -1,97 +1,28 @@
 from __future__ import annotations
-from .utils import is_notebook, Formatter
-from .configuration import SolverConfiguration
-from .sensor import Sensor
-
+import time
 import pickle
-import logging
-
-from math import log10, ceil
 from pathlib import Path
 from datetime import datetime
-from ngsolve import CF, Redraw, VTKOutput
+from ngsolve import CF, Redraw, VTKOutput, Mesh, GridFunction
 from typing import TYPE_CHECKING, Optional, Generator
-import time
 
-import logging
-logger = logging.getLogger("DreAm.IO")
+from .utils import is_notebook, Formatter
+from .configuration import SolverConfiguration, ResultsDirectoryTree
+from .sensor import Sensor
+
 
 if is_notebook():
     from ngsolve.webgui import Draw, WebGLScene
 else:
     from ngsolve import Draw
 
-
 if TYPE_CHECKING:
-    from ngsolve import Mesh
     from pandas import DataFrame
     from .hdg_solver import CompressibleHDGSolver
     from .formulations import Formulation
-    from ngsolve import GridFunction
 
-
-class ResultsDirectoryTree:
-
-    def __init__(self,
-                 directory_name: str = "results",
-                 state_directory_name: str = "states",
-                 sensor_directory_name: str = "sensor",
-                 vtk_directory_name: str = "vtk",
-                 parent_path: Optional[Path] = None) -> None:
-
-        self.parent_path = parent_path
-        self.directory_name = directory_name
-        self.state_directory_name = state_directory_name
-        self.sensor_directory_name = sensor_directory_name
-        self.vtk_directory_name = vtk_directory_name
-
-    @property
-    def main_path(self) -> Path:
-        return self.parent_path.joinpath(self.directory_name)
-
-    @property
-    def state_path(self) -> Path:
-        return self.main_path.joinpath(self.state_directory_name)
-
-    @property
-    def sensor_path(self) -> Path:
-        return self.main_path.joinpath(self.sensor_directory_name)
-
-    @property
-    def vtk_path(self) -> Path:
-        return self.main_path.joinpath(self.vtk_directory_name)
-
-    @property
-    def parent_path(self) -> Path:
-        return self._parent_path
-
-    @parent_path.setter
-    def parent_path(self, parent_path: Path):
-
-        if parent_path is None:
-            self._parent_path = Path.cwd()
-
-        elif isinstance(parent_path, (str, Path)):
-            parent_path = Path(parent_path)
-
-            if not parent_path.exists():
-                raise ValueError(f"Path {parent_path} does not exist!")
-
-            self._parent_path = parent_path
-
-        else:
-            raise ValueError(f"Type {type(parent_path)} not supported!")
-
-    def __repr__(self) -> str:
-        formatter = Formatter()
-        formatter.COLUMN_RATIO = (0.2, 0.8)
-        formatter.header("Results Directory Tree").newline()
-        formatter.entry("Path", str(self.parent_path))
-        formatter.entry("Main", f"{self.parent_path.stem}/{self.directory_name}")
-        formatter.entry("State", f"{self.parent_path.stem}/{self.directory_name}/{self.state_directory_name}")
-        formatter.entry("Sensor", f"{self.parent_path.stem}/{self.directory_name}/{self.sensor_directory_name}")
-
-        return formatter.output
+import logging
+logger = logging.getLogger("DreAm.IO")
 
 
 class Loader:
@@ -157,8 +88,8 @@ class Loader:
                                  sleep_time: float = 0,
                                  load_step: int = 1) -> Generator[float, None, None]:
 
-        for t in solver_configuration.time_period.range(load_step):
-            self.load_state(gfu, f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
+        for t in solver_configuration.time.range(load_step):
+            self.load_state(gfu, f"{name}_{t}")
             time.sleep(sleep_time)
             yield t
 
@@ -203,11 +134,11 @@ class SolverLoader(Loader):
                                  sleep_time: float = 0,
                                  load_step: int = 1, blocking: bool = False) -> Generator[float, None, None]:
         cfg = self.solver.solver_configuration
-        for t in cfg.time_period.range(load_step):
-            self.load_state(name=f"{name}_{t:.{DreAmLogger._time_step_digit}f}")
+        for t in cfg.time.range(load_step):
+            self.load_state(name=f"{name}_{t}")
             self.solver.drawer.redraw(blocking)
             time.sleep(sleep_time)
-            yield round(t, DreAmLogger._time_step_digit)
+            yield t
 
 
 class Saver:
@@ -497,84 +428,3 @@ class Drawer:
     def _append_scene(self, scene):
         if scene is not None:
             self._scenes.append(scene)
-
-
-class DreAmLogger:
-
-    _iteration_error_digit: int = 8
-    _time_step_digit: int = 6
-
-    @classmethod
-    def set_time_step_digit(cls, time_step):
-        cls._time_step_digit = ceil(abs(log10(time_step)))
-
-    def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
-        self.logger = logging.getLogger("DreAm")
-        self.tree = ResultsDirectoryTree()
-
-        self.stream_handler = logging.NullHandler()
-        self.file_handler = logging.NullHandler()
-        self.formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-        self.filename = "log.txt"
-
-        self.log_to_terminal = log_to_terminal
-        self.log_to_file = log_to_file
-
-    @property
-    def filepath(self):
-        if not self.tree.main_path.exists():
-            self.tree.main_path.mkdir(parents=True)
-        return self.tree.main_path.joinpath(self.filename)
-
-    def set_level(self, level):
-        self.logger.setLevel(level)
-
-    def silence_logger(self):
-        self.log_to_file = False
-        self.log_to_terminal = False
-
-    @property
-    def log_to_terminal(self):
-        return self._log_to_terminal
-
-    @log_to_terminal.setter
-    def log_to_terminal(self, value: bool):
-        if value:
-            self.stream_handler = logging.StreamHandler()
-            self.stream_handler.setLevel(self.logger.level)
-            self.stream_handler.setFormatter(self.formatter)
-            self.logger.addHandler(self.stream_handler)
-        else:
-            self.logger.removeHandler(self.stream_handler)
-            self.stream_handler = logging.NullHandler()
-        self._log_to_terminal = value
-
-    @property
-    def log_to_file(self):
-        return self._log_to_file
-
-    @log_to_file.setter
-    def log_to_file(self, value: bool):
-        if value:
-            self.file_handler = logging.FileHandler(self.filepath, delay=True)
-            self.file_handler.setLevel(self.logger.level)
-            self.file_handler.setFormatter(self.formatter)
-            self.logger.addHandler(self.file_handler)
-        else:
-            self.logger.removeHandler(self.file_handler)
-            self.file_handler = logging.NullHandler()
-        self._log_to_file = value
-
-    @classmethod
-    def get_iteration_error_log(cls,
-                                error: float,
-                                time_step: Optional[float] = None,
-                                iteration_number: Optional[int] = None) -> str:
-
-        log = f"Iteration Error: {error:{cls._iteration_error_digit}e}"
-        if time_step is not None:
-            log += f" - Time Step: {time_step:.{cls._time_step_digit}f}"
-        if iteration_number is not None:
-            log += f" - Iteration Number: {iteration_number}"
-
-        return log

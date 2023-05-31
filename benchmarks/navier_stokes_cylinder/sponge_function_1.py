@@ -23,7 +23,7 @@ cfg.order = 4
 cfg.compile_flag = True
 cfg.damping_factor = 1
 cfg.max_iterations = 100
-cfg.time_scheme = 'BDF2'
+cfg.time.scheme = 'BDF2'
 cfg.linear_solver = 'pardiso'
 cfg.bonus_int_order_bnd = cfg.order
 cfg.bonus_int_order_vol = cfg.order
@@ -122,8 +122,8 @@ if load_stationary:
     loader.load_configuration('stationary')
     loader.load_state_time_scheme('stationary')
 else:
-    cfg.time_step = 0.1
-    cfg.time_step_max = 10
+    cfg.time.step = 0.1
+    cfg.time.max_step  = 10
     with TaskManager():
         solver.solve_stationary()
     saver.save_state_time_scheme('stationary')
@@ -141,19 +141,19 @@ with TaskManager():
     solver.add_perturbation(perturbation)
 
 # Solver Transient
-cfg.time_step = 0.1
-cfg.time_period = (0, 100)
+cfg.time.step = 0.1
+cfg.time.interval = (0, 100)
 cfg.convergence_criterion = 1e-12
 
 with TaskManager():
     solver.solve_transient()
 saver.save_configuration(name=f"transient")
-saver.save_state_time_scheme(f"transient_{cfg.time_period.end}")
+saver.save_state_time_scheme(f"transient_{cfg.time.interval.end}")
 
 # Solver Transient
-cfg.time_period = (100, 400)
+cfg.time.interval = (100, 400)
 cfg.save_state = True
 
 with TaskManager():
     solver.solve_transient()
-saver.save_state_time_scheme(f"transient_{cfg.time_period.end}")
+saver.save_state_time_scheme(f"transient_{cfg.time.interval.end}")

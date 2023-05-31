@@ -99,7 +99,7 @@ class Formulation(abc.ABC):
         self.bcs = co.BoundaryConditions(mesh.GetBoundaries(), solver_configuration)
         self.dcs = co.DomainConditions(mesh.GetMaterials(), solver_configuration)
         self.mu = mu.viscosity_factory(self)
-        self.time_scheme = time_scheme_factory(solver_configuration)
+        self.time_scheme = time_scheme_factory(solver_configuration.time)
 
         self._gfus = None
         self._fes = None

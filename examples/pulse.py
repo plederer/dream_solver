@@ -7,7 +7,6 @@ from ngsolve.meshes import MakeStructured2DMesh
 ngsglobals.msg_level = 0
 SetNumThreads(8)
 
-periodic = False
 circle = False
 structured = True
 maxh = 0.1
@@ -41,7 +40,7 @@ cfg.convergence_criterion = 1e-16
 
 cfg.compile_flag = True
 cfg.static_condensation = True
-cfg.periodic = periodic
+cfg.periodic = False
 
 if circle:
 
@@ -55,15 +54,12 @@ else:
 
     if structured:
         N = int(1 / maxh)
-        mesh = MakeStructured2DMesh(False, N, N, periodic_y=periodic, mapping=lambda x, y: (x - 0.5, y - 0.5))
+        mesh = MakeStructured2DMesh(False, N, N, mapping=lambda x, y: (x - 0.5, y - 0.5))
     else:
         face = WorkPlane().RectangleC(1, 1).Face()
 
         for bc, edge in zip(['bottom', 'right', 'top', 'left'], face.edges):
             edge.name = bc
-        if periodic:
-            periodic_edge = face.edges[0]
-            periodic_edge.Identify(face.edges[2], "periodic", IdentificationType.PERIODIC)
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
 
 gamma = cfg.heat_capacity_ratio
@@ -75,35 +71,22 @@ alpha = 0
 u_inf = CF((cos(alpha), sin(alpha)))
 p_inf = 1/(M**2 * gamma)
 T_inf = gamma/(gamma - 1) * p_inf/rho_inf
-c = sqrt(gamma * p_inf/rho_inf)
 
 Gamma = 0.02
 Rv = 0.1
 
 r = sqrt(x**2 + y**2)
-psi = Gamma * exp(-r**2/(2*Rv**2))
-
-# Vortex
-u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
-p_0 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2 * exp(-r**2/Rv**2))
-rho_0 = gamma/(gamma - 1)/T_inf * p_0
 
 # # Pressure Pulse
-# u_0 = u_inf
-# u_0 = CF((0,0))
-# p_0 = p_inf * (1 + Gamma * exp(-r**2/Rv**2))
-# rho_0 = gamma/(gamma - 1)/T_inf * p_0
-
-p_00 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2)
+u_0 = u_inf
+# u_0 = CF((0, 0))
+p_0 = p_inf * (1 + Gamma * exp(-r**2/Rv**2))
+rho_0 = gamma/(gamma - 1)/T_inf * p_0
 
 
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set_farfield("left", rho_inf, u_inf, pressure=p_inf)
-solver.boundary_conditions.set_nonreflecting_outflow('right', p_inf, "perfect", 0.28, 1, True, False, False)
-
-solver.boundary_conditions.set_inviscid_wall('top|bottom')
-if periodic:
-    solver.boundary_conditions.set_periodic('top|bottom')
+solver.boundary_conditions.set_nonreflecting_outflow('right|top|bottom', p_inf, "perfect", 0.28, 1, True, False, False)
 
 solver.domain_conditions.set_initial(rho_0, u_0, pressure=p_0)
 
@@ -111,7 +94,6 @@ with TaskManager():
     solver.setup()
 
     solver.drawer.draw(energy=True)
-    solver.drawer.draw_particle_velocity(u_inf, autoscale=False, min=-1e-4, max=1e-4)
-    solver.drawer.draw_acoustic_pressure(p_inf, autoscale=False, min=-1e-4, max=1e-4)
-    Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*")
+    solver.drawer.draw_particle_velocity(u_inf)
+    solver.drawer.draw_acoustic_pressure(p_inf)
     solver.solve_transient()

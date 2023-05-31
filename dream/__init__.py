@@ -5,12 +5,13 @@ __all__ = [
     'Saver',
     'ResultsDirectoryTree',
     'PointSensor',
-    'BoundarySensor'
+    'BoundarySensor',
+    'Perturbation'
 ]
 
 from .hdg_solver import CompressibleHDGSolver
-from .configuration import SolverConfiguration
-from .io import ResultsDirectoryTree, DreAmLogger, Loader, Saver
+from .configuration import SolverConfiguration, ResultsDirectoryTree, DreAmLogger
+from .io import Loader, Saver
 from .sensor import PointSensor, BoundarySensor
 from .conditions import Perturbation
 

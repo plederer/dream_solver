@@ -40,12 +40,14 @@ class Formatter:
 
     def newline(self):
         self.output += "\n"
+        return self
 
     def reset(self):
         self.output = ""
 
     def add(self, object):
         self.output += repr(object)
+        return self
 
     def __repr__(self) -> str:
         return self.output

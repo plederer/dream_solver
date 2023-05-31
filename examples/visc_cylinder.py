@@ -17,7 +17,6 @@ Draw(mesh)
 cfg = SolverConfiguration()
 
 cfg.formulation = "conservative"
-cfg.simulation = "stationary"
 cfg.dynamic_viscosity = "constant"
 cfg.mixed_method = "strain_heat"
 cfg.riemann_solver = "lax_friedrich"
@@ -28,9 +27,10 @@ cfg.Mach_number = 0.3
 cfg.heat_capacity_ratio = 1.4
 
 cfg.order = 2
-cfg.time_scheme = "IE"
-cfg.time_step = 0.1
-cfg.time_period = (0, 200)
+cfg.time.simulation = "stationary"
+cfg.time.scheme = "IE"
+cfg.time.step = 0.1
+cfg.time.interval = (0, 200)
 cfg.linear_solver = "pardiso"
 cfg.damping_factor = 1
 cfg.max_iterations = 100

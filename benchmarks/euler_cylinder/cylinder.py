@@ -32,13 +32,13 @@ cfg.Mach_number = 0.1
 cfg.heat_capacity_ratio = 1.4
 cfg.order = 3
 cfg.damping_factor = 1.0
-cfg.time_scheme = 'BDF2'
-cfg.time_step = 0.001
-cfg.time_step_max = 10
+cfg.time.scheme = 'BDF2'
+cfg.time.step = 0.001
+cfg.time.max_step = 10
+cfg.time.simulation = 'stationary'
 cfg.max_iterations = 300
 cfg.convergence_criterion = 1e-12
 cfg.linear_solver = 'pardiso'
-cfg.simulation = 'stationary'
 cfg.compile_flag = True
 
 R = 1

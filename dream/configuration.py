@@ -1,24 +1,325 @@
 from __future__ import annotations
-from enum import Enum
+import numpy as np
 from ngsolve import Parameter
 from typing import Optional, Any
+from numbers import Number
+from math import log10, ceil
+from pathlib import Path
 
-from . import io
 from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
-from .time_schemes import TimeSchemes, TimePeriod
+from .time_schemes import TimeSchemes, Simulation
 from .viscosity import DynamicViscosity
-from .utils.formatter import Formatter
+from .utils import Formatter
+
 
 import logging
 logger = logging.getLogger('DreAm.Configuration')
 
 
-class Simulation(Enum):
-    STATIONARY = "stationary"
-    TRANSIENT = "transient"
+class ResultsDirectoryTree:
+
+    def __init__(self,
+                 directory_name: str = "results",
+                 state_directory_name: str = "states",
+                 sensor_directory_name: str = "sensor",
+                 vtk_directory_name: str = "vtk",
+                 parent_path: Optional[Path] = None) -> None:
+
+        self.parent_path = parent_path
+        self.directory_name = directory_name
+        self.state_directory_name = state_directory_name
+        self.sensor_directory_name = sensor_directory_name
+        self.vtk_directory_name = vtk_directory_name
+
+    @property
+    def main_path(self) -> Path:
+        return self.parent_path.joinpath(self.directory_name)
+
+    @property
+    def state_path(self) -> Path:
+        return self.main_path.joinpath(self.state_directory_name)
+
+    @property
+    def sensor_path(self) -> Path:
+        return self.main_path.joinpath(self.sensor_directory_name)
+
+    @property
+    def vtk_path(self) -> Path:
+        return self.main_path.joinpath(self.vtk_directory_name)
+
+    @property
+    def parent_path(self) -> Path:
+        return self._parent_path
+
+    @parent_path.setter
+    def parent_path(self, parent_path: Path):
+
+        if parent_path is None:
+            self._parent_path = Path.cwd()
+
+        elif isinstance(parent_path, (str, Path)):
+            parent_path = Path(parent_path)
+
+            if not parent_path.exists():
+                raise ValueError(f"Path {parent_path} does not exist!")
+
+            self._parent_path = parent_path
+
+        else:
+            raise ValueError(f"Type {type(parent_path)} not supported!")
+
+    def __repr__(self) -> str:
+        formatter = Formatter()
+        formatter.COLUMN_RATIO = (0.2, 0.8)
+        formatter.header("Results Directory Tree").newline()
+        formatter.entry("Path", str(self.parent_path))
+        formatter.entry("Main", f"{self.parent_path.stem}/{self.directory_name}")
+        formatter.entry("State", f"{self.parent_path.stem}/{self.directory_name}/{self.state_directory_name}")
+        formatter.entry("Sensor", f"{self.parent_path.stem}/{self.directory_name}/{self.sensor_directory_name}")
+
+        return formatter.output
 
 
-class SolverConfiguration:
+class DreAmLogger:
+
+    _iteration_error_digit: int = 8
+    _time_step_digit: int = 6
+
+    @classmethod
+    def set_time_step_digit(cls, time_step):
+        cls._time_step_digit = ceil(abs(log10(time_step)))
+
+    def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
+        self.logger = logging.getLogger("DreAm")
+        self.tree = ResultsDirectoryTree()
+
+        self.stream_handler = logging.NullHandler()
+        self.file_handler = logging.NullHandler()
+        self.formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+        self.filename = "log.txt"
+
+        self.log_to_terminal = log_to_terminal
+        self.log_to_file = log_to_file
+
+    @property
+    def filepath(self):
+        if not self.tree.main_path.exists():
+            self.tree.main_path.mkdir(parents=True)
+        return self.tree.main_path.joinpath(self.filename)
+
+    def set_level(self, level):
+        self.logger.setLevel(level)
+
+    def silence_logger(self):
+        self.log_to_file = False
+        self.log_to_terminal = False
+
+    @property
+    def log_to_terminal(self):
+        return self._log_to_terminal
+
+    @log_to_terminal.setter
+    def log_to_terminal(self, value: bool):
+        if value:
+            self.stream_handler = logging.StreamHandler()
+            self.stream_handler.setLevel(self.logger.level)
+            self.stream_handler.setFormatter(self.formatter)
+            self.logger.addHandler(self.stream_handler)
+        else:
+            self.logger.removeHandler(self.stream_handler)
+            self.stream_handler = logging.NullHandler()
+        self._log_to_terminal = value
+
+    @property
+    def log_to_file(self):
+        return self._log_to_file
+
+    @log_to_file.setter
+    def log_to_file(self, value: bool):
+        if value:
+            self.file_handler = logging.FileHandler(self.filepath, delay=True)
+            self.file_handler.setLevel(self.logger.level)
+            self.file_handler.setFormatter(self.formatter)
+            self.logger.addHandler(self.file_handler)
+        else:
+            self.logger.removeHandler(self.file_handler)
+            self.file_handler = logging.NullHandler()
+        self._log_to_file = value
+
+
+class BaseConfiguration:
+
+    __slots__ = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        cfg = {}
+        for key in self.__slots__:
+            value = getattr(self, key)
+            if isinstance(value, BaseConfiguration):
+                value = value.to_dict()
+            cfg[key] = value
+
+        return cfg
+
+    def update(self, cfg: dict[str, Any]):
+        if isinstance(cfg, type(self)):
+            cfg = cfg.to_dict()
+        elif isinstance(cfg, dict):
+            pass
+        else:
+            raise TypeError(f'Update requires dictionary or type {str(self)}')
+
+        for key, value in cfg.items():
+            if key.startswith("_"):
+                key = key[1:]
+            try:
+                setattr(self, key, value)
+                continue
+            except AttributeError:
+                msg = f"Trying to set '{key}' attribute in {str(self)}. "
+                msg += "It is either deprecated or not supported"
+                logger.warning(msg)
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+
+class TimeConfiguration(BaseConfiguration):
+
+    __slots__ = ("_simulation",
+                 "_scheme",
+                 "_interval",
+                 "_step",
+                 "_max_step",
+                 "_t")
+
+    def __init__(self) -> None:
+        self.simulation = "transient"
+        self.scheme = "IE"
+        self.interval = (0, 1)
+        self.max_step = 1
+        self._step = Parameter(1e-4)
+        self._t = Parameter(0)
+
+    @property
+    def simulation(self) -> Simulation:
+        return self._simulation
+
+    @simulation.setter
+    def simulation(self, simulation: str):
+        if isinstance(simulation, str):
+            simulation = simulation.lower()
+
+        try:
+            self._simulation = Simulation(simulation)
+        except ValueError:
+            options = [enum.value for enum in Simulation]
+            raise ValueError(
+                f"'{str(simulation).capitalize()}' is not a valid Simulation. Possible alternatives: {options}")
+
+    @property
+    def interval(self) -> tuple[float, float]:
+        return self._interval
+
+    @interval.setter
+    def interval(self, interval) -> None:
+        if isinstance(interval, Number):
+            interval = (0, abs(interval))
+
+        elif isinstance(interval, tuple):
+            if len(interval) == 2:
+                interval = tuple(sorted(interval))
+            else:
+                raise ValueError("Time period must be a container of length 2!")
+
+        self._interval = interval
+
+    @property
+    def step(self) -> Parameter:
+        return self._step
+
+    @step.setter
+    def step(self, step: float):
+        if isinstance(step, Parameter):
+            step = step.Get()
+
+        self._step.Set(step)
+        DreAmLogger.set_time_step_digit(step)
+
+    @property
+    def max_step(self) -> float:
+        return self._max_step
+
+    @max_step.setter
+    def max_step(self, max_step: float):
+        self._max_step = float(max_step)
+
+    @property
+    def scheme(self) -> TimeSchemes:
+        return self._scheme
+
+    @scheme.setter
+    def scheme(self, scheme: str):
+        if isinstance(scheme, str):
+            scheme = scheme.upper()
+
+        try:
+            self._scheme = TimeSchemes(scheme)
+        except ValueError:
+            options = [enum.value for enum in TimeSchemes]
+            raise ValueError(
+                f"'{str(scheme).capitalize()}' is not a valid Time scheme. Possible alternatives: {options}")
+
+    @property
+    def t(self) -> Parameter:
+        return self._t
+
+    @t.setter
+    def t(self, t) -> None:
+        if isinstance(t, Parameter):
+            t = t.Get()
+
+        self._t.Set(t)
+
+    def __iter__(self):
+        for t in self.range(step=1):
+            self.t.Set(t)
+            yield t
+
+    def range(self, step: int = 1):
+        for t in self.to_array()[::step]:
+            yield t
+
+    def to_array(self, include_start_time: bool = False) -> np.ndarray:
+        start, end = self.interval
+        dt = self.step.Get()
+        num = round((end - start)/dt) + 1
+
+        interval = np.linspace(start, end, num)
+        if not include_start_time:
+            interval = interval[1:]
+        return interval.round(DreAmLogger._time_step_digit)
+
+    def __repr__(self):
+        formatter = Formatter()
+        formatter.subheader('Time Configuration').newline()
+        formatter.entry('Simulation', self.simulation.name)
+        formatter.entry('Time Scheme', self.scheme.name)
+        formatter.entry('Time Step', self.step.Get())
+        if self.simulation is Simulation.TRANSIENT:
+            start, end = self.interval
+            formatter.entry('Time Period', f"({start}, {end}]")
+        elif self.simulation is Simulation.STATIONARY:
+            formatter.entry('Max Time Step', self.max_step)
+
+        return formatter.output
+
+    def __str__(self) -> str:
+        start, end = self.interval
+        return f"Interval: ({start}, {end}], Time Step: {self.step.Get()}"
+
+
+class SolverConfiguration(BaseConfiguration):
 
     __slots__ = ("_formulation",
                  "_dynamic_viscosity",
@@ -34,11 +335,7 @@ class SolverConfiguration:
                  "_bonus_int_order_vol",
                  "_bonus_int_order_bnd",
                  "_periodic",
-                 "_simulation",
-                 "_time_scheme",
-                 "_time_step",
-                 "_time_period",
-                 "_time_step_max",
+                 "_time",
                  "_compile_flag",
                  "_max_iterations",
                  "_convergence_criterion",
@@ -49,39 +346,37 @@ class SolverConfiguration:
 
     def __init__(self) -> None:
 
-        # Formulation Settings
+        # Formulation Configuration
         self.formulation = "conservative"
         self.dynamic_viscosity = None
         self.mixed_method = None
         self.riemann_solver = 'roe'
 
-        # Flow Settings'
+        # Flow Configuration
         self._Mach_number = Parameter(0.3)
         self._Reynolds_number = Parameter(1)
         self._Prandtl_number = Parameter(0.72)
         self._heat_capacity_ratio = Parameter(1.4)
         self._farfield_temperature = Parameter(293.15)
 
-        # Finite Element settings
+        # Finite Element Configuration
         self.order = 2
         self.static_condensation = True
         self.bonus_int_order_vol = 0
         self.bonus_int_order_bnd = 0
         self.periodic = False
 
-        # Solution routine settings
-        self.simulation = "transient"
-        self.time_scheme = "IE"
-        self._time_step = Parameter(1e-4)
-        self._time_period = TimePeriod(0, 1, self._time_step)
-        self.time_step_max = 1
+        # Time Configuration
+        self._time = TimeConfiguration()
+
+        # Solution routine Configuration
         self.compile_flag = True
         self.max_iterations = 10
         self.convergence_criterion = 1e-8
         self.damping_factor = 1
         self.linear_solver = "pardiso"
 
-        # Output options
+        # Output Configuration
         self.save_state = False
 
         # Simulation Info
@@ -237,75 +532,12 @@ class SolverConfiguration:
                 f"'{str(riemann_solver).capitalize()}' is not a valid Riemann Solver. Possible alternatives: {options}")
 
     @property
-    def simulation(self) -> Simulation:
-        return self._simulation
+    def time(self) -> TimeConfiguration:
+        return self._time
 
-    @simulation.setter
-    def simulation(self, simulation: str):
-        if isinstance(simulation, str):
-            simulation = simulation.lower()
-
-        try:
-            self._simulation = Simulation(simulation)
-        except ValueError:
-            options = [enum.value for enum in Simulation]
-            raise ValueError(
-                f"'{str(simulation).capitalize()}' is not a valid Simulation. Possible alternatives: {options}")
-
-    @property
-    def time_step(self) -> Parameter:
-        return self._time_step
-
-    @time_step.setter
-    def time_step(self, time_step: float):
-        if isinstance(time_step, Parameter):
-            time_step = time_step.Get()
-
-        self._time_step.Set(time_step)
-        io.DreAmLogger.set_time_step_digit(time_step)
-
-    @property
-    def time_period(self) -> TimePeriod:
-        return self._time_period
-
-    @time_period.setter
-    def time_period(self, value: tuple[float, float]):
-        if isinstance(value, TimePeriod):
-            value = (value.start, value.end)
-        elif len(value) != 2:
-            raise ValueError("Time period must be a container of length 2!")
-
-        start, end = value
-
-        if start > end:
-            raise ValueError("Start time is greater than end time!")
-
-        self._time_period.start = start
-        self._time_period.end = end
-
-    @property
-    def time_step_max(self) -> float:
-        return self._time_step_max
-
-    @time_step_max.setter
-    def time_step_max(self, time_step_max: float):
-        self._time_step_max = float(time_step_max)
-
-    @property
-    def time_scheme(self) -> TimeSchemes:
-        return self._time_scheme
-
-    @time_scheme.setter
-    def time_scheme(self, time_scheme: str):
-        if isinstance(time_scheme, str):
-            time_scheme = time_scheme.upper()
-
-        try:
-            self._time_scheme = TimeSchemes(time_scheme)
-        except ValueError:
-            options = [enum.value for enum in TimeSchemes]
-            raise ValueError(
-                f"'{str(time_scheme).capitalize()}' is not a valid Time scheme. Possible alternatives: {options}")
+    @time.setter
+    def time(self, time: dict[str, Any]) -> None:
+        self._time.update(time)
 
     @property
     def order(self) -> int:
@@ -404,35 +636,18 @@ class SolverConfiguration:
     def info(self, info: dict[str, Any]):
         self._info.update(info)
 
-    def to_dict(self) -> dict[str, Any]:
-        return {key: getattr(self, key) for key in self.__slots__}
-
-    def update(self, configuration: dict[str, Any]):
-        if isinstance(configuration, SolverConfiguration):
-            configuration = configuration.to_dict()
-
-        for key, value in configuration.items():
-            if key.startswith("_"):
-                key = key[1:]
-            try:
-                setattr(self, key, value)
-            except AttributeError:
-                msg = f"Trying to set '{key}' attribute in configuration. "
-                msg += "It is either deprecated or not supported"
-                logger.warning(msg)
-
     def __repr__(self) -> str:
 
         formatter = Formatter()
         formatter.header('Solver Configuration').newline()
-        formatter.subheader("Formulation Settings").newline()
+        formatter.subheader("Formulation Configuration").newline()
         formatter.entry("Formulation", self._formulation.name)
         formatter.entry("Viscosity", self._dynamic_viscosity.name)
         formatter.entry("Mixed Method", self._mixed_method.name)
         formatter.entry("Riemann Solver", self.riemann_solver.name)
         formatter.newline()
 
-        formatter.subheader('Flow Settings').newline()
+        formatter.subheader('Flow Configuration').newline()
         formatter.entry("Mach Number", self.Mach_number.Get())
         if self._dynamic_viscosity is not DynamicViscosity.INVISCID:
             formatter.entry("Reynolds Number", self.Reynolds_number.Get())
@@ -442,7 +657,7 @@ class SolverConfiguration:
             formatter.entry("Farfield Temperature", self.farfield_temperature.Get())
         formatter.newline()
 
-        formatter.subheader('Finite Element Settings').newline()
+        formatter.subheader('Finite Element Configuration').newline()
         formatter.entry('Polynomial Order', self._order)
         formatter.entry('Static Condensation', str(self._static_condensation))
         formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
@@ -450,21 +665,16 @@ class SolverConfiguration:
         formatter.entry('Periodic', str(self._periodic))
         formatter.newline()
 
-        formatter.subheader('Solution Routine Settings').newline()
-        formatter.entry('Simulation', self.simulation.name)
-        formatter.entry('Time Scheme', self.time_scheme.name)
-        formatter.entry('Time Step', self.time_step.Get())
-        if self.simulation is Simulation.TRANSIENT:
-            formatter.entry('Time Period', f"({self.time_period.start}, {self.time_period.end}]")
-        elif self.simulation is Simulation.STATIONARY:
-            formatter.entry('Max Time Step', self.time_step_max)
+        formatter.add(self.time).newline()
+
+        formatter.subheader('Solution Routine Configuration').newline()
         formatter.entry('Linear Solver', self._linear_solver)
         formatter.entry('Damping Factor', self._damping_factor)
         formatter.entry('Convergence Criterion', self._convergence_criterion)
         formatter.entry('Maximal Iterations', self._max_iterations)
         formatter.newline()
 
-        formatter.subheader('Various Settings').newline()
+        formatter.subheader('Various Configuration').newline()
         formatter.entry('Compile Flag', str(self._compile_flag))
         formatter.entry('Save State', str(self._save_state))
         formatter.newline()
