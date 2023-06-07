@@ -7,7 +7,6 @@ import pandas as pd
 
 from typing import *
 from ngsolve import *
-from .viscosity import DynamicViscosity
 
 if TYPE_CHECKING:
     from .formulations import Formulation
@@ -290,9 +289,10 @@ class BoundarySensor(Sensor):
 
         def calculate_forces():
 
-            dynamic_viscosity = self.formulation.cfg.dynamic_viscosity
+            mu = self.formulation.cfg.dynamic_viscosity
+
             stress = -self.formulation.pressure() * Id(self.formulation.mesh.dim)
-            if dynamic_viscosity is not DynamicViscosity.INVISCID:
+            if not mu.is_inviscid:
                 stress += self.formulation.deviatoric_stress_tensor()
 
             normal_stress = scale * stress * self.formulation.normal
@@ -311,9 +311,9 @@ class BoundarySensor(Sensor):
 
         def calculate_drag_coefficient():
 
-            dynamic_viscosity = self.formulation.cfg.dynamic_viscosity
+            mu = self.formulation.cfg.dynamic_viscosity
             stress = -self.formulation.pressure() * Id(self.formulation.mesh.dim)
-            if dynamic_viscosity is not DynamicViscosity.INVISCID:
+            if not mu.is_inviscid:
                 stress += self.formulation.deviatoric_stress_tensor()
 
             normal_stress = scale * stress * self.formulation.normal
@@ -336,9 +336,10 @@ class BoundarySensor(Sensor):
 
         def calculate_lift_coefficient():
 
-            dynamic_viscosity = self.formulation.cfg.dynamic_viscosity
+            mu = self.formulation.cfg.dynamic_viscosity
+
             stress = -self.formulation.pressure() * Id(self.formulation.mesh.dim)
-            if dynamic_viscosity is not DynamicViscosity.INVISCID:
+            if not mu.is_inviscid:
                 stress += self.formulation.deviatoric_stress_tensor()
 
             normal_stress = scale * stress * self.formulation.normal

@@ -1,19 +1,18 @@
 from __future__ import annotations
 from ngsolve import *
 
-from .interface import MixedMethods, VectorIndices, TensorIndices, RiemannSolver, TestAndTrialFunction
+from .interface import MixedMethods, TensorIndices, TestAndTrialFunction
 from .conservative import ConservativeFormulation, Indices
 from .. import conditions as co
-from .. import viscosity as visc
 
 
 class ConservativeFormulation2D(ConservativeFormulation):
 
     _indices = Indices(DENSITY=0,
-                       MOMENTUM=VectorIndices(X=1, Y=2),
+                       MOMENTUM=slice(1, 3),
                        ENERGY=3,
                        STRAIN=TensorIndices(XX=0, XY=1, YX=1, YY=2),
-                       TEMPERATURE_GRADIENT=VectorIndices(X=3, Y=4))
+                       TEMPERATURE_GRADIENT=slice(3, 5))
 
     def _initialize_FE_space(self) -> ProductSpace:
 
@@ -44,69 +43,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _initialize_TnT(self) -> TestAndTrialFunction:
         return TestAndTrialFunction(*zip(*self.fes.TnT()))
-
-    def add_time_bilinearform(self, blf):
-
-        bonus_order_vol = self.cfg.bonus_int_order_vol
-        compile_flag = self.cfg.compile_flag
-
-        U, V = self.TnT.PRIMAL
-
-        time_levels_gfu = self._gfus.get_component(0)
-        time_levels_gfu['n+1'] = U
-
-        var_form = InnerProduct(self.time_scheme.apply(time_levels_gfu), V) * dx(bonus_intorder=bonus_order_vol)
-
-        blf += (var_form).Compile(compile_flag)
-
-    def add_convective_bilinearform(self, blf):
-
-        compile_flag = self.cfg.compile_flag
-        bonus_order_vol = self.cfg.bonus_int_order_vol
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
-
-        U, V = self.TnT.PRIMAL
-        Uhat, Vhat = self.TnT.PRIMAL_FACET
-
-        # Subtract boundary regions
-        mask_fes = FacetFESpace(self.mesh, order=0)
-        mask = GridFunction(mask_fes)
-        mask.vec[~mask_fes.GetDofs(self.mesh.Boundaries(self.bcs.pattern))] = 1
-
-        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form += mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        blf += var_form.Compile(compile_flag)
-
-    def add_diffusive_bilinearform(self, blf):
-
-        mixed_method = self.cfg.mixed_method
-        compile_flag = self.cfg.compile_flag
-        bonus_order_vol = self.cfg.bonus_int_order_vol
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
-
-        U, V = self.TnT.PRIMAL
-        Uhat, Vhat = self.TnT.PRIMAL_FACET
-        Q, _ = self.TnT.MIXED
-
-        # Subtract boundary regions
-        mask_fes = FacetFESpace(self.mesh, order=0)
-        mask = GridFunction(mask_fes)
-        mask.vec[~mask_fes.GetDofs(self.mesh.Boundaries(self.bcs.pattern))] = 1
-
-        var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form -= mask * InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
-                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-
-        blf += var_form.Compile(compile_flag)
-
-        if mixed_method is not MixedMethods.NONE:
-            self._add_mixed_bilinearform(blf)
 
     def _add_mixed_bilinearform(self, blf):
 
@@ -168,39 +104,34 @@ class ConservativeFormulation2D(ConservativeFormulation):
         mixed_method = self.cfg.mixed_method
         bonus_order_vol = self.cfg.bonus_int_order_vol
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        dim = self.mesh.dim
 
         region = self.mesh.Materials(domain)
         _, V = self.TnT.PRIMAL
         _, Vhat = self.TnT.PRIMAL_FACET
         _, P = self.TnT.MIXED
 
-        initial_U = CF((value.density, value.momentum, value.energy))
-        cf = initial_U * V * dx(definedon=region, bonus_intorder=bonus_order_vol)
-        cf += initial_U * Vhat * dx(element_boundary=True, definedon=region, bonus_intorder=bonus_order_bnd)
+        U_f = CF((value.density, value.momentum, value.energy))
+        cf = U_f * V * dx(definedon=region, bonus_intorder=bonus_order_vol)
+        cf += U_f * Vhat * dx(element_boundary=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
-        # Does not work as expected. Maybe needs revisiting
-        # if mixed_method is MixedMethods.GRADIENT:
-        #     initial_Q = CF(tuple(initial_U.Diff(dir) for dir in (x, y)), dims=(2, 4)).trans
-        #     cf += InnerProduct(initial_Q, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
+        if not isinstance(value, co.Perturbation):
 
-        # elif mixed_method is MixedMethods.STRAIN_HEAT:
-        #     velocity = self.velocity(initial_U)
-        #     velocity_gradient = CF(tuple(velocity.Diff(dir) for dir in (x, y)), dims=(2, 2)).trans
+            if mixed_method is MixedMethods.GRADIENT:
+                Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
+                cf += InnerProduct(Q_f, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
 
-        #     strain = velocity_gradient + velocity_gradient.trans
-        #     strain -= 2/3 * (velocity_gradient[0, 0] + velocity_gradient[1, 1]) * Id(2)
+            elif mixed_method is MixedMethods.STRAIN_HEAT:
+                velocity_gradient = CF(tuple(value.velocity.Diff(dir) for dir in (x, y)), dims=(dim, dim)).trans
 
-        #     temperature = self.temperature(initial_U)
-        #     temperature_gradient = CF(tuple(temperature.Diff(dir) for dir in (x, y)))
+                strain = velocity_gradient + velocity_gradient.trans
+                strain -= 2/3 * (velocity_gradient[0, 0] + velocity_gradient[1, 1]) * Id(dim)
 
-        #     initial_Q = CF(
-        #         (strain[0, 0],
-        #          strain[0, 1],
-        #          strain[1, 1],
-        #          temperature_gradient[0],
-        #          temperature_gradient[1]))
+                gradient_T = CF(tuple(value.temperature.Diff(dir) for dir in (x, y)))
 
-        #     cf += InnerProduct(initial_Q, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
+                Q_f = CF((strain[0, 0], strain[0, 1], strain[1, 1], gradient_T[0], gradient_T[1]))
+
+                cf += InnerProduct(Q_f, P) * dx(definedon=region, bonus_intorder=bonus_order_vol)
 
         lf += cf
 
@@ -277,79 +208,90 @@ class ConservativeFormulation2D(ConservativeFormulation):
         blf += cf.Compile(compile_flag)
 
     def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Inflow):
+        raise NotImplementedError()
+        # bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        # compile_flag = self.cfg.compile_flag
+        # mu = self.cfg.dynamic_viscosity
+        # M = self.cfg.Mach_number
 
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
-        compile_flag = self.cfg.compile_flag
-        viscosity = self.cfg.dynamic_viscosity
+        # n = self.normal
+        # t = self.tangential
+        # region = self.mesh.Boundaries(boundary)
 
-        n = self.normal
-        t = self.tangential
-        region = self.mesh.Boundaries(boundary)
+        # U, _ = self.TnT.PRIMAL
+        # Uhat, Vhat = self.TnT.PRIMAL_FACET
+        # Q, _ = self.TnT.MIXED
 
-        U, _ = self.TnT.PRIMAL
-        Uhat, Vhat = self.TnT.PRIMAL_FACET
-        Q, _ = self.TnT.MIXED
+        # time_levels_gfu = self._gfus.get_component(1)
+        # time_levels_gfu['n+1'] = Uhat
 
-        time_levels_gfu = self._gfus.get_component(1)
-        time_levels_gfu['n+1'] = Uhat
+        # cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
 
-        cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
+        # amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat, self.normal)
 
-        amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat)
-        I_in = self.identity_matrix_incoming(Uhat)
+        # rho = self.density(Uhat)
+        # c = self.speed_of_sound(Uhat)
+        # ut = InnerProduct(self.velocity(Uhat), t)
+        # un = InnerProduct(self.velocity(Uhat), n)
+        # Mn = IfPos(un, un, -un)/c
 
-        if bc.type is bc.TYPE.PERFECT:
-            amplitude_in = CF((0, 0, 0, 0))
+        # if bc.type is bc.TYPE.PERFECT:
+        #     amplitude_in = CF((0, 0, 0, 0))
 
-        elif bc.type is bc.TYPE.PARTIALLY:
-            diff_u = self.velocity(Uhat) - bc.velocity
-            rho = self.density(Uhat)
-            c = self.speed_of_sound(Uhat)
-            M = self.cfg.Mach_number
-            entropy_amp = bc.sigma * c/bc.reference_length * (self.pressure(Uhat) - bc.pressure)
-            contact_amp = bc.sigma * c/bc.reference_length * (diff_u[1] * n[0] - diff_u[0] * n[1])
-            acoustic_amp = bc.sigma * rho * c**2 * (1-M**2)/bc.reference_length * InnerProduct(diff_u, n)
-            amplitude_in = I_in * CF((entropy_amp, contact_amp, 0, acoustic_amp))
+        # elif bc.type is bc.TYPE.PARTIALLY:
+        #     ref_length = bc.reference_length
 
-        P_inverse_inc = I_in * self.P_inverse_matrix(Uhat)
-        if bc.tang_conv_flux:
-            conv_flux_gradient = self.convective_flux_gradient(U, Q)
-            conv_flux_gradient_tang = sum([conv_flux_gradient[:, i, :] * t[i] for i in range(self.mesh.dim)]) * t
-            cf += conv_flux_gradient_tang * Vhat
-            amplitude_in -= P_inverse_inc * conv_flux_gradient_tang
+        #     amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.pressure)
+        #     amplitude_in = CF((amp, 0, 0, 0))
 
-        if viscosity is not visc.DynamicViscosity.INVISCID:
+        # if bc.tang_conv_flux:
 
-            Q, _ = self.TnT.MIXED
+        #     tang_conv_flux = self.conservative_convective_jacobian(Uhat, t) * (grad(U) * t)
 
-            diff_flux_gradient = self.diffusive_flux_gradient(U, Q)
+        #     cf += tang_conv_flux * Vhat
+        #     amplitude_in -= CF((tang_conv_flux, tang_conv_flux, tang_conv_flux, 0))
 
-            if bc.tang_visc_flux:
-                visc_flux_gradient_tang = fem.Einsum('ijk,k->ij', diff_flux_gradient, t) * t
-                cf -= visc_flux_gradient_tang * Vhat
-                amplitude_in += P_inverse_inc * visc_flux_gradient_tang
+        # if not mu.is_inviscid:
 
-            if bc.norm_visc_flux:
-                visc_flux_gradient_norm = fem.Einsum('ijk,k->ij', diff_flux_gradient, n) * n
-                cf -= visc_flux_gradient_norm * Vhat
-                amplitude_in += P_inverse_inc * visc_flux_gradient_norm
+        #     if bc.tang_visc_flux:
 
-        amplitudes = amplitude_out + amplitude_in
-        cf += self.P_matrix(Uhat) * amplitudes * Vhat
+        #         cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t) * (grad(U) * t)
+        #         mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t) * (grad(Q) * t)
 
-        cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
-        blf += cf.Compile(compile_flag)
+        #         cf -= cons_diff_jac_tang * Vhat
+        #         cf -= mixe_diff_jac_tang * Vhat
+
+        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_tang
+        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_tang
+
+        #     if bc.norm_visc_flux:
+        #         test = grad(Q)
+        #         test = CF((test[0, :], 0, 0, test[2, :], 0, 0, test[4, :]), dims=(5, 2))
+        #         mixe_diff_jac_norm_test = self.mixed_diffusive_jacobian(Uhat, n) * (test * n)
+
+        #         cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n) * (grad(U) * n)
+        #         mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n) * (grad(Q) * n)
+
+        #         cf -= cons_diff_jac_norm * Vhat
+        #         # cf -= mixe_diff_jac_norm * Vhat
+
+        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_norm
+        #         # amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_norm
+
+        # amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
+        # cf += (self.P_matrix(Uhat, self.normal) * amplitudes) * Vhat
+        # cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
+        # blf += cf.Compile(compile_flag)
 
     def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Outflow):
 
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
         compile_flag = self.cfg.compile_flag
-        viscosity = self.cfg.dynamic_viscosity
+        mu = self.cfg.dynamic_viscosity
 
         n = self.normal
         t = self.tangential
         region = self.mesh.Boundaries(boundary)
-        M = self.cfg.Mach_number
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -362,59 +304,64 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat, self.normal)
 
+        rho = self.density(Uhat)
+        c = self.speed_of_sound(Uhat)
+        ut = InnerProduct(self.velocity(Uhat), t)
+        un = InnerProduct(self.velocity(Uhat), n)
+        Mn = IfPos(un, un, -un)/c
+
         if bc.type is bc.TYPE.PERFECT:
             amplitude_in = CF((0, 0, 0, 0))
 
         elif bc.type is bc.TYPE.PARTIALLY:
-            c = self.speed_of_sound(Uhat)
             ref_length = bc.reference_length
 
-            amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(Uhat) - bc.pressure)
+            amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.pressure)
             amplitude_in = CF((amp, 0, 0, 0))
-
 
         if bc.tang_conv_flux:
 
             cf += self.conservative_convective_jacobian(Uhat, t) * (grad(U) * t) * Vhat
+            gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
+            gradient_u_t = self.velocity_gradient(U, Q) * t
 
-            if bc.tang_conv_flux:
-                rho = self.density(Uhat)
-                c = self.speed_of_sound(Uhat)
-                ut = InnerProduct(self.velocity(Uhat), t)
+            beta_l = 1
+            beta_t = Mn
 
-                gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
-                gradient_u_t = self.velocity_gradient(U, Q) * t
+            amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
+            amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
-                beta_l = 1
-                beta_t = sqrt((self.velocity(Uhat) * n)**2)/c
-                # beta_t = M
+            amplitude_in -= CF((amp_t, 0, 0, 0))
 
-                amp_t = (1 - beta_l) * (gradient_p_t*ut - c*rho*ut*InnerProduct(gradient_u_t, n))
-                amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
-
-                amplitude_in -= CF((amp_t, 0, 0, 0))
-
-        if viscosity is not visc.DynamicViscosity.INVISCID:
-
-            Q, _ = self.TnT.MIXED
-
-            diff_flux_gradient = self.diffusive_flux_gradient(U, Q)
-            #diff_flux_gradient_normal = self.diffusive_flux_gradient_normal(U, Q)
+        if not mu.is_inviscid:
 
             if bc.tang_visc_flux:
-                visc_flux_gradient_tang = fem.Einsum('ijk,k->ij', diff_flux_gradient, t) * t
-                cf -= visc_flux_gradient_tang * Vhat
-                amplitude_in += P_inverse_in * visc_flux_gradient_tang
+
+                cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t) * (grad(U) * t)
+                mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t) * (grad(Q) * t)
+
+                cf -= cons_diff_jac_tang * Vhat
+                cf -= mixe_diff_jac_tang * Vhat
+
+                amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_tang
+                amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_tang
 
             if bc.norm_visc_flux:
-                visc_flux_gradient_norm = fem.Einsum('ijk,k->ij', diff_flux_gradient, n) * n
-                cf -= visc_flux_gradient_norm * Vhat
-                visc_flux_gradient_norm = fem.Einsum('ijk,k->ij', diff_flux_gradient_normal, n) * n
-                amplitude_in += P_inverse_in * visc_flux_gradient_norm
+                # test = grad(Q)
+                # test = CF((test[0, :], 0, 0, test[2, :], 0, 0, test[4, :]), dims=(5, 2))
+                # mixe_diff_jac_norm_test = self.mixed_diffusive_jacobian(Uhat, n) * (test * n)
+
+                cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n) * (grad(U) * n)
+                mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n) * (grad(Q) * n)
+
+                cf -= cons_diff_jac_norm * Vhat
+                # cf -= mixe_diff_jac_norm * Vhat
+
+                amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_norm
+                # amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_norm
 
         amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
-        cf += self.P_matrix(Uhat, self.normal) * amplitudes * Vhat
-
+        cf += (self.P_matrix(Uhat, self.normal) * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
@@ -471,7 +418,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         Uhat, Vhat = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
 
-        tau_dE = self.diffusive_stabilisation_term(Uhat, Q)[self.mesh.dim+1, self.mesh.dim+1]
+        tau_dE = self.diffusive_stabilisation_term(Uhat)[self.mesh.dim+1, self.mesh.dim+1]
 
         diff_rho = self.density(U) - self.density(Uhat)
         diff_rho_u = -self.momentum(Uhat)
@@ -480,70 +427,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = InnerProduct(CF((diff_rho, diff_rho_u, diff_rho_E)), Vhat)
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
-
-    def convective_numerical_flux(self, U, Uhat, unit_vector: CF):
-        """
-        Convective numerical flux
-
-        Equation 34, page 16
-
-        Literature:
-        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
-              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
-              Arch Computat Methods Eng 28, 753–784 (2021).
-              https://doi.org/10.1007/s11831-020-09508-z
-        """
-        riemann_solver = self.cfg.riemann_solver
-        un = InnerProduct(self.velocity(Uhat), unit_vector)
-        un_abs = IfPos(un, un, -un)
-        c = self.speed_of_sound(Uhat)
-
-        if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
-            lambda_max = un_abs + c
-            stabilisation_matrix = lambda_max * Id(self.mesh.dim + 2)
-
-        elif riemann_solver is RiemannSolver.ROE:
-            P = self.P_matrix(Uhat, unit_vector)
-            Lambda_abs = self.characteristic_velocities(Uhat, unit_vector, absolute_value=True)
-            P_inv = self.P_inverse_matrix(Uhat, unit_vector)
-            stabilisation_matrix = P * Lambda_abs * P_inv
-
-        elif riemann_solver is RiemannSolver.HLL:
-            splus = IfPos(un + c, un + c, 0)
-            stabilisation_matrix = splus * Id(self.mesh.dim + 2)
-
-        elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-8
-            theta = un_abs/(un_abs + c)
-            IfPos(theta - theta_0, theta, theta_0)
-            Theta = CF((1, 0, 0, 0,
-                        0, theta, 0, 0,
-                        0, 0, theta, 0,
-                        0, 0, 0, 1), dims=(4, 4))
-
-            Theta = self.P_matrix(Uhat, unit_vector) * Theta * self.P_inverse_matrix(Uhat, unit_vector)
-            splus = IfPos(un + c, un + c, 0)
-
-            stabilisation_matrix = splus * Theta
-
-        return self.convective_flux(Uhat)*unit_vector + stabilisation_matrix * (U-Uhat)
-
-    def diffusive_numerical_flux(self, U, Uhat, Q, unit_vector: CF):
-        tau_d = self.diffusive_stabilisation_term(Uhat, Q)
-        return self.diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U-Uhat)
-
-    def diffusive_stabilisation_term(self, Uhat, Q):
-
-        Re = self.cfg.Reynolds_number
-        Pr = self.cfg.Prandtl_number
-        mu = self.mu.get(Uhat, Q)
-
-        tau_d = CF((0, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1/Pr), dims=(4, 4)) * mu / Re
-
-        return tau_d
 
     def M_matrix(self, U) -> CF:
         """
@@ -619,8 +502,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
         d0, d1 = unit_vector[0], unit_vector[1]
 
         L = CF((0.5/c**2, 1/c**2, 0, 0.5/c**2,
-                -d0/(2*c*rho), 0, -d1, d0/(2*c*rho),
-                -d1/(2*c*rho), 0, d0, d1/(2*c*rho),
+                -d0/(2*c*rho), 0, d1, d0/(2*c*rho),
+                -d1/(2*c*rho), 0, -d0, d1/(2*c*rho),
                 0.5, 0, 0, 0.5), dims=(4, 4))
 
         return L
@@ -645,7 +528,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         Linv = CF((0, -rho*c*d0, -rho*c*d1, 1,
                    c**2, 0, 0, -1,
-                   0, -d1, d0, 0,
+                   0, d1, -d0, 0,
                    0, rho*c*d0, rho*c*d1, 1), dims=(4, 4))
 
         return Linv
@@ -759,31 +642,104 @@ class ConservativeFormulation2D(ConservativeFormulation):
         return B
 
     def conservative_convective_jacobian(self, U, unit_vector: CF) -> CF:
-        A = self.conservative_convective_jacobian_x(U)
-        B = self.conservative_convective_jacobian_y(U)
+        A = self.primitive_convective_jacobian(U, unit_vector)
+        return self.primitive_to_conservative(A, U)
+
+    def conservative_diffusive_jacobian_x(self, U, Q):
+
+        rho = self.density(U)
+        stess_tensor = self.deviatoric_stress_tensor(U, Q)
+        txx, txy = stess_tensor[0, 0], stess_tensor[0, 1]
+        ux, uy = self.velocity(U)
+
+        A = CF((
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            -txx*ux/rho - txy*uy/rho, txx/rho, txy/rho, 0
+        ), dims=(4, 4))
+
+        return A
+
+    def conservative_diffusive_jacobian_y(self, U, Q):
+
+        rho = self.density(U)
+        stress_tensor = self.deviatoric_stress_tensor(U, Q)
+        tyx, tyy = stress_tensor[1, 0], stress_tensor[1, 1]
+        ux, uy = self.velocity(U)
+
+        B = CF((
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            -tyx*ux/rho - tyy*uy/rho, tyx/rho, tyy/rho, 0
+        ), dims=(4, 4))
+
+        return B
+
+    def conservative_diffusive_jacobian(self, U, Q, unit_vector: CF) -> CF:
+        A = self.conservative_diffusive_jacobian_x(U, Q)
+        B = self.conservative_diffusive_jacobian_y(U, Q)
+        return A * unit_vector[0] + B * unit_vector[1]
+
+    def mixed_diffusive_jacobian_x(self, U):
+
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
+        mu = self.dynamic_viscosity(U)
+
+        ux, uy = self.velocity(U)
+
+        A = CF((
+            0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            ux, uy, 0, 1/Pr, 0
+        ), dims=(4, 5)) * mu/Re
+
+        return A
+
+    def mixed_diffusive_jacobian_y(self, U):
+
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
+        mu = self.dynamic_viscosity(U)
+
+        ux, uy = self.velocity(U)
+
+        B = CF((
+            0, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 0, 1, 0, 0,
+            0, ux, uy, 0, 1/Pr
+        ), dims=(4, 5)) * mu/Re
+
+        return B
+
+    def mixed_diffusive_jacobian(self, U, unit_vector: CF) -> CF:
+        A = self.mixed_diffusive_jacobian_x(U)
+        B = self.mixed_diffusive_jacobian_y(U)
         return A * unit_vector[0] + B * unit_vector[1]
 
     def primitive_to_conservative(self, matrix, U) -> CF:
         return self.M_matrix(U) * matrix * self.M_inverse_matrix(U)
 
+    def characteristic_to_conservative(self, matrix, U, unit_vector) -> CF:
+        return self.P_matrix(U, unit_vector) * matrix * self.P_inverse_matrix(U, unit_vector)
+
     def conservative_to_primitive(self, matrix, U) -> CF:
         return self.M_inverse_matrix(U) * matrix * self.M_matrix(U)
 
+    def conservative_to_characteristic(self, matrix, U, unit_vector) -> CF:
+        return self.P_inverse_matrix(U, unit_vector) * matrix * self.P_matrix(U, unit_vector)
+
     def conservative_convective_jacobian_outgoing(self, U, unit_vector: CF) -> CF:
-
-        P = self.P_matrix(U, unit_vector=unit_vector)
-        Lambda = self.characteristic_velocities_outgoing(U, unit_vector=unit_vector)
-        Pinv = self.P_inverse_matrix(U, unit_vector=unit_vector)
-
-        return P * Lambda * Pinv
+        Lambda = self.characteristic_velocities_outgoing(U, unit_vector)
+        return self.characteristic_to_conservative(Lambda, U, unit_vector)
 
     def conservative_convective_jacobian_incoming(self, U, unit_vector: CF) -> CF:
-
-        P = self.P_matrix(U, unit_vector=unit_vector)
-        Lambda = self.characteristic_velocities_incoming(U, unit_vector=unit_vector)
-        Pinv = self.P_inverse_matrix(U, unit_vector=unit_vector)
-
-        return P * Lambda * Pinv
+        Lambda = self.characteristic_velocities_incoming(U, unit_vector)
+        return self.characteristic_to_conservative(Lambda, U, unit_vector)
 
     def characteristic_variables(self, U, Q, Uhat, unit_vector: CF) -> CF:
         """
@@ -805,7 +761,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         variables = CF((
             gradient_p_dir - InnerProduct(gradient_u_dir, unit_vector) * c * rho,
             gradient_rho_dir * c**2 - gradient_p_dir,
-            gradient_u_dir[1] * unit_vector[0] - gradient_u_dir[0] * unit_vector[1],
+            gradient_u_dir[0] * unit_vector[1] - gradient_u_dir[1] * unit_vector[0],
             gradient_p_dir + InnerProduct(gradient_u_dir, unit_vector) * c * rho
         ))
 

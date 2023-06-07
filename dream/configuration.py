@@ -1,14 +1,14 @@
 from __future__ import annotations
 import numpy as np
 from ngsolve import Parameter
-from typing import Optional, Any
+from typing import Optional, Any, NamedTuple
 from numbers import Number
 from math import log10, ceil
 from pathlib import Path
 
 from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
 from .time_schemes import TimeSchemes, Simulation
-from .viscosity import DynamicViscosity
+from .crs import _DynamicViscosity, dynamic_viscosity_factory
 from .utils import Formatter
 
 
@@ -151,6 +151,16 @@ class BaseConfiguration:
 
     __slots__ = ()
 
+    @staticmethod
+    def _get_enum(value: str, enum, variable: str):
+        try:
+            value = enum(value)
+        except ValueError:
+            msg = f"'{str(value).capitalize()}' is not a valid {variable}. "
+            msg += f"Possible alternatives: {[e.value for e in enum]}"
+            raise ValueError(msg) from None
+        return value
+
     def to_dict(self) -> dict[str, Any]:
         cfg = {}
         for key in self.__slots__:
@@ -186,6 +196,10 @@ class BaseConfiguration:
 
 class TimeConfiguration(BaseConfiguration):
 
+    class Interval(NamedTuple):
+        start: float
+        end: float
+
     __slots__ = ("_simulation",
                  "_scheme",
                  "_interval",
@@ -196,7 +210,7 @@ class TimeConfiguration(BaseConfiguration):
     def __init__(self) -> None:
         self.simulation = "transient"
         self.scheme = "IE"
-        self.interval = (0, 1)
+        self.interval = self.Interval(0, 1)
         self.max_step = 1
         self._step = Parameter(1e-4)
         self._t = Parameter(0)
@@ -207,18 +221,14 @@ class TimeConfiguration(BaseConfiguration):
 
     @simulation.setter
     def simulation(self, simulation: str):
+
         if isinstance(simulation, str):
             simulation = simulation.lower()
 
-        try:
-            self._simulation = Simulation(simulation)
-        except ValueError:
-            options = [enum.value for enum in Simulation]
-            raise ValueError(
-                f"'{str(simulation).capitalize()}' is not a valid Simulation. Possible alternatives: {options}")
+        self._simulation = self._get_enum(simulation, Simulation, "Simulation")
 
     @property
-    def interval(self) -> tuple[float, float]:
+    def interval(self) -> Interval:
         return self._interval
 
     @interval.setter
@@ -232,7 +242,7 @@ class TimeConfiguration(BaseConfiguration):
             else:
                 raise ValueError("Time period must be a container of length 2!")
 
-        self._interval = interval
+        self._interval = self.Interval(*interval)
 
     @property
     def step(self) -> Parameter:
@@ -263,12 +273,7 @@ class TimeConfiguration(BaseConfiguration):
         if isinstance(scheme, str):
             scheme = scheme.upper()
 
-        try:
-            self._scheme = TimeSchemes(scheme)
-        except ValueError:
-            options = [enum.value for enum in TimeSchemes]
-            raise ValueError(
-                f"'{str(scheme).capitalize()}' is not a valid Time scheme. Possible alternatives: {options}")
+        self._scheme = self._get_enum(scheme, TimeSchemes, "Time Scheme")
 
     @property
     def t(self) -> Parameter:
@@ -329,7 +334,6 @@ class SolverConfiguration(BaseConfiguration):
                  "_Reynolds_number",
                  "_Prandtl_number",
                  "_heat_capacity_ratio",
-                 "_farfield_temperature",
                  "_order",
                  "_static_condensation",
                  "_bonus_int_order_vol",
@@ -348,7 +352,6 @@ class SolverConfiguration(BaseConfiguration):
 
         # Formulation Configuration
         self.formulation = "conservative"
-        self.dynamic_viscosity = None
         self.mixed_method = None
         self.riemann_solver = 'roe'
 
@@ -357,7 +360,7 @@ class SolverConfiguration(BaseConfiguration):
         self._Reynolds_number = Parameter(1)
         self._Prandtl_number = Parameter(0.72)
         self._heat_capacity_ratio = Parameter(1.4)
-        self._farfield_temperature = Parameter(293.15)
+        self._dynamic_viscosity = dynamic_viscosity_factory('inviscid')
 
         # Finite Element Configuration
         self.order = 2
@@ -385,7 +388,7 @@ class SolverConfiguration(BaseConfiguration):
     @property
     def Reynolds_number(self) -> Parameter:
         """ Represents the ratio between inertial and viscous forces """
-        if self.dynamic_viscosity is DynamicViscosity.INVISCID:
+        if self.dynamic_viscosity.is_inviscid:
             raise Exception("Inviscid solver configuration: Reynolds number not applicable")
         return self._Reynolds_number
 
@@ -415,7 +418,7 @@ class SolverConfiguration(BaseConfiguration):
 
     @property
     def Prandtl_number(self) -> Parameter:
-        if self.dynamic_viscosity is DynamicViscosity.INVISCID:
+        if self.dynamic_viscosity.is_inviscid:
             raise Exception("Inviscid solver configuration: Prandtl number not applicable")
         return self._Prandtl_number
 
@@ -444,57 +447,24 @@ class SolverConfiguration(BaseConfiguration):
             self._heat_capacity_ratio.Set(heat_capacity_ratio)
 
     @property
-    def farfield_temperature(self) -> Parameter:
-        """ Defines the farfield temperature needed for Sutherland's law"""
-        if self.dynamic_viscosity is not DynamicViscosity.SUTHERLAND:
-            raise Exception(f"Farfield temperature requires {DynamicViscosity.SUTHERLAND}")
-        return self._farfield_temperature
-
-    @farfield_temperature.setter
-    def farfield_temperature(self, farfield_temperature: float):
-        if isinstance(farfield_temperature, Parameter):
-            farfield_temperature = farfield_temperature.Get()
-
-        if farfield_temperature <= 0:
-            raise ValueError("Invalid farfield temperature. Value has to be > 1!")
-        else:
-            self._farfield_temperature.Set(farfield_temperature)
-
-    @property
     def formulation(self) -> CompressibleFormulations:
         return self._formulation
 
     @formulation.setter
-    def formulation(self, value: str):
+    def formulation(self, formulation: str):
 
-        if isinstance(value, str):
-            value = value.lower()
+        if isinstance(formulation, str):
+            formulation = formulation.lower()
 
-        try:
-            self._formulation = CompressibleFormulations(value)
-
-        except ValueError:
-            options = [enum.value for enum in CompressibleFormulations]
-            raise ValueError(
-                f"'{str(value).capitalize()}' is not a valid formulation. Possible alternatives: {options}")
+        self._formulation = self._get_enum(formulation, CompressibleFormulations, "Compressible Formulation")
 
     @property
-    def dynamic_viscosity(self) -> DynamicViscosity:
+    def dynamic_viscosity(self) -> _DynamicViscosity:
         return self._dynamic_viscosity
 
     @dynamic_viscosity.setter
-    def dynamic_viscosity(self, dynamic_viscosity: str):
-
-        if isinstance(dynamic_viscosity, str):
-            dynamic_viscosity = dynamic_viscosity.lower()
-
-        try:
-            self._dynamic_viscosity = DynamicViscosity(dynamic_viscosity)
-
-        except ValueError:
-            options = [enum.value for enum in DynamicViscosity]
-            raise ValueError(
-                f"'{str(dynamic_viscosity).capitalize()}' is not a valid viscosity. Possible alternatives: {options}")
+    def dynamic_viscosity(self, dynamic_viscosity: _DynamicViscosity):
+        self._dynamic_viscosity = dynamic_viscosity_factory(dynamic_viscosity)
 
     @property
     def mixed_method(self) -> MixedMethods:
@@ -506,16 +476,10 @@ class SolverConfiguration(BaseConfiguration):
         if isinstance(mixed_method, str):
             mixed_method = mixed_method.lower()
 
-        try:
-            self._mixed_method = MixedMethods(mixed_method)
-
-        except ValueError:
-            options = [enum.value for enum in MixedMethods]
-            raise ValueError(
-                f"'{str(mixed_method).capitalize()}' is not a valid mixed variant. Possible alternatives: {options}")
+        self._mixed_method = self._get_enum(mixed_method, MixedMethods, "Mixed Method")
 
     @property
-    def riemann_solver(self) -> MixedMethods:
+    def riemann_solver(self) -> RiemannSolver:
         return self._riemann_solver
 
     @riemann_solver.setter
@@ -524,12 +488,7 @@ class SolverConfiguration(BaseConfiguration):
         if isinstance(riemann_solver, str):
             riemann_solver = riemann_solver.lower()
 
-        try:
-            self._riemann_solver = RiemannSolver(riemann_solver)
-        except ValueError:
-            options = [enum.value for enum in RiemannSolver]
-            raise ValueError(
-                f"'{str(riemann_solver).capitalize()}' is not a valid Riemann Solver. Possible alternatives: {options}")
+        self._riemann_solver = self._get_enum(riemann_solver, RiemannSolver, "Riemann Solver")
 
     @property
     def time(self) -> TimeConfiguration:
@@ -593,7 +552,10 @@ class SolverConfiguration(BaseConfiguration):
 
     @convergence_criterion.setter
     def convergence_criterion(self, convergence_criterion: float):
-        self._convergence_criterion = float(convergence_criterion)
+        convergence_criterion = float(convergence_criterion)
+        if convergence_criterion <= 0:
+            raise ValueError("Convergence Criterion must be greater zero!")
+        self._convergence_criterion = convergence_criterion
 
     @property
     def damping_factor(self) -> float:
@@ -641,21 +603,19 @@ class SolverConfiguration(BaseConfiguration):
         formatter = Formatter()
         formatter.header('Solver Configuration').newline()
         formatter.subheader("Formulation Configuration").newline()
-        formatter.entry("Formulation", self._formulation.name)
-        formatter.entry("Viscosity", self._dynamic_viscosity.name)
-        formatter.entry("Mixed Method", self._mixed_method.name)
+        formatter.entry("Formulation", self.formulation.name)
+        formatter.entry("Mixed Method", self.mixed_method.name)
         formatter.entry("Riemann Solver", self.riemann_solver.name)
         formatter.newline()
 
         formatter.subheader('Flow Configuration').newline()
         formatter.entry("Mach Number", self.Mach_number.Get())
-        if self._dynamic_viscosity is not DynamicViscosity.INVISCID:
+        if not self.dynamic_viscosity.is_inviscid:
             formatter.entry("Reynolds Number", self.Reynolds_number.Get())
             formatter.entry("Prandtl Number", self.Prandtl_number.Get())
-        formatter.entry("Heat Capacity Ratio", self.heat_capacity_ratio.Get())
-        if self._dynamic_viscosity is DynamicViscosity.SUTHERLAND:
-            formatter.entry("Farfield Temperature", self.farfield_temperature.Get())
         formatter.newline()
+
+        formatter.add(self.dynamic_viscosity).newline()
 
         formatter.subheader('Finite Element Configuration').newline()
         formatter.entry('Polynomial Order', self._order)

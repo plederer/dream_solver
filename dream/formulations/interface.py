@@ -8,7 +8,7 @@ from ngsolve import *
 
 from ..time_schemes import time_scheme_factory, TimeLevelsGridfunction
 from .. import conditions as co
-from .. import viscosity as mu
+from ..crs import Inviscid, Constant, Sutherland
 
 import logging
 logger = logging.getLogger("DreAm.Formulations")
@@ -34,26 +34,6 @@ class RiemannSolver(enum.Enum):
     ROE = 'roe'
     HLL = 'hll'
     HLLEM = 'hllem'
-
-
-@dataclasses.dataclass
-class VectorIndices:
-    X: Optional[int] = None
-    Y: Optional[int] = None
-    Z: Optional[int] = None
-
-    def __post_init__(self):
-        coordinates = vars(self).copy()
-        for attr, value in coordinates.items():
-            if value is None:
-                delattr(self, attr)
-
-    def __len__(self):
-        return len(vars(self))
-
-    def __iter__(self):
-        for value in vars(self).values():
-            yield value
 
 
 @dataclasses.dataclass
@@ -98,7 +78,6 @@ class Formulation(abc.ABC):
 
         self.bcs = co.BoundaryConditions(mesh.GetBoundaries(), solver_configuration)
         self.dcs = co.DomainConditions(mesh.GetMaterials(), solver_configuration)
-        self.mu = mu.viscosity_factory(self)
         self.time_scheme = time_scheme_factory(solver_configuration.time)
 
         self._gfus = None
@@ -139,12 +118,33 @@ class Formulation(abc.ABC):
             raise RuntimeError("Call 'formulation.initialize()' before accessing the TestAndTrialFunctions")
         return self._TnT
 
+    @abc.abstractmethod
+    def _initialize_FE_space(self) -> ProductSpace: ...
+
+    @abc.abstractmethod
+    def _initialize_TnT(self) -> TestAndTrialFunction: ...
+
+    @abc.abstractmethod
+    def add_time_bilinearform(self, blf) -> None: ...
+
+    @abc.abstractmethod
+    def add_convective_bilinearform(self, blf) -> None: ...
+
+    @abc.abstractmethod
+    def add_diffusive_bilinearform(self, blf) -> None: ...
+
     def initialize(self):
         self._fes = self._initialize_FE_space()
         self._TnT = self._initialize_TnT()
         self._gfus = TimeLevelsGridfunction({level: GridFunction(self.fes) for level in self.time_scheme.time_levels})
 
-    def add_bcs_bilinearform(self, blf):
+    def update_gridfunctions(self, initial_value: bool = False):
+        if initial_value:
+            self.time_scheme.update_initial_solution(self._gfus)
+        else:
+            self.time_scheme.update_previous_solution(self._gfus)
+
+    def add_boundary_conditions_bilinearform(self, blf):
 
         for boundary, condition in self.bcs.items():
 
@@ -175,6 +175,25 @@ class Formulation(abc.ABC):
             elif isinstance(condition, co.AdiabaticWall):
                 self._add_adiabatic_wall_bilinearform(blf, boundary, condition)
 
+    def add_domain_conditions_bilinearform(self, blf):
+
+        for domain, condition in self.dcs.items():
+            if isinstance(condition.sponge, co.SpongeLayer):
+                self._add_sponge_bilinearform(blf, domain, condition.sponge)
+
+    def add_mass_bilinearform(self, blf):
+        mixed_method = self.cfg.mixed_method
+
+        U, V = self.TnT.PRIMAL
+        Uhat, Vhat = self.TnT.PRIMAL_FACET
+
+        blf += U * V * dx
+        blf += Uhat * Vhat * dx(element_boundary=True)
+
+        if mixed_method is not MixedMethods.NONE:
+            Q, P = self.TnT.MIXED
+            blf += Q * P * dx
+
     def add_perturbation_linearform(self, lf, perturbation: co.Perturbation):
         for domain, _ in self.dcs.items():
             self._add_linearform(lf, domain, perturbation)
@@ -187,134 +206,220 @@ class Formulation(abc.ABC):
             else:
                 logger.warn(f"Initial condition for '{domain}' has not been set!")
 
-    def add_dcs_bilinearform(self, blf):
+    def add_forcing_linearform(self, lf, force: Optional[CF]):
+        bonus_int_order = self.cfg.bonus_int_order_vol
+        _, V = self.TnT.PRIMAL
 
-        for domain, condition in self.dcs.items():
-            if isinstance(condition.sponge, co.SpongeLayer):
-                self._add_sponge_bilinearform(blf, domain, condition.sponge)
+        if force is not None:
+            lf += InnerProduct(force, V) * dx(bonus_intorder=bonus_int_order)
 
-    def update_gridfunctions(self, initial_value: bool = False):
-        if initial_value:
-            self.time_scheme.update_initial_solution(self._gfus)
+    def mach_number(self, U: Optional[CF] = None):
+
+        u = self.velocity(U)
+        c = self.speed_of_sound(U)
+
+        return sqrt(InnerProduct(u, u)) / c
+
+    def convective_flux(self, U):
+        """
+        Convective flux F
+
+        Equation 2, page 5
+
+        Literature:
+        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
+              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
+              Arch Computat Methods Eng 28, 753–784 (2021).
+              https://doi.org/10.1007/s11831-020-09508-z
+        """
+        dim = self.mesh.dim
+
+        rho = self.density(U)
+        rho_u = self.momentum(U)
+        rho_H = self.enthalpy(U)
+        u = self.velocity(U)
+        p = self.pressure(U)
+
+        flux = tuple([rho_u, OuterProduct(rho_u, rho_u)/rho + p * Id(dim), rho_H * u])
+
+        return CF(flux, dims=(dim + 2, dim))
+
+    def diffusive_flux(self, U, Q):
+        """
+        Diffusive flux G
+
+        Equation 2, page 5
+
+        Literature:
+        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
+              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
+              Arch Computat Methods Eng 28, 753–784 (2021).
+              https://doi.org/10.1007/s11831-020-09508-z
+        """
+        dim = self.mesh.dim
+
+        continuity = tuple(0 for i in range(dim))
+        u = self.velocity(U)
+        tau = self.deviatoric_stress_tensor(U, Q)
+        heat_flux = self.heat_flux(U, Q)
+
+        flux = CF((continuity, tau, tau*u - heat_flux), dims=(dim + 2, dim))
+
+        return flux
+
+    def heat_flux(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
+
+        gradient_T = self.temperature_gradient(U, Q)
+        mu = self.dynamic_viscosity(U)
+
+        k = mu / (Re * Pr)
+
+        return -k * gradient_T
+
+    def deviatoric_stress_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+
+        Re = self.cfg.Reynolds_number
+        return self.dynamic_viscosity(U)/Re * self.deviatoric_strain_tensor(U, Q)
+
+    def dynamic_viscosity(self, U: Optional[CF] = None) -> CF:
+        mu = self.cfg.dynamic_viscosity
+
+        if isinstance(mu, Inviscid):
+            raise TypeError('Dynamic Viscosity non existent for Inviscid flow')
+        elif isinstance(mu, Constant):
+            return 1
+        elif isinstance(mu, Sutherland):
+            M = self.cfg.Mach_number
+            gamma = self.cfg.heat_capacity_ratio
+
+            T_ = self.temperature(U)
+
+            T_ref = mu.temperature_ref
+            S0 = mu.temperature_0
+
+            S_ = S0/(T_ref * (gamma - 1) * M**2)
+            T_ref_ = 1/((gamma - 1) * M**2)
+
+            return (T_/T_ref_)**(3/2) * (T_ref_ + S_)/(T_ + S_)
         else:
-            self.time_scheme.update_previous_solution(self._gfus)
+            raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_dirichlet_bilinearform(self, blf, boundary, condition): ...
+    def dynamic_viscosity_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        mu = self.cfg.dynamic_viscosity
 
-    @abc.abstractmethod
-    def _add_farfield_bilinearform(self, blf, boundary, condition): ...
+        if isinstance(mu, Inviscid):
+            raise TypeError('Dynamic Viscosity non existent for Inviscid flow')
+        elif isinstance(mu, Constant):
+            return CF([0]*self.mesh.dim)
+        else:
+            raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_outflow_bilinearform(self, blf, boundary, condition): ...
+    def _if_none_replace_with_gfu(self, cf, component: int = 0):
+        if cf is None:
+            cf = self.gfu.components[component]
+        return cf
 
-    @abc.abstractmethod
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition): ...
+    def density(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition): ...
+    def velocity(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_inviscid_wall_bilinearform(self, blf, boundary, condition): ...
+    def momentum(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_isothermal_wall_bilinearform(self, blf, boundary, condition): ...
+    def pressure(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition): ...
+    def temperature(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_linearform(self, lf, domain, condition): ...
+    def energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _add_sponge_bilinearform(self, blf, domain, condition): ...
+    def specific_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _initialize_FE_space(self) -> ProductSpace: ...
+    def enthalpy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def _initialize_TnT(self) -> TestAndTrialFunction: ...
+    def specific_enthalpy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def add_mass_bilinearform(self, blf): ...
+    def kinetic_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def add_time_bilinearform(self, blf): ...
+    def specific_kinetic_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def add_convective_bilinearform(self, blf): ...
+    def inner_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def add_diffusive_bilinearform(self, blf): ...
+    def specific_inner_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def density(self, U): ...
+    def speed_of_sound(self, U: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def momentum(self, U): ...
+    def density_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def energy(self, U): ...
+    def velocity_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def pressure(self, U): ...
+    def momentum_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def velocity(self, U): ...
+    def pressure_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def temperature(self, U): ...
+    def temperature_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def enthalpy(self, U): ...
+    def energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def specific_enthalpy(self, U): ...
+    def enthalpy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def specific_energy(self, U): ...
+    def vorticity(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def specific_inner_energy(self, U): ...
+    def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def speed_of_sound(self, U): ...
+    def _add_dirichlet_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def mach_number(self, U): ...
+    def _add_farfield_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def density_gradient(self, U, Q=None): ...
+    def _add_outflow_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def momentum_gradient(self, U, Q=None): ...
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def energy_gradient(self, U, Q=None): ...
+    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def enthalpy_gradient(self, U, Q=None): ...
+    def _add_inviscid_wall_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def pressure_gradient(self, U, Q=None): ...
+    def _add_isothermal_wall_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def temperature_gradient(self, U, Q=None): ...
+    def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def velocity_gradient(self, U, Q=None): ...
+    def _add_linearform(self, lf, domain, condition):
+        raise NotImplementedError()
 
-    @abc.abstractmethod
-    def vorticity(self, U, Q=None): ...
-
-    @abc.abstractmethod
-    def heat_flux(self, U, Q=None): ...
-
-    @abc.abstractmethod
-    def deviatoric_strain_tensor(self, U, Q=None): ...
-
-    @abc.abstractmethod
-    def deviatoric_stress_tensor(self, U, Q=None): ...
+    def _add_sponge_bilinearform(self, blf, domain, condition):
+        raise NotImplementedError()
 
     def __str__(self) -> str:
         return self.__class__.__name__

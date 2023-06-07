@@ -3,7 +3,8 @@ import enum
 import dataclasses
 from collections import UserDict
 from typing import Optional, TYPE_CHECKING, ItemsView
-from ngsolve import CF, Parameter, InnerProduct
+from ngsolve import CF, Parameter
+from .utils import IdealGasCalculator
 
 if TYPE_CHECKING:
     from .configuration import SolverConfiguration
@@ -28,7 +29,7 @@ class DomainConditions(UserDict):
 
     def __init__(self, domains, solver_configuration: SolverConfiguration) -> None:
         super().__init__({domain: DomainConditionsContainer() for domain in set(domains)})
-        self.solver_configuration = solver_configuration
+        self.cfg = solver_configuration
 
     @property
     def domains(self) -> tuple[str, ...]:
@@ -43,10 +44,10 @@ class DomainConditions(UserDict):
         return bool([True for _, condition in self.items() if condition.initial is not None])
 
     def set_initial(self,
-                    density: float,
                     velocity: tuple[float, ...],
-                    temperature: Optional[float] = None,
+                    density: Optional[float] = None,
                     pressure: Optional[float] = None,
+                    temperature: Optional[float] = None,
                     energy: Optional[float] = None,
                     domain: Optional[str] = None):
 
@@ -55,29 +56,30 @@ class DomainConditions(UserDict):
         else:
             domains = extract_boundaries_from_pattern(domain, self.domains)
 
-        gamma = self.solver_configuration.heat_capacity_ratio
+        calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
+        initial = Initial(*calc.determine_missing(CF(velocity), density, pressure, temperature, energy))
 
         for domain in domains:
-            self[domain].initial = Initial(density, velocity, temperature, pressure, energy, gamma)
+            self[domain].initial = initial
 
     def set_sponge_layer(self,
                          domain: str,
                          weight_function: CF,
-                         density: float,
                          velocity: tuple[float, ...],
-                         temperature: float = None,
+                         density: float = None,
                          pressure: float = None,
+                         temperature: float = None,
                          energy: float = None,
                          weight_function_order: int = 3):
 
         domains = extract_boundaries_from_pattern(domain, self.domains)
 
-        gamma = self.solver_configuration.heat_capacity_ratio
+        calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
+        quantities = calc.determine_missing(CF(velocity), density, pressure, temperature, energy)
+        sponge = SpongeLayer(weight_function, *quantities, weight_function_order=weight_function_order)
 
         for domain in domains:
-            self[domain].sponge = SpongeLayer(weight_function, density,
-                                              velocity, temperature, pressure, energy,
-                                              weight_function_order, gamma)
+            self[domain].sponge = sponge
 
     def __getitem__(self, key: str) -> DomainConditionsContainer:
         return super().__getitem__(key)
@@ -90,7 +92,7 @@ class BoundaryConditions(UserDict):
 
     def __init__(self, boundaries, solver_configuration: SolverConfiguration) -> None:
         super().__init__({boundary: None for boundary in set(boundaries)})
-        self.solver_configuration = solver_configuration
+        self.cfg = solver_configuration
 
     @property
     def boundaries(self) -> tuple[str, ...]:
@@ -102,31 +104,35 @@ class BoundaryConditions(UserDict):
 
     def set_dirichlet(self,
                       boundary: str,
-                      density: float,
                       velocity: tuple[float, ...],
-                      temperature: float = None,
+                      density: float = None,
                       pressure: float = None,
+                      temperature: float = None,
                       energy: float = None):
 
-        gamma = self.solver_configuration.heat_capacity_ratio
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
 
+        calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
+        dirichlet = Dirichlet(*calc.determine_missing(CF(velocity), density, pressure, temperature, energy))
+
         for boundary in boundaries:
-            self[boundary] = Dirichlet(density, velocity, temperature, pressure, energy, gamma)
+            self[boundary] = dirichlet
 
     def set_farfield(self,
                      boundary: str,
-                     density: float,
                      velocity: tuple[float, ...],
-                     temperature: float = None,
+                     density: float = None,
                      pressure: float = None,
+                     temperature: float = None,
                      energy: float = None):
 
-        gamma = self.solver_configuration.heat_capacity_ratio
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
 
+        calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
+        farfield = FarField(*calc.determine_missing(CF(velocity), density, pressure, temperature, energy))
+
         for boundary in boundaries:
-            self[boundary] = FarField(density, velocity, temperature, pressure, energy, gamma)
+            self[boundary] = farfield
 
     def set_outflow(self,
                     boundary: str,
@@ -135,7 +141,7 @@ class BoundaryConditions(UserDict):
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
-            self[boundary] = Outflow(pressure)
+            self[boundary] = Outflow(CF(pressure))
 
     def set_nonreflecting_outflow(self,
                                   boundary: str,
@@ -168,7 +174,7 @@ class BoundaryConditions(UserDict):
                                  tangential_viscous_fluxes: bool = True,
                                  normal_viscous_fluxes: bool = False):
 
-        gamma = self.solver_configuration.heat_capacity_ratio
+        gamma = self.cfg.heat_capacity_ratio
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
 
         for boundary in boundaries:
@@ -210,7 +216,7 @@ class BoundaryConditions(UserDict):
 
         boundaries = extract_boundaries_from_pattern(boundary, self.boundaries)
         for boundary in boundaries:
-            self[boundary] = IsothermalWall(temperature)
+            self[boundary] = IsothermalWall(CF(temperature))
 
     def set_adiabatic_wall(self, boundary: str):
 
@@ -224,68 +230,9 @@ class BoundaryConditions(UserDict):
             self[boundary] = _Boundary()
 
 
-def convert_to_pressure(density, temperature=None, velocity=None, energy=None, gamma=1.4) -> CF:
-    if temperature is not None:
-        return (gamma - 1) / gamma * temperature * density
-
-    elif velocity is not None and energy is not None:
-        return (gamma - 1) * (energy - density/2 * InnerProduct(velocity, velocity))
-
-    else:
-        raise ValueError("Either temperature, or velocity and energy is needed!")
-
-
-def convert_to_temperature(density, pressure=None, velocity=None, energy=None, gamma=1.4) -> CF:
-    if pressure is not None:
-        return gamma/(gamma - 1) * pressure/density
-
-    elif velocity is not None and energy is not None:
-        return gamma/density * (energy - density/2 * InnerProduct(velocity, velocity))
-
-    else:
-        raise ValueError("Either pressure, or velocity and energy is needed!")
-
-
-def convert_to_energy(density, velocity, pressure=None, temperature=None, gamma=1.4) -> CF:
-    if pressure is not None:
-        return pressure/(gamma - 1) + density/2 * InnerProduct(velocity, velocity)
-
-    elif temperature is not None:
-        return density*temperature/gamma + density/2 * InnerProduct(velocity, velocity)
-
-    else:
-        raise ValueError("Either temperature or pressure is needed!")
-
-
-def convert_to_pressure_temperature_energy(density, velocity, temperature=None, pressure=None, energy=None, gamma=1.4):
-
-    if temperature is not None:
-        temperature = CF(temperature)
-        pressure = convert_to_pressure(density, temperature, velocity, energy, gamma)
-        energy = convert_to_energy(density, velocity, pressure, temperature, gamma)
-
-    elif pressure is not None:
-        pressure = CF(pressure)
-        temperature = convert_to_temperature(density, pressure, velocity, energy, gamma)
-        energy = convert_to_energy(density, velocity, pressure, temperature, gamma)
-
-    elif energy is not None:
-        energy = CF(energy)
-        temperature = convert_to_temperature(density, pressure, velocity, energy, gamma)
-        pressure = convert_to_pressure(density, temperature, velocity, energy, gamma)
-
-    else:
-        raise ValueError("Either temperature, pressure or energy is needed!")
-
-    return pressure, temperature, energy
-
-
 class Condition:
 
     def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
         return self.__class__.__name__
 
 
@@ -293,58 +240,38 @@ class _Boundary(Condition):
     ...
 
 
+@dataclasses.dataclass
 class Dirichlet(_Boundary):
 
-    def __init__(self,
-                 density: float,
-                 velocity: tuple[float, ...],
-                 temperature: Optional[float] = None,
-                 pressure: Optional[float] = None,
-                 energy: Optional[float] = None,
-                 gamma: float = 1.4) -> None:
+    velocity: CF
+    density: CF
+    pressure: CF
+    temperature: CF
+    energy: CF
 
-        density = CF(density)
-        velocity = CF(velocity)
-
-        pressure, temperature, energy = convert_to_pressure_temperature_energy(
-            density, velocity, temperature, pressure, energy, gamma)
-
-        self.density = density
-        self.velocity = velocity
-        self.momentum = density * velocity
-        self.temperature = temperature
-        self.pressure = pressure
-        self.energy = energy
+    @property
+    def momentum(self):
+        return self.density * self.velocity
 
 
+@dataclasses.dataclass
 class FarField(_Boundary):
 
-    def __init__(self,
-                 density: float,
-                 velocity: tuple[float, ...],
-                 temperature: Optional[float] = None,
-                 pressure: Optional[float] = None,
-                 energy: Optional[float] = None,
-                 gamma: float = 1.4) -> None:
+    velocity: CF
+    density: CF
+    pressure: CF
+    temperature: CF
+    energy: CF
 
-        density = CF(density)
-        velocity = CF(velocity)
-
-        pressure, temperature, energy = convert_to_pressure_temperature_energy(
-            density, velocity, temperature, pressure, energy, gamma)
-
-        self.density = density
-        self.velocity = velocity
-        self.momentum = density * velocity
-        self.temperature = temperature
-        self.pressure = pressure
-        self.energy = energy
+    @property
+    def momentum(self):
+        return self.density * self.velocity
 
 
+@dataclasses.dataclass
 class Outflow(_Boundary):
 
-    def __init__(self, pressure) -> None:
-        self.pressure = CF(pressure)
+    pressure: CF
 
 
 class NRBC_Outflow(_Boundary):
@@ -413,43 +340,34 @@ class NRBC_Inflow(_Boundary):
         self.norm_visc_flux = normal_viscous_fluxes
 
 
+@dataclasses.dataclass
 class InviscidWall(_Boundary):
     ...
 
 
+@dataclasses.dataclass
 class IsothermalWall(_Boundary):
-    def __init__(self, temperature) -> None:
-        self.temperature = CF(temperature)
+
+    temperature: CF
 
 
+@dataclasses.dataclass
 class AdiabaticWall(_Boundary):
-
-    def __init__(self) -> None:
-        pass
+    ...
 
 
+@dataclasses.dataclass
 class _Domain(Condition):
 
-    def __init__(self,
-                 density: float,
-                 velocity: tuple[float, ...],
-                 temperature: Optional[float] = None,
-                 pressure: Optional[float] = None,
-                 energy: Optional[float] = None,
-                 gamma: float = 1.4) -> None:
+    velocity: CF
+    density: CF
+    pressure: CF
+    temperature: CF
+    energy: CF
 
-        density = CF(density)
-        velocity = CF(velocity)
-
-        pressure, temperature, energy = convert_to_pressure_temperature_energy(
-            density, velocity, temperature, pressure, energy, gamma)
-
-        self.density = density
-        self.velocity = velocity
-        self.momentum = density * velocity
-        self.temperature = temperature
-        self.pressure = pressure
-        self.energy = energy
+    @property
+    def momentum(self):
+        return self.density * self.velocity
 
 
 class Initial(_Domain):
@@ -464,15 +382,14 @@ class SpongeLayer(_Domain):
 
     def __init__(self,
                  weight_function: CF,
-                 density: float,
-                 velocity: tuple[float, ...],
-                 temperature: Optional[float] = None,
-                 pressure: Optional[float] = None,
-                 energy: Optional[float] = None,
-                 weight_function_order: int = 3,
-                 gamma: float = 1.4) -> None:
+                 velocity: CF,
+                 density: CF,
+                 pressure: CF,
+                 temperature: CF,
+                 energy: CF,
+                 weight_function_order: int = 3) -> None:
 
-        super().__init__(density, velocity, temperature, pressure, energy, gamma)
+        super().__init__(velocity, density, pressure, temperature, energy)
         self.weight_function = weight_function
         self.weight_function_order = weight_function_order
 

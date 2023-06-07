@@ -4,8 +4,8 @@ from typing import Optional, NamedTuple
 from ngsolve import *
 from . import io
 from . import conditions as co
+from .utils import IdealGasCalculator
 from .sensor import Sensor
-from .viscosity import DynamicViscosity
 from .formulations import formulation_factory, Formulation
 from .configuration import SolverConfiguration, DreAmLogger
 from math import isnan
@@ -147,117 +147,6 @@ class CompressibleHDGSolver:
         if self.domain_conditions.has_initial_condition:
             self._solve_initial()
 
-    def _set_linearform(self, force):
-
-        fes = self.formulation.fes
-        TnT = self.formulation.TnT
-
-        bonus_int_order = self.solver_configuration.bonus_int_order_vol
-        _, V = TnT.PRIMAL
-
-        self.f = LinearForm(fes)
-        if force is not None:
-            self.f += InnerProduct(force, V) * dx(bonus_intorder=bonus_int_order)
-        self.f.Assemble()
-
-    def _set_bilinearform(self):
-
-        fes = self.formulation.fes
-
-        condense = self.solver_configuration.static_condensation
-        viscosity = self.solver_configuration.dynamic_viscosity
-
-        self.blf = BilinearForm(fes, condense=condense)
-
-        self.formulation.add_time_bilinearform(self.blf)
-        self.formulation.add_convective_bilinearform(self.blf)
-
-        if viscosity is not DynamicViscosity.INVISCID:
-            self.formulation.add_diffusive_bilinearform(self.blf)
-
-        self.formulation.add_bcs_bilinearform(self.blf)
-        self.formulation.add_dcs_bilinearform(self.blf)
-
-    def _solve_mass(self, linearform: LinearForm) -> GridFunction:
-        formulation = self.formulation
-        gfu = GridFunction(formulation.fes)
-
-        blf = BilinearForm(formulation.fes)
-        formulation.add_mass_bilinearform(blf)
-
-        blf.Assemble()
-        linearform.Assemble()
-
-        blf_inverse = blf.mat.Inverse(formulation.fes.FreeDofs(), inverse="sparsecholesky")
-
-        gfu.vec.data = blf_inverse * linearform.vec
-        return gfu
-
-    def _solve_initial(self):
-        lf = LinearForm(self.formulation.fes)
-        self.formulation.add_initial_linearform(lf)
-        self.formulation.gfu.vec.data = self._solve_mass(lf).vec
-        self.formulation.update_gridfunctions(initial_value=True)
-
-    def add_perturbation(self, perturbation: co.Perturbation) -> GridFunction:
-        lf = LinearForm(self.formulation.fes)
-        self.formulation.add_perturbation_linearform(lf, perturbation)
-        perturbation_gfu = self._solve_mass(lf)
-        for gfu in self.formulation.gridfunctions.values():
-            gfu.vec.data += perturbation_gfu.vec
-
-        self.drawer.redraw()
-
-        logger.info("Perturbation applied!")
-
-        return perturbation_gfu
-
-    def _solve_update_step(self):
-
-        linear_solver = self.solver_configuration.linear_solver
-        fes = self.formulation.fes
-        gfu = self.formulation.gfu
-
-        self.blf.Apply(gfu.vec, self.residual)
-        self.residual.data -= self.f.vec
-        self.blf.AssembleLinearization(gfu.vec)
-
-        inv = self.blf.mat.Inverse(fes.FreeDofs(self.blf.condense), inverse=linear_solver)
-        if self.blf.condense:
-            self.residual.data += self.blf.harmonic_extension_trans * self.residual
-            self.temporary.data = inv * self.residual
-            self.temporary.data += self.blf.harmonic_extension * self.temporary
-            self.temporary.data += self.blf.inner_solve * self.residual
-        else:
-            self.temporary.data = inv * self.residual
-
-    def _update_solution(self):
-        damping_factor = self.solver_configuration.damping_factor
-        gfu = self.formulation.gfu
-
-        gfu.vec.data -= damping_factor * self.temporary
-
-    def _update_pseudo_time_step(self,
-                                 iteration_number: int,
-                                 increment_at_iteration: int = 10,
-                                 increment_time_step_factor: int = 10):
-        
-        cfg = self.solver_configuration.time
-
-        max_time_step = cfg.max_step
-        old_time_step = cfg.step.Get()
-
-        if max_time_step > old_time_step:
-            if (iteration_number % increment_at_iteration == 0) and (iteration_number > 0):
-                new_time_step = old_time_step * increment_time_step_factor
-
-                if new_time_step > max_time_step:
-                    new_time_step = max_time_step
-
-                cfg.step = new_time_step
-                logger.info(f"Successfully updated time step at iteration {iteration_number}")
-                logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
-
     def solve_stationary(self,
                          increment_at_iteration: int = 10,
                          increment_time_step_factor: int = 10,
@@ -321,35 +210,31 @@ class CompressibleHDGSolver:
             if self.status.is_nan:
                 break
 
-    def _solve_timestep(self, time, stop_at_iteration: bool = False) -> bool:
-
-        max_iterations = self.solver_configuration.max_iterations
-
-        self.status.reset_convergence_status()
-
-        for it in range(max_iterations):
-
-            self._solve_update_step()
-            self.status.check_convergence(self.temporary, self.residual, time, it)
-
-            if stop_at_iteration:
-                input("Iteration stopped. Hit any key to continue.")
-
-            if self.status.is_nan:
-                break
-
-            self._update_solution()
-
-            if self.status.is_converged:
-                break
-
-        self.formulation.update_gridfunctions()
-
-        self.drawer.redraw()
-
     def add_sensor(self, sensor: Sensor):
         sensor.assign_solver(self)
         self.sensors.append(sensor)
+
+    def add_perturbation(self,
+                         velocity: tuple[float, ...],
+                         density: float = None,
+                         pressure: float = None,
+                         temperature: float = None,
+                         energy: float = None) -> GridFunction:
+
+        calc = IdealGasCalculator(self.solver_configuration.heat_capacity_ratio)
+        perturbation = co.Perturbation(*calc.determine_missing(CF(velocity), density, pressure, temperature, energy))
+
+        lf = LinearForm(self.formulation.fes)
+        self.formulation.add_perturbation_linearform(lf, perturbation)
+        perturbation_gfu = self._solve_mass(lf)
+        for gfu in self.formulation.gridfunctions.values():
+            gfu.vec.data += perturbation_gfu.vec
+
+        self.drawer.redraw()
+
+        logger.info("Perturbation applied!")
+
+        return perturbation_gfu
 
     def get_saver(self, directory_tree: Optional[io.ResultsDirectoryTree] = None) -> io.SolverSaver:
         saver = io.SolverSaver(self)
@@ -362,3 +247,126 @@ class CompressibleHDGSolver:
         if directory_tree is not None:
             loader.tree = directory_tree
         return loader
+
+    def _set_linearform(self, force):
+
+        fes = self.formulation.fes
+        TnT = self.formulation.TnT
+
+        bonus_int_order = self.solver_configuration.bonus_int_order_vol
+        _, V = TnT.PRIMAL
+
+        self.f = LinearForm(fes)
+        self.formulation.add_forcing_linearform(self.f, force)
+        self.f.Assemble()
+
+    def _set_bilinearform(self):
+
+        fes = self.formulation.fes
+
+        condense = self.solver_configuration.static_condensation
+        mu = self.solver_configuration.dynamic_viscosity
+
+        self.blf = BilinearForm(fes, condense=condense)
+
+        self.formulation.add_time_bilinearform(self.blf)
+        self.formulation.add_convective_bilinearform(self.blf)
+
+        if not mu.is_inviscid:
+            self.formulation.add_diffusive_bilinearform(self.blf)
+
+        self.formulation.add_boundary_conditions_bilinearform(self.blf)
+        self.formulation.add_domain_conditions_bilinearform(self.blf)
+
+    def _solve_mass(self, linearform: LinearForm) -> GridFunction:
+        formulation = self.formulation
+        gfu = GridFunction(formulation.fes)
+
+        blf = BilinearForm(formulation.fes)
+        formulation.add_mass_bilinearform(blf)
+
+        blf.Assemble()
+        linearform.Assemble()
+
+        blf_inverse = blf.mat.Inverse(formulation.fes.FreeDofs(), inverse="sparsecholesky")
+
+        gfu.vec.data = blf_inverse * linearform.vec
+        return gfu
+
+    def _solve_initial(self):
+        lf = LinearForm(self.formulation.fes)
+        self.formulation.add_initial_linearform(lf)
+        self.formulation.gfu.vec.data = self._solve_mass(lf).vec
+        self.formulation.update_gridfunctions(initial_value=True)
+
+    def _solve_update_step(self):
+
+        linear_solver = self.solver_configuration.linear_solver
+        fes = self.formulation.fes
+        gfu = self.formulation.gfu
+
+        self.blf.Apply(gfu.vec, self.residual)
+        self.residual.data -= self.f.vec
+        self.blf.AssembleLinearization(gfu.vec)
+
+        inv = self.blf.mat.Inverse(fes.FreeDofs(self.blf.condense), inverse=linear_solver)
+        if self.blf.condense:
+            self.residual.data += self.blf.harmonic_extension_trans * self.residual
+            self.temporary.data = inv * self.residual
+            self.temporary.data += self.blf.harmonic_extension * self.temporary
+            self.temporary.data += self.blf.inner_solve * self.residual
+        else:
+            self.temporary.data = inv * self.residual
+
+    def _update_solution(self):
+        damping_factor = self.solver_configuration.damping_factor
+        gfu = self.formulation.gfu
+
+        gfu.vec.data -= damping_factor * self.temporary
+
+    def _update_pseudo_time_step(self,
+                                 iteration_number: int,
+                                 increment_at_iteration: int = 10,
+                                 increment_time_step_factor: int = 10):
+
+        cfg = self.solver_configuration.time
+
+        max_time_step = cfg.max_step
+        old_time_step = cfg.step.Get()
+
+        if max_time_step > old_time_step:
+            if (iteration_number % increment_at_iteration == 0) and (iteration_number > 0):
+                new_time_step = old_time_step * increment_time_step_factor
+
+                if new_time_step > max_time_step:
+                    new_time_step = max_time_step
+
+                cfg.step = new_time_step
+                logger.info(f"Successfully updated time step at iteration {iteration_number}")
+                logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
+
+    def _solve_timestep(self, time, stop_at_iteration: bool = False) -> bool:
+
+        max_iterations = self.solver_configuration.max_iterations
+
+        self.status.reset_convergence_status()
+
+        for it in range(max_iterations):
+
+            self._solve_update_step()
+            self.status.check_convergence(self.temporary, self.residual, time, it)
+
+            if self.status.is_nan:
+                break
+
+            self._update_solution()
+
+            if stop_at_iteration:
+                input("Iteration stopped. Hit any key to continue.")
+
+            if self.status.is_converged:
+                break
+
+        self.formulation.update_gridfunctions()
+
+        self.drawer.redraw()
