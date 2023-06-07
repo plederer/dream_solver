@@ -135,7 +135,7 @@ if viscid:
     phi.Set(mu/Re/Pr * 1/gamma * 2 * c * Grad(c))
 
     div_sig = CF((Grad(sig.components[0])[0] + Grad(sig.components[1])[1],
-                Grad(sig.components[2])[0] + Grad(sig.components[3])[1]))
+                  Grad(sig.components[2])[0] + Grad(sig.components[3])[1]))
 
     div_sig_u = Grad(sig_u.components[0])[0] + Grad(sig_u.components[1])[1]
 
@@ -155,10 +155,10 @@ dir_vel = vel_ex
 dir_rho_E = E_ex * rho_ex
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set_farfield('left|bottom|top|right', dir_rho, dir_vel, energy=dir_rho_E)
+solver.boundary_conditions.set_farfield('left|bottom|top|right', dir_vel, dir_rho,  energy=dir_rho_E)
 solver.boundary_conditions.set_custom('left|bottom|top|right')
 
-solver.domain_conditions.set_initial(1, (0, 1), energy=1/(gamma * cfg.Mach_number**2*(gamma - 1)) + 0.5)
+solver.domain_conditions.set_initial((0, 1), 1,  energy=1/(gamma * cfg.Mach_number**2*(gamma - 1)) + 0.5)
 
 
 with TaskManager():

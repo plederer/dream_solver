@@ -49,10 +49,10 @@ rho_inf = p_inf * gamma / (u_inf[0]/M_inf)**2
 
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set_farfield("inflow", rho_inf, u_inf, pressure=p_inf)
-solver.boundary_conditions.set_outflow("outflow", pressure=p_inf)
+solver.boundary_conditions.set_farfield("inflow", u_inf, rho_inf,  p_inf)
+solver.boundary_conditions.set_outflow("outflow", p_inf)
 solver.boundary_conditions.set_adiabatic_wall("cylinder")
-solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_inf)
+solver.domain_conditions.set_initial(u_inf, rho_inf, pressure=p_inf)
 
 with TaskManager():
     solver.setup()

@@ -25,8 +25,6 @@ SetNumThreads(8)
 
 cfg = SolverConfiguration()
 cfg.formulation = 'conservative'
-cfg.mixed_method = None
-cfg.dynamic_viscosity = None
 cfg.riemann_solver = "hllem"
 cfg.Mach_number = 0.1
 cfg.heat_capacity_ratio = 1.4
@@ -59,10 +57,10 @@ mesh.Curve(cfg.order)
 tree = ResultsDirectoryTree()
 
 solver = CompressibleHDGSolver(mesh, cfg, tree)
-solver.boundary_conditions.set_farfield('inflow', rho_inf, u_inf, pressure=p_inf)
+solver.boundary_conditions.set_farfield('inflow', u_inf, rho_inf, p_inf)
 solver.boundary_conditions.set_outflow('outflow', p_inf)
 solver.boundary_conditions.set_inviscid_wall('cylinder')
-solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_inf)
+solver.domain_conditions.set_initial(u_inf, rho_inf, p_inf)
 
 sensor = PointSensor.from_boundary('cylinder', mesh, 'pressure_coefficient')
 sensor.sample_pressure_coefficient(p_inf, reference_velocity=1, reference_density=rho_inf, name="c_p")

@@ -85,10 +85,10 @@ rho_0 = gamma/(gamma - 1)/T_inf * p_0
 
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set_farfield("left", rho_inf, u_inf, pressure=p_inf)
+solver.boundary_conditions.set_farfield("left", u_inf, rho_inf, p_inf)
 solver.boundary_conditions.set_nonreflecting_outflow('right|top|bottom', p_inf, "perfect", 0.28, 1, True, False, False)
 
-solver.domain_conditions.set_initial(rho_0, u_0, pressure=p_0)
+solver.domain_conditions.set_initial(u_0, rho_0, p_0)
 
 with TaskManager():
     solver.setup()

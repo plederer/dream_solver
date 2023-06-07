@@ -13,7 +13,7 @@ boundary_layer = WorkPlane().Rectangle(12, 0.2).Face()
 boundary_layer.maxh = 0.1
 for edge, bc in zip(boundary_layer.edges, ['wall', 'right', 'default', 'left']):
     edge.name = bc
-cavity = WorkPlane().MoveTo(5, -1).Rectangle(2 , 1).Face()
+cavity = WorkPlane().MoveTo(5, -1).Rectangle(2, 1).Face()
 cavity.maxh = 0.25
 for edge, bc in zip(cavity.edges, ['wall', 'wall', 'default', 'wall']):
     edge.name = bc
@@ -73,8 +73,8 @@ Rv = 0.1
 r = sqrt(x**2 + y**2)
 psi = Gamma * exp(-r**2/(2*Rv**2))
 
-u_0 = u_inf #+ CF((psi.Diff(y), -psi.Diff(x)))
-p_0 = p_inf #* exp(-gamma/2*(Gamma/(c * Rv))**2 * exp(-r**2/Rv**2))
+u_0 = u_inf  # + CF((psi.Diff(y), -psi.Diff(x)))
+p_0 = p_inf  # * exp(-gamma/2*(Gamma/(c * Rv))**2 * exp(-r**2/Rv**2))
 rho_0 = rho_inf
 
 # u_0 = u_inf
@@ -82,12 +82,11 @@ rho_0 = rho_inf
 # rho_0 = gamma/(gamma - 1)/T_inf * p_0
 
 
-
 solver = CompressibleHDGSolver(mesh, cfg)
 # solver.boundary_conditions.set_nonreflecting_inflow("left", rho_inf, u_inf, pressure=p_inf, type="partially", reference_length=40, tangential_convective_fluxes=False)
-solver.boundary_conditions.set_farfield("left|top|right", rho_inf, u_inf, pressure=p_inf)
+solver.boundary_conditions.set_farfield("left|top|right", u_inf, rho_inf, p_inf)
 solver.boundary_conditions.set_adiabatic_wall('wall')
-solver.domain_conditions.set_initial(rho_0, u_0, pressure=p_0)
+solver.domain_conditions.set_initial(u_0, rho_0,  p_0)
 
 
 with TaskManager():

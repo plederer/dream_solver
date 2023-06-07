@@ -9,16 +9,16 @@ SetNumThreads(8)
 
 periodic = False
 circle = False
-structured = True
+structured = False
 maxh = 0.1
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
-cfg.dynamic_viscosity = "constant"
+# cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
-cfg.mixed_method = "strain_heat"
+# cfg.mixed_method = "strain_heat"
 # cfg.mixed_method = None
-cfg.riemann_solver = 'hllem'
+cfg.riemann_solver = 'roe'
 
 cfg.Reynolds_number = 166
 cfg.Mach_number = 0.42
@@ -98,14 +98,14 @@ p_00 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2)
 
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set_farfield("left", rho_inf, u_inf, pressure=p_inf)
-solver.boundary_conditions.set_nonreflecting_outflow('right', p_inf, "perfect", 0.28, 1, True, False, False)
+solver.boundary_conditions.set_farfield("left|right", u_inf, rho_inf, p_inf)
+# solver.boundary_conditions.set_nonreflecting_outflow('right', p_inf, "perfect", 0.28, 1, True, False, False)
 
 solver.boundary_conditions.set_inviscid_wall('top|bottom')
 if periodic:
     solver.boundary_conditions.set_periodic('top|bottom')
 
-solver.domain_conditions.set_initial(rho_0, u_0, pressure=p_0)
+solver.domain_conditions.set_initial(u_0, rho_0, p_0)
 
 with TaskManager():
     solver.setup()

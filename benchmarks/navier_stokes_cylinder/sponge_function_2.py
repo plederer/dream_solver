@@ -1,4 +1,4 @@
-from dream import CompressibleHDGSolver, SolverConfiguration, ResultsDirectoryTree, Saver, Perturbation
+from dream import CompressibleHDGSolver, SolverConfiguration, ResultsDirectoryTree, Saver
 from dream.utils.meshes import circular_cylinder_mesh
 from ngsolve import *
 
@@ -99,12 +99,11 @@ r_ = (r - sp_start)/sp_length
 weight_function = 6*r_**5 - 15*r_**4 + 10*r_**3
 
 solver = CompressibleHDGSolver(mesh, cfg, tree)
-solver.boundary_conditions.set_farfield('inflow|outflow', rho_inf, u_inf, pressure=p_inf)
+solver.boundary_conditions.set_farfield('inflow|outflow', u_inf, rho_inf, p_inf)
 solver.boundary_conditions.set_adiabatic_wall('cylinder')
-solver.domain_conditions.set_sponge_layer('sponge', weight_function, rho_inf,
-                                          u_inf, pressure=p_inf, weight_function_order=5)
+solver.domain_conditions.set_sponge_layer('sponge', weight_function, u_inf,  rho_inf, p_inf, weight_function_order=5)
 if not load_stationary:
-    solver.domain_conditions.set_initial(rho_inf, u_inf, pressure=p_inf)
+    solver.domain_conditions.set_initial(u_inf, rho_inf, p_inf)
 
 saver = solver.get_saver()
 loader = solver.get_loader()
@@ -123,7 +122,7 @@ if load_stationary:
     loader.load_state_time_scheme('stationary')
 else:
     cfg.time.step = 0.1
-    cfg.time.max_step  = 10
+    cfg.time.max_step = 10
     with TaskManager():
         solver.solve_stationary()
     saver.save_state_time_scheme('stationary')
@@ -136,9 +135,8 @@ psi = 1.2 * exp(-r**2)
 u_0 = CF((psi.Diff(y), -psi.Diff(x)))
 rho_0 = (p_0/p_inf)**(1/cfg.heat_capacity_ratio) * rho_inf
 
-perturbation = Perturbation(rho_0, u_0, pressure=p_0)
 with TaskManager():
-    solver.add_perturbation(perturbation)
+    solver.add_perturbation(u_0, rho_0, p_0)
 
 # Solver Transient
 cfg.time.step = 0.1
