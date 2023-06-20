@@ -94,29 +94,14 @@ class ConservativeFormulation(Formulation):
               Arch Computat Methods Eng 28, 753–784 (2021).
               https://doi.org/10.1007/s11831-020-09508-z
         """
+        tau_c = self.convective_stabilisation_matrix(Uhat, unit_vector)
+        return self.convective_flux(Uhat)*unit_vector + tau_c * (U - Uhat)
+
+    def convective_stabilisation_matrix(self, Uhat, unit_vector):
         riemann_solver = self.cfg.riemann_solver
         un = InnerProduct(self.velocity(Uhat), unit_vector)
         un_abs = IfPos(un, un, -un)
         c = self.speed_of_sound(Uhat)
-        gamma = self.cfg.heat_capacity_ratio
-        Ma = self.cfg.Mach_number
-        Mn = un_abs/c
-
-        # rho = self.density(Uhat)
-        # rho_jump = self.density(U) - rho
-
-        # u = self.velocity(Uhat)
-        # u_jump = self.velocity(U) - u
-
-        # p = self.pressure(Uhat)
-        # p_jump = self.pressure(U) - p
-
-        # Ekin = self.specific_kinetic_energy(Uhat)
-        # Ekin_jump = self.specific_kinetic_energy(U) - Ekin
-
-        # Qu = CF((0, u_jump, Ekin_jump)) * rho
-        # Qrho = CF((rho_jump, rho_jump * self.velocity(Uhat), rho_jump * self.specific_kinetic_energy(Uhat) + p_jump/(gamma - 1)))
-        # Q = Qrho + self.mach_number(Uhat) * Qu
 
         if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
             lambda_max = un_abs + c
@@ -131,7 +116,7 @@ class ConservativeFormulation(Formulation):
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-8
+            theta_0 = 1e-6
             theta = un_abs/(un_abs + c)
             IfPos(theta - theta_0, theta, theta_0)
             Theta = CF((1, 0, 0, 0,
@@ -144,13 +129,13 @@ class ConservativeFormulation(Formulation):
 
             stabilisation_matrix = splus * Theta
 
-        return self.convective_flux(Uhat)*unit_vector + stabilisation_matrix * (U - Uhat)
+        return stabilisation_matrix
 
     def diffusive_numerical_flux(self, U, Uhat, Q, unit_vector: CF):
-        tau_d = self.diffusive_stabilisation_term(Uhat)
+        tau_d = self.diffusive_stabilisation_matrix(Uhat)
         return self.diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U-Uhat)
 
-    def diffusive_stabilisation_term(self, Uhat):
+    def diffusive_stabilisation_matrix(self, Uhat):
 
         Re = self.cfg.Reynolds_number
         Pr = self.cfg.Prandtl_number

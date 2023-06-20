@@ -309,6 +309,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
         ut = InnerProduct(self.velocity(Uhat), t)
         un = InnerProduct(self.velocity(Uhat), n)
         Mn = IfPos(un, un, -un)/c
+        M = self.cfg.Mach_number
+
+        P = self.P_matrix(Uhat, self.normal)
+        Pinv = self.P_inverse_matrix(Uhat, self.normal)
 
         if bc.type is bc.TYPE.PERFECT:
             amplitude_in = CF((0, 0, 0, 0))
@@ -321,47 +325,45 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         if bc.tang_conv_flux:
 
-            cf += self.conservative_convective_jacobian(Uhat, t) * (grad(U) * t) * Vhat
             gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
             gradient_u_t = self.velocity_gradient(U, Q) * t
 
-            beta_l = 1
+            beta_l = Mn
             beta_t = Mn
 
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
             amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
+            cf += (self.conservative_convective_jacobian(Uhat, t) * (grad(U) * t)) * Vhat
             amplitude_in -= CF((amp_t, 0, 0, 0))
 
         if not mu.is_inviscid:
 
             if bc.tang_visc_flux:
 
-                cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t) * (grad(U) * t)
-                mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t) * (grad(Q) * t)
+                cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t)
+                cf -= (cons_diff_jac_tang * (grad(U) * t)) * Vhat
+                amplitude_in += Pinv * (cons_diff_jac_tang * (grad(U) * t))
 
-                cf -= cons_diff_jac_tang * Vhat
-                cf -= mixe_diff_jac_tang * Vhat
-
-                amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_tang
-                amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_tang
+                mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t)
+                cf -= (mixe_diff_jac_tang * (grad(Q) * t)) * Vhat
+                amplitude_in += Pinv * (mixe_diff_jac_tang * (grad(Q) * t))
 
             if bc.norm_visc_flux:
+
+                cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n)
+                cf -= cons_diff_jac_norm * (grad(U) * n) * Vhat
+                amplitude_in += Pinv * (cons_diff_jac_norm * (grad(U) * n))
+
                 # test = grad(Q)
-                # test = CF((test[0, :], 0, 0, test[2, :], 0, 0, test[4, :]), dims=(5, 2))
-                # mixe_diff_jac_norm_test = self.mixed_diffusive_jacobian(Uhat, n) * (test * n)
+                # test = CF((test[0, :], 0, 0,  0, 0, 0, 0, 0,0), dims=(5, 2))
 
-                cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n) * (grad(U) * n)
-                mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n) * (grad(Q) * n)
-
-                cf -= cons_diff_jac_norm * Vhat
-                # cf -= mixe_diff_jac_norm * Vhat
-
-                amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_norm
-                # amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_norm
+                # mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n)
+                # cf -= (mixe_diff_jac_norm * (grad(Q) * n)) * Vhat
+                # amplitude_in += Pinv * ((mixe_diff_jac_norm) * (grad(Q) * n))
 
         amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
-        cf += (self.P_matrix(Uhat, self.normal) * amplitudes) * Vhat
+        cf += (P * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
@@ -418,7 +420,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         Uhat, Vhat = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
 
-        tau_dE = self.diffusive_stabilisation_term(Uhat)[self.mesh.dim+1, self.mesh.dim+1]
+        tau_dE = self.diffusive_stabilisation_matrix(Uhat)[self.mesh.dim+1, self.mesh.dim+1]
 
         diff_rho = self.density(U) - self.density(Uhat)
         diff_rho_u = -self.momentum(Uhat)
@@ -642,8 +644,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
         return B
 
     def conservative_convective_jacobian(self, U, unit_vector: CF) -> CF:
-        A = self.primitive_convective_jacobian(U, unit_vector)
-        return self.primitive_to_conservative(A, U)
+        A = self.conservative_convective_jacobian_x(U)
+        B = self.conservative_convective_jacobian_y(U)
+        return A * unit_vector[0] + B * unit_vector[1]
 
     def conservative_diffusive_jacobian_x(self, U, Q):
 
