@@ -2,7 +2,7 @@ from __future__ import annotations
 from ngsolve import *
 from typing import Optional, NamedTuple
 
-from .interface import Formulation, MixedMethods
+from .interface import _Formulation, MixedMethods
 
 
 class Indices(NamedTuple):
@@ -11,7 +11,7 @@ class Indices(NamedTuple):
     TEMPERATURE: int
 
 
-class PrimitiveFormulation(Formulation):
+class PrimitiveFormulation(_Formulation):
 
     _indices: Indices
 
@@ -24,9 +24,9 @@ class PrimitiveFormulation(Formulation):
 
         time_levels_gfu = self._gfus.get_component(0)
         time_levels_gfu['n+1'] = U
-        G = self.G_matrix(U)
+        Gamma = self.DME_from_PVT(U)
 
-        var_form = InnerProduct(G * self.time_scheme.apply(time_levels_gfu), V) * dx(bonus_intorder=bonus_order_vol)
+        var_form = InnerProduct(Gamma * self.time_scheme.apply(time_levels_gfu), V) * dx(bonus_intorder=bonus_order_vol)
 
         blf += (var_form).Compile(compile_flag)
 
@@ -55,6 +55,22 @@ class PrimitiveFormulation(Formulation):
 
     def add_diffusive_bilinearform(self, blf) -> None:
         raise NotImplementedError()
+
+    def convective_numerical_flux(self, U, Uhat, unit_vector: CF):
+        """
+        Convective numerical flux
+
+        Equation 34, page 16
+
+        Literature:
+        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
+              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
+              Arch Computat Methods Eng 28, 753–784 (2021).
+              https://doi.org/10.1007/s11831-020-09508-z
+        """
+        G = self.DME_from_PVT(Uhat)
+        tau_c = self.convective_stabilisation_matrix(Uhat, unit_vector)
+        return self.convective_flux(Uhat)*unit_vector + G * (tau_c * (U - Uhat))
 
     def pressure(self, U: Optional[CF] = None):
         U = self._if_none_replace_with_gfu(U)

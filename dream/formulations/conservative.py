@@ -2,7 +2,7 @@ from __future__ import annotations
 from ngsolve import *
 from typing import Optional, NamedTuple
 
-from .interface import Formulation, MixedMethods, TensorIndices, RiemannSolver
+from .interface import _Formulation, MixedMethods, TensorIndices, RiemannSolver
 
 
 class Indices(NamedTuple):
@@ -13,7 +13,7 @@ class Indices(NamedTuple):
     STRAIN: TensorIndices
 
 
-class ConservativeFormulation(Formulation):
+class ConservativeFormulation(_Formulation):
 
     _indices: Indices
 
@@ -97,56 +97,9 @@ class ConservativeFormulation(Formulation):
         tau_c = self.convective_stabilisation_matrix(Uhat, unit_vector)
         return self.convective_flux(Uhat)*unit_vector + tau_c * (U - Uhat)
 
-    def convective_stabilisation_matrix(self, Uhat, unit_vector):
-        riemann_solver = self.cfg.riemann_solver
-        un = InnerProduct(self.velocity(Uhat), unit_vector)
-        un_abs = IfPos(un, un, -un)
-        c = self.speed_of_sound(Uhat)
-
-        if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
-            lambda_max = un_abs + c
-            stabilisation_matrix = lambda_max * Id(self.mesh.dim + 2)
-
-        elif riemann_solver is RiemannSolver.ROE:
-            Lambda_abs = self.characteristic_velocities(Uhat, unit_vector, absolute_value=True)
-            stabilisation_matrix = self.characteristic_to_conservative(Lambda_abs, Uhat, unit_vector)
-
-        elif riemann_solver is RiemannSolver.HLL:
-            splus = IfPos(un + c, un + c, 0)
-            stabilisation_matrix = splus * Id(self.mesh.dim + 2)
-
-        elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-6
-            theta = un_abs/(un_abs + c)
-            IfPos(theta - theta_0, theta, theta_0)
-            Theta = CF((1, 0, 0, 0,
-                        0, theta, 0, 0,
-                        0, 0, theta, 0,
-                        0, 0, 0, 1), dims=(4, 4))
-
-            Theta = self.characteristic_to_conservative(Theta, Uhat, unit_vector)
-            splus = IfPos(un + c, un + c, 0)
-
-            stabilisation_matrix = splus * Theta
-
-        return stabilisation_matrix
-
     def diffusive_numerical_flux(self, U, Uhat, Q, unit_vector: CF):
         tau_d = self.diffusive_stabilisation_matrix(Uhat)
         return self.diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U-Uhat)
-
-    def diffusive_stabilisation_matrix(self, Uhat):
-
-        Re = self.cfg.Reynolds_number
-        Pr = self.cfg.Prandtl_number
-        mu = self.dynamic_viscosity(Uhat)
-
-        tau_d = CF((0, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1/Pr), dims=(4, 4)) * mu / Re
-
-        return tau_d
 
     def density(self, U: Optional[CF] = None):
         U = self._if_none_replace_with_gfu(U)
@@ -482,13 +435,3 @@ class ConservativeFormulation(Formulation):
         flux_gradient = CF((continuity, momentum, energy), dims=(dim+2, dim, dim))
 
         return flux_gradient
-
-    def reflect(self, U):
-
-        n = self.normal
-
-        rho = self.density(U)
-        rho_u = self.momentum(U)
-        rho_E = self.energy(U)
-
-        return CF((rho, rho_u - InnerProduct(rho_u, n)*n, rho_E))

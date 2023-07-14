@@ -38,53 +38,6 @@ class PrimitiveFormulation2D(PrimitiveFormulation):
     def _initialize_TnT(self) -> TestAndTrialFunction:
         return TestAndTrialFunction(*zip(*self.fes.TnT()))
 
-
-
-    def convective_numerical_flux(self, U, Uhat, unit_vector: CF):
-        """
-        Convective numerical flux
-
-        Equation 34, page 16
-
-        Literature:
-        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
-              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
-              Arch Computat Methods Eng 28, 753–784 (2021).
-              https://doi.org/10.1007/s11831-020-09508-z
-        """
-        riemann_solver = self.cfg.riemann_solver
-        un = InnerProduct(self.velocity(Uhat), unit_vector)
-        un_abs = IfPos(un, un, -un)
-        c = self.speed_of_sound(Uhat)
-        G = self.G_matrix(U)
-
-        if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
-            lambda_max = un_abs + c
-            stabilisation_matrix = lambda_max * Id(self.mesh.dim + 2)
-
-        elif riemann_solver is RiemannSolver.ROE:
-            stabilisation_matrix = self.primitive_convective_jacobian(Uhat, unit_vector, True)
-
-        elif riemann_solver is RiemannSolver.HLL:
-            splus = IfPos(un + c, un + c, 0)
-            stabilisation_matrix = splus * Id(self.mesh.dim + 2)
-
-        elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-8
-            theta = un_abs/(un_abs + c)
-            IfPos(theta - theta_0, theta, theta_0)
-            Theta = CF((1, 0, 0, 0,
-                        0, theta, 0, 0,
-                        0, 0, theta, 0,
-                        0, 0, 0, 1), dims=(4, 4))
-
-            Theta = self.characteristic_to_primitive(Theta, Uhat, unit_vector)
-            splus = IfPos(un + c, un + c, 0)
-
-            stabilisation_matrix = splus * Theta
-
-        return self.convective_flux(Uhat)*unit_vector + G * (stabilisation_matrix * (U-Uhat))
-
     def _add_linearform(self, lf, domain, value: co._Domain):
         bonus_order_vol = self.cfg.bonus_int_order_vol
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
@@ -111,8 +64,11 @@ class PrimitiveFormulation2D(PrimitiveFormulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        An_out = self.primitive_convective_jacobian_outgoing(Uhat, self.normal)
-        An_in = self.primitive_convective_jacobian_incoming(Uhat, self.normal)
+        u_out = self.characteristic_velocities(Uhat, self.normal, type="out", as_matrix=True)
+        u_in = self.characteristic_velocities(Uhat, self.normal, type="in", as_matrix=True)
+
+        An_out = self.PVT_from_CHAR_matrix(u_out, Uhat, self.normal)
+        An_in = self.PVT_from_CHAR_matrix(u_in, Uhat, self.normal)
 
         cf = An_out * (U - Uhat)
         cf += An_in * (farfield - Uhat)
@@ -130,7 +86,14 @@ class PrimitiveFormulation2D(PrimitiveFormulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        cf = InnerProduct(self.reflect(U)-Uhat, Vhat)
+        n = self.normal
+        p = self.pressure(U)
+        u = self.velocity(U)
+        T = self.temperature(U)
+
+        U_wall = CF((p, u - InnerProduct(u, n)*n, T))
+
+        cf = InnerProduct(U_wall - Uhat, Vhat)
         cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)
@@ -155,230 +118,86 @@ class PrimitiveFormulation2D(PrimitiveFormulation):
 
         blf += cf.Compile(compile_flag)
 
-    def reflect(self, U):
+    # def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Outflow):
 
-        n = self.normal
+    #     bonus_order_bnd = self.cfg.bonus_int_order_bnd
+    #     compile_flag = self.cfg.compile_flag
+    #     mu = self.cfg.dynamic_viscosity
 
-        p = self.pressure(U)
-        u = self.velocity(U)
-        T = self.temperature(U)
+    #     n = self.normal
+    #     t = self.tangential
+    #     region = self.mesh.Boundaries(boundary)
 
-        return CF((p, u - InnerProduct(u, n)*n, T))
+    #     U, _ = self.TnT.PRIMAL
+    #     Uhat, Vhat = self.TnT.PRIMAL_FACET
+    #     Q, _ = self.TnT.MIXED
 
-    def G_matrix(self, U):
+    #     time_levels_gfu = self._gfus.get_component(1)
+    #     time_levels_gfu['n+1'] = Uhat
 
-        gamma = self.cfg.heat_capacity_ratio
-        R = (gamma - 1)/gamma
+    #     cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
 
-        p = self.pressure(U)
-        T = self.temperature(U)
-        u, v = self.velocity(U)
-        E = self.specific_energy(U)
-        Ek = self.specific_kinetic_energy(U)
+    #     amplitude_out = self.characteristic_amplitudes(U, Q, Uhat, self.normal, type="out")
 
-        M = CF((
-            1, 0, 0, -p/T,
-            u, p, 0, -p*u/T,
-            v, 0, p, -p*v/T,
-            E, p*u, p*v, -p*Ek/T
-        ), dims=(4, 4))
+    #     rho = self.density(Uhat)
+    #     c = self.speed_of_sound(Uhat)
+    #     ut = InnerProduct(self.velocity(Uhat), t)
+    #     un = InnerProduct(self.velocity(Uhat), n)
+    #     Mn = IfPos(un, un, -un)/c
+    #     M = self.cfg.Mach_number
 
-        M *= 1/(R * T)
+    #     P = self.PVT_from_CHAR(Uhat, self.normal)
+    #     Pinv = self.CHAR_from_PVT(Uhat, self.normal)
 
-        return M
+    #     if bc.type is bc.TYPE.PERFECT:
+    #         amplitude_in = CF((0, 0, 0, 0))
 
-    def G_inverse_matrix(self, U):
+    #     elif bc.type is bc.TYPE.PARTIALLY:
+    #         ref_length = bc.reference_length
 
-        gamma = self.cfg.heat_capacity_ratio
-        R = (gamma - 1)/gamma
+    #         amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.pressure)
+    #         amplitude_in = CF((amp, 0, 0, 0))
 
-        rho = self.density(U)
-        T = self.temperature(U)
-        u, v = self.velocity(U)
-        Ek = self.specific_kinetic_energy(U)
+    #     if bc.tang_conv_flux:
 
-        Minv = CF((
-            R*Ek*rho, -R*rho*u, -R*rho*v, R*rho,
-            -u/gamma, 1/gamma, 0, 0,
-            -v/gamma, 0, 1/gamma, 0,
-            -T/gamma + Ek, -u, -v, 1
-        ), dims=(4, 4))
+    #         gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
+    #         gradient_u_t = self.velocity_gradient(U, Q) * t
 
-        Minv *= gamma/rho
+    #         beta_l = Mn
+    #         beta_t = Mn
 
-        return Minv
+    #         amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
+    #         amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
-    def T_matrix(self, U):
-        """ From low mach primitive to compressible primitive """
-        gamma = self.cfg.heat_capacity_ratio
-        R = (gamma - 1)/gamma
+    #         cf += (self.DME_convective_jacobian(Uhat, t) * (grad(U) * t)) * Vhat
+    #         amplitude_in -= CF((amp_t, 0, 0, 0))
 
-        p = self.pressure(U)
-        T = self.temperature(U)
+    #     if not mu.is_inviscid:
 
-        T_mat = CF((
-            1/(R*T), 0, 0, -p/(R * T**2),
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            1, 0, 0, 0
-        ), dims=(4, 4))
+    #         if bc.tang_visc_flux:
 
-        return T_mat
+    #             cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t)
+    #             cf -= (cons_diff_jac_tang * (grad(U) * t)) * Vhat
+    #             amplitude_in += Pinv * (cons_diff_jac_tang * (grad(U) * t))
 
-    def T_inverse_matrix(self, U):
-        """ From compressible primitive to low mach primitive """
-        gamma = self.cfg.heat_capacity_ratio
-        R = (gamma - 1)/gamma
+    #             mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t)
+    #             cf -= (mixe_diff_jac_tang * (grad(Q) * t)) * Vhat
+    #             amplitude_in += Pinv * (mixe_diff_jac_tang * (grad(Q) * t))
 
-        p = self.pressure(U)
-        rho = self.density(U)
+    #         if bc.norm_visc_flux:
 
-        Tinv = CF((
-            0, 0, 0, 1,
-            0, 1, 0, 0,
-            0, 0, 1, 0,
-            -p/(R*rho**2), 0, 0, 1/(R * rho),
-        ), dims=(4, 4))
+    #             cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n)
+    #             cf -= cons_diff_jac_norm * (grad(U) * n) * Vhat
+    #             amplitude_in += Pinv * (cons_diff_jac_norm * (grad(U) * n))
 
-        return Tinv
+    #             # test = grad(Q)
+    #             # test = CF((test[0, :], 0, 0,  0, 0, 0, 0, 0,0), dims=(5, 2))
 
-    def L_matrix(self, U, unit_vector: CF) -> CF:
-        """
-        The L matrix transforms characteristic variables to primitive variables
+    #             # mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n)
+    #             # cf -= (mixe_diff_jac_norm * (grad(Q) * n)) * Vhat
+    #             # amplitude_in += Pinv * ((mixe_diff_jac_norm) * (grad(Q) * n))
 
-        Equation E16.5.2, page 183
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
-        """
-        rho = self.density(U)
-        c = self.speed_of_sound(U)
-
-        d0, d1 = unit_vector[0], unit_vector[1]
-
-        L = CF((0.5/c**2, 1/c**2, 0, 0.5/c**2,
-                -d0/(2*c*rho), 0, d1, d0/(2*c*rho),
-                -d1/(2*c*rho), 0, -d0, d1/(2*c*rho),
-                0.5, 0, 0, 0.5), dims=(4, 4))
-
-        return L
-
-    def L_inverse_matrix(self, U, unit_vector: CF) -> CF:
-        """
-        The L inverse matrix transforms primitive variables to charactersitic variables
-
-        Equation E16.5.1, page 182
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
-        """
-        rho = self.density(U)
-        c = self.speed_of_sound(U)
-
-        d0, d1 = unit_vector[0], unit_vector[1]
-
-        Linv = CF((0, -rho*c*d0, -rho*c*d1, 1,
-                   c**2, 0, 0, -1,
-                   0, d1, -d0, 0,
-                   0, rho*c*d0, rho*c*d1, 1), dims=(4, 4))
-
-        return Linv
-
-    def characteristic_velocities(self, U, unit_vector: CF, absolute_value: bool = False) -> CF:
-        """
-        The Lambda matrix contains the eigenvalues of the Jacobian matrices
-
-        Equation E16.5.21, page 180
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
-        """
-        c = self.speed_of_sound(U)
-        u_dir = InnerProduct(self.velocity(U), unit_vector)
-
-        lam_m_c = u_dir - c
-        lam = u_dir
-        lam_p_c = u_dir + c
-
-        if absolute_value:
-            lam_m_c = IfPos(lam_m_c, lam_m_c, -lam_m_c)
-            lam = IfPos(lam, lam, -lam)
-            lam_p_c = IfPos(lam_p_c, lam_p_c, -lam_p_c)
-
-        Lambda = CF((lam_m_c, 0, 0, 0,
-                     0, lam, 0, 0,
-                     0, 0, lam, 0,
-                     0, 0, 0, lam_p_c), dims=(4, 4))
-
-        return Lambda
-
-    def characteristic_to_primitive(self, matrix, U, unit_vector) -> CF:
-        Tinv = self.T_inverse_matrix(U)
-        L = self.L_matrix(U, unit_vector)
-        T = self.T_matrix(U)
-        Linv = self.L_inverse_matrix(U, unit_vector)
-        return (Tinv * L) * matrix * (Linv * T)
-
-    def primitive_convective_jacobian_outgoing(self, U, unit_vector: CF) -> CF:
-        Lambda = self.characteristic_velocities_outgoing(U, unit_vector)
-        return self.characteristic_to_primitive(Lambda, U, unit_vector)
-
-    def primitive_convective_jacobian_incoming(self, U, unit_vector: CF) -> CF:
-        Lambda = self.characteristic_velocities_incoming(U, unit_vector)
-        return self.characteristic_to_primitive(Lambda, U, unit_vector)
-
-    def primitive_convective_jacobian(self, U, unit_vector: CF, absolute_value: bool = False) -> CF:
-        Lambda = self.characteristic_velocities(U, unit_vector, absolute_value)
-        return self.characteristic_to_primitive(Lambda, U, unit_vector)
-
-    def identity_matrix_outgoing(self, U, unit_vector: CF) -> CF:
-        c = self.speed_of_sound(U)
-        u_dir = InnerProduct(self.velocity(U), unit_vector)
-
-        lam_m_c = IfPos(u_dir - c, 1, 0)
-        lam = IfPos(u_dir, 1, 0)
-        lam_p_c = IfPos(u_dir + c, 1, 0)
-
-        identity = CF((lam_m_c, 0, 0, 0,
-                       0, lam, 0, 0,
-                       0, 0, lam, 0,
-                       0, 0, 0, lam_p_c), dims=(4, 4))
-
-        return identity
-
-    def identity_matrix_incoming(self, U, unit_vector: CF) -> CF:
-        c = self.speed_of_sound(U)
-        u_dir = InnerProduct(self.velocity(U), unit_vector)
-
-        lam_m_c = IfPos(u_dir - c, 0, 1)
-        lam = IfPos(u_dir, 0, 1)
-        lam_p_c = IfPos(u_dir + c, 0, 1)
-
-        identity = CF((lam_m_c, 0, 0, 0,
-                       0, lam, 0, 0,
-                       0, 0, lam, 0,
-                       0, 0, 0, lam_p_c), dims=(4, 4))
-
-        return identity
-
-    def characteristic_velocities_outgoing(self, U, unit_vector: CF, absolute_value: bool = False) -> CF:
-        I_out = self.identity_matrix_outgoing(U, unit_vector)
-        Lambda = self.characteristic_velocities(U, unit_vector, absolute_value)
-        return I_out * Lambda
-
-    def characteristic_velocities_incoming(self, U, unit_vector: CF, absolute_value: bool = False) -> CF:
-        I_in = self.identity_matrix_incoming(U, unit_vector)
-        Lambda = self.characteristic_velocities(U, unit_vector, absolute_value)
-        return I_in * Lambda
+    #     amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
+    #     cf += (P * amplitudes) * Vhat
+    #     cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
+    #     blf += cf.Compile(compile_flag)

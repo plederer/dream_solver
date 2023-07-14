@@ -71,6 +71,126 @@ class TestAndTrialFunction:
 
 class Formulation(abc.ABC):
 
+    @abc.abstractmethod
+    def _initialize_FE_space(self) -> ProductSpace: ...
+
+    @abc.abstractmethod
+    def _initialize_TnT(self) -> TestAndTrialFunction: ...
+
+    @abc.abstractmethod
+    def add_time_bilinearform(self, blf) -> None: ...
+
+    @abc.abstractmethod
+    def add_convective_bilinearform(self, blf) -> None: ...
+
+    @abc.abstractmethod
+    def add_diffusive_bilinearform(self, blf) -> None: ...
+
+    def density(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def velocity(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def momentum(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def pressure(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def temperature(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def specific_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def enthalpy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def specific_enthalpy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def kinetic_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def specific_kinetic_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def inner_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def specific_inner_energy(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def speed_of_sound(self, U: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def density_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def velocity_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def momentum_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def pressure_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def temperature_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def enthalpy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def vorticity(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+        raise NotImplementedError()
+
+    def _add_dirichlet_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_farfield_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_outflow_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_inviscid_wall_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_isothermal_wall_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_linearform(self, lf, domain, condition):
+        raise NotImplementedError()
+
+    def _add_sponge_bilinearform(self, blf, domain, condition):
+        raise NotImplementedError()
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+
+class _Formulation(Formulation):
+
     def __init__(self, mesh: Mesh, solver_configuration: SolverConfiguration) -> None:
 
         self._mesh = mesh
@@ -117,21 +237,6 @@ class Formulation(abc.ABC):
         if self._fes is None:
             raise RuntimeError("Call 'formulation.initialize()' before accessing the TestAndTrialFunctions")
         return self._TnT
-
-    @abc.abstractmethod
-    def _initialize_FE_space(self) -> ProductSpace: ...
-
-    @abc.abstractmethod
-    def _initialize_TnT(self) -> TestAndTrialFunction: ...
-
-    @abc.abstractmethod
-    def add_time_bilinearform(self, blf) -> None: ...
-
-    @abc.abstractmethod
-    def add_convective_bilinearform(self, blf) -> None: ...
-
-    @abc.abstractmethod
-    def add_diffusive_bilinearform(self, blf) -> None: ...
 
     def initialize(self):
         self._fes = self._initialize_FE_space()
@@ -244,6 +349,40 @@ class Formulation(abc.ABC):
 
         return CF(flux, dims=(dim + 2, dim))
 
+    def convective_stabilisation_matrix(self, Uhat, unit_vector):
+        riemann_solver = self.cfg.riemann_solver
+        un = InnerProduct(self.velocity(Uhat), unit_vector)
+        un_abs = IfPos(un, un, -un)
+        c = self.speed_of_sound(Uhat)
+
+        if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
+            lambda_max = un_abs + c
+            stabilisation_matrix = lambda_max * Id(self.mesh.dim + 2)
+
+        elif riemann_solver is RiemannSolver.ROE:
+            Lambda_abs = self.characteristic_velocities(Uhat, unit_vector, type="absolute", as_matrix=True)
+            stabilisation_matrix = self.DME_from_CHAR_matrix(Lambda_abs, Uhat, unit_vector)
+
+        elif riemann_solver is RiemannSolver.HLL:
+            splus = IfPos(un + c, un + c, 0)
+            stabilisation_matrix = splus * Id(self.mesh.dim + 2)
+
+        elif riemann_solver is RiemannSolver.HLLEM:
+            theta_0 = 1e-6
+            theta = un_abs/(un_abs + c)
+            IfPos(theta - theta_0, theta, theta_0)
+            Theta = CF((1, 0, 0, 0,
+                        0, theta, 0, 0,
+                        0, 0, theta, 0,
+                        0, 0, 0, 1), dims=(4, 4))
+
+            Theta = self.DME_from_CHAR_matrix(Theta, Uhat, unit_vector)
+            splus = IfPos(un + c, un + c, 0)
+
+            stabilisation_matrix = splus * Theta
+
+        return stabilisation_matrix
+
     def diffusive_flux(self, U, Q):
         """
         Diffusive flux G
@@ -266,6 +405,19 @@ class Formulation(abc.ABC):
         flux = CF((continuity, tau, tau*u - heat_flux), dims=(dim + 2, dim))
 
         return flux
+
+    def diffusive_stabilisation_matrix(self, Uhat):
+
+        Re = self.cfg.Reynolds_number
+        Pr = self.cfg.Prandtl_number
+        mu = self.dynamic_viscosity(Uhat)
+
+        tau_d = CF((0, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1/Pr), dims=(4, 4)) * mu / Re
+
+        return tau_d
 
     def heat_flux(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
@@ -317,109 +469,538 @@ class Formulation(abc.ABC):
         else:
             raise NotImplementedError()
 
+    def characteristic_variables(self, U, Q, Uhat, unit_vector: CF) -> tuple:
+        """
+        The charachteristic amplitudes are defined as
+
+            Amplitudes = Lambda * L_inverse * dV/dn,
+
+        where Lambda is the eigenvalue matrix, L_inverse is the mapping from
+        primitive variables to charachteristic variables and dV/dn is the
+        derivative normal to the boundary.
+        """
+        rho = self.density(Uhat)
+        c = self.speed_of_sound(Uhat)
+
+        gradient_rho_dir = InnerProduct(self.density_gradient(U, Q), unit_vector)
+        gradient_p_dir = InnerProduct(self.pressure_gradient(U, Q), unit_vector)
+        gradient_u_dir = self.velocity_gradient(U, Q) * unit_vector
+
+        if self.mesh.dim == 2:
+
+            variables = (
+                gradient_p_dir - InnerProduct(gradient_u_dir, unit_vector) * c * rho,
+                gradient_rho_dir * c**2 - gradient_p_dir,
+                gradient_u_dir[0] * unit_vector[1] - gradient_u_dir[1] * unit_vector[0],
+                gradient_p_dir + InnerProduct(gradient_u_dir, unit_vector) * c * rho
+            )
+
+        else:
+            raise NotImplementedError()
+
+        return variables
+
+    def characteristic_velocities(self, U, unit_vector: CF, type: str = None, as_matrix: bool = False) -> CF:
+        """
+        The Lambda matrix contains the eigenvalues of the Jacobian matrices
+
+        Equation E16.5.21, page 180
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
+        c = self.speed_of_sound(U)
+        u_dir = InnerProduct(self.velocity(U), unit_vector)
+
+        lam_m_c = u_dir - c
+        lam = u_dir
+        lam_p_c = u_dir + c
+
+        if type is None:
+            pass
+        elif type == "absolute":
+            lam_m_c = IfPos(lam_m_c, lam_m_c, -lam_m_c)
+            lam = IfPos(lam, lam, -lam)
+            lam_p_c = IfPos(lam_p_c, lam_p_c, -lam_p_c)
+        elif type == "in":
+            lam_m_c = IfPos(lam_m_c, 0, lam_m_c)
+            lam = IfPos(lam, 0, lam)
+            lam_p_c = IfPos(lam_p_c, 0, lam_p_c)
+        elif type == "out":
+            lam_m_c = IfPos(lam_m_c, lam_m_c, 0)
+            lam = IfPos(lam, lam, 0)
+            lam_p_c = IfPos(lam_p_c, lam_p_c, 0)
+        else:
+            raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {[None, 'absolute', 'in', 'out']}")
+
+        if self.mesh.dim == 2:
+            Lambda = (lam_m_c, lam, lam, lam_p_c)
+        elif self.mesh.dim == 3:
+            Lambda = (lam_m_c, lam, lam, lam, lam_p_c)
+
+        if as_matrix:
+            dim = len(Lambda)
+            matrix = [0] * dim**2
+            for i in range(dim):
+                matrix[i*dim + i] = Lambda[i]
+            Lambda = CF(tuple(matrix), dims=(dim, dim))
+
+        return Lambda
+
+    def characteristic_amplitudes(self, U, Q, Uhat, unit_vector: CF, type: str = None):
+        velocities = self.characteristic_velocities(Uhat, unit_vector, type, as_matrix=False)
+        variables = self.characteristic_variables(U, Q, Uhat, unit_vector)
+        return CF(tuple(vel * var for vel, var in zip(velocities, variables)))
+
+    def identity_matrix_outgoing(self, U, unit_vector: CF) -> CF:
+        c = self.speed_of_sound(U)
+        u_dir = InnerProduct(self.velocity(U), unit_vector)
+
+        lam_m_c = IfPos(u_dir - c, 1, 0)
+        lam = IfPos(u_dir, 1, 0)
+        lam_p_c = IfPos(u_dir + c, 1, 0)
+
+        if self.mesh.dim == 2:
+
+            identity = CF((lam_m_c, 0, 0, 0,
+                           0, lam, 0, 0,
+                           0, 0, lam, 0,
+                           0, 0, 0, lam_p_c), dims=(4, 4))
+
+        elif self.mesh.dim == 3:
+
+            identity = CF((lam_m_c, 0, 0, 0, 0,
+                           0, lam, 0, 0, 0,
+                           0, 0, lam, 0, 0,
+                           0, 0, 0, lam, 0,
+                           0, 0, 0, 0, lam_p_c), dims=(5, 5))
+
+        return identity
+
+    def identity_matrix_incoming(self, U, unit_vector: CF) -> CF:
+        c = self.speed_of_sound(U)
+        u_dir = InnerProduct(self.velocity(U), unit_vector)
+
+        lam_m_c = IfPos(u_dir - c, 0, 1)
+        lam = IfPos(u_dir, 0, 1)
+        lam_p_c = IfPos(u_dir + c, 0, 1)
+
+        if self.mesh.dim == 2:
+
+            identity = CF((lam_m_c, 0, 0, 0,
+                           0, lam, 0, 0,
+                           0, 0, lam, 0,
+                           0, 0, 0, lam_p_c), dims=(4, 4))
+
+        elif self.mesh.dim == 3:
+
+            identity = CF((lam_m_c, 0, 0, 0, 0,
+                           0, lam, 0, 0, 0,
+                           0, 0, lam, 0, 0,
+                           0, 0, 0, lam, 0,
+                           0, 0, 0, 0, lam_p_c), dims=(5, 5))
+
+        return identity
+
+    def DVP_from_DME(self, U) -> CF:
+        """
+        The M inverse matrix transforms conservative variables to primitive variables
+
+        Equation E16.2.11, page 149
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
+        gamma = self.cfg.heat_capacity_ratio
+
+        rho = self.density(U)
+        u = self.velocity(U)
+
+        if self.mesh.dim == 2:
+
+            ux, uy = u[0], u[1]
+
+            Minv = CF((1, 0, 0, 0,
+                       -ux/rho, 1/rho, 0, 0,
+                       -uy/rho, 0, 1/rho, 0,
+                       (gamma - 1)/2 * InnerProduct(u, u), -(gamma - 1) * ux,
+                       -(gamma - 1) * uy, gamma - 1), dims=(4, 4))
+        else:
+            raise NotImplementedError()
+
+        return Minv
+
+    def DVP_from_CHAR(self, U, unit_vector: CF) -> CF:
+        """
+        The L matrix transforms characteristic variables to primitive variables
+
+        Equation E16.5.2, page 183
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+
+        if self.mesh.dim == 2:
+
+            d0, d1 = unit_vector[0], unit_vector[1]
+
+            L = CF((0.5/c**2, 1/c**2, 0, 0.5/c**2,
+                    -d0/(2*c*rho), 0, d1, d0/(2*c*rho),
+                    -d1/(2*c*rho), 0, -d0, d1/(2*c*rho),
+                    0.5, 0, 0, 0.5), dims=(4, 4))
+        else:
+            return NotImplementedError()
+
+        return L
+
+    def DVP_from_PVT(self, U):
+        """ From low mach primitive to compressible primitive """
+        gamma = self.cfg.heat_capacity_ratio
+        R = (gamma - 1)/gamma
+
+        p = self.pressure(U)
+        T = self.temperature(U)
+
+        if self.mesh.dim == 2:
+
+            T_mat = CF((
+                1/(R*T), 0, 0, -p/(R * T**2),
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                1, 0, 0, 0
+            ), dims=(4, 4))
+
+        else:
+            raise NotImplementedError()
+
+        return T_mat
+
+    def DVP_from_PVT_matrix(self, matrix, U) -> CF:
+        return self.DVP_from_PVT(U) * matrix * self.PVT_from_DVP(U)
+
+    def DVP_from_DME_matrix(self, matrix, U) -> CF:
+        return self.DVP_from_DME(U) * matrix * self.DME_from_DVP(U)
+
+    def DVP_from_CHAR_matrix(self, matrix, U) -> CF:
+        return self.DVP_from_CHAR(U) * matrix * self.CHAR_from_DVP(U)
+
+    def DVP_convective_jacobian_x(self, U) -> CF:
+
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+
+        if self.mesh.dim == 2:
+            u = self.velocity(U)[0]
+
+            A = CF((
+                u, rho, 0, 0,
+                0, u, 0, 1/rho,
+                0, 0, u, 0,
+                0, rho*c**2, 0, u),
+                dims=(4, 4))
+        else:
+            return NotImplementedError()
+
+        return A
+
+    def DVP_convective_jacobian_y(self, U) -> CF:
+
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+
+        if self.mesh.dim == 2:
+            v = self.velocity(U)[1]
+
+            B = CF((v, 0, rho, 0,
+                    0, v, 0, 0,
+                    0, 0, v, 1/rho,
+                    0, 0, rho*c**2, v),
+                   dims=(4, 4))
+
+        else:
+            return NotImplementedError()
+
+        return B
+
+    def DVP_convective_jacobian(self, U, unit_vector: CF) -> CF:
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+        un = InnerProduct(self.velocity(U), unit_vector)
+
+        if self.mesh.dim == 2:
+            d0, d1 = unit_vector
+
+            JAC = CF((
+                un, d0*rho, d1*rho, 0,
+                0, un, 0, d0/rho,
+                0, 0, un, d1/rho,
+                0, d0*rho*c**2, d1*rho*c**2, un),
+                dims=(4, 4))
+        else:
+            return NotImplementedError()
+
+        return JAC
+
+    def DME_from_DVP(self, U) -> CF:
+        """
+        The M matrix transforms primitive variables to conservative variables
+
+        Equation E16.2.10, page 149
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
+        gamma = self.cfg.heat_capacity_ratio
+
+        rho = self.density(U)
+        u = self.velocity(U)
+        ux, uy = u[0], u[1]
+
+        if self.mesh.dim == 2:
+            M = CF((1, 0, 0, 0,
+                    ux, rho, 0, 0,
+                    uy, 0, rho, 0,
+                    0.5*InnerProduct(u, u), rho*ux, rho*uy, 1/(gamma - 1)), dims=(4, 4))
+        else:
+            raise NotImplementedError()
+
+        return M
+
+    def DME_from_CHAR(self, U, unit_vector: CF) -> CF:
+        """
+        The P matrix transforms characteristic variables to conservative variables
+
+        Equation E16.5.3, page 183
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
+        return self.DME_from_DVP(U) * self.DVP_from_CHAR(U, unit_vector)
+
+    def DME_from_PVT(self, U):
+
+        gamma = self.cfg.heat_capacity_ratio
+        R = (gamma - 1)/gamma
+
+        p = self.pressure(U)
+        T = self.temperature(U)
+        E = self.specific_energy(U)
+        Ek = self.specific_kinetic_energy(U)
+
+        if self.mesh.dim == 2:
+            u, v = self.velocity(U)
+            M = CF((
+                1, 0, 0, -p/T,
+                u, p, 0, -p*u/T,
+                v, 0, p, -p*v/T,
+                E, p*u, p*v, -p*Ek/T
+            ), dims=(4, 4))
+
+            M *= 1/(R * T)
+        else:
+            raise NotImplementedError()
+
+        return M
+
+    def DME_from_DVP_matrix(self, matrix, U) -> CF:
+        return self.DME_from_DVP(U) * matrix * self.DVP_from_DME(U)
+
+    def DME_from_CHAR_matrix(self, matrix, U, unit_vector) -> CF:
+        return self.DME_from_CHAR(U, unit_vector) * matrix * self.CHAR_from_DME(U, unit_vector)
+
+    def DME_from_PVT_matrix(self, matrix, U) -> CF:
+        return self.DME_from_PVT(U) * matrix * self.CHAR_from_PVT(U)
+
+    def DME_convective_jacobian_x(self, U) -> CF:
+        '''
+        First Jacobian of the convective Euler Fluxes F_c = (f_c, g_c) for conservative variables U
+        A = \partial f_c / \partial U
+        input: u = (rho, rho * u, rho * E)
+        See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2
+        '''
+
+        gamma = self.cfg.heat_capacity_ratio
+        velocity = self.velocity(U)
+        ux, uy = velocity[0], velocity[1]
+        u = InnerProduct(velocity, velocity)
+        E = self.specific_energy(U)
+
+        A = CF((
+            0, 1, 0, 0,
+            (gamma - 3)/2 * ux**2 + (gamma - 1)/2 * uy**2, (3 - gamma) * ux, -(gamma - 1) * uy, gamma - 1,
+            -ux*uy, uy, ux, 0,
+            -gamma*ux*E + (gamma - 1)*ux*u, gamma*E - (gamma - 1)/2 * (uy**2 + 3*ux**2), -(gamma - 1)*ux*uy, gamma*ux),
+            dims=(4, 4))
+
+        return A
+
+    def DME_convective_jacobian_y(self, U) -> CF:
+        '''
+        Second Jacobian of the convective Euler Fluxes F_c = (f_c, g_c)for conservative variables U
+        B = \partial g_c / \partial U
+        input: u = (rho, rho * u, rho * E)
+        See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2
+        '''
+        gamma = self.cfg.heat_capacity_ratio
+        velocity = self.velocity(U)
+        ux, uy = velocity[0], velocity[1]
+        u = InnerProduct(velocity, velocity)
+        E = self.specific_energy(U)
+
+        B = CF(
+            (0, 0, 1, 0, -ux * uy, uy, ux, 0, (gamma - 3) / 2 * uy ** 2 + (gamma - 1) / 2 * ux ** 2, -(gamma - 1) * ux,
+             (3 - gamma) * uy, gamma - 1, -gamma * uy * E + (gamma - 1) * uy * u, -(gamma - 1) * ux * uy, gamma * E -
+             (gamma - 1) / 2 * (ux ** 2 + 3 * uy ** 2),
+             gamma * uy),
+            dims=(4, 4))
+
+        return B
+
+    def DME_convective_jacobian(self, U, unit_vector: CF) -> CF:
+        A = self.DME_convective_jacobian_x(U)
+        B = self.DME_convective_jacobian_y(U)
+        return A * unit_vector[0] + B * unit_vector[1]
+
+    def CHAR_from_DVP(self, U, unit_vector: CF) -> CF:
+        """
+        The L inverse matrix transforms primitive variables to charactersitic variables
+
+        Equation E16.5.1, page 182
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+
+        if self.mesh.dim == 2:
+
+            d0, d1 = unit_vector[0], unit_vector[1]
+
+            Linv = CF((0, -rho*c*d0, -rho*c*d1, 1,
+                       c**2, 0, 0, -1,
+                       0, d1, -d0, 0,
+                       0, rho*c*d0, rho*c*d1, 1), dims=(4, 4))
+
+        else:
+            return NotImplementedError()
+
+        return Linv
+
+    def CHAR_from_DME(self, U, unit_vector: CF) -> CF:
+        """
+        The P inverse matrix transforms conservative variables to characteristic variables
+
+        Equation E16.5.4, page 183
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
+        return self.CHAR_from_DVP(U, unit_vector) * self.DVP_from_DME(U)
+
+    def CHAR_from_PVT(self, U, unit_vector: CF) -> CF:
+        return self.CHAR_from_DVP(U, unit_vector) * self.DVP_from_PVT(U)
+
+    def CHAR_from_DVP_matrix(self, matrix, U, unit_vector) -> CF:
+        return self.CHAR_from_DVP(U, unit_vector) * matrix * self.DVP_from_CHAR(U, unit_vector)
+
+    def CHAR_from_DME_matrix(self, matrix, U, unit_vector) -> CF:
+        return self.CHAR_from_DME(U, unit_vector) * matrix * self.DME_from_CHAR(U, unit_vector)
+
+    def CHAR_from_PVT_matrix(self, matrix, U, unit_vector) -> CF:
+        return self.CHAR_from_PVT(U, unit_vector) * matrix * self.PVT_from_CHAR(U, unit_vector)
+
+    def PVT_from_DVP(self, U):
+        """ From compressible primitive to low mach primitive """
+        gamma = self.cfg.heat_capacity_ratio
+        R = (gamma - 1)/gamma
+
+        p = self.pressure(U)
+        rho = self.density(U)
+
+        if self.mesh.dim == 2:
+
+            Tinv = CF((
+                0, 0, 0, 1,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                -p/(R*rho**2), 0, 0, 1/(R * rho),
+            ), dims=(4, 4))
+
+        else:
+            raise NotImplementedError()
+
+        return Tinv
+
+    def PVT_from_DME(self, U):
+
+        gamma = self.cfg.heat_capacity_ratio
+        R = (gamma - 1)/gamma
+
+        rho = self.density(U)
+        T = self.temperature(U)
+        Ek = self.specific_kinetic_energy(U)
+
+        if self.mesh.dim == 2:
+            u, v = self.velocity(U)
+
+            Minv = CF((
+                R*Ek*rho, -R*rho*u, -R*rho*v, R*rho,
+                -u/gamma, 1/gamma, 0, 0,
+                -v/gamma, 0, 1/gamma, 0,
+                -T/gamma + Ek, -u, -v, 1
+            ), dims=(4, 4))
+
+            Minv *= gamma/rho
+
+        else:
+            raise NotImplementedError()
+
+        return Minv
+
+    def PVT_from_CHAR(self, U, unit_vector: CF) -> CF:
+        return self.PVT_from_DVP(U) * self.DVP_from_CHAR(U, unit_vector)
+
+    def PVT_from_DVP_matrix(self, matrix, U) -> CF:
+        return self.PVT_from_DVP(U) * matrix * self.DVP_from_PVT(U)
+
+    def PVT_from_DME_matrix(self, matrix, U) -> CF:
+        return self.PVT_from_DME(U) * matrix * self.DME_from_PVT(U)
+
+    def PVT_from_CHAR_matrix(self, matrix, U, unit_vector) -> CF:
+        return self.PVT_from_CHAR(U, unit_vector) * matrix * self.CHAR_from_PVT(U, unit_vector)
+
     def _if_none_replace_with_gfu(self, cf, component: int = 0):
         if cf is None:
             cf = self.gfu.components[component]
         return cf
-
-    def density(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def velocity(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def momentum(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def pressure(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def temperature(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def enthalpy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_enthalpy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def kinetic_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_kinetic_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def inner_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_inner_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def speed_of_sound(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def density_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def velocity_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def momentum_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def pressure_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def temperature_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def enthalpy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def vorticity(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def _add_dirichlet_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_farfield_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_outflow_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_inviscid_wall_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_isothermal_wall_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_linearform(self, lf, domain, condition):
-        raise NotImplementedError()
-
-    def _add_sponge_bilinearform(self, blf, domain, condition):
-        raise NotImplementedError()
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
