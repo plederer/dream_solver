@@ -1,7 +1,6 @@
 from netgen.occ import OCCGeometry, WorkPlane
 from ngsolve import *
-from netgen.meshing import IdentificationType
-from dream import CompressibleHDGSolver, SolverConfiguration
+from dream import *
 from ngsolve.meshes import MakeStructured2DMesh
 
 ngsglobals.msg_level = 0
@@ -9,10 +8,11 @@ SetNumThreads(8)
 
 circle = False
 structured = True
-maxh = 0.1
+maxh = 0.2
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
+cfg.scaling = "aerodynamic"
 cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
 cfg.mixed_method = "strain_heat"
@@ -38,9 +38,8 @@ cfg.damping_factor = 1
 cfg.max_iterations = 100
 cfg.convergence_criterion = 1e-16
 
-cfg.compile_flag = True
+cfg.compile_flag = False
 cfg.static_condensation = True
-cfg.periodic = False
 
 if circle:
 
@@ -61,34 +60,28 @@ else:
         for bc, edge in zip(['bottom', 'right', 'top', 'left'], face.edges):
             edge.name = bc
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
-
+mesh.Refine()
 gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
 
-rho_inf = 1
-# alpha = pi/9
 alpha = 0
 u_inf = CF((cos(alpha), sin(alpha)))
+rho_inf = 1
 p_inf = 1/(M**2 * gamma)
-T_inf = gamma/(gamma - 1) * p_inf/rho_inf
-
-Gamma = 0.02
-Rv = 0.1
-
-r = sqrt(x**2 + y**2)
+farfield = State(u_inf, rho_inf, p_inf)
 
 # # Pressure Pulse
-u_0 = u_inf
-# u_0 = CF((0, 0))
+Gamma = 0.02
+Rv = 0.1
+r = sqrt(x**2 + y**2)
 p_0 = p_inf * (1 + Gamma * exp(-r**2/Rv**2))
-rho_0 = gamma/(gamma - 1)/T_inf * p_0
+initial = State(u_inf, rho_inf, p_0)
 
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set_farfield("left", u_inf, rho_inf, p_inf)
-solver.boundary_conditions.set_nonreflecting_outflow('right|top|bottom', p_inf, "perfect", 0.28, 1, True, False, False)
-
-solver.domain_conditions.set_initial(u_0, rho_0, p_0)
+solver.boundary_conditions.set(bcs.FarField(farfield), 'left')
+solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf, 0, 1, False), 'right|top|bottom')
+solver.domain_conditions.set(dcs.Initial(initial))
 
 with TaskManager():
     solver.setup()

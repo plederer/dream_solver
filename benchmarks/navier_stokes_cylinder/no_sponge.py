@@ -1,4 +1,4 @@
-from dream import CompressibleHDGSolver, SolverConfiguration, ResultsDirectoryTree, Saver
+from dream import *
 from dream.utils.meshes import circular_cylinder_mesh
 from ngsolve import *
 
@@ -12,6 +12,7 @@ parent_path = None
 # General Solver Configuration
 cfg = SolverConfiguration()
 cfg.formulation = 'conservative'
+cfg.scaling = 'aerodynamic'
 cfg.mixed_method = 'strain_heat'
 cfg.dynamic_viscosity = 'constant'
 cfg.riemann_solver = 'hllem'
@@ -71,6 +72,7 @@ saver.save_mesh(mesh)
 rho_inf = 1
 u_inf = (1, 0)
 p_inf = 1/(cfg.Mach_number.Get()**2 * cfg.heat_capacity_ratio.Get())
+farfield = State(u_inf, rho_inf, p_inf)
 
 # Meta Data
 cfg.info['Farfield Density'] = 1
@@ -88,10 +90,10 @@ mesh.Curve(cfg.order)
 
 
 solver = CompressibleHDGSolver(mesh, cfg, tree)
-solver.boundary_conditions.set_farfield('inflow|outflow',  u_inf, rho_inf, p_inf)
-solver.boundary_conditions.set_adiabatic_wall('cylinder')
+solver.boundary_conditions.set(bcs.FarField(farfield), 'inflow|outflow')
+solver.boundary_conditions.set(bcs.AdiabaticWall(), 'cylinder')
 if not load_stationary:
-    solver.domain_conditions.set_initial(u_inf, rho_inf, p_inf)
+    solver.domain_conditions.set(dcs.Initial(farfield))
 
 saver = solver.get_saver()
 loader = solver.get_loader()
@@ -122,9 +124,10 @@ p_0 = 1.2 * exp(-r**2)
 psi = 1.2 * exp(-r**2)
 u_0 = CF((psi.Diff(y), -psi.Diff(x)))
 rho_0 = (p_0/p_inf)**(1/cfg.heat_capacity_ratio) * rho_inf
-
+perturbation = State(u_0, rho_0, p_0)
+solver.domain_conditions.set(dcs.Perturbation(perturbation))
 with TaskManager():
-    solver.add_perturbation(u_0, rho_0, p_0)
+    solver.solve_perturbation()
 
 # Solver Transient
 cfg.time.step = 0.1

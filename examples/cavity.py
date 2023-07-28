@@ -1,8 +1,7 @@
-from netgen.occ import OCCGeometry, WorkPlane, Glue
 from ngsolve import *
-from netgen.meshing import IdentificationType
-from dream import CompressibleHDGSolver, SolverConfiguration
-from dream.utils.geometries import MakeOCCRectangle, MakeOCCCircle, MakeOCCCirclePlane
+from dream import *
+from netgen.occ import OCCGeometry, WorkPlane, Glue
+
 ngsglobals.msg_level = 0
 SetNumThreads(8)
 
@@ -20,17 +19,11 @@ for edge, bc in zip(cavity.edges, ['wall', 'wall', 'default', 'wall']):
 geo = Glue([air, boundary_layer, cavity])
 mesh = Mesh(OCCGeometry(geo, dim=2).GenerateMesh(maxh=1))
 
-# face = WorkPlane().MoveTo(0, -0.5).Arc(0.5, 180).Arc(0.5, 180).Face()
-# for bc, edge in zip(['right', 'left'], face.edges):
-#     edge.name = bc
-# mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=0.05))
-
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
+cfg.scaling = "aerodynamic"
 cfg.dynamic_viscosity = "constant"
-# cfg.dynamic_viscosity = None
 cfg.mixed_method = "strain_heat"
-# cfg.mixed_method = None
 cfg.riemann_solver = 'hllem'
 
 cfg.Reynolds_number = 166
@@ -55,8 +48,6 @@ cfg.convergence_criterion = 1e-12
 cfg.compile_flag = True
 cfg.static_condensation = True
 
-mesh.Curve(cfg.order)
-
 gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
 
@@ -64,29 +55,12 @@ rho_inf = 1
 alpha = pi/36
 u_inf = CF((cos(alpha), sin(alpha)))
 p_inf = 1/(M**2 * gamma)
-T_inf = gamma/(gamma - 1) * p_inf/rho_inf
-c = sqrt(gamma * p_inf/rho_inf)
-
-Gamma = 0.005
-Rv = 0.1
-
-r = sqrt(x**2 + y**2)
-psi = Gamma * exp(-r**2/(2*Rv**2))
-
-u_0 = u_inf  # + CF((psi.Diff(y), -psi.Diff(x)))
-p_0 = p_inf  # * exp(-gamma/2*(Gamma/(c * Rv))**2 * exp(-r**2/Rv**2))
-rho_0 = rho_inf
-
-# u_0 = u_inf
-# p_0 = p_inf * (1 + Gamma * exp(-r**2/(2*Rv**2)))
-# rho_0 = gamma/(gamma - 1)/T_inf * p_0
-
+farfield = State(u_inf, rho_inf, p_inf)
 
 solver = CompressibleHDGSolver(mesh, cfg)
-# solver.boundary_conditions.set_nonreflecting_inflow("left", rho_inf, u_inf, pressure=p_inf, type="partially", reference_length=40, tangential_convective_fluxes=False)
-solver.boundary_conditions.set_farfield("left|top|right", u_inf, rho_inf, p_inf)
-solver.boundary_conditions.set_adiabatic_wall('wall')
-solver.domain_conditions.set_initial(u_0, rho_0,  p_0)
+solver.boundary_conditions.set(bcs.FarField(farfield), "left|top|right")
+solver.boundary_conditions.set(bcs.AdiabaticWall(), 'wall')
+solver.domain_conditions.set(dcs.Initial(farfield))
 
 
 with TaskManager():
@@ -96,7 +70,7 @@ with TaskManager():
     TnT = formulation.TnT
 
     solver.drawer.draw(energy=True)
-    solver.drawer.draw_acoustic_pressure(p_inf, autoscale=False, min=-1e-4, max=1e-4)
-    solver.drawer.draw_particle_velocity(u_inf, autoscale=False, min=-1e-4, max=1e-4)
+    solver.drawer.draw_acoustic_pressure(p_inf)
+    solver.drawer.draw_particle_velocity(u_inf)
 
     solver.solve_transient()

@@ -1,5 +1,4 @@
 from .formatter import Formatter
-from .calculator import IdealGasCalculator
 
 
 def is_notebook() -> bool:

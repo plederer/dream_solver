@@ -3,10 +3,8 @@ from typing import Optional, NamedTuple
 
 from ngsolve import *
 from . import io
-from . import conditions as co
-from .utils import IdealGasCalculator
 from .sensor import Sensor
-from .formulations import formulation_factory, Formulation
+from .formulations import formulation_factory, _Formulation
 from .configuration import SolverConfiguration, DreAmLogger
 from math import isnan
 
@@ -99,24 +97,24 @@ class CompressibleHDGSolver:
         self._directory_tree = directory_tree
 
     @property
-    def formulation(self) -> Formulation:
+    def formulation(self) -> _Formulation:
         return self._formulation
 
     @property
-    def mesh(self) -> Mesh:
+    def mesh(self):
         return self.formulation.mesh
 
     @property
-    def solver_configuration(self) -> SolverConfiguration:
+    def solver_configuration(self):
         return self.formulation.cfg
 
     @property
-    def boundary_conditions(self) -> co.BoundaryConditions:
-        return self.formulation.bcs
+    def boundary_conditions(self):
+        return self.formulation.dmesh.bcs
 
     @property
-    def domain_conditions(self) -> co.DomainConditions:
-        return self.formulation.dcs
+    def domain_conditions(self):
+        return self.formulation.dmesh.dcs
 
     @property
     def sensors(self) -> list[Sensor]:
@@ -134,17 +132,21 @@ class CompressibleHDGSolver:
     def directory_tree(self) -> io.ResultsDirectoryTree:
         return self._directory_tree
 
-    def setup(self, force: CF = None):
+    def setup(self, reinitialize: bool = True):
 
-        self.formulation.initialize()
+        if self.formulation.dmesh.is_grid_stretching:
+            self.formulation.dmesh.set_grid_stretching()
+
+        if reinitialize:
+            self.formulation.initialize()
 
         self.residual = self.formulation.gfu.vec.CreateVector()
         self.temporary = self.formulation.gfu.vec.CreateVector()
 
-        self._set_linearform(force)
+        self._set_linearform()
         self._set_bilinearform()
 
-        if self.domain_conditions.has_initial_condition:
+        if reinitialize and self.domain_conditions.initial_conditions:
             self._solve_initial()
 
     def solve_stationary(self,
@@ -210,31 +212,21 @@ class CompressibleHDGSolver:
             if self.status.is_nan:
                 break
 
-    def add_sensor(self, sensor: Sensor):
-        sensor.assign_solver(self)
-        self.sensors.append(sensor)
-
-    def add_perturbation(self,
-                         velocity: tuple[float, ...],
-                         density: float = None,
-                         pressure: float = None,
-                         temperature: float = None,
-                         energy: float = None) -> GridFunction:
-
-        calc = IdealGasCalculator(self.solver_configuration.heat_capacity_ratio)
-        perturbation = co.Perturbation(*calc.determine_missing(CF(velocity), density, pressure, temperature, energy))
+    def solve_perturbation(self) -> GridFunction:
 
         lf = LinearForm(self.formulation.fes)
-        self.formulation.add_perturbation_linearform(lf, perturbation)
+        self.formulation.add_perturbation_linearform(lf)
         perturbation_gfu = self._solve_mass(lf)
         for gfu in self.formulation.gridfunctions.values():
             gfu.vec.data += perturbation_gfu.vec
 
         self.drawer.redraw()
-
         logger.info("Perturbation applied!")
-
         return perturbation_gfu
+
+    def add_sensor(self, sensor: Sensor):
+        sensor.assign_solver(self)
+        self.sensors.append(sensor)
 
     def get_saver(self, directory_tree: Optional[io.ResultsDirectoryTree] = None) -> io.SolverSaver:
         saver = io.SolverSaver(self)
@@ -248,16 +240,11 @@ class CompressibleHDGSolver:
             loader.tree = directory_tree
         return loader
 
-    def _set_linearform(self, force):
+    def _set_linearform(self):
 
         fes = self.formulation.fes
-        TnT = self.formulation.TnT
-
-        bonus_int_order = self.solver_configuration.bonus_int_order_vol
-        _, V = TnT.PRIMAL
-
         self.f = LinearForm(fes)
-        self.formulation.add_forcing_linearform(self.f, force)
+        self.formulation.add_forcing_linearform(self.f)
         self.f.Assemble()
 
     def _set_bilinearform(self):

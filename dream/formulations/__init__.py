@@ -1,10 +1,10 @@
 from __future__ import annotations
-from .interface import CompressibleFormulations, MixedMethods, Formulation, RiemannSolver
-from .conservative2d import ConservativeFormulation2D
-from .primitive2d import PrimitiveFormulation2D
+from .interface import CompressibleFormulations, MixedMethods, _Formulation, RiemannSolver, Scaling
+from .conservative import ConservativeFormulation2D
+from .primitive import PrimitiveFormulation2D
 
 
-def formulation_factory(mesh, solver_configuration) -> Formulation:
+def formulation_factory(mesh, solver_configuration) -> _Formulation:
 
     if mesh.dim == 2:
 

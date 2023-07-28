@@ -7,7 +7,8 @@ from typing import Optional, TYPE_CHECKING
 from ngsolve import *
 
 from ..time_schemes import time_scheme_factory, TimeLevelsGridfunction
-from .. import conditions as co
+from ..region import DreamMesh
+from ..state import IdealGasCalculator
 from ..crs import Inviscid, Constant, Sutherland
 
 import logging
@@ -34,6 +35,11 @@ class RiemannSolver(enum.Enum):
     ROE = 'roe'
     HLL = 'hll'
     HLLEM = 'hllem'
+
+
+class Scaling(enum.Enum):
+    ACOUSTIC = 'acoustic'
+    AERODYNAMIC = 'aerodynamic'
 
 
 @dataclasses.dataclass
@@ -179,10 +185,19 @@ class Formulation(abc.ABC):
     def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition):
         raise NotImplementedError()
 
-    def _add_linearform(self, lf, domain, condition):
+    def add_initial_linearform(self, lf):
+        raise NotImplementedError()
+
+    def add_perturbation_linearform(self, lf):
+        raise NotImplementedError()
+
+    def add_forcing_linearform(self, lf):
         raise NotImplementedError()
 
     def _add_sponge_bilinearform(self, blf, domain, condition):
+        raise NotImplementedError()
+
+    def _add_psponge_bilinearform(self, blf, domain, condition):
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -193,11 +208,12 @@ class _Formulation(Formulation):
 
     def __init__(self, mesh: Mesh, solver_configuration: SolverConfiguration) -> None:
 
-        self._mesh = mesh
+        self._mesh = DreamMesh(mesh)
         self._cfg = solver_configuration
+        self._calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
 
-        self.bcs = co.BoundaryConditions(mesh.GetBoundaries(), solver_configuration)
-        self.dcs = co.DomainConditions(mesh.GetMaterials(), solver_configuration)
+        # self.bcs = co.BoundaryConditions(mesh.GetBoundaries(), solver_configuration)
+        # self.dcs = co.DomainConditions(mesh.GetMaterials(), solver_configuration)
         self.time_scheme = time_scheme_factory(solver_configuration.time)
 
         self._gfus = None
@@ -209,8 +225,12 @@ class _Formulation(Formulation):
         self.meshsize = specialcf.mesh_size
 
     @property
-    def mesh(self) -> Mesh:
+    def dmesh(self) -> DreamMesh:
         return self._mesh
+
+    @property
+    def mesh(self) -> Mesh:
+        return self.dmesh.mesh
 
     @property
     def cfg(self) -> SolverConfiguration:
@@ -238,6 +258,10 @@ class _Formulation(Formulation):
             raise RuntimeError("Call 'formulation.initialize()' before accessing the TestAndTrialFunctions")
         return self._TnT
 
+    @property
+    def calc(self) -> IdealGasCalculator:
+        return self._calc
+
     def initialize(self):
         self._fes = self._initialize_FE_space()
         self._TnT = self._initialize_TnT()
@@ -251,40 +275,49 @@ class _Formulation(Formulation):
 
     def add_boundary_conditions_bilinearform(self, blf):
 
-        for boundary, condition in self.bcs.items():
+        bcs = self.dmesh.bcs
 
-            if not isinstance(condition, co.Condition):
-                logger.warn(f"Boundary condition for '{boundary}' has not been set!")
+        for name, condition in bcs.items():
+            boundary = self.dmesh.boundary(name)
 
-            elif isinstance(condition, co.Dirichlet):
+            if isinstance(condition, bcs.Dirichlet):
                 self._add_dirichlet_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, co.FarField):
+            elif isinstance(condition, bcs.FarField):
                 self._add_farfield_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, co.Outflow):
+            elif isinstance(condition, bcs.Outflow):
                 self._add_outflow_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, co.NRBC_Outflow):
+            elif isinstance(condition, bcs.Outflow_NSCBC):
                 self._add_nonreflecting_outflow_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, co.NRBC_Inflow):
-                self._add_nonreflecting_inflow_bilinearform(blf, boundary, condition)
-
-            elif isinstance(condition, co.InviscidWall):
+            elif isinstance(condition, (bcs.InviscidWall, bcs.Symmetry)):
                 self._add_inviscid_wall_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, co.IsothermalWall):
+            elif isinstance(condition, bcs.IsothermalWall):
                 self._add_isothermal_wall_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, co.AdiabaticWall):
+            elif isinstance(condition, bcs.AdiabaticWall):
                 self._add_adiabatic_wall_bilinearform(blf, boundary, condition)
+
+            elif isinstance(condition, bcs.Periodic):
+                continue
+
+            else:
+                logger.warn(f"Boundary condition for '{name}' has not been set!")
 
     def add_domain_conditions_bilinearform(self, blf):
 
-        for domain, condition in self.dcs.items():
-            if isinstance(condition.sponge, co.SpongeLayer):
-                self._add_sponge_bilinearform(blf, domain, condition.sponge)
+        dcs = self.dmesh.dcs
+
+        for name, condition in dcs.sponge_layers.items():
+            domain = self.dmesh.domain(name)
+            self._add_sponge_bilinearform(blf, domain, condition)
+
+        for name, condition in dcs.psponge_layers.items():
+            domain = self.dmesh.domain(name)
+            self._add_psponge_bilinearform(blf, domain, condition)
 
     def add_mass_bilinearform(self, blf):
         mixed_method = self.cfg.mixed_method
@@ -298,25 +331,6 @@ class _Formulation(Formulation):
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
             blf += Q * P * dx
-
-    def add_perturbation_linearform(self, lf, perturbation: co.Perturbation):
-        for domain, _ in self.dcs.items():
-            self._add_linearform(lf, domain, perturbation)
-
-    def add_initial_linearform(self, lf):
-        for domain, condition in self.dcs.items():
-
-            if isinstance(condition.initial, co.Initial):
-                self._add_linearform(lf, domain, condition.initial)
-            else:
-                logger.warn(f"Initial condition for '{domain}' has not been set!")
-
-    def add_forcing_linearform(self, lf, force: Optional[CF]):
-        bonus_int_order = self.cfg.bonus_int_order_vol
-        _, V = self.TnT.PRIMAL
-
-        if force is not None:
-            lf += InnerProduct(force, V) * dx(bonus_intorder=bonus_int_order)
 
     def mach_number(self, U: Optional[CF] = None):
 
@@ -371,10 +385,19 @@ class _Formulation(Formulation):
             theta_0 = 1e-6
             theta = un_abs/(un_abs + c)
             IfPos(theta - theta_0, theta, theta_0)
-            Theta = CF((1, 0, 0, 0,
-                        0, theta, 0, 0,
-                        0, 0, theta, 0,
-                        0, 0, 0, 1), dims=(4, 4))
+
+            if self.mesh.dim == 2:
+                Theta = CF((1, 0, 0, 0,
+                            0, theta, 0, 0,
+                            0, 0, theta, 0,
+                            0, 0, 0, 1), dims=(4, 4))
+
+            elif self.mesh.dim == 3:
+                Theta = CF((1, 0, 0, 0, 0,
+                            0, theta, 0, 0, 0,
+                            0, 0, theta, 0, 0,
+                            0, 0, 0, theta, 0,
+                            0, 0, 0, 0, 1), dims=(5, 5))
 
             Theta = self.DME_from_CHAR_matrix(Theta, Uhat, unit_vector)
             splus = IfPos(un + c, un + c, 0)
@@ -412,10 +435,24 @@ class _Formulation(Formulation):
         Pr = self.cfg.Prandtl_number
         mu = self.dynamic_viscosity(Uhat)
 
-        tau_d = CF((0, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    0, 0, 0, 1/Pr), dims=(4, 4)) * mu / Re
+        if self.mesh.dim == 2:
+
+            tau_d = CF((0, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        0, 0, 0, 1/Pr), dims=(4, 4))
+
+        elif self.mesh.dim == 3:
+
+            tau_d = CF((0, 0, 0, 0, 0,
+                        0, 1, 0, 0, 0,
+                        0, 0, 1, 0, 0,
+                        0, 0, 0, 1, 0,
+                        0, 0, 0, 0, 1/Pr), dims=(5, 5))
+
+        tau_d *= mu / Re
+        if self.cfg.scaling is Scaling.ACOUSTIC:
+            tau_d *= self.cfg.Mach_number
 
         return tau_d
 
@@ -429,12 +466,20 @@ class _Formulation(Formulation):
 
         k = mu / (Re * Pr)
 
+        if self.cfg.scaling is Scaling.ACOUSTIC:
+            k *= self.cfg.Mach_number
+
         return -k * gradient_T
 
     def deviatoric_stress_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
         Re = self.cfg.Reynolds_number
-        return self.dynamic_viscosity(U)/Re * self.deviatoric_strain_tensor(U, Q)
+
+        param = self.dynamic_viscosity(U)/Re
+        if self.cfg.scaling is Scaling.ACOUSTIC:
+            param *= self.cfg.Mach_number
+
+        return param * self.deviatoric_strain_tensor(U, Q)
 
     def dynamic_viscosity(self, U: Optional[CF] = None) -> CF:
         mu = self.cfg.dynamic_viscosity

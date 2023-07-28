@@ -1,9 +1,474 @@
 from ngsolve import *
 from netgen.geom2d import CSG2d, Circle, Rectangle, EdgeInfo as EI, PointInfo as PI, Solid2d
-from netgen.occ import WorkPlane, OCCGeometry
-
-
+from netgen.occ import WorkPlane, OCCGeometry, Glue
+from dataclasses import dataclass, field
+from netgen.meshing import IdentificationType
 from math import pi, atan2
+from enum import Enum
+from ..region import BufferCoordinate
+
+
+class BNDS:
+
+    @dataclass
+    class BND:
+        DEFAULT: str
+        NAME: str = None
+
+        def __post_init__(self):
+            if self.NAME is None:
+                self.NAME = self.DEFAULT
+
+        @property
+        def is_default(self) -> bool:
+            return self.NAME == self.DEFAULT
+
+    @property
+    def names(self):
+        return tuple(bnd.NAME for bnd in self)
+
+    @property
+    def defaults(self):
+        return tuple(bnd.DEFAULT for bnd in self)
+
+    def __iter__(self) -> BND:
+        for bnd in vars(self).values():
+            yield bnd
+
+
+class Domain:
+
+    def __init__(self,
+                 mat: str = "default",
+                 loc: list[float] = None,
+                 maxh: float = 0.5,
+                 main: tuple[float, float] = (0, 0, 0)
+                 ) -> None:
+
+        self.mat = mat
+        self.loc = list(loc)
+        self.maxh = maxh
+        self.main = tuple(main)
+
+
+class RectangleDomain(Domain):
+
+    @dataclass
+    class RectangleBNDS(BNDS):
+        bottom: BNDS.BND = field(default_factory=lambda: BNDS.BND("bottom"))
+        right: BNDS.BND = field(default_factory=lambda: BNDS.BND("right"))
+        top: BNDS.BND = field(default_factory=lambda: BNDS.BND("top"))
+        left: BNDS.BND = field(default_factory=lambda: BNDS.BND("left"))
+        bottom_inner: BNDS.BND = field(default_factory=lambda: BNDS.BND("bottom"))
+        right_inner: BNDS.BND = field(default_factory=lambda: BNDS.BND("right"))
+        top_inner: BNDS.BND = field(default_factory=lambda: BNDS.BND("top"))
+        left_inner: BNDS.BND = field(default_factory=lambda: BNDS.BND("left"))
+
+        @property
+        def outer(self) -> tuple[BNDS.BND]:
+            return (self.bottom, self.right, self.top, self.left)
+
+        @property
+        def inner(self) -> tuple[BNDS.BND]:
+            return (self.bottom_inner, self.right_inner, self.top_inner, self.left_inner)
+
+    def __init__(self,
+                 W: float = 1,
+                 H: float = 1,
+                 Wi: float = 0,
+                 Hi: float = 0,
+                 mat: str = "default",
+                 bnds=None,
+                 loc: tuple[float, float] = (0.0, 0.0),
+                 maxh: float = 0.5) -> None:
+        self.W = W
+        self.H = H
+
+        if Wi != 0 and Hi == 0:
+            Hi = Wi
+        elif Hi != 0 and Wi == 0:
+            Wi = Hi
+
+        self.Wi = Wi
+        self.Hi = Hi
+
+        if bnds is None:
+            self.bnds = self.RectangleBNDS()
+
+        super().__init__(mat, loc, maxh, main=loc)
+
+    @property
+    def x_(self) -> BufferCoordinate:
+
+        if self.Wi == 0 and self.Hi == 0:
+            if self.loc[0] >= self.main[0]:
+                start = self.loc[0] - self.W/2
+                end = self.loc[0] + self.W/2
+            elif self.loc[0] < self.main[0]:
+                start = self.loc[0] + self.W/2
+                end = self.loc[0] - self.W/2
+        else:
+            start = self.loc[0] + self.Wi/2
+            end = self.loc[0] + self.W/2
+
+        return BufferCoordinate.x(start, end, offset=self.loc[0])
+
+    @property
+    def y_(self) -> BufferCoordinate:
+
+        if self.Wi == 0 and self.Hi == 0:
+            if self.loc[1] >= self.main[1]:
+                start = self.loc[1] - self.H/2
+                end = self.loc[1] + self.H/2
+            elif self.loc[1] < self.main[1]:
+                start = self.loc[1] + self.H/2
+                end = self.loc[1] - self.H/2
+        else:
+            start = self.loc[1] + self.Hi/2
+            end = self.loc[1] + self.H/2
+
+        return BufferCoordinate.y(start, end, offset=self.loc[1])
+
+    @property
+    def xy_(self) -> BufferCoordinate:
+
+        x, y = self.x_, self.y_
+        start = (x.start, y.start)
+        end = (x.end, y.end)
+        offset = (x.offset, y.offset)
+
+        return BufferCoordinate.xy(start, end, offset=offset)
+
+    def get_face(self, wp=None):
+        if wp is None:
+            wp = WorkPlane()
+
+        wp.MoveTo(self.loc[0], self.loc[1])
+        rectangle = wp.RectangleC(self.W, self.H).Face()
+        rectangle.name = self.mat
+
+        for edge, name in zip(rectangle.edges, self.bnds.outer):
+            edge.name = name.NAME
+
+        if self.Wi > 0 and self.Hi > 0:
+            size_W = (self.W - self.Wi)/2
+            size_H = (self.H - self.Hi)/2
+            W_p, W_m = self.loc[0] + (self.Wi + self.W)/4, self.loc[0] - (self.Wi + self.W)/4
+            H_p, H_m = self.loc[1] + (self.Hi + self.H)/4, self.loc[1] - (self.Hi + self.H)/4
+
+            faces = [
+                wp.MoveTo(self.loc[0], H_m).RectangleC(self.W, size_H).Face(),
+                wp.MoveTo(W_p, self.loc[1]).RectangleC(size_W, self.H).Face(),
+                wp.MoveTo(self.loc[0], H_p).RectangleC(self.W, size_H).Face(),
+                wp.MoveTo(W_m, self.loc[1]).RectangleC(size_W, self.H).Face()
+            ]
+
+            boundaries = [
+                (self.bnds.bottom, self.bnds.right, self.bnds.top_inner, self.bnds.left),
+                (self.bnds.bottom, self.bnds.right, self.bnds.top, self.bnds.left_inner),
+                (self.bnds.bottom_inner, self.bnds.right, self.bnds.top, self.bnds.left),
+                (self.bnds.bottom, self.bnds.right_inner, self.bnds.top, self.bnds.left)
+            ]
+
+            for face, bnds in zip(faces, boundaries):
+                for edge, name in zip(face.edges, bnds):
+                    edge.name = name.NAME
+                face.name = self.mat
+
+            rectangle = Glue(faces)
+
+            W_r, W_l = self.loc[0] + self.Wi/2,  self.loc[0] - self.Wi/2
+            H_t, H_b = self.loc[1] + self.Hi/2,  self.loc[1] - self.Hi/2
+
+            default_edges = [
+                (W_p, H_t),  (W_p, H_b),
+                (W_m, H_t),  (W_m, H_b),
+                (W_r, H_p),  (W_l, H_p),
+                (W_r, H_m),  (W_l, H_m),
+            ]
+            for edge in default_edges:
+                rectangle.edges.Nearest(edge).name = "default"
+
+        rectangle.maxh = self.maxh
+
+        return rectangle
+
+
+class CircularDomain(Domain):
+
+    @dataclass
+    class CircularBNDS(BNDS):
+        outer_I: BNDS.BND = field(default_factory=lambda: BNDS.BND("outer"))
+        outer_II: BNDS.BND = field(default_factory=lambda: BNDS.BND("outer"))
+        outer_III: BNDS.BND = field(default_factory=lambda: BNDS.BND("outer"))
+        outer_IV: BNDS.BND = field(default_factory=lambda: BNDS.BND("outer"))
+        inner_I: BNDS.BND = field(default_factory=lambda: BNDS.BND("inner"))
+        inner_II: BNDS.BND = field(default_factory=lambda: BNDS.BND("inner"))
+        inner_III: BNDS.BND = field(default_factory=lambda: BNDS.BND("inner"))
+        inner_IV: BNDS.BND = field(default_factory=lambda: BNDS.BND("inner"))
+
+        @property
+        def outer(self) -> tuple[BNDS.BND]:
+            return (self.outer_I, self.outer_II, self.outer_III, self.outer_IV)
+
+        @property
+        def inner(self) -> tuple[BNDS.BND]:
+            return (self.inner_I, self.inner_II, self.inner_III, self.inner_IV)
+
+    def __init__(self,
+                 R: float = 1,
+                 Ri: float = 0,
+                 mat: str = "default",
+                 bnds=None,
+                 loc: tuple[float, float] = (0.0, 0.0),
+                 maxh: float = 0.5) -> None:
+        self.R = R
+        self.Ri = Ri
+
+        if bnds is None:
+            self.bnds = self.CircularBNDS()
+        super().__init__(mat, loc, maxh, main=loc)
+
+    @property
+    def r_(self):
+        return BufferCoordinate.polar(self.Ri, self.R, self.loc)
+
+    def get_face(self, wp=None):
+        if wp is None:
+            wp = WorkPlane()
+        wp.Direction(0, 1)
+        wp.MoveTo(self.loc[0] + self.R, self.loc[1])
+        wp.Arc(r=self.R, ang=90)
+        wp.Arc(r=self.R, ang=90)
+        wp.Arc(r=self.R, ang=90)
+        wp.Arc(r=self.R, ang=90)
+
+        outer = wp.Face()
+        outer.name = self.mat
+        for edge, bc in zip(outer.edges, self.bnds.outer):
+            edge.name = bc.NAME
+
+        if self.Ri > 0:
+            wp.Direction(0, 1)
+            wp.MoveTo(self.loc[0] + self.Ri, self.loc[1])
+            wp.Arc(r=self.Ri, ang=90)
+            wp.Arc(r=self.Ri, ang=90)
+            wp.Arc(r=self.Ri, ang=90)
+            wp.Arc(r=self.Ri, ang=90)
+
+            inner = wp.Face()
+            inner.name = self.mat
+
+            for edge, bc in zip(inner.edges, self.bnds.inner):
+                edge.name = bc.NAME
+
+            outer = outer - inner
+
+        outer.maxh = self.maxh
+
+        return outer
+
+
+class Grid:
+
+    class Direction(Enum):
+        X = "x"
+        Y = "y"
+        Z = "z"
+        R = "r"
+
+    def __init__(self, center: Domain) -> None:
+        self._center = center
+        self.periodic = []
+
+    def add_periodic(self, master: str, minion: str):
+        self.periodic.append((master, minion))
+
+    def _add_domain(self, domain: RectangleDomain, direction: list):
+        if domain.mat == "default":
+            domain.mat = self._center.mat
+
+        domain.main = self._center.main
+
+        direction.append(domain)
+
+    def _swap_boundaries(self, first: BNDS.BND, last: BNDS.BND, mat: str):
+        if first.is_default and last.is_default:
+            first.NAME = mat + "_facet"
+            last.NAME = mat + "_facet"
+        elif not last.is_default:
+            first.NAME = last.NAME
+        elif not first.is_default:
+            last.NAME = first.NAME
+        else:
+            raise ValueError(f"Can not decide between: {first.NAME} and {last.NAME}")
+
+
+class Rectangle1DGrid(Grid):
+
+    def __init__(self, center: RectangleDomain, direction="x") -> None:
+        if not isinstance(center, RectangleDomain):
+            raise TypeError()
+        self.dir = self.Direction(direction.lower())
+        self.front = []
+        self.back = []
+        super().__init__(center)
+
+    @property
+    def center(self) -> RectangleDomain:
+        return self._center
+
+    def add_front(self, domain: RectangleDomain):
+
+        swap = self.center
+        if self.front:
+            swap = self.front[-1]
+
+        if self.dir is self.Direction.X:
+            domain.H = self.center.H
+            domain.loc[1] = self.center.loc[1]
+            domain.loc[0] = swap.loc[0] + (swap.W + domain.W)/2
+            self._swap_boundaries(swap.bnds.right, domain.bnds.left, swap.mat)
+
+        elif self.dir is self.Direction.Y:
+            domain.W = self.center.W
+            domain.loc[0] = self.center.loc[0]
+            domain.loc[1] = swap.loc[1] + (swap.H + domain.H)/2
+            self._swap_boundaries(swap.bnds.top, domain.bnds.bottom, swap.mat)
+        self._add_domain(domain, self.front)
+
+    def add_back(self, domain: RectangleDomain):
+        swap = self.center
+        if self.back:
+            swap = self.back[-1]
+
+        if self.dir is self.Direction.X:
+            domain.H = self.center.H
+            domain.loc[1] = self.center.loc[1]
+            domain.loc[0] = swap.loc[0] - (swap.W + domain.W)/2
+            self._swap_boundaries(swap.bnds.left, domain.bnds.right, swap.mat)
+
+        elif self.dir is self.Direction.Y:
+            domain.W = self.center.W
+            domain.loc[0] = self.center.loc[0]
+            domain.loc[1] = swap.loc[1] - (swap.H + domain.H)/2
+            self._swap_boundaries(swap.bnds.bottom, domain.bnds.top, swap.mat)
+
+        self._add_domain(domain, self.back)
+
+    def get_face(self, wp=None):
+        if wp is None:
+            wp = WorkPlane()
+
+        rectangle = self.center.get_face(wp)
+        front = [domain.get_face(wp) for domain in self.front]
+        back = [domain.get_face(wp) for domain in self.back]
+
+        rectangle = Glue([rectangle] + front + back)
+
+        for bnds in self.periodic:
+            master = [edge for edge in rectangle.edges if edge.name == bnds[0]]
+            minion = [edge for edge in rectangle.edges if edge.name == bnds[1]]
+
+            for b, t in zip(master, minion):
+                b.Identify(t, "periodic", IdentificationType.PERIODIC)
+
+        return rectangle
+
+
+class CircularGrid(Grid):
+
+    def __init__(self, center: CircularDomain) -> None:
+        if not isinstance(center, CircularDomain):
+            raise TypeError()
+        self.dir = self.Direction('r')
+        self.rings = []
+        super().__init__(center)
+
+    @property
+    def center(self) -> CircularDomain:
+        return self._center
+
+    def add_ring(self, domain: CircularDomain):
+        domain.loc = self.center.loc
+
+        swap = self.center
+        if self.rings:
+            swap = self.rings[-1]
+
+        domain.Ri = swap.R
+        domain.R += domain.Ri
+
+        for first, last in zip(swap.bnds.outer, domain.bnds.inner):
+            self._swap_boundaries(first, last, swap.mat)
+
+        self._add_domain(domain, self.rings)
+
+    def get_face(self, wp=None):
+        if wp is None:
+            wp = WorkPlane()
+
+        circle = [self.center.get_face(wp)]
+        rings = [domain.get_face(wp) for domain in self.rings]
+
+        circle = Glue(circle + rings)
+
+        for bnds in self.periodic:
+            master = [edge for edge in circle.edges if edge.name == bnds[0]]
+            minion = [edge for edge in circle.edges if edge.name == bnds[1]]
+
+            for b, t in zip(master, minion):
+                b.Identify(t, "periodic", IdentificationType.PERIODIC)
+
+        return circle
+
+
+class RectangleGrid(Grid):
+
+    def __init__(self, center: RectangleDomain) -> None:
+        if not isinstance(center, RectangleDomain):
+            raise TypeError()
+        self.rings = []
+        super().__init__(center)
+
+    @property
+    def center(self) -> RectangleDomain:
+        return self._center
+
+    def add_ring(self, domain: RectangleDomain):
+        domain.loc = self.center.loc
+
+        swap = self.center
+        if self.rings:
+            swap = self.rings[-1]
+
+        domain.Wi = swap.W
+        domain.Hi = swap.H
+        domain.W += domain.Wi
+        domain.H += domain.Hi
+
+        for first, last in zip(swap.bnds.outer, domain.bnds.inner):
+            self._swap_boundaries(first, last, swap.mat)
+
+        self._add_domain(domain, self.rings)
+
+    def get_face(self, wp=None):
+        if wp is None:
+            wp = WorkPlane()
+
+        rectangle = [self.center.get_face(wp)]
+        rings = [domain.get_face(wp) for domain in self.rings]
+
+        rectangle = Glue(rectangle + rings)
+
+        for bnds in self.periodic:
+            master = [edge for edge in rectangle.edges if edge.name == bnds[0]]
+            minion = [edge for edge in rectangle.edges if edge.name == bnds[1]]
+
+            for b, t in zip(master, minion):
+                b.Identify(t, "periodic", IdentificationType.PERIODIC)
+
+        return rectangle
 
 
 def MakeSmoothRectangle(geo, p1, p2, r, bc=None, bcs=None, **args):

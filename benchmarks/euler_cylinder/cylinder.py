@@ -25,6 +25,7 @@ SetNumThreads(8)
 
 cfg = SolverConfiguration()
 cfg.formulation = 'conservative'
+cfg.scaling = "aerodynamic"
 cfg.riemann_solver = "hllem"
 cfg.Mach_number = 0.1
 cfg.heat_capacity_ratio = 1.4
@@ -44,6 +45,7 @@ R_farfield = R * 30
 rho_inf = 1
 u_inf = (1, 0)
 p_inf = 1/(cfg.Mach_number.Get()**2 * cfg.heat_capacity_ratio.Get())
+farfield = State(u_inf, rho_inf, p_inf)
 
 cfg.info['Cylinder Radius'] = R
 cfg.info['Farfield Radius'] = R_farfield
@@ -57,10 +59,10 @@ mesh.Curve(cfg.order)
 tree = ResultsDirectoryTree()
 
 solver = CompressibleHDGSolver(mesh, cfg, tree)
-solver.boundary_conditions.set_farfield('inflow', u_inf, rho_inf, p_inf)
-solver.boundary_conditions.set_outflow('outflow', p_inf)
-solver.boundary_conditions.set_inviscid_wall('cylinder')
-solver.domain_conditions.set_initial(u_inf, rho_inf, p_inf)
+solver.boundary_conditions.set(bcs.FarField(farfield), 'inflow')
+solver.boundary_conditions.set(bcs.Outflow(p_inf), 'outflow')
+solver.boundary_conditions.set(bcs.InviscidWall(), 'cylinder')
+solver.domain_conditions.set(dcs.Initial(farfield))
 
 sensor = PointSensor.from_boundary('cylinder', mesh, 'pressure_coefficient')
 sensor.sample_pressure_coefficient(p_inf, reference_velocity=1, reference_density=rho_inf, name="c_p")

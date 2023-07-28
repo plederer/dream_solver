@@ -1,7 +1,7 @@
 from netgen.occ import OCCGeometry, WorkPlane
 from ngsolve import *
+from dream import *
 from netgen.meshing import IdentificationType
-from dream import CompressibleHDGSolver, SolverConfiguration
 from ngsolve.meshes import MakeStructured2DMesh
 
 ngsglobals.msg_level = 0
@@ -13,12 +13,13 @@ structured = False
 maxh = 0.1
 
 cfg = SolverConfiguration()
-cfg.formulation = "conservative"
+cfg.formulation = "primitive"
 # cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
 # cfg.mixed_method = "strain_heat"
 # cfg.mixed_method = None
-cfg.riemann_solver = 'roe'
+cfg.scaling = "acoustic"
+cfg.riemann_solver = 'hllem'
 
 cfg.Reynolds_number = 166
 cfg.Mach_number = 0.42
@@ -41,7 +42,6 @@ cfg.convergence_criterion = 1e-16
 
 cfg.compile_flag = True
 cfg.static_condensation = True
-cfg.periodic = periodic
 
 if circle:
 
@@ -70,48 +70,48 @@ gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
 
 rho_inf = 1
-# alpha = pi/9
 alpha = 0
-u_inf = CF((cos(alpha), sin(alpha)))
-p_inf = 1/(M**2 * gamma)
+u_inf = cfg.Mach_number * CF((cos(alpha), sin(alpha)))
+p_inf = 1/gamma
 T_inf = gamma/(gamma - 1) * p_inf/rho_inf
 c = sqrt(gamma * p_inf/rho_inf)
 
+farfield = State(u_inf, rho_inf, p_inf)
+
 Gamma = 0.02
 Rv = 0.1
-
 r = sqrt(x**2 + y**2)
 psi = Gamma * exp(-r**2/(2*Rv**2))
 
-# Vortex
+# Vortex Isothermal
 u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
 p_0 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2 * exp(-r**2/Rv**2))
 rho_0 = gamma/(gamma - 1)/T_inf * p_0
-
-# # Pressure Pulse
-# u_0 = u_inf
-# u_0 = CF((0,0))
-# p_0 = p_inf * (1 + Gamma * exp(-r**2/Rv**2))
-# rho_0 = gamma/(gamma - 1)/T_inf * p_0
-
 p_00 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2)
+initial = State(u_0, rho_0, p_0)
 
+# Vortex Isentropic
+constant = (gamma-1)/(2*gamma) * rho_inf/p_inf
+u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
+p_0 = p_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(gamma/(gamma - 1))
+rho_0 = rho_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(1/(gamma - 1))
+p_00 = p_inf * (1 - constant * (Gamma/Rv)**2)**(gamma/(gamma - 1))
+initial = State(u_0, rho_0, p_0)
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set_farfield("left|right", u_inf, rho_inf, p_inf)
-# solver.boundary_conditions.set_nonreflecting_outflow('right', p_inf, "perfect", 0.28, 1, True, False, False)
-
-solver.boundary_conditions.set_inviscid_wall('top|bottom')
+solver.boundary_conditions.set(bcs.FarField(farfield), "left|right")
+# solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf), "right")
+solver.boundary_conditions.set(bcs.InviscidWall(), "top|bottom")
 if periodic:
-    solver.boundary_conditions.set_periodic('top|bottom')
+    solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")
+solver.domain_conditions.set(dcs.Initial(initial))
 
-solver.domain_conditions.set_initial(u_0, rho_0, p_0)
 
 with TaskManager():
     solver.setup()
 
     solver.drawer.draw(energy=True)
-    solver.drawer.draw_particle_velocity(u_inf, autoscale=False, min=-1e-4, max=1e-4)
-    solver.drawer.draw_acoustic_pressure(p_inf, autoscale=False, min=-1e-4, max=1e-4)
+    solver.drawer.draw_particle_velocity(u_inf, autoscale=True, min=-1e-4, max=1e-4)
+    solver.drawer.draw_acoustic_pressure(p_inf, autoscale=True, min=-1e-2, max=1e-2)
     Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*")
     solver.solve_transient()

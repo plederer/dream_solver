@@ -1,4 +1,4 @@
-from dream import CompressibleHDGSolver, SolverConfiguration, ResultsDirectoryTree, Saver
+from dream import *
 from dream.utils.meshes import circular_cylinder_mesh
 from ngsolve import *
 
@@ -12,6 +12,7 @@ parent_path = None
 # General Solver Configuration
 cfg = SolverConfiguration()
 cfg.formulation = 'conservative'
+cfg.scaling = "aerodynamic"
 cfg.mixed_method = 'strain_heat'
 cfg.dynamic_viscosity = 'constant'
 cfg.riemann_solver = 'hllem'
@@ -30,7 +31,7 @@ cfg.bonus_int_order_vol = cfg.order
 
 # Solver Options
 load_stationary = False
-draw = False
+draw = True
 
 # Results Directory
 directory_name = f"{directory_prefix}_Ma{cfg.Mach_number.Get()}_Re{cfg.Reynolds_number.Get()}_order{cfg.order}"
@@ -72,6 +73,7 @@ saver.save_mesh(mesh)
 rho_inf = 1
 u_inf = (1, 0)
 p_inf = 1/(cfg.Mach_number.Get()**2 * cfg.heat_capacity_ratio.Get())
+farfield = State(u_inf, rho_inf, p_inf)
 
 # Meta Data
 cfg.info['Farfield Density'] = 1
@@ -90,20 +92,18 @@ cfg.info['Sponge Maxh'] = sponge_maxh
 ### Solution process ###
 mesh.Curve(cfg.order)
 
-# Sponge
-r = sqrt(x**2 + y**2)
-sp_start = R * farfield_radial_factor
-sp_length = (sponge_radial_factor - farfield_radial_factor) * R
-
-r_ = (r - sp_start)/sp_length
-weight_function = r_**5
-
 solver = CompressibleHDGSolver(mesh, cfg, tree)
-solver.boundary_conditions.set_farfield('inflow|outflow', u_inf, rho_inf, p_inf)
-solver.boundary_conditions.set_adiabatic_wall('cylinder')
-solver.domain_conditions.set_sponge_layer('sponge', weight_function, u_inf, rho_inf, p_inf, weight_function_order=5)
+solver.boundary_conditions.set(bcs.FarField(farfield), 'inflow|outflow')
+solver.boundary_conditions.set(bcs.AdiabaticWall(), 'cylinder')
 if not load_stationary:
-    solver.domain_conditions.set_initial(u_inf, rho_inf, p_inf)
+    solver.domain_conditions.set(dcs.Initial(farfield))
+
+# Sponge
+r0 = farfield_radial_factor * R
+rn = sponge_radial_factor * R
+r = BufferCoordinate.polar(r0, rn)
+sponge = SpongeFunction.penta(r)
+solver.domain_conditions.set(dcs.SpongeLayer(farfield, sponge))
 
 saver = solver.get_saver()
 loader = solver.get_loader()
@@ -121,6 +121,7 @@ if load_stationary:
     loader.load_configuration('stationary')
     loader.load_state_time_scheme('stationary')
 else:
+    cfg.max_iterations = 100
     cfg.time.step = 0.1
     cfg.time.max_step = 10
     with TaskManager():
@@ -134,9 +135,10 @@ p_0 = 1.2 * exp(-r**2)
 psi = 1.2 * exp(-r**2)
 u_0 = CF((psi.Diff(y), -psi.Diff(x)))
 rho_0 = (p_0/p_inf)**(1/cfg.heat_capacity_ratio) * rho_inf
-
+perturbation = State(u_0, rho_0, p_0)
+solver.domain_conditions.set(dcs.Perturbation(perturbation))
 with TaskManager():
-    solver.add_perturbation(u_0, rho_0, p_0)
+    solver.solve_perturbation()
 
 # Solver Transient
 cfg.time.step = 0.1

@@ -6,7 +6,7 @@ from numbers import Number
 from math import log10, ceil
 from pathlib import Path
 
-from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
+from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver, Scaling
 from .time_schemes import TimeSchemes, Simulation
 from .crs import _DynamicViscosity, dynamic_viscosity_factory
 from .utils import Formatter
@@ -327,6 +327,7 @@ class TimeConfiguration(BaseConfiguration):
 class SolverConfiguration(BaseConfiguration):
 
     __slots__ = ("_formulation",
+                 "_scaling",
                  "_dynamic_viscosity",
                  "_mixed_method",
                  "_riemann_solver",
@@ -338,7 +339,6 @@ class SolverConfiguration(BaseConfiguration):
                  "_static_condensation",
                  "_bonus_int_order_vol",
                  "_bonus_int_order_bnd",
-                 "_periodic",
                  "_time",
                  "_compile_flag",
                  "_max_iterations",
@@ -352,6 +352,7 @@ class SolverConfiguration(BaseConfiguration):
 
         # Formulation Configuration
         self.formulation = "conservative"
+        self.scaling = "aerodynamic"
         self.mixed_method = None
         self.riemann_solver = 'roe'
 
@@ -367,7 +368,6 @@ class SolverConfiguration(BaseConfiguration):
         self.static_condensation = True
         self.bonus_int_order_vol = 0
         self.bonus_int_order_bnd = 0
-        self.periodic = False
 
         # Time Configuration
         self._time = TimeConfiguration()
@@ -411,8 +411,8 @@ class SolverConfiguration(BaseConfiguration):
         if isinstance(Mach_number, Parameter):
             Mach_number = Mach_number.Get()
 
-        if Mach_number <= 0:
-            raise ValueError("Invalid Mach number. Value has to be > 0!")
+        if Mach_number < 0:
+            raise ValueError("Invalid Mach number. Value has to be >= 0!")
         else:
             self._Mach_number.Set(Mach_number)
 
@@ -457,6 +457,18 @@ class SolverConfiguration(BaseConfiguration):
             formulation = formulation.lower()
 
         self._formulation = self._get_enum(formulation, CompressibleFormulations, "Compressible Formulation")
+
+    @property
+    def scaling(self) -> Scaling:
+        return self._scaling
+
+    @scaling.setter
+    def scaling(self, scaling: str):
+
+        if isinstance(scaling, str):
+            scaling = scaling.lower()
+
+        self._scaling = self._get_enum(scaling, Scaling, "Scaling")
 
     @property
     def dynamic_viscosity(self) -> _DynamicViscosity:
@@ -574,14 +586,6 @@ class SolverConfiguration(BaseConfiguration):
         self._linear_solver = str(linear_solver).lower()
 
     @property
-    def periodic(self) -> bool:
-        return self._periodic
-
-    @periodic.setter
-    def periodic(self, value: bool):
-        self._periodic = bool(value)
-
-    @property
     def save_state(self) -> bool:
         return self._save_state
 
@@ -604,6 +608,7 @@ class SolverConfiguration(BaseConfiguration):
         formatter.header('Solver Configuration').newline()
         formatter.subheader("Formulation Configuration").newline()
         formatter.entry("Formulation", self.formulation.name)
+        formatter.entry("Scaling", self.scaling.name)
         formatter.entry("Mixed Method", self.mixed_method.name)
         formatter.entry("Riemann Solver", self.riemann_solver.name)
         formatter.newline()
@@ -622,7 +627,6 @@ class SolverConfiguration(BaseConfiguration):
         formatter.entry('Static Condensation', str(self._static_condensation))
         formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
         formatter.entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
-        formatter.entry('Periodic', str(self._periodic))
         formatter.newline()
 
         formatter.add(self.time).newline()
