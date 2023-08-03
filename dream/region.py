@@ -45,7 +45,7 @@ class DreamMesh:
 
     @property
     def is_grid_deformation(self) -> bool:
-        return bool(self.dcs.grid_stretching)
+        return bool(self.dcs.grid_deformation)
 
     @property
     def is_periodic(self) -> bool:
@@ -570,7 +570,7 @@ class DomainConditions(UserDict):
         return psponge
 
     @property
-    def grid_stretching(self) -> dict[str, GridDeformation]:
+    def grid_deformation(self) -> dict[str, GridDeformation]:
         return self._get_condition(self.GridDeformation)
 
     @property
