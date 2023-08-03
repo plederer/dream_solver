@@ -101,6 +101,10 @@ class CompressibleHDGSolver:
         return self._formulation
 
     @property
+    def dmesh(self):
+        return self.formulation.dmesh
+
+    @property
     def mesh(self):
         return self.formulation.mesh
 
@@ -134,8 +138,8 @@ class CompressibleHDGSolver:
 
     def setup(self, reinitialize: bool = True):
 
-        if self.formulation.dmesh.is_grid_stretching:
-            self.formulation.dmesh.set_grid_stretching()
+        if self.formulation.dmesh.is_grid_deformation:
+            self.formulation.dmesh.set_grid_deformation()
 
         if reinitialize:
             self.formulation.initialize()

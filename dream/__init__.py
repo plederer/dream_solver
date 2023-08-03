@@ -14,7 +14,8 @@ __all__ = [
     'dcs',
     'BufferCoordinate',
     'SpongeFunction',
-    'GridStretchFunction',
+    'SpongeWeight',
+    'GridDeformationFunction',
     'IdealGasCalculator'
 ]
 
@@ -26,7 +27,7 @@ from .crs import Inviscid, Constant, Sutherland
 from .state import State, IdealGasCalculator
 from .region import BoundaryConditions as bcs
 from .region import DomainConditions as dcs
-from .region import SpongeFunction, BufferCoordinate, GridStretchFunction
+from .region import SpongeFunction, BufferCoordinate, GridDeformationFunction, SpongeWeight
 
 logger = DreAmLogger(True, False)
 logger.set_level('INFO')

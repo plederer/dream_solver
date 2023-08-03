@@ -285,10 +285,6 @@ class SolverSaver(Saver):
         mesh = self.solver.formulation.mesh
         super().save_mesh(mesh, name, suffix)
 
-    def save_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> None:
-        mesh = self.solver.formulation.mesh
-        super().save_mesh(mesh, name, suffix)
-
     def save_configuration(self,
                            configuration: SolverConfiguration = None,
                            name: str = "config",

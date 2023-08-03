@@ -1,7 +1,6 @@
 from __future__ import annotations
 from .utils import Formatter
 from ngsolve import *
-from typing import Optional
 
 DYNAMIC_VISCOSITY = {}
 

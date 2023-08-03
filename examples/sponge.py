@@ -84,8 +84,8 @@ for idx, domain in enumerate(front):
         solver.domain_conditions.set(dcs.PSpongeLayer(order, order-1, sponge), domain.mat)
 
 grid = BufferCoordinate.x(0.5, 5.5, 5)
-grid = GridStretchFunction.exponential_thickness(grid, 10, order=10)
-solver.domain_conditions.set(dcs.GridStretching(grid))
+grid = GridDeformationFunction.exponential_thickness(grid, 10, order=10)
+solver.domain_conditions.set(dcs.GridDeformation(grid))
 # Draw(solver.formulation.dmesh.get_grid_stretching_function(), mesh, "test")
 
 with TaskManager():

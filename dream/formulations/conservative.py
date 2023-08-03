@@ -661,10 +661,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
                 domain = self.dmesh.domain(domain)
 
                 for el in domain.Elements():
-                    V.SetOrder(NodeId(ELEMENT, el.nr), bc.high_order)
+                    V.SetOrder(NodeId(ELEMENT, el.nr), bc.order.high)
 
                 domain_dofs = VHAT.GetDofs(domain)
-                for i in range(bc.high_order + 1, order + 1, 1):
+                for i in range(bc.order.high + 1, order + 1, 1):
                     domain_dofs[i::order + 1] = 0
 
                 vhat_dofs |= domain_dofs
@@ -752,36 +752,38 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         blf += var_form.Compile(compile_flag)
 
-    def _add_sponge_bilinearform(self, blf, domain: Region, dc: dcs.SpongeLayer):
+    def _add_sponge_bilinearform(self, blf, domain: Region, dc: dcs.SpongeLayer, weight_function: GridFunction):
         compile_flag = self.cfg.compile_flag
+        bonus_int_order = weight_function.space.globalorder
 
         state = self.calc.determine_missing(dc.state)
         ref = CF((state.density, state.momentum, state.energy))
 
         U, V = self.TnT.PRIMAL
 
-        cf = dc.weight_function * (U - ref)
-        cf = cf * V * dx(definedon=domain, bonus_intorder=dc.bonus_int_order)
+        cf = weight_function * (U - ref)
+        cf = cf * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
 
         blf += cf.Compile(compile_flag)
 
-    def _add_psponge_bilinearform(self, blf, domain: Region, dc: dcs.PSpongeLayer):
+    def _add_psponge_bilinearform(self, blf, domain: Region, dc: dcs.PSpongeLayer, weight_function: GridFunction):
 
         compile_flag = self.cfg.compile_flag
+        bonus_int_order = weight_function.space.globalorder
 
         U, V = self.TnT.PRIMAL
 
-        if dc.is_constant:
+        if dc.is_equal_order:
             state = self.calc.determine_missing(dc.state)
             ref = CF((state.density, state.momentum, state.energy))
             U_high = U - ref
 
         else:
-            space = L2(self.mesh, order=dc.low_order)
+            space = L2(self.mesh, order=dc.order.low)
             U_low = CF(tuple(Interpolate(proxy, space) for proxy in U))
             U_high = U - U_low
 
-        cf = dc.weight_function * U_high * V * dx(definedon=domain, bonus_intorder=dc.bonus_int_order)
+        cf = weight_function * U_high * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
 
     def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: Region, bc: bcs.Dirichlet):

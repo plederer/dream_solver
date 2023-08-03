@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ngsolve import *
 from collections import UserDict
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Callable
 import numpy as np
 
 from .state import State
@@ -44,7 +44,7 @@ class DreamMesh:
         return tuple(self.dcs)
 
     @property
-    def is_grid_stretching(self) -> bool:
+    def is_grid_deformation(self) -> bool:
         return bool(self.dcs.grid_stretching)
 
     @property
@@ -53,7 +53,7 @@ class DreamMesh:
 
     @property
     def highest_order_psponge(self) -> int:
-        return max([sponge.high_order for sponge in self.dcs.psponge_layers.values()], default=0)
+        return max([sponge.order.high for sponge in self.dcs.psponge_layers.values()], default=0)
 
     def boundary(self, region: str) -> Region:
         return self.mesh.Boundaries(region)
@@ -64,44 +64,52 @@ class DreamMesh:
     def pattern(self, sequence: list) -> str:
         return "|".join(sequence)
 
-    def get_grid_stretching_function(self) -> GridFunction:
-        grids = self.dcs.grid_stretching
+    def set_grid_deformation(self):
+        grid = self.get_grid_deformation_function()
+        self.mesh.SetDeformation(grid)
 
-        if grids:
+    def get_grid_deformation_function(self) -> GridFunction:
+        return self._get_buffer_grid_function(self.dcs.GridDeformation)
 
-            max_order = max([gsf.max_order for gsf in self.dcs.grid_stretching.values()], default=1)
+    def get_sponge_weight_function(self) -> GridFunction:
+        return self._get_buffer_grid_function(self.dcs.SpongeLayer)
 
-            fes = VectorH1(self.mesh, order=max_order)
-            u, v = fes.TnT()
+    def get_psponge_weight_function(self) -> GridFunction:
+        return self._get_buffer_grid_function(self.dcs.PSpongeLayer)
 
-            grid = GridFunction(fes)
+    def _get_buffer_grid_function(self, type) -> GridFunction:
+
+        fes = type.fes(self.mesh, order=type.fes_order)
+        u, v = fes.TnT()
+        buffer = GridFunction(fes)
+
+        domains = self.dcs._get_condition(type)
+
+        if domains:
 
             blf = BilinearForm(fes)
             blf += InnerProduct(u, v) * dx
 
             lf = LinearForm(fes)
+            for domain, bc in domains.items():
 
-            for domain, bc in grids.items():
                 domain = self.domain(domain)
-                lf += InnerProduct(bc.vec(self.dim), v) * dx(definedon=domain)
+
+                if isinstance(bc, self.dcs.GridDeformation):
+                    lf += InnerProduct(bc.vec(self.dim), v) * dx(definedon=domain, bonus_intorder=bc.bonus_int_order)
+                else:
+                    lf += bc.weight_function * v * dx(definedon=domain, bonus_intorder=bc.bonus_int_order)
 
             blf.Assemble()
             lf.Assemble()
 
-            grid.vec.data = blf.mat.Inverse(fes.FreeDofs(), inverse="sparsecholesky") * lf.vec
+            buffer.vec.data = blf.mat.Inverse(fes.FreeDofs(), inverse="sparsecholesky") * lf.vec
 
         else:
-            fes = VectorH1(self.mesh, order=0)
-            grid = GridFunction(fes)
-            grid.vec[:] = 0
+            buffer.vec[:] = 0
+            logger.warning(f"{type.__name__} has not been set in domain conditions! Returning zero GridFunction.")
 
-            logger.warning("Grid Stretching has not been set in domain conditions! Returning zero stretching.")
-
-        return grid
-
-    def set_grid_stretching(self):
-        grid = self.get_grid_stretching_function()
-        self.mesh.SetDeformation(grid)
+        return buffer
 
 
 class BufferCoordinate(NamedTuple):
@@ -159,7 +167,7 @@ class BufferCoordinate(NamedTuple):
         return cls(r0, rn, sqrt(r), dim=1)
 
     @property
-    def thickness(self):
+    def length(self):
         if self.dim == 1:
             return abs(self.end - self.start)
         else:
@@ -212,11 +220,45 @@ class BufferCoordinate(NamedTuple):
         return self.get(mirror)
 
 
+class SpongeWeight:
+
+    @staticmethod
+    def target_damping(dB: float, sponge_length: float, Mach_number: float, function_integral: float):
+        if not dB < 0:
+            raise ValueError("Target Dezibel must be smaller zero!")
+        return dB*(1-Mach_number**2)/(-40 * np.log10(np.exp(1))) * 1/(sponge_length * function_integral)
+
+    @classmethod
+    def constant(cls, sponge_length: float, Mach_number: float, dB: float = -40):
+        return cls.target_damping(dB, sponge_length, Mach_number, 1)
+
+    @classmethod
+    def quadratic(cls, sponge_length: float, Mach_number: float, dB: float = -40):
+        return cls.target_damping(dB, sponge_length, Mach_number, 1/3)
+
+    @classmethod
+    def cubic(cls, sponge_length: float, Mach_number: float, dB: float = -40):
+        return cls.target_damping(dB, sponge_length, Mach_number, 1/4)
+
+    @classmethod
+    def penta(cls, sponge_length: float, Mach_number: float, dB: float = -40):
+        return cls.target_damping(dB, sponge_length, Mach_number, 1/6)
+
+    @classmethod
+    def penta_smooth(cls, sponge_length: float, Mach_number: float, dB: float = -40):
+        return cls.target_damping(dB, sponge_length, Mach_number, 0.5)
+
+
 class SpongeFunction(NamedTuple):
 
     weight_function: CF
     order: int
     repr: str = u"\u03C3 f(x)"
+
+    @classmethod
+    def constant(cls, weight: float = 1):
+        """ SpongeFunction: \u03C3 """
+        return cls(CF(weight), 0, u"\u03C3")
 
     @classmethod
     def quadratic(cls, coord: BufferCoordinate, weight: float = 1, mirror: bool = False):
@@ -251,21 +293,47 @@ class SpongeFunction(NamedTuple):
         return cls(func, order, u"\u03C3 (6x\u2075 - 15x\u2074 + 10x³)")
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}: {self.repr}"
+        return f"{self.repr}"
 
 
-class GridStretchFunction(NamedTuple):
+class GridDeformationFunction(NamedTuple):
 
-    stretch_function: CF
+    deformation: CF
     order: int
+    mapping: Callable[[float], float] = lambda x: x
     repr: str = "f(x) - x"
+
+    @classmethod
+    def linear_thickness(cls,
+                         coord: BufferCoordinate,
+                         factor: float = 1,
+                         mirror: bool = False) -> GridDeformationFunction:
+
+        if not factor >= 1:
+            raise ValueError(f"Thickness has to be >= 1")
+
+        if coord.dim != 1:
+            raise ValueError("Buffercoordinate needs to be 1-dimensional")
+
+        def deformation(coord: BufferCoordinate):
+            D = coord.end - coord.start
+            x_ = coord.get()
+            return D * x_ * (factor - 1)
+
+        def_ = deformation(coord)
+        if mirror:
+            def_ += deformation(coord.mirror())
+
+        def mapping(x): return factor * (x - coord.start) + coord.start
+
+        return cls(def_, 1, mapping, "a*x  - x")
 
     @classmethod
     def exponential_jacobi(cls,
                            coord: BufferCoordinate,
                            value: float = 0.25,
                            mirror: bool = False,
-                           order: int = 5) -> GridStretchFunction:
+                           order: int = 5) -> GridDeformationFunction:
 
         if not 0 < value < 1:
             raise ValueError(f"Endpoint Jacobian has to be 0 < p < 1")
@@ -273,7 +341,7 @@ class GridStretchFunction(NamedTuple):
         if coord.dim != 1:
             raise ValueError("Buffercoordinate needs to be 1-dimensional")
 
-        def stretch_function(start, end, x_, k):
+        def deformation(start, end, x_, k):
             D = end - start
             return D*k*(1 - exp(-x_/k)) - D*x_
 
@@ -281,16 +349,21 @@ class GridStretchFunction(NamedTuple):
         start, end = coord.start, coord.end
         x_ = coord.get()
 
-        sf = stretch_function(start, end, x_, k)
+        def_ = deformation(start, end, x_, k)
 
         if mirror:
             m_coord = coord.mirror()
             m_start, m_end = m_coord.start, m_coord.end
             mx_ = m_coord.get()
 
-            sf += stretch_function(m_start, m_end, mx_, k)
+            def_ += deformation(m_start, m_end, mx_, k)
 
-        return cls(sf, order, "a exp(c x) - x")
+        def mapping(x):
+            D = coord.end - coord.start
+            x_ = (x - coord.start)/D
+            return D*k*(1 - np.exp(-x_/k)) + coord.start
+
+        return cls(def_, order, mapping, "a exp(c x) - x")
 
     @classmethod
     def exponential_thickness(cls,
@@ -298,7 +371,7 @@ class GridStretchFunction(NamedTuple):
                               factor: int = 5,
                               mirror: bool = False,
                               order: int = 5,
-                              print_error: bool = False) -> GridStretchFunction:
+                              print_error: bool = False) -> GridDeformationFunction:
 
         if not 1 < factor:
             raise ValueError(f"Choose factor > 1")
@@ -306,7 +379,7 @@ class GridStretchFunction(NamedTuple):
         if coord.dim != 1:
             raise ValueError("Buffercoordinate needs to be 1-dimensional")
 
-        def stretch_function(start, end, x_):
+        def deformation(start, end, x_):
 
             D = end - start
 
@@ -327,28 +400,33 @@ class GridStretchFunction(NamedTuple):
 
             c = -D/a
 
-            return a * (1 - exp(c*x_)) - D*x_
+            return a * (1 - exp(c*x_)) - D*x_, (a, c)
 
         start, end = coord.start, coord.end
         x_ = coord.get()
 
-        sf = stretch_function(start, end, x_)
+        def_, coef = deformation(start, end, x_)
 
         if mirror:
             m_coord = coord.mirror()
             m_start, m_end = m_coord.start, m_coord.end
             mx_ = m_coord.get()
 
-            sf += stretch_function(m_start, m_end, mx_)
+            mdef_, _ = deformation(m_start, m_end, mx_)
+            def_ += mdef_
 
-        return cls(sf, order, "a exp(c x) - x")
+        def mapping(x):
+            x_ = (x - coord.start)/(coord.end - coord.start)
+            return coef[0] * (1 - np.exp(coef[1] * x_)) + coord.start
+
+        return cls(def_, order, mapping, "a exp(c x) - x")
 
     @classmethod
     def tangens_jacobi(cls,
                        coord: BufferCoordinate,
                        endpoint_jacobian: float = 0.33,
                        mirror: bool = False,
-                       order: int = 5) -> GridStretchFunction:
+                       order: int = 5) -> GridDeformationFunction:
 
         if not 0 < endpoint_jacobian < 1:
             raise ValueError(f"Endpoint Jacobian has to be 0 < p < 1")
@@ -356,7 +434,7 @@ class GridStretchFunction(NamedTuple):
         if coord.dim != 1:
             raise ValueError("Buffercoordinate needs to be 1-dimensional")
 
-        def stretch_function(start, end, x_, k):
+        def deformation(start, end, x_, k):
             D = end - start
             return D*k*tan(x_/k) - D*x_
 
@@ -364,16 +442,21 @@ class GridStretchFunction(NamedTuple):
         start, end = coord.start, coord.end
         x_ = coord.get()
 
-        sf = stretch_function(start, end, x_, k)
+        def_ = deformation(start, end, x_, k)
 
         if mirror:
             m_coord = coord.mirror()
             m_start, m_end = m_coord.start, m_coord.end
             mx_ = m_coord.get()
 
-            sf += stretch_function(m_start, m_end, mx_, k)
+            def_ += deformation(m_start, m_end, mx_, k)
 
-        return cls(sf, order, "a tan(c x) - x")
+        def mapping(x):
+            D = coord.end - coord.start
+            x_ = (x - coord.start)/D
+            return D*k*np.tan(-x_/k) + coord.start
+
+        return cls(def_, order, mapping, "a tan(c x) - x")
 
     @classmethod
     def tangens_thickness(cls,
@@ -381,7 +464,7 @@ class GridStretchFunction(NamedTuple):
                           factor: int = 5,
                           mirror: bool = False,
                           order: int = 5,
-                          print_error: bool = False) -> GridStretchFunction:
+                          print_error: bool = False) -> GridDeformationFunction:
 
         if not factor > 1:
             raise ValueError(f"Choose factor > 1")
@@ -389,7 +472,7 @@ class GridStretchFunction(NamedTuple):
         if coord.dim != 1:
             raise ValueError("Buffercoordinate needs to be 1-dimensional")
 
-        def stretch_function(start, end, x_):
+        def deformation(start, end, x_):
 
             D = end - start
 
@@ -410,24 +493,34 @@ class GridStretchFunction(NamedTuple):
 
             c = D/a
 
-            return a * tan(c * x_) - D*x_
+            return a * tan(c * x_) - D*x_, (a, c)
 
         start, end = coord.start, coord.end
         x_ = coord.get()
 
-        sf = stretch_function(start, end, x_)
+        def_, coef = deformation(start, end, x_)
 
         if mirror:
             m_coord = coord.mirror()
             m_start, m_end = m_coord.start, m_coord.end
             mx_ = m_coord.get()
 
-            sf += stretch_function(m_start, m_end, mx_)
+            mdef_, _ = deformation(m_start, m_end, mx_)
+            def_ += mdef_
 
-        return cls(sf, order, "a tan(c x) - x")
+        def mapping(x):
+            x_ = (x - coord.start)/(coord.end - coord.start)
+            return coef[0] * np.tan(coef[1] * x_) + coord.start
+
+        return cls(def_, order, mapping, "a tan(c x) - x")
+
+    def get_deformed_length(self, coord: BufferCoordinate) -> float:
+        start = self.mapping(coord.start)
+        end = self.mapping(coord.end)
+        return abs(end - start)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}: {self.repr}"
+        return f"{self.repr}"
 
 
 class Condition:
@@ -473,12 +566,12 @@ class DomainConditions(UserDict):
     @property
     def psponge_layers(self) -> dict[str, PSpongeLayer]:
         psponge = self._get_condition(self.PSpongeLayer)
-        psponge = dict(sorted(psponge.items(), key=lambda x: x[1].high_order))
+        psponge = dict(sorted(psponge.items(), key=lambda x: x[1].order.high))
         return psponge
 
     @property
-    def grid_stretching(self) -> dict[str, GridStretching]:
-        return self._get_condition(self.GridStretching)
+    def grid_stretching(self) -> dict[str, GridDeformation]:
+        return self._get_condition(self.GridDeformation)
 
     @property
     def perturbations(self) -> dict[str, Perturbation]:
@@ -510,6 +603,9 @@ class DomainConditions(UserDict):
 
     class SpongeLayer(_Domain):
 
+        fes: FESpace = L2
+        fes_order: int = 0
+
         def __init__(self,
                      state: State,
                      *sponges: SpongeFunction) -> None:
@@ -532,19 +628,25 @@ class DomainConditions(UserDict):
 
     class PSpongeLayer(_Domain):
 
+        class SpongeOrder(NamedTuple):
+            high: int
+            low: int
+
+        fes: FESpace = L2
+        fes_order: int = 0
+
         def __init__(self,
                      high_order: int,
                      low_order: int,
                      *sponges: SpongeFunction,
                      state: State = None) -> None:
 
-            self.high_order = high_order
+            if high_order < 0 or low_order < 0:
+                raise ValueError("Negative polynomial order!")
 
-            if self.is_constant:
-                low_order = 0
-
+            if high_order == low_order:
                 if state is None:
-                    raise ValueError("For constant polynomials a state is required")
+                    raise ValueError("For equal order polynomials a state is required")
                 else:
                     self._check_value(state.density, "density")
                     self._check_value(state.velocity, "velocity")
@@ -552,14 +654,15 @@ class DomainConditions(UserDict):
                         raise ValueError("A Thermodynamic quantity is required!")
             elif not high_order > low_order:
                 raise ValueError("Low Order must be smaller than High Order")
+
             super().__init__(state)
 
-            self.low_order = low_order
+            self.order = self.SpongeOrder(high_order, low_order)
             self.sponges = sponges
 
         @property
-        def is_constant(self) -> bool:
-            return self.high_order == 0
+        def is_equal_order(self) -> bool:
+            return self.order.high == self.order.low
 
         @property
         def bonus_int_order(self) -> int:
@@ -569,28 +672,40 @@ class DomainConditions(UserDict):
         def weight_function(self) -> CF:
             return sum([sponge.weight_function for sponge in self.sponges])
 
+        @classmethod
+        def range(cls, highest, lowest: int = 0, step: int = 1) -> tuple[SpongeOrder, ...]:
+            range = np.arange(highest, lowest - 2*step, -step)
+            range[range < lowest] = lowest
+            return tuple(cls.SpongeOrder(high, low) for high, low in zip(range[:-1], range[1:]))
+
         def __repr__(self) -> str:
             return f"(High: {self.high_order}, Low: {self.low_order}, State: {self.state})"
 
-    class GridStretching(_Domain):
+    class GridDeformation(_Domain):
 
-        def __init__(self, x_: GridStretchFunction = None, y_: GridStretchFunction = None, z_: GridStretchFunction = None) -> None:
+        fes: FESpace = VectorH1
+        fes_order: int = 1
+
+        def __init__(self,
+                     x_: GridDeformationFunction = None,
+                     y_: GridDeformationFunction = None,
+                     z_: GridDeformationFunction = None) -> None:
             self.x = self._set_zero_if_none(x_)
             self.y = self._set_zero_if_none(y_)
             self.z = self._set_zero_if_none(z_)
 
         @property
-        def max_order(self) -> int:
+        def bonus_int_order(self) -> int:
             return max([x.order for x in (self.x, self.y, self.z)])
 
         def vec(self, dim: int = 2) -> CF:
-            vec = (self.x.stretch_function, self.y.stretch_function, self.z.stretch_function)[:dim]
+            vec = (self.x.deformation, self.y.deformation, self.z.deformation)[:dim]
             return CF(vec)
 
-        def _set_zero_if_none(self, streching: GridStretchFunction):
-            if streching is None:
-                streching = GridStretchFunction(0, order=0)
-            return streching
+        def _set_zero_if_none(self, deformation: GridDeformationFunction):
+            if deformation is None:
+                deformation = GridDeformationFunction(0, order=0)
+            return deformation
 
         def __repr__(self) -> str:
             return repr((self.x, self.y, self.z))
@@ -615,6 +730,8 @@ class DomainConditions(UserDict):
 
             for miss in missed:
                 logger.warning(f"Domain {miss} does not exist! {condition} can not be set!")
+        else:
+            domains = tuple(domain)
 
         for domain in domains:
             self[domain][type(condition)] = condition

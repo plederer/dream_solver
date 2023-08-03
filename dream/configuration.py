@@ -68,6 +68,10 @@ class ResultsDirectoryTree:
         else:
             raise ValueError(f"Type {type(parent_path)} not supported!")
 
+    def update(self, tree: ResultsDirectoryTree):
+        for key, bc in vars(tree).items():
+            setattr(self, key, bc)
+
     def __repr__(self) -> str:
         formatter = Formatter()
         formatter.COLUMN_RATIO = (0.2, 0.8)

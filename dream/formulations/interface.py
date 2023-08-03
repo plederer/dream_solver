@@ -194,10 +194,10 @@ class Formulation(abc.ABC):
     def add_forcing_linearform(self, lf):
         raise NotImplementedError()
 
-    def _add_sponge_bilinearform(self, blf, domain, condition):
+    def _add_sponge_bilinearform(self, blf, domain, condition, weight_function):
         raise NotImplementedError()
 
-    def _add_psponge_bilinearform(self, blf, domain, condition):
+    def _add_psponge_bilinearform(self, blf, domain, condition, weight_function):
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -309,15 +309,20 @@ class _Formulation(Formulation):
 
     def add_domain_conditions_bilinearform(self, blf):
 
-        dcs = self.dmesh.dcs
+        sponge_layers = self.dmesh.dcs.sponge_layers
+        if sponge_layers:
+            weight_function = self.dmesh.get_sponge_weight_function()
 
-        for name, condition in dcs.sponge_layers.items():
-            domain = self.dmesh.domain(name)
-            self._add_sponge_bilinearform(blf, domain, condition)
-
-        for name, condition in dcs.psponge_layers.items():
-            domain = self.dmesh.domain(name)
-            self._add_psponge_bilinearform(blf, domain, condition)
+            for name, condition in sponge_layers.items():
+                domain = self.dmesh.domain(name)
+                self._add_sponge_bilinearform(blf, domain, condition, weight_function)
+        
+        psponge_layers = self.dmesh.dcs.psponge_layers
+        if psponge_layers:
+            weight_function = self.dmesh.get_psponge_weight_function()
+            for name, condition in psponge_layers.items():
+                domain = self.dmesh.domain(name)
+                self._add_psponge_bilinearform(blf, domain, condition, weight_function)
 
     def add_mass_bilinearform(self, blf):
         mixed_method = self.cfg.mixed_method

@@ -84,6 +84,9 @@ class RectangleDomain(Domain):
         self.W = W
         self.H = H
 
+        self.Wi_ring = []
+        self.Hi_ring = []
+
         if Wi != 0 and Hi == 0:
             Hi = Wi
         elif Hi != 0 and Wi == 0:
@@ -188,6 +191,35 @@ class RectangleDomain(Domain):
             ]
             for edge in default_edges:
                 rectangle.edges.Nearest(edge).name = "default"
+
+            if self.Wi_ring and self.Hi_ring:
+
+                H_points = [(W_p, self.loc[1]), (W_m, self.loc[1])]
+                W_points = [(self.loc[0], H_m), (self.loc[0], H_p)]
+
+                subfaces = []
+                for point in H_points:
+                    face = rectangle.faces.Nearest(point)
+                    wp.MoveTo(*point)
+                    for Hi in self.Hi_ring[-2::-1]:
+                        cut = wp.RectangleC(size_W, Hi).Face()
+                        face = Glue([face, cut])
+                    subfaces.append(face)
+
+                for point in W_points:
+                    face = rectangle.faces.Nearest(point)
+                    wp.MoveTo(*point)
+                    for Wi in self.Wi_ring[-2::-1]:
+                        cut = wp.RectangleC(Wi, size_H).Face()
+                        face = Glue([face, cut])
+                    subfaces.append(face)
+
+                corners = ((W_p, H_p), (W_p, H_m), (W_m, H_p), (W_m, H_m))
+                corners = [rectangle.faces.Nearest(corner) for corner in corners]
+
+                rectangle = Glue(corners + subfaces)
+                for face in rectangle.faces:
+                    face.name = self.mat
 
         rectangle.maxh = self.maxh
 
@@ -446,6 +478,9 @@ class RectangleGrid(Grid):
         domain.Hi = swap.H
         domain.W += domain.Wi
         domain.H += domain.Hi
+
+        domain.Wi_ring.extend(swap.Wi_ring + [domain.Wi])
+        domain.Hi_ring.extend(swap.Hi_ring + [domain.Hi])
 
         for first, last in zip(swap.bnds.outer, domain.bnds.inner):
             self._swap_boundaries(first, last, swap.mat)

@@ -1,4 +1,5 @@
 from .formatter import Formatter
+from .geometries import Rectangle1DGrid, RectangleDomain, RectangleGrid, CircularDomain, CircularGrid
 
 
 def is_notebook() -> bool:
