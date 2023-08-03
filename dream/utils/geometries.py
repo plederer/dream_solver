@@ -1,3 +1,4 @@
+from __future__ import annotations
 from ngsolve import *
 from netgen.geom2d import CSG2d, Circle, Rectangle, EdgeInfo as EI, PointInfo as PI, Solid2d
 from netgen.occ import WorkPlane, OCCGeometry, Glue
