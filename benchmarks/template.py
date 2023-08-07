@@ -33,6 +33,7 @@ class Benchmark(abc.ABC):
 
         self.add_meta_data(self.cfg)
         saver.save_configuration()
+        saver.save_dream_mesh()
 
         with TaskManager():
             self.start_solution_routine(solver)

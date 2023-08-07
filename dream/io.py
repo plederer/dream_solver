@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional, Generator
 from .utils import is_notebook, Formatter
 from .configuration import SolverConfiguration, ResultsDirectoryTree
 from .sensor import Sensor
+from .region import DreamMesh
 
 
 if is_notebook():
@@ -59,6 +60,13 @@ class Loader:
         if not vtk_path.exists():
             raise Exception(f"Can not load from {vtk_path}, as the path does not exist.")
         return vtk_path
+
+    def load_dream_mesh(self, name: str = "dmesh") -> DreamMesh:
+        file = self.main_path.joinpath(name + '.pickle')
+        with file.open("rb") as openfile:
+            dmesh = pickle.load(openfile)
+
+        return dmesh
 
     def load_mesh(self, name: str = "mesh") -> Mesh:
         file = self.main_path.joinpath(name + '.pickle')
@@ -190,6 +198,14 @@ class Saver:
                               filename=str(self.vtk_path.joinpath(filename)),
                               subdivision=subdivision, **kwargs)
 
+    def save_dream_mesh(self, dmesh: DreamMesh,
+                        name: str = "dmesh",
+                        suffix: str = ".pickle") -> None:
+
+        file = self.main_path.joinpath(name + suffix)
+        with file.open("wb") as openfile:
+            pickle.dump(dmesh, openfile)
+
     def save_mesh(self, mesh: Mesh,
                   name: str = "mesh",
                   suffix: str = ".pickle") -> None:
@@ -280,6 +296,10 @@ class SolverSaver(Saver):
                                subdivision: int = 2,
                                **kwargs) -> None:
         super().initialize_vtk_handler(fields, self.solver.mesh, filename, subdivision, **kwargs)
+
+    def save_dream_mesh(self, name: str = "dmesh", suffix: str = ".pickle") -> None:
+        dmesh = self.solver.dmesh
+        super().save_dream_mesh(dmesh, name, suffix)
 
     def save_mesh(self, name: str = "mesh", suffix: str = ".pickle") -> None:
         mesh = self.solver.formulation.mesh

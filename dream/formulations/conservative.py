@@ -654,8 +654,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         if p_sponge_layers:
 
-            vhat_dofs = BitArray(VHAT.ndof)
-            vhat_dofs.Clear()
+            sponge_region = self.dmesh.domain(self.dmesh.pattern(p_sponge_layers.keys()))
+            vhat_dofs = ~VHAT.GetDofs(sponge_region)
 
             for domain, bc in p_sponge_layers.items():
                 domain = self.dmesh.domain(domain)
@@ -669,13 +669,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
                 vhat_dofs |= domain_dofs
 
-            p_dofs = ~VHAT.GetDofs(self.dmesh.domain(self.dmesh.pattern(p_sponge_layers.keys())))
-            p_dofs |= vhat_dofs
-
-            for idx in np.flatnonzero(~p_dofs):
-                VHAT.SetCouplingType(idx, COUPLING_TYPE.UNUSED_DOF)
-
-            VHAT = Compress(VHAT)
+            VHAT = Compress(VHAT, vhat_dofs)
             V.UpdateDofTables()
 
         if self.dmesh.is_periodic:

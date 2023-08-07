@@ -105,11 +105,13 @@ class Pulse(Benchmark):
         y0, yn = self.sound.H/2, sum([ring.H - ring.Hi for ring in rings])/2 + self.sound.H/2
         self.x_, self.y_ = BufferCoordinate.x(x0, xn), BufferCoordinate.y(y0, yn)
 
-        self.grid_x = GridDeformationFunction.exponential_thickness(self.x_, self.grid_factor, True)
-        self.grid_y = GridDeformationFunction.exponential_thickness(self.y_, self.grid_factor, True)
+        self.grid_x = GridDeformationFunction.ExponentialThickness(self.grid_factor, self.x_, True)
+        self.grid_y = GridDeformationFunction.ExponentialThickness(self.grid_factor, self.y_, True)
+
+        self.grid = GridDeformationFunction(self.grid_x, self.grid_y)
 
         for ring in rings:
-            solver.domain_conditions.set(dcs.GridDeformation(self.grid_x, self.grid_y), ring.mat)
+            solver.domain_conditions.set(dcs.GridDeformation(self.grid), ring.mat)
 
     def draw_scenes(self, solver: CompressibleHDGSolver):
         solver.drawer.draw()
@@ -142,8 +144,8 @@ class PSponge(Pulse):
 
         for order, ring in zip(self.order, rings):
 
-            lx = self.grid_x.get_deformed_length(ring.x_)
-            ly = self.grid_y.get_deformed_length(ring.y_)
+            lx = self.grid_x.deformed_length(ring.x_)
+            ly = self.grid_y.deformed_length(ring.y_)
 
             self.lengths_x.append(lx)
             self.lengths_y.append(ly)
@@ -186,8 +188,8 @@ class Sponge(Pulse):
         rings = self.main.rings
 
         # Sponge Layer
-        lx = self.grid_x.get_deformed_length(self.x_)
-        ly = self.grid_y.get_deformed_length(self.y_)
+        lx = self.grid_x.deformed_length(self.x_)
+        ly = self.grid_y.deformed_length(self.y_)
         sigma_x = SpongeWeight.quadratic(lx, self.cfg.Mach_number.Get(), dB=self.dB)
         sigma_y = SpongeWeight.quadratic(ly, self.cfg.Mach_number.Get(), dB=self.dB)
         sponge_x = SpongeFunction.quadratic(self.x_, sigma_x, mirror=True)

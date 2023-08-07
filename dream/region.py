@@ -1,7 +1,8 @@
 from __future__ import annotations
 from ngsolve import *
 from collections import UserDict
-from typing import Any, NamedTuple, Callable
+from typing import Any, NamedTuple
+import abc
 import numpy as np
 
 from .state import State
@@ -96,7 +97,8 @@ class DreamMesh:
                 domain = self.domain(domain)
 
                 if isinstance(bc, self.dcs.GridDeformation):
-                    lf += InnerProduct(bc.vec(self.dim), v) * dx(definedon=domain, bonus_intorder=bc.bonus_int_order)
+                    lf += InnerProduct(bc.deformation_function(self.dim),
+                                       v) * dx(definedon=domain, bonus_intorder=bc.bonus_int_order)
                 else:
                     lf += bc.weight_function * v * dx(definedon=domain, bonus_intorder=bc.bonus_int_order)
 
@@ -298,229 +300,374 @@ class SpongeFunction(NamedTuple):
 
 class GridDeformationFunction(NamedTuple):
 
-    deformation: CF
-    order: int
-    mapping: Callable[[float], float] = lambda x: x
-    repr: str = "f(x) - x"
+    class _Mapping(abc.ABC):
 
-    @classmethod
-    def linear_thickness(cls,
-                         coord: BufferCoordinate,
-                         factor: float = 1,
-                         mirror: bool = False) -> GridDeformationFunction:
+        def __init__(self, coord: BufferCoordinate, mirror: bool = False, order: int = 1) -> None:
 
-        if not factor >= 1:
-            raise ValueError(f"Thickness has to be >= 1")
+            if isinstance(coord, BufferCoordinate):
+                if coord.dim != 1:
+                    raise ValueError("Buffercoordinate needs to be 1-dimensional")
 
-        if coord.dim != 1:
-            raise ValueError("Buffercoordinate needs to be 1-dimensional")
+            self.coord = coord
+            self.mirror = mirror
+            self.order = order
 
-        def deformation(coord: BufferCoordinate):
-            D = coord.end - coord.start
-            x_ = coord.get()
-            return D * x_ * (factor - 1)
+            self._deformation = None
 
-        def_ = deformation(coord)
-        if mirror:
-            def_ += deformation(coord.mirror())
+        @property
+        def deformation(self):
+            if self._deformation is None:
+                self._deformation = self.get_deformation(self.mirror)
+            return self._deformation
 
-        def mapping(x): return factor * (x - coord.start) + coord.start
+        @abc.abstractmethod
+        def get_deformation(self, mirror: bool = False) -> CF: ...
 
-        return cls(def_, 1, mapping, "a*x  - x")
+        @abc.abstractmethod
+        def mapping(self, x, mirror: bool = False) -> float: ...
 
-    @classmethod
-    def exponential_jacobi(cls,
-                           coord: BufferCoordinate,
-                           value: float = 0.25,
-                           mirror: bool = False,
-                           order: int = 5) -> GridDeformationFunction:
+        def deformed_length(self, coord: BufferCoordinate) -> float:
+            start = self(coord.start)
+            end = self(coord.end)
+            return abs(end - start)
 
-        if not 0 < value < 1:
-            raise ValueError(f"Endpoint Jacobian has to be 0 < p < 1")
+        @staticmethod
+        def fixed_point_iteration(x0, func, iterations: int = 100, print_error: bool = False):
+            for i in range(iterations):
 
-        if coord.dim != 1:
-            raise ValueError("Buffercoordinate needs to be 1-dimensional")
-
-        def deformation(start, end, x_, k):
-            D = end - start
-            return D*k*(1 - exp(-x_/k)) - D*x_
-
-        k = value/(value-1)
-        start, end = coord.start, coord.end
-        x_ = coord.get()
-
-        def_ = deformation(start, end, x_, k)
-
-        if mirror:
-            m_coord = coord.mirror()
-            m_start, m_end = m_coord.start, m_coord.end
-            mx_ = m_coord.get()
-
-            def_ += deformation(m_start, m_end, mx_, k)
-
-        def mapping(x):
-            D = coord.end - coord.start
-            x_ = (x - coord.start)/D
-            return D*k*(1 - np.exp(-x_/k)) + coord.start
-
-        return cls(def_, order, mapping, "a exp(c x) - x")
-
-    @classmethod
-    def exponential_thickness(cls,
-                              coord: BufferCoordinate,
-                              factor: int = 5,
-                              mirror: bool = False,
-                              order: int = 5,
-                              print_error: bool = False) -> GridDeformationFunction:
-
-        if not 1 < factor:
-            raise ValueError(f"Choose factor > 1")
-
-        if coord.dim != 1:
-            raise ValueError("Buffercoordinate needs to be 1-dimensional")
-
-        def deformation(start, end, x_):
-
-            D = end - start
-
-            a = -D
-            def fix(a): return -D/(np.log(1 - factor*D/a))
-
-            for i in range(100):
-                new_a = fix(a)
-                err = abs(new_a - a)
+                xn = func(x0)
+                err = abs(xn - x0)
 
                 if print_error:
-                    logger.info(f"Exponential Fixpoint - It: {i:3d} - n+1: {new_a:.5e} - n: {a:.5e} - err: {err:.5e}")
+                    logger.info(f"Fixpoint - It: {i:3d} - n+1: {xn:.5e} - n: {x0:.5e} - err: {err:.5e}")
 
-                a = new_a
+                x0 = xn
 
                 if err < 1e-16:
                     break
+            return x0
 
+        def __call__(self, x) -> float:
+            return self.mapping(x)
+
+    class Zero(_Mapping):
+
+        def __init__(self, coord: BufferCoordinate) -> None:
+            super().__init__(coord, False, order=0)
+
+        def get_deformation(self, mirror: bool = False) -> CF:
+            return 0
+
+        def mapping(self, x) -> float:
+            return x
+
+        def __repr__(self) -> str:
+            return "0"
+
+    class Linear(_Mapping):
+
+        def __init__(self, factor: float, coord: BufferCoordinate, mirror: bool = False) -> None:
+            """ Linear mapping: factor * (x - x0) + x0 """
+
+            if not factor >= 1:
+                raise ValueError(f"Thickness has to be >= 1")
+
+            self.factor = factor
+            super().__init__(coord, mirror, order=1)
+
+        def get_deformation(self, mirror: bool = False) -> CF:
+
+            def one_sided(coord: BufferCoordinate):
+                D = coord.end - coord.start
+                x_ = coord.get()
+                return D * x_ * (self.factor - 1)
+
+            def_ = one_sided(self.coord)
+            if mirror:
+                def_ += one_sided(self.coord.mirror())
+
+            return def_
+
+        def mapping(self, x, mirror: bool = False) -> float:
+            coord = self.coord
+            if mirror:
+                coord = self.coord.mirror()
+            return self.factor * (x - coord.start) + coord.start
+
+        def __repr__(self) -> str:
+            return "a*x  - x"
+
+    class ExponentialThickness(_Mapping):
+
+        def __init__(self,
+                     factor: int,
+                     coord: BufferCoordinate,
+                     mirror: bool = False,
+                     order: int = 5) -> None:
+
+            if not 1 < factor:
+                raise ValueError(f"Choose factor > 1")
+
+            self.factor = factor
+
+            self._constants = None
+            self._mirror_constants = None
+
+            super().__init__(coord, mirror, order)
+
+        @property
+        def constants(self):
+            if self._constants is None:
+                self._constants = self._determine_deformation_constants(self.coord)
+            return self._constants
+
+        @property
+        def mirror_constants(self):
+            if self._mirror_constants is None:
+                self._mirror_constants = self._determine_deformation_constants(self.coord.mirror())
+            return self._mirror_constants
+
+        def _determine_deformation_constants(self,
+                                             coord: BufferCoordinate,
+                                             iterations: int = 100,
+                                             print_error: bool = False):
+            D = coord.end - coord.start
+            a = self.fixed_point_iteration(-D, lambda x: -D/(np.log(1 - self.factor*D/x)), iterations, print_error)
             c = -D/a
+            return a, c
 
-            return a * (1 - exp(c*x_)) - D*x_, (a, c)
+        def get_deformation(self, mirror: bool = False):
 
-        start, end = coord.start, coord.end
-        x_ = coord.get()
+            def one_sided(coord: BufferCoordinate, constants):
+                x_ = coord.get()
+                D = coord.end - coord.start
+                a, c = constants
+                return a * (1 - exp(c*x_)) - D*x_
 
-        def_, coef = deformation(start, end, x_)
+            def_ = one_sided(self.coord, self.constants)
 
-        if mirror:
-            m_coord = coord.mirror()
-            m_start, m_end = m_coord.start, m_coord.end
-            mx_ = m_coord.get()
+            if mirror:
+                def_ += one_sided(self.coord.mirror(), self.mirror_constants)
 
-            mdef_, _ = deformation(m_start, m_end, mx_)
-            def_ += mdef_
+            return def_
 
-        def mapping(x):
+        def mapping(self, x, mirror: bool = False) -> float:
+
+            coord = self.coord
+            a, c = self.constants
+            if mirror:
+                coord = self.coord.mirror()
+                a, c = self.mirror_constants
+
             x_ = (x - coord.start)/(coord.end - coord.start)
-            return coef[0] * (1 - np.exp(coef[1] * x_)) + coord.start
+            return a * (1 - np.exp(c * x_)) + coord.start
 
-        return cls(def_, order, mapping, "a exp(c x) - x")
+        def __repr__(self) -> str:
+            return "a exp(c x) - x"
 
-    @classmethod
-    def tangens_jacobi(cls,
-                       coord: BufferCoordinate,
-                       endpoint_jacobian: float = 0.33,
-                       mirror: bool = False,
-                       order: int = 5) -> GridDeformationFunction:
+    class ExponentialJacobian(_Mapping):
 
-        if not 0 < endpoint_jacobian < 1:
-            raise ValueError(f"Endpoint Jacobian has to be 0 < p < 1")
+        def __init__(self,
+                     endpoint_jacobian: float,
+                     coord: BufferCoordinate,
+                     mirror: bool = False,
+                     order: int = 5) -> None:
 
-        if coord.dim != 1:
-            raise ValueError("Buffercoordinate needs to be 1-dimensional")
+            if not 0 < endpoint_jacobian < 1:
+                raise ValueError(f"Endpoint Jacobian has to be 0 < p < 1")
 
-        def deformation(start, end, x_, k):
-            D = end - start
-            return D*k*tan(x_/k) - D*x_
+            self.endpoint_jacobian = endpoint_jacobian
 
-        k = sqrt(endpoint_jacobian/(1-endpoint_jacobian))
-        start, end = coord.start, coord.end
-        x_ = coord.get()
+            self._constants = None
+            self._mirror_constants = None
 
-        def_ = deformation(start, end, x_, k)
+            super().__init__(coord, mirror, order)
 
-        if mirror:
-            m_coord = coord.mirror()
-            m_start, m_end = m_coord.start, m_coord.end
-            mx_ = m_coord.get()
+        @property
+        def constants(self):
+            if self._constants is None:
+                self._constants = self._determine_deformation_constants(self.coord)
+            return self._constants
 
-            def_ += deformation(m_start, m_end, mx_, k)
+        @property
+        def mirror_constants(self):
+            if self._mirror_constants is None:
+                self._mirror_constants = self._determine_deformation_constants(self.coord.mirror())
+            return self._mirror_constants
 
-        def mapping(x):
+        def _determine_deformation_constants(self, coord: BufferCoordinate):
+            k = self.endpoint_jacobian/(self.endpoint_jacobian-1)
             D = coord.end - coord.start
-            x_ = (x - coord.start)/D
-            return D*k*np.tan(-x_/k) + coord.start
+            a = D * k
+            c = -1/k
+            return a, c
 
-        return cls(def_, order, mapping, "a tan(c x) - x")
+        def get_deformation(self, mirror: bool = False):
 
-    @classmethod
-    def tangens_thickness(cls,
-                          coord: BufferCoordinate,
-                          factor: int = 5,
-                          mirror: bool = False,
-                          order: int = 5,
-                          print_error: bool = False) -> GridDeformationFunction:
+            def one_sided(coord: BufferCoordinate, constants):
+                x_ = coord.get()
+                D = coord.end - coord.start
+                a, c = constants
+                return a*(1 - exp(c*x_)) - D*x_
 
-        if not factor > 1:
-            raise ValueError(f"Choose factor > 1")
+            def_ = one_sided(self.coord, self.constants)
 
-        if coord.dim != 1:
-            raise ValueError("Buffercoordinate needs to be 1-dimensional")
+            if mirror:
+                def_ += one_sided(self.coord.mirror(), self.mirror_constants)
 
-        def deformation(start, end, x_):
+            return def_
 
-            D = end - start
+        def mapping(self, x, mirror: bool = False) -> float:
 
-            a = D
-            def fix(a): return D/np.arctan(factor * D/a)
+            coord = self.coord
+            a, c = self.constants
+            if mirror:
+                coord = self.coord.mirror()
+                a, c = self.mirror_constants
 
-            for i in range(100):
-                new_a = fix(a)
-                err = abs(new_a - a)
-
-                if print_error:
-                    logger.info(f"Tangens Fixpoint - It: {i:3d} - n+1: {new_a:.5e} - n: {a:.5e} - err: {err:.5e}")
-
-                a = new_a
-
-                if err < 1e-16:
-                    break
-
-            c = D/a
-
-            return a * tan(c * x_) - D*x_, (a, c)
-
-        start, end = coord.start, coord.end
-        x_ = coord.get()
-
-        def_, coef = deformation(start, end, x_)
-
-        if mirror:
-            m_coord = coord.mirror()
-            m_start, m_end = m_coord.start, m_coord.end
-            mx_ = m_coord.get()
-
-            mdef_, _ = deformation(m_start, m_end, mx_)
-            def_ += mdef_
-
-        def mapping(x):
             x_ = (x - coord.start)/(coord.end - coord.start)
-            return coef[0] * np.tan(coef[1] * x_) + coord.start
+            return a * (1 - np.exp(c * x_)) + coord.start
 
-        return cls(def_, order, mapping, "a tan(c x) - x")
+        def __repr__(self) -> str:
+            return "a exp(c x) - x"
 
-    def get_deformed_length(self, coord: BufferCoordinate) -> float:
-        start = self.mapping(coord.start)
-        end = self.mapping(coord.end)
-        return abs(end - start)
+    class TangensThickness(_Mapping):
 
-    def __repr__(self) -> str:
-        return f"{self.repr}"
+        def __init__(self,
+                     factor: int,
+                     coord: BufferCoordinate,
+                     mirror: bool = False,
+                     order: int = 5) -> None:
+
+            if not 1 < factor:
+                raise ValueError(f"Choose factor > 1")
+
+            self.factor = factor
+
+            self._constants = None
+            self._mirror_constants = None
+
+            super().__init__(coord, mirror, order)
+
+        @property
+        def constants(self):
+            if self._constants is None:
+                self._constants = self._determine_deformation_constants(self.coord)
+            return self._constants
+
+        @property
+        def mirror_constants(self):
+            if self._mirror_constants is None:
+                self._mirror_constants = self._determine_deformation_constants(self.coord.mirror())
+            return self._mirror_constants
+
+        def _determine_deformation_constants(self,
+                                             coord: BufferCoordinate,
+                                             iterations: int = 100,
+                                             print_error: bool = False):
+            D = coord.end - coord.start
+            a = self.fixed_point_iteration(D, lambda x: D/np.arctan(self.factor * D/x), iterations, print_error)
+            c = D/a
+            return a, c
+
+        def get_deformation(self, mirror: bool = False):
+
+            def one_sided(coord: BufferCoordinate, constants):
+                x_ = coord.get()
+                D = coord.end - coord.start
+                a, c = constants
+                return a * tan(c * x_) - D*x_
+
+            def_ = one_sided(self.coord, self.constants)
+
+            if mirror:
+                def_ += one_sided(self.coord.mirror(), self.mirror_constants)
+
+            return def_
+
+        def mapping(self, x, mirror: bool = False) -> float:
+
+            coord = self.coord
+            a, c = self.constants
+            if mirror:
+                coord = self.coord.mirror()
+                a, c = self.mirror_constants
+
+            x_ = (x - coord.start)/(coord.end - coord.start)
+            return a * np.tan(c * x_) + coord.start
+
+        def __repr__(self) -> str:
+            return "a tan(c x) - x"
+
+    class TangensJacobian(_Mapping):
+
+        def __init__(self,
+                     endpoint_jacobian: float,
+                     coord: BufferCoordinate,
+                     mirror: bool = False,
+                     order: int = 5) -> None:
+
+            if not 0 < endpoint_jacobian < 1:
+                raise ValueError(f"Endpoint Jacobian has to be 0 < p < 1")
+
+            self.endpoint_jacobian = endpoint_jacobian
+
+            self._constants = None
+            self._mirror_constants = None
+
+            super().__init__(coord, mirror, order)
+
+        @property
+        def constants(self):
+            if self._constants is None:
+                self._constants = self._determine_deformation_constants(self.coord)
+            return self._constants
+
+        @property
+        def mirror_constants(self):
+            if self._mirror_constants is None:
+                self._mirror_constants = self._determine_deformation_constants(self.coord.mirror())
+            return self._mirror_constants
+
+        def _determine_deformation_constants(self, coord: BufferCoordinate):
+            k = np.sqrt(self.endpoint_jacobian/(1-self.endpoint_jacobian))
+            D = coord.end - coord.start
+            a = D * k
+            c = -1/k
+            return a, c
+
+        def get_deformation(self, mirror: bool = False):
+
+            def one_sided(coord: BufferCoordinate, constants):
+                x_ = coord.get()
+                D = coord.end - coord.start
+                a, c = constants
+                return a * tan(c * x_) - D*x_
+
+            def_ = one_sided(self.coord, self.constants)
+
+            if mirror:
+                def_ += one_sided(self.coord.mirror(), self.mirror_constants)
+
+            return def_
+
+        def mapping(self, x, mirror: bool = False) -> float:
+
+            coord = self.coord
+            a, c = self.constants
+            if mirror:
+                coord = self.coord.mirror()
+                a, c = self.mirror_constants
+
+            x_ = (x - coord.start)/(coord.end - coord.start)
+            return a * np.tan(c * x_) + coord.start
+
+        def __repr__(self) -> str:
+            return "a tan(c x) - x"
+
+    x: _Mapping = Zero(x)
+    y: _Mapping = Zero(y)
+    z: _Mapping = Zero(z)
 
 
 class Condition:
@@ -686,29 +833,21 @@ class DomainConditions(UserDict):
         fes: FESpace = VectorH1
         fes_order: int = 1
 
-        def __init__(self,
-                     x_: GridDeformationFunction = None,
-                     y_: GridDeformationFunction = None,
-                     z_: GridDeformationFunction = None) -> None:
-            self.x = self._set_zero_if_none(x_)
-            self.y = self._set_zero_if_none(y_)
-            self.z = self._set_zero_if_none(z_)
+        def __init__(self, mapping: GridDeformationFunction) -> None:
+            if not isinstance(mapping, GridDeformationFunction):
+                raise TypeError()
+            self.mapping = mapping
 
         @property
         def bonus_int_order(self) -> int:
-            return max([x.order for x in (self.x, self.y, self.z)])
+            return max([x.order for x in self.mapping])
 
-        def vec(self, dim: int = 2) -> CF:
-            vec = (self.x.deformation, self.y.deformation, self.z.deformation)[:dim]
-            return CF(vec)
-
-        def _set_zero_if_none(self, deformation: GridDeformationFunction):
-            if deformation is None:
-                deformation = GridDeformationFunction(0, order=0)
-            return deformation
+        def deformation_function(self, dim: int) -> CF:
+            deformation = tuple(map.deformation for map in self.mapping)
+            return CF(deformation[:dim])
 
         def __repr__(self) -> str:
-            return repr((self.x, self.y, self.z))
+            return repr(self.mapping)
 
     class Perturbation(_Domain):
         ...

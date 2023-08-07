@@ -208,7 +208,10 @@ class _Formulation(Formulation):
 
     def __init__(self, mesh: Mesh, solver_configuration: SolverConfiguration) -> None:
 
-        self._mesh = DreamMesh(mesh)
+        if isinstance(mesh, Mesh):
+            mesh = DreamMesh(mesh)
+
+        self._mesh = mesh
         self._cfg = solver_configuration
         self._calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
 
@@ -316,7 +319,7 @@ class _Formulation(Formulation):
             for name, condition in sponge_layers.items():
                 domain = self.dmesh.domain(name)
                 self._add_sponge_bilinearform(blf, domain, condition, weight_function)
-        
+
         psponge_layers = self.dmesh.dcs.psponge_layers
         if psponge_layers:
             weight_function = self.dmesh.get_psponge_weight_function()

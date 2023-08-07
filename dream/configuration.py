@@ -68,6 +68,12 @@ class ResultsDirectoryTree:
         else:
             raise ValueError(f"Type {type(parent_path)} not supported!")
 
+    def find_directory_paths(self, pattern: str = "") -> tuple[Path]:
+        return tuple(dir for dir in self.parent_path.glob(pattern + "*") if dir.is_dir())
+
+    def find_directory_names(self, pattern: str = "") -> tuple[str]:
+        return tuple(dir.name for dir in self.parent_path.glob(pattern + "*") if dir.is_dir())
+
     def update(self, tree: ResultsDirectoryTree):
         for key, bc in vars(tree).items():
             setattr(self, key, bc)
