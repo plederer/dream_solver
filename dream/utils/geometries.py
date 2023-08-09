@@ -404,7 +404,7 @@ class Rectangle1DGrid(Grid):
             minion = [edge for edge in rectangle.edges if edge.name == bnds[1]]
 
             for b, t in zip(master, minion):
-                b.Identify(t, "periodic", IdentificationType.PERIODIC)
+                b.Identify(t, f"{bnds[0]}_{bnds[1]}_periodic", IdentificationType.PERIODIC)
 
         return rectangle
 
