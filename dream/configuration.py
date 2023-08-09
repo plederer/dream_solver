@@ -96,8 +96,12 @@ class DreAmLogger:
     _time_step_digit: int = 6
 
     @classmethod
-    def set_time_step_digit(cls, time_step):
-        cls._time_step_digit = ceil(abs(log10(time_step)))
+    def set_time_step_digit(cls, time_step: float):
+        digit = 0
+        if isinstance(time_step, float):
+            digit = str(time_step).split(".")[1]
+
+        cls._time_step_digit = len(digit)
 
     def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
         self.logger = logging.getLogger("DreAm")
