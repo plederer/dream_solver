@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import NamedTuple
 import numpy as np
+from typing import NamedTuple, TYPE_CHECKING
 from ngsolve import CF, InnerProduct
+
+if TYPE_CHECKING:
+    from .configuration import SolverConfiguration
 
 
 class State(NamedTuple):
@@ -193,3 +196,81 @@ class IdealGasCalculator(Calculator):
     def specific_inner_energy_dp(self, density, pressure):
         temperature = self.temperature_dp(density, pressure)
         return temperature/self.gamma
+
+
+class DimensionlessFarfieldValues:
+
+    @staticmethod
+    def _as_parameter(value, boolean):
+        if not boolean:
+            value = value.Get()
+        return value
+
+    @classmethod
+    def density(cls, cfg: SolverConfiguration):
+        return 1
+
+    @classmethod
+    def velocity(cls,
+                 vector: tuple[float, ...],
+                 cfg: SolverConfiguration,
+                 normalize: bool = True,
+                 as_parameter: bool = False):
+        M = cls._as_parameter(cfg.Mach_number, as_parameter)
+
+        if normalize:
+            vec = np.array(vector)
+            vector = tuple(vec/np.sqrt(np.sum(np.square(vec))))
+
+        if cfg.scaling is cfg.scaling.AERODYNAMIC:
+            factor = 1
+        elif cfg.scaling is cfg.scaling.ACOUSTIC:
+            factor = M
+        elif cfg.scaling is cfg.scaling.AEROACOUSTIC:
+            factor = M/(1+M)
+
+        return tuple(comp * factor for comp in vector)
+
+    @classmethod
+    def pressure(cls, cfg: SolverConfiguration, as_parameter: bool = False):
+        gamma = cls._as_parameter(cfg.heat_capacity_ratio, as_parameter)
+        M = cls._as_parameter(cfg.Mach_number, as_parameter)
+
+        if cfg.scaling is cfg.scaling.AERODYNAMIC:
+            factor = M**2
+        elif cfg.scaling is cfg.scaling.ACOUSTIC:
+            factor = 1
+        elif cfg.scaling is cfg.scaling.AEROACOUSTIC:
+            factor = (1 + M)**2
+
+        return cls.density(cfg)/(gamma * factor)
+
+    @classmethod
+    def temperature(cls, cfg: SolverConfiguration, as_parameter: bool = False):
+        gamma = cls._as_parameter(cfg.heat_capacity_ratio, as_parameter)
+        M = cls._as_parameter(cfg.Mach_number, as_parameter)
+
+        if cfg.scaling is cfg.scaling.AERODYNAMIC:
+            factor = M**2
+        elif cfg.scaling is cfg.scaling.ACOUSTIC:
+            factor = 1
+        elif cfg.scaling is cfg.scaling.AEROACOUSTIC:
+            factor = (1 + M)**2
+
+        return 1/((gamma - 1) * factor)
+
+    @classmethod
+    def energy(cls, cfg: SolverConfiguration, as_parameter: bool = False):
+        gamma = cls._as_parameter(cfg.heat_capacity_ratio, as_parameter)
+        M = cls._as_parameter(cfg.Mach_number, as_parameter)
+
+        p = cls.pressure(cfg, as_parameter)
+
+        if cfg.scaling is cfg.scaling.AERODYNAMIC:
+            factor = 1
+        elif cfg.scaling is cfg.scaling.ACOUSTIC:
+            factor = M**2
+        elif cfg.scaling is cfg.scaling.AEROACOUSTIC:
+            factor = (M/(1 + M))**2
+
+        return p/(gamma - 1) + cls.density(cfg)*factor/2

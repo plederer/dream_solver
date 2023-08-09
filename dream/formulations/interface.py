@@ -40,6 +40,7 @@ class RiemannSolver(enum.Enum):
 class Scaling(enum.Enum):
     ACOUSTIC = 'acoustic'
     AERODYNAMIC = 'aerodynamic'
+    AEROACOUSTIC = 'aeroacoustic'
 
 
 @dataclasses.dataclass
@@ -459,8 +460,10 @@ class _Formulation(Formulation):
                         0, 0, 0, 0, 1/Pr), dims=(5, 5))
 
         tau_d *= mu / Re
-        if self.cfg.scaling is Scaling.ACOUSTIC:
+        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
             tau_d *= self.cfg.Mach_number
+        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
+            tau_d *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
 
         return tau_d
 
@@ -474,8 +477,10 @@ class _Formulation(Formulation):
 
         k = mu / (Re * Pr)
 
-        if self.cfg.scaling is Scaling.ACOUSTIC:
+        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
             k *= self.cfg.Mach_number
+        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
+            k *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
 
         return -k * gradient_T
 
@@ -484,8 +489,10 @@ class _Formulation(Formulation):
         Re = self.cfg.Reynolds_number
 
         param = self.dynamic_viscosity(U)/Re
-        if self.cfg.scaling is Scaling.ACOUSTIC:
+        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
             param *= self.cfg.Mach_number
+        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
+            param *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
 
         return param * self.deviatoric_strain_tensor(U, Q)
 

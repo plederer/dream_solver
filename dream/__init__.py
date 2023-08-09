@@ -16,7 +16,9 @@ __all__ = [
     'SpongeFunction',
     'SpongeWeight',
     'GridDeformationFunction',
-    'IdealGasCalculator'
+    'IdealGasCalculator',
+    'INF',
+    'LOGGER'
 ]
 
 from .hdg_solver import CompressibleHDGSolver
@@ -24,10 +26,12 @@ from .configuration import SolverConfiguration, ResultsDirectoryTree, DreAmLogge
 from .io import Loader, Saver
 from .sensor import PointSensor, BoundarySensor
 from .crs import Inviscid, Constant, Sutherland
-from .state import State, IdealGasCalculator
+from .state import State, IdealGasCalculator, DimensionlessFarfieldValues
 from .region import BoundaryConditions as bcs
 from .region import DomainConditions as dcs
 from .region import SpongeFunction, BufferCoordinate, GridDeformationFunction, SpongeWeight
 
-logger = DreAmLogger(True, False)
-logger.set_level('INFO')
+LOGGER = DreAmLogger(True, False)
+LOGGER.set_level('INFO')
+
+INF = DimensionlessFarfieldValues()
