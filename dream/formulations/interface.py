@@ -599,7 +599,8 @@ class _Formulation(Formulation):
             dim = len(Lambda)
             matrix = [0] * dim**2
             for i in range(dim):
-                matrix[i*dim + i] = Lambda[i]
+                matrix[i*(dim + 1)] = Lambda[i]
+
             Lambda = CF(tuple(matrix), dims=(dim, dim))
 
         return Lambda

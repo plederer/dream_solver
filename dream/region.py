@@ -81,6 +81,9 @@ class DreamMesh:
     def _get_buffer_grid_function(self, type) -> GridFunction:
 
         fes = type.fes(self.mesh, order=type.fes_order)
+        if type is self.dcs.GridDeformation and self.is_periodic:
+            fes = Periodic(fes)
+
         u, v = fes.TnT()
         buffer = GridFunction(fes)
 
@@ -826,7 +829,7 @@ class DomainConditions(UserDict):
             return tuple(cls.SpongeOrder(high, low) for high, low in zip(range[:-1], range[1:]))
 
         def __repr__(self) -> str:
-            return f"(High: {self.high_order}, Low: {self.low_order}, State: {self.state})"
+            return f"(High: {self.order.high}, Low: {self.order.low}, State: {self.state})"
 
     class GridDeformation(_Domain):
 
