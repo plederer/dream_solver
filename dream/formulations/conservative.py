@@ -648,7 +648,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         V = L2(self.mesh, order=order, order_policy=order_policy)
         VHAT = FacetFESpace(self.mesh, order=order)
-        # VHAT = H1(self.mesh, order=order, orderinner=0)
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
 
         if p_sponge_layers:
@@ -765,17 +764,19 @@ class ConservativeFormulation2D(ConservativeFormulation):
         bonus_int_order = weight_function.space.globalorder
 
         U, V = self.TnT.PRIMAL
-        space = L2(self.mesh, order=dc.order.low)
-        V_high = V - CF(tuple(Interpolate(proxy, space) for proxy in V))
+        low_order_space = L2(self.mesh, order=dc.order.low)
 
         if dc.is_equal_order:
             state = self.calc.determine_missing(dc.state)
             ref = CF((state.density, state.momentum, state.energy))
             U_high = U - ref
+            V_high = V
 
         else:
-            U_low = CF(tuple(Interpolate(proxy, space) for proxy in U))
+            U_low = CF(tuple(Interpolate(proxy, low_order_space) for proxy in U))
+            V_low = CF(tuple(Interpolate(proxy, low_order_space) for proxy in V))
             U_high = U - U_low
+            V_high = V - V_low
 
         cf = weight_function * U_high * V_high * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
