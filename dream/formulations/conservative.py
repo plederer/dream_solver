@@ -4,7 +4,6 @@ from typing import Optional, NamedTuple
 from .interface import _Formulation, MixedMethods, TensorIndices, TestAndTrialFunction
 from ..region import BoundaryConditions as bcs
 from ..region import DomainConditions as dcs
-import numpy as np
 
 
 class Indices(NamedTuple):
@@ -766,6 +765,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
         bonus_int_order = weight_function.space.globalorder
 
         U, V = self.TnT.PRIMAL
+        space = L2(self.mesh, order=dc.order.low)
+        V_high = V - CF(tuple(Interpolate(proxy, space) for proxy in V))
 
         if dc.is_equal_order:
             state = self.calc.determine_missing(dc.state)
@@ -773,11 +774,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
             U_high = U - ref
 
         else:
-            space = L2(self.mesh, order=dc.order.low)
             U_low = CF(tuple(Interpolate(proxy, space) for proxy in U))
             U_high = U - U_low
 
-        cf = weight_function * U_high * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
+        cf = weight_function * U_high * V_high * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
 
     def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: Region, bc: bcs.Dirichlet):

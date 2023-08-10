@@ -274,3 +274,16 @@ class DimensionlessFarfieldValues:
             factor = (M/(1 + M))**2
 
         return p/(gamma - 1) + cls.density(cfg)*factor/2
+
+    @classmethod
+    def speed_of_sound(cls, cfg: SolverConfiguration, as_parameter: bool = False):
+        M = cls._as_parameter(cfg.Mach_number, as_parameter)
+
+        if cfg.scaling is cfg.scaling.AERODYNAMIC:
+            factor = 1/M
+        elif cfg.scaling is cfg.scaling.ACOUSTIC:
+            factor = 1
+        elif cfg.scaling is cfg.scaling.AEROACOUSTIC:
+            factor = 1/(1 + M)
+
+        return factor

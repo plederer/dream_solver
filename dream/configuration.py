@@ -93,15 +93,17 @@ class ResultsDirectoryTree:
 class DreAmLogger:
 
     _iteration_error_digit: int = 8
-    _time_step_digit: int = 6
+    _time_step_digit: int = 1
 
     @classmethod
     def set_time_step_digit(cls, time_step: float):
-        digit = 0
-        if isinstance(time_step, float):
-            digit = str(time_step).split(".")[1]
 
-        cls._time_step_digit = len(digit)
+        if isinstance(time_step, Parameter):
+            time_step = time_step.Get()
+
+        if isinstance(time_step, float):
+            digit = len(str(time_step).split(".")[1])
+            cls._time_step_digit = digit
 
     def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
         self.logger = logging.getLogger("DreAm")

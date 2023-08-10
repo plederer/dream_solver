@@ -231,7 +231,7 @@ class SpongeWeight:
     def target_damping(dB: float, sponge_length: float, Mach_number: float, function_integral: float):
         if not dB < 0:
             raise ValueError("Target Dezibel must be smaller zero!")
-        return dB*(1-Mach_number**2)/(-40 * np.log10(np.exp(1))) * 1/(sponge_length * function_integral)
+        return float(dB*(1-Mach_number**2)/(-40 * np.log10(np.exp(1))) * 1/(sponge_length * function_integral))
 
     @classmethod
     def constant(cls, sponge_length: float, Mach_number: float, dB: float = -40):
@@ -463,7 +463,7 @@ class GridDeformationFunction(NamedTuple):
                 a, c = self.mirror_constants
 
             x_ = (x - coord.start)/(coord.end - coord.start)
-            return a * (1 - np.exp(c * x_)) + coord.start
+            return float(a * (1 - np.exp(c * x_)) + coord.start)
 
         def __repr__(self) -> str:
             return "a exp(c x) - x"
@@ -529,7 +529,7 @@ class GridDeformationFunction(NamedTuple):
                 a, c = self.mirror_constants
 
             x_ = (x - coord.start)/(coord.end - coord.start)
-            return a * (1 - np.exp(c * x_)) + coord.start
+            return float(a * (1 - np.exp(c * x_)) + coord.start)
 
         def __repr__(self) -> str:
             return "a exp(c x) - x"
@@ -597,7 +597,7 @@ class GridDeformationFunction(NamedTuple):
                 a, c = self.mirror_constants
 
             x_ = (x - coord.start)/(coord.end - coord.start)
-            return a * np.tan(c * x_) + coord.start
+            return float(a * np.tan(c * x_) + coord.start)
 
         def __repr__(self) -> str:
             return "a tan(c x) - x"
@@ -663,7 +663,7 @@ class GridDeformationFunction(NamedTuple):
                 a, c = self.mirror_constants
 
             x_ = (x - coord.start)/(coord.end - coord.start)
-            return a * np.tan(c * x_) + coord.start
+            return float(a * np.tan(c * x_) + coord.start)
 
         def __repr__(self) -> str:
             return "a tan(c x) - x"
@@ -807,7 +807,7 @@ class DomainConditions(UserDict):
 
             super().__init__(state)
 
-            self.order = self.SpongeOrder(high_order, low_order)
+            self.order = self.SpongeOrder(int(high_order), int(low_order))
             self.sponges = sponges
 
         @property
@@ -826,7 +826,7 @@ class DomainConditions(UserDict):
         def range(cls, highest, lowest: int = 0, step: int = 1) -> tuple[SpongeOrder, ...]:
             range = np.arange(highest, lowest - 2*step, -step)
             range[range < lowest] = lowest
-            return tuple(cls.SpongeOrder(high, low) for high, low in zip(range[:-1], range[1:]))
+            return tuple(cls.SpongeOrder(int(high), int(low)) for high, low in zip(range[:-1], range[1:]))
 
         def __repr__(self) -> str:
             return f"(High: {self.order.high}, Low: {self.order.low}, State: {self.state})"

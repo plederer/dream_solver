@@ -19,47 +19,53 @@ class Benchmark(abc.ABC):
     def start(self, save_state: bool = False):
 
         self.cfg.save_state = save_state
+        self.preprocessing()
 
+        with TaskManager():
+            self.solution_routine()
+
+        self.postprocessing()
+
+    def preprocessing(self):
         mesh = self.get_mesh()
 
-        solver = CompressibleHDGSolver(mesh, self.cfg, self.tree)
+        self.solver = CompressibleHDGSolver(mesh, self.cfg, self.tree)
 
-        saver = solver.get_saver()
+        saver = self.solver.get_saver()
         saver.save_mesh()
 
-        self.set_boundary_conditions(solver)
-        self.set_domain_conditions(solver)
-        self.set_sensors(solver)
+        self.set_boundary_conditions()
+        self.set_domain_conditions()
+        self.set_sensors()
 
-        self.add_meta_data(self.cfg)
+        self.add_meta_data()
         saver.save_configuration()
         saver.save_dream_mesh()
 
-        with TaskManager():
-            self.start_solution_routine(solver)
-
-        saver.save_state_time_scheme()
-        saver.save_sensor_data()
-
-    def start_solution_routine(self, solver: CompressibleHDGSolver):
-        solver.setup()
+    def solution_routine(self):
+        self.solver.setup()
 
         if self.draw:
-            self.draw_scenes(solver)
+            self.draw_scenes()
 
-        solver.solve_transient()
+        self.solver.solve_transient()
+
+    def postprocessing(self):
+        saver = self.solver.get_saver()
+        saver.save_state_time_scheme()
+        saver.save_sensor_data()
 
     @abc.abstractmethod
     def get_mesh(self): ...
 
     @abc.abstractmethod
-    def set_boundary_conditions(self, solver: CompressibleHDGSolver): ...
+    def set_boundary_conditions(self): ...
 
     @abc.abstractmethod
-    def set_domain_conditions(self, solver: CompressibleHDGSolver): ...
+    def set_domain_conditions(self): ...
 
-    def set_sensors(self, solver: CompressibleHDGSolver): ...
+    def set_sensors(self): ...
 
-    def add_meta_data(self, cfg: SolverConfiguration): ...
+    def add_meta_data(self): ...
 
-    def draw_scenes(self, solver: CompressibleHDGSolver): ...
+    def draw_scenes(self): ...
