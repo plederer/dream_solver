@@ -770,15 +770,12 @@ class ConservativeFormulation2D(ConservativeFormulation):
             state = self.calc.determine_missing(dc.state)
             ref = CF((state.density, state.momentum, state.energy))
             U_high = U - ref
-            V_high = V
 
         else:
             U_low = CF(tuple(Interpolate(proxy, low_order_space) for proxy in U))
-            V_low = CF(tuple(Interpolate(proxy, low_order_space) for proxy in V))
             U_high = U - U_low
-            V_high = V - V_low
 
-        cf = weight_function * U_high * V_high * dx(definedon=domain, bonus_intorder=bonus_int_order)
+        cf = weight_function * U_high * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
 
     def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: Region, bc: bcs.Dirichlet):
