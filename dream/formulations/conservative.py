@@ -886,7 +886,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         ref_length = bc.reference_length
 
-        amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
+        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
         amplitude_in = CF((amp, 0, 0, 0))
 
         if bc.tang_conv_flux:
@@ -894,7 +894,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
             gradient_u_t = self.velocity_gradient(U, Q) * t
 
-            beta_l = Mn
+            beta_l = 1
             beta_t = Mn
 
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))

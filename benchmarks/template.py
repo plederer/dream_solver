@@ -38,10 +38,6 @@ class Benchmark(abc.ABC):
         self.set_domain_conditions()
         self.set_sensors()
 
-        self.add_meta_data()
-        saver.save_configuration()
-        saver.save_dream_mesh()
-
     def solution_routine(self):
         self.solver.setup()
 
@@ -51,9 +47,13 @@ class Benchmark(abc.ABC):
         self.solver.solve_transient()
 
     def postprocessing(self):
+        self.add_meta_data()
         saver = self.solver.get_saver()
+
+        saver.save_dream_mesh()
         saver.save_state_time_scheme()
         saver.save_sensor_data()
+        saver.save_configuration()
 
     @abc.abstractmethod
     def get_mesh(self): ...
