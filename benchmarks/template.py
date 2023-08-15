@@ -15,6 +15,7 @@ class Benchmark(abc.ABC):
         self.tree.update(tree)
 
         self.draw = draw
+        self.comment = None
 
     def start(self, save_state: bool = False):
 
@@ -53,7 +54,7 @@ class Benchmark(abc.ABC):
         saver.save_dream_mesh()
         saver.save_state_time_scheme()
         saver.save_sensor_data()
-        saver.save_configuration()
+        saver.save_configuration(comment=self.comment)
 
     @abc.abstractmethod
     def get_mesh(self): ...
