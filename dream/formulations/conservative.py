@@ -181,14 +181,10 @@ class ConservativeFormulation(_Formulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        u_out = self.characteristic_velocities(Uhat, self.normal, type="out", as_matrix=True)
-        u_in = self.characteristic_velocities(Uhat, self.normal, type="in", as_matrix=True)
-
-        An_out = self.DME_from_CHAR_matrix(u_out, Uhat, self.normal)
-        An_in = self.DME_from_CHAR_matrix(u_in, Uhat, self.normal)
-
+        An_out = self.convective_stabilisation_matrix(Uhat, self.normal)
+        An_in = self.convective_stabilisation_matrix(Uhat, -self.normal)
         cf = An_out * (U - Uhat)
-        cf -= An_in * (farfield - Uhat)
+        cf += An_in * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)

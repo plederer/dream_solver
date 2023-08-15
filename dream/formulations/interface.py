@@ -73,6 +73,8 @@ class TensorIndices:
 class TestAndTrialFunction:
     PRIMAL: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
     PRIMAL_FACET: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+    PRIMAL_HATHAT: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+    SURFACE_HATHAT: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
     MIXED: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
 
 
@@ -333,9 +335,13 @@ class _Formulation(Formulation):
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Uhathat, Vhathat = self.TnT.PRIMAL_HATHAT
+        Phathat, Qhathat = self.TnT.SURFACE_HATHAT
 
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
+        blf += Uhathat * Vhathat * ds(definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
+        blf += Phathat * Qhathat * ds(definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
 
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
@@ -391,9 +397,12 @@ class _Formulation(Formulation):
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-6
-            theta = un_abs/(un_abs + c)
-            IfPos(theta - theta_0, theta, theta_0)
+            if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
+                theta = c/(un_abs + c)
+            else:
+                theta_0 = 1e-6
+                theta = un_abs/(un_abs + c)
+                IfPos(theta - theta_0, theta, theta_0)
 
             if self.mesh.dim == 2:
                 Theta = CF((1, 0, 0, 0,
@@ -598,17 +607,24 @@ class _Formulation(Formulation):
             raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {[None, 'absolute', 'in', 'out']}")
 
         if self.mesh.dim == 2:
-            Lambda = (lam_m_c, lam, lam, lam_p_c)
+            if as_matrix:
+                Lambda = CF((lam_m_c, 0, 0, 0,
+                             0, lam, 0, 0,
+                             0, 0, lam, 0,
+                             0, 0, 0, lam_p_c),
+                            dims=(4, 4))
+            else:
+                Lambda = (lam_m_c, lam, lam, lam_p_c)
         elif self.mesh.dim == 3:
-            Lambda = (lam_m_c, lam, lam, lam, lam_p_c)
-
-        if as_matrix:
-            dim = len(Lambda)
-            matrix = [0] * dim**2
-            for i in range(dim):
-                matrix[i*(dim + 1)] = Lambda[i]
-
-            Lambda = CF(tuple(matrix), dims=(dim, dim))
+            if as_matrix:
+                Lambda = CF((lam_m_c, 0, 0, 0, 0,
+                             0, lam, 0, 0, 0,
+                             0, 0, lam, 0, 0,
+                             0, 0, 0, lam, 0,
+                             0, 0, 0, 0, lam_p_c),
+                            dims=(5, 5))
+            else:
+                Lambda = (lam_m_c, lam, lam, lam, lam_p_c)
 
         return Lambda
 
@@ -858,7 +874,29 @@ class _Formulation(Formulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        return self.DME_from_DVP(U) * self.DVP_from_CHAR(U, unit_vector)
+        gamma = self.cfg.heat_capacity_ratio
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+
+        if self.mesh.dim == 2:
+            d0, d1 = unit_vector
+            u = self.velocity(U)
+            ux, uy = u[0], u[1]
+
+            T = CF(
+                (1 / (2 * c ** 2),
+                 1 / c ** 2, 0, 1 / (2 * c ** 2),
+                 -d0 / (2 * c) + ux / (2 * c ** 2),
+                 ux / c ** 2, d1 * rho, d0 / (2 * c) + ux / (2 * c ** 2),
+                 -d1 / (2 * c) + uy / (2 * c ** 2),
+                 uy / c ** 2, -d0 * rho, d1 / (2 * c) + uy / (2 * c ** 2),
+                 0.5 / (gamma - 1) - d0 * ux / (2 * c) - d1 * uy / (2 * c) + InnerProduct(u, u) / (4 * c ** 2),
+                 InnerProduct(u, u) / (2 * c ** 2),
+                 -d0 * rho * uy + d1 * rho * ux, 0.5 / (gamma - 1) + d0 * ux / (2 * c) + d1 * uy / (2 * c) +
+                 InnerProduct(u, u) / (4 * c ** 2)), dims=(4, 4))
+        else:
+            raise NotImplementedError()
+        return T
 
     def DME_from_PVT(self, U):
 
@@ -987,7 +1025,24 @@ class _Formulation(Formulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        return self.CHAR_from_DVP(U, unit_vector) * self.DVP_from_DME(U)
+        gamma = self.cfg.heat_capacity_ratio
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+
+        if self.mesh.dim == 2:
+            d0, d1 = unit_vector
+            u = self.velocity(U)
+            ux, uy = u[0], u[1]
+
+            T = CF((
+                c*d0*ux + c*d1*uy + (gamma - 1)*InnerProduct(u, u)/2, -c*d0 + ux*(1 - gamma), -c*d1 + uy*(1 - gamma), gamma - 1,
+                c**2 - (gamma - 1)*InnerProduct(u, u)/2, -ux*(1 - gamma), -uy*(1 - gamma), 1 - gamma,
+                d0*uy/rho - d1*ux/rho, d1/rho, -d0/rho, 0,
+                -c*d0*ux - c*d1*uy + (gamma - 1)*InnerProduct(u, u)/2, c*d0 + ux*(1 - gamma), c*d1 + uy*(1 - gamma), gamma - 1),
+                dims=(4, 4))
+        else:
+            raise NotImplementedError()
+        return T
 
     def CHAR_from_PVT(self, U, unit_vector: CF) -> CF:
         return self.CHAR_from_DVP(U, unit_vector) * self.DVP_from_PVT(U)
