@@ -73,6 +73,8 @@ class TensorIndices:
 class TestAndTrialFunction:
     PRIMAL: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
     PRIMAL_FACET: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+    PRIMAL_HATHAT: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+    SURFACE_HATHAT: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
     MIXED: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
 
 
@@ -334,8 +336,16 @@ class _Formulation(Formulation):
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
+        nscbc = self.dmesh.bcs.outflow_nscbc
+        if nscbc:
+            Uhathat, Vhathat = self.TnT.PRIMAL_HATHAT
+            Phathat, Qhathat = self.TnT.SURFACE_HATHAT
+
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
+        if nscbc:
+            blf += Uhathat * Vhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
+            blf += Phathat * Qhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
 
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED

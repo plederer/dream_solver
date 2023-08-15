@@ -96,11 +96,19 @@ class ConservativeFormulation(_Formulation):
             _, Vhat = self.TnT.PRIMAL_FACET
             _, P = self.TnT.MIXED
 
+            nscbc = self.dmesh.bcs.outflow_nscbc
+            if nscbc:
+                _, Vhathat = self.TnT.PRIMAL_HATHAT
+                _, Qhathat = self.TnT.SURFACE_HATHAT
+
             state = self.calc.determine_missing(dc.state)
             U_f = CF((state.density, state.momentum, state.energy))
 
             cf = U_f * V * dx(definedon=domain, bonus_intorder=bonus_vol)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
+            if nscbc:
+                cf += U_f * Vhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
+                cf += CF((0, 0, 0, 0)) * Qhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
 
             if mixed_method is MixedMethods.GRADIENT:
                 Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
@@ -643,8 +651,22 @@ class ConservativeFormulation2D(ConservativeFormulation):
             order_policy = ORDER_POLICY.VARIABLE
 
         V = L2(self.mesh, order=order, order_policy=order_policy)
-        VHAT = FacetFESpace(self.mesh, order=order)
+        VHAT = FacetFESpace(self.mesh, order=order, nodal=False)
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
+
+        nscbc = self.dmesh.bcs.outflow_nscbc
+        if nscbc:
+            VHATHAT = H1(self.mesh, order=1)
+            bnd_dofs = VHATHAT.GetDofs(self.dmesh.boundary(self.dmesh.pattern(nscbc)))
+            VHATHAT = Compress(VHATHAT, bnd_dofs)
+            print(VHATHAT.ndof)
+
+            QHATHAT = SurfaceL2(self.mesh, order=1, nodal=True)
+            bnd_dofs = QHATHAT.GetDofs(self.dmesh.boundary(self.dmesh.pattern(nscbc)))
+            QHATHAT = Compress(QHATHAT, bnd_dofs)
+            print(QHATHAT.ndof)
+
+            self.boolean = True
 
         if p_sponge_layers:
 
@@ -669,7 +691,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         if self.dmesh.is_periodic:
             VHAT = Periodic(VHAT)
 
-        space = V**4 * VHAT**4
+        space = V**4 * VHAT**4 * VHATHAT**4 * QHATHAT**4
 
         if mixed_method is MixedMethods.NONE:
             pass
@@ -861,6 +883,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Uhathat, Vhathat = self.TnT.PRIMAL_HATHAT
+        Phathat, Qhathat = self.TnT.SURFACE_HATHAT
+
         Q, _ = self.TnT.MIXED
 
         time_levels_gfu = self._gfus.get_component(1)
@@ -882,7 +907,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         ref_length = bc.reference_length
 
-        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
+        amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
         amplitude_in = CF((amp, 0, 0, 0))
 
         if bc.tang_conv_flux:
@@ -896,7 +921,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
             amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
-            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(U) * t)) * Vhat
+            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(Uhat) * t)) * Vhat
             amplitude_in -= CF((amp_t, 0, 0, 0))
 
         if not mu.is_inviscid:
@@ -928,6 +953,18 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf += (P * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
+
+
+        # # cf += 1e6*(Uhat.Trace() - Uhathat) * (Vhat.Trace() - Vhathat) * ds(element_boundary=True)
+
+
+        if self.boolean:
+            cf = -1e-8*(Phathat * Qhathat) * ds(element_vb=BBND)#element_boundary=True)
+            cf += -1e-8*(Uhathat * Vhathat) * ds(element_vb=BBND)#element_boundary=True)
+            cf = (Uhat.Trace() - Uhathat) * Qhathat * ds(element_boundary=True)
+            cf += (Vhat.Trace() - Vhathat) * Phathat * ds(element_boundary=True)
+            blf += cf.Compile(compile_flag)
+            self.boolean = False
 
     def conservative_diffusive_jacobian_x(self, U, Q):
 

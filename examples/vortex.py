@@ -7,26 +7,26 @@ from ngsolve.meshes import MakeStructured2DMesh
 ngsglobals.msg_level = 0
 SetNumThreads(8)
 
-periodic = False
+periodic = True
 circle = False
 structured = False
 maxh = 0.1
 
 cfg = SolverConfiguration()
-cfg.formulation = "primitive"
+cfg.formulation = "conservative"
 # cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
 # cfg.mixed_method = "strain_heat"
 # cfg.mixed_method = None
-cfg.scaling = "acoustic"
+cfg.scaling = "aeroacoustic"
 cfg.riemann_solver = 'hllem'
 
 cfg.Reynolds_number = 166
-cfg.Mach_number = 0.42
+cfg.Mach_number = 0.3
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
-cfg.order = 4
+cfg.order = 3
 cfg.bonus_int_order_bnd = 0
 cfg.bonus_int_order_vol = 0
 
@@ -57,7 +57,7 @@ else:
         N = int(1 / maxh)
         mesh = MakeStructured2DMesh(False, N, N, periodic_y=periodic, mapping=lambda x, y: (x - 0.5, y - 0.5))
     else:
-        face = WorkPlane().RectangleC(1, 1).Face()
+        face = WorkPlane().RectangleC(2, 2).Face()
 
         for bc, edge in zip(['bottom', 'right', 'top', 'left'], face.edges):
             edge.name = bc
@@ -69,16 +69,17 @@ else:
 gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
 
-rho_inf = 1
+rho_inf = INF.density(cfg)
 alpha = 0
-u_inf = cfg.Mach_number * CF((cos(alpha), sin(alpha)))
-p_inf = 1/gamma
-T_inf = gamma/(gamma - 1) * p_inf/rho_inf
-c = sqrt(gamma * p_inf/rho_inf)
+u_inf = (1, 0)
+u_inf = CF(INF.velocity(u_inf, cfg))
+p_inf = INF.pressure(cfg)
+T_inf = INF.temperature(cfg)
+c = INF.speed_of_sound(cfg)
 
 farfield = State(u_inf, rho_inf, p_inf)
 
-Gamma = 0.02
+Gamma = 0.001
 Rv = 0.1
 r = sqrt(x**2 + y**2)
 psi = Gamma * exp(-r**2/(2*Rv**2))
@@ -91,12 +92,12 @@ p_00 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2)
 initial = State(u_0, rho_0, p_0)
 
 # Vortex Isentropic
-constant = (gamma-1)/(2*gamma) * rho_inf/p_inf
-u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
-p_0 = p_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(gamma/(gamma - 1))
-rho_0 = rho_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(1/(gamma - 1))
-p_00 = p_inf * (1 - constant * (Gamma/Rv)**2)**(gamma/(gamma - 1))
-initial = State(u_0, rho_0, p_0)
+# constant = (gamma-1)/(2*gamma) * rho_inf/p_inf
+# u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
+# p_0 = p_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(gamma/(gamma - 1))
+# rho_0 = rho_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(1/(gamma - 1))
+# p_00 = p_inf * (1 - constant * (Gamma/Rv)**2)**(gamma/(gamma - 1))
+# initial = State(u_0, rho_0, p_0)
 
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set(bcs.FarField(farfield), "left|right")

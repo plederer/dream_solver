@@ -896,6 +896,10 @@ class BoundaryConditions(UserDict):
         keys = [key for key, bc in self.items() if isinstance(bc, self._Boundary) and not isinstance(bc, self.Periodic)]
         return "|".join(keys)
 
+    @property
+    def outflow_nscbc(self) -> dict[str, Outflow_NSCBC]:
+        return {bnd: bc for bnd, bc in self.items() if isinstance(bc, self.Outflow_NSCBC)}
+
     class _Boundary(Condition):
         ...
 
