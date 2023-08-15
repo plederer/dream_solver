@@ -7,24 +7,24 @@ ngsglobals.msg_level = 0
 SetNumThreads(8)
 
 circle = False
-structured = True
-maxh = 0.2
+structured = False
+maxh = 0.1
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
-cfg.scaling = "aerodynamic"
-cfg.dynamic_viscosity = "constant"
+cfg.scaling = "acoustic"
+# cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
-cfg.mixed_method = "strain_heat"
+# cfg.mixed_method = "strain_heat"
 # cfg.mixed_method = None
 cfg.riemann_solver = 'hllem'
 
 cfg.Reynolds_number = 166
-cfg.Mach_number = 0.42
+cfg.Mach_number = 0
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
-cfg.order = 4
+cfg.order = 3
 cfg.bonus_int_order_bnd = 0
 cfg.bonus_int_order_vol = 0
 
@@ -60,15 +60,15 @@ else:
         for bc, edge in zip(['bottom', 'right', 'top', 'left'], face.edges):
             edge.name = bc
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
-mesh.Refine()
+# mesh.Refine()
+
 gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
 
-alpha = 0
-u_inf = CF((cos(alpha), sin(alpha)))
-rho_inf = 1
-p_inf = 1/(M**2 * gamma)
-farfield = State(u_inf, rho_inf, p_inf)
+farfield = INF.farfield((1,0), cfg)
+u_inf = CF(farfield.velocity)
+rho_inf = farfield.density
+p_inf = farfield.pressure
 
 # # Pressure Pulse
 Gamma = 0.02
@@ -79,14 +79,14 @@ initial = State(u_inf, rho_inf, p_0)
 
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set(bcs.FarField(farfield), 'left')
-solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf, 0, 1, False), 'right|top|bottom')
+solver.boundary_conditions.set(bcs.FarField(farfield), 'left|right|bottom|top')
+solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf, 0, 1, False), 'left|right|top|bottom')
 solver.domain_conditions.set(dcs.Initial(initial))
-
 with TaskManager():
     solver.setup()
 
     solver.drawer.draw(energy=True)
     solver.drawer.draw_particle_velocity(u_inf)
     solver.drawer.draw_acoustic_pressure(p_inf)
+
     solver.solve_transient()

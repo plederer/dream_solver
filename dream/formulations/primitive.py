@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from ngsolve import *
 
-from .interface import TestAndTrialFunction, MixedMethods, _Formulation
+from .interface import FiniteElementSpace, MixedMethods, _Formulation
 from ..region import BoundaryConditions as bcs
 from ..region import DomainConditions as dcs
 
@@ -416,19 +416,16 @@ class PrimitiveFormulation2D(PrimitiveFormulation):
         if self.dmesh.is_periodic:
             VHAT = Periodic(VHAT)
 
-        space = V**4 * VHAT**4
+        spaces = FiniteElementSpace.Settings(V**4, VHAT**4)
 
         if mixed_method is MixedMethods.NONE:
             pass
         elif mixed_method is MixedMethods.GRADIENT:
-            space *= Q**4
+            spaces.MIXED = Q**4
         else:
             raise NotImplementedError(f"Mixed method {mixed_method} not implemented for {self}!")
 
-        return space
-
-    def _initialize_TnT(self) -> TestAndTrialFunction:
-        return TestAndTrialFunction(*zip(*self.fes.TnT()))
+        return FiniteElementSpace.from_settings(spaces)
 
     # def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: str, bc: co.NRBC_Outflow):
 

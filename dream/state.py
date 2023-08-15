@@ -207,6 +207,20 @@ class DimensionlessFarfieldValues:
         return value
 
     @classmethod
+    def farfield(cls,
+                 direction: tuple[float, ...],
+                 cfg: SolverConfiguration,
+                 normalize: bool = True,
+                 as_parameter: bool = False) -> State:
+
+        rho = cls.density(cfg)
+        u = cls.velocity(direction, cfg, normalize, as_parameter)
+        p = cls.pressure(cfg, as_parameter)
+        T = cls.temperature(cfg, as_parameter)
+        rho_E = cls.energy(cfg, as_parameter)
+        return State(u, rho, p, T, rho_E)
+
+    @classmethod
     def density(cls, cfg: SolverConfiguration):
         return 1
 
@@ -218,7 +232,9 @@ class DimensionlessFarfieldValues:
                  as_parameter: bool = False):
         M = cls._as_parameter(cfg.Mach_number, as_parameter)
 
-        if normalize:
+        if np.allclose(vector, 0.0):
+            ...
+        elif normalize:
             vec = np.array(vector)
             vector = tuple(vec/np.sqrt(np.sum(np.square(vec))))
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ngsolve import *
 from typing import Optional, NamedTuple
-from .interface import _Formulation, MixedMethods, TensorIndices, TestAndTrialFunction
+from .interface import _Formulation, MixedMethods, TensorIndices, FiniteElementSpace
 from ..region import BoundaryConditions as bcs
 from ..region import DomainConditions as dcs
 
@@ -101,6 +101,12 @@ class ConservativeFormulation(_Formulation):
 
             cf = U_f * V * dx(definedon=domain, bonus_intorder=bonus_vol)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
+
+            nscbc = self.dmesh.bcs.nscbc_boundaries
+            if nscbc:
+                nscbc = self.dmesh.boundary(self.dmesh.pattern(nscbc))
+                _, Vhathat = self.TnT.NSCBC
+                lf += U_f * Vhathat * ds(element_boundary=True, definedon=nscbc)
 
             if mixed_method is MixedMethods.GRADIENT:
                 Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
@@ -629,7 +635,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
                        STRAIN=TensorIndices(XX=0, XY=1, YX=1, YY=2),
                        TEMPERATURE_GRADIENT=slice(3, 5))
 
-    def _initialize_FE_space(self) -> ProductSpace:
+    def _initialize_FE_space(self) -> FiniteElementSpace:
 
         order = self.cfg.order
         mixed_method = self.cfg.mixed_method
@@ -669,21 +675,28 @@ class ConservativeFormulation2D(ConservativeFormulation):
         if self.dmesh.is_periodic:
             VHAT = Periodic(VHAT)
 
-        space = V**4 * VHAT**4
+        spaces = FiniteElementSpace.Settings(V**4, VHAT**4)
+
+        nscbc = self.dmesh.bcs.nscbc_boundaries
+        if nscbc:
+            VHATHAT = H1(self.mesh, order=1)
+            bnd_dofs = VHATHAT.GetDofs(self.dmesh.boundary(self.dmesh.pattern(nscbc)))
+            VHATHAT = Compress(VHATHAT, bnd_dofs)
+            if self.dmesh.is_periodic:
+                VHATHAT = Periodic(VHATHAT)
+            spaces.NSCBC = VHATHAT**4
+
 
         if mixed_method is MixedMethods.NONE:
             pass
         elif mixed_method is MixedMethods.STRAIN_HEAT:
-            space *= V**5
+            spaces.MIXED = V**5
         elif mixed_method is MixedMethods.GRADIENT:
-            space *= Q**4
+            spaces.MIXED = Q**4
         else:
             raise NotImplementedError(f"Mixed method {mixed_method} not implemented for {self}!")
 
-        return space
-
-    def _initialize_TnT(self) -> TestAndTrialFunction:
-        return TestAndTrialFunction(*zip(*self.fes.TnT()))
+        return FiniteElementSpace.from_settings(spaces)
 
     def _add_mixed_bilinearform(self, blf):
 
@@ -861,6 +874,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Uhathat, Vhathat = self.TnT.NSCBC
         Q, _ = self.TnT.MIXED
 
         time_levels_gfu = self._gfus.get_component(1)
@@ -882,7 +896,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         ref_length = bc.reference_length
 
-        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
+        amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
         amplitude_in = CF((amp, 0, 0, 0))
 
         if bc.tang_conv_flux:
@@ -896,7 +910,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
             amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
-            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(U) * t)) * Vhat
+            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(Uhat) * t)) * Vhat
             amplitude_in -= CF((amp_t, 0, 0, 0))
 
         if not mu.is_inviscid:
@@ -927,6 +941,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
         amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
         cf += (P * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        blf += cf.Compile(compile_flag)
+
+        cf = self.cfg.order**2/self.meshsize * (Uhat.Trace() - Uhathat) * (
+            Vhat.Trace() - Vhathat) * ds(element_boundary=True, definedon=boundary)
         blf += cf.Compile(compile_flag)
 
     def conservative_diffusive_jacobian_x(self, U, Q):
