@@ -686,7 +686,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
                 VHATHAT = Periodic(VHATHAT)
             spaces.NSCBC = VHATHAT**4
 
-
         if mixed_method is MixedMethods.NONE:
             pass
         elif mixed_method is MixedMethods.STRAIN_HEAT:
@@ -896,7 +895,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         ref_length = bc.reference_length
 
-        amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
+        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
         amplitude_in = CF((amp, 0, 0, 0))
 
         if bc.tang_conv_flux:

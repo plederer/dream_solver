@@ -3,6 +3,7 @@ Simulation of an Gaussian pressure pulse in an Euler setting at
 Mach number zero and polynomial order 6. The sound region consists of a
 square domain with bounding box (-1, -1) x (1, 1).
 """
+from dream import ResultsDirectoryTree, SolverConfiguration
 from ngsolve import *
 from netgen.occ import OCCGeometry
 from dream import *
@@ -11,14 +12,14 @@ from benchmarks.template import Benchmark
 from math import log
 
 ngsglobals.msg_level = 0
-SetNumThreads(8)
+SetNumThreads(32)
 
 tree = ResultsDirectoryTree()
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
 cfg.scaling = "acoustic"
-cfg.riemann_solver = 'hllem'
+cfg.riemann_solver = 'lax_friedrich'
 
 cfg.Mach_number = 0
 cfg.heat_capacity_ratio = 1.4
@@ -29,8 +30,8 @@ cfg.bonus_int_order_vol = cfg.order
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 0.05
-cfg.time.interval = (0, 50)
+cfg.time.step = 0.025
+cfg.time.interval = (0, 100)
 
 cfg.linear_solver = "pardiso"
 cfg.damping_factor = 1
@@ -47,7 +48,7 @@ u_inf = CF(farfield.velocity)
 p_inf = farfield.pressure
 
 # Initial values
-AMP, beta = 0.8, 0.25
+AMP, beta = 0.5, 0.25
 u_0 = u_inf
 p_0 = p_inf * (1 + AMP * exp(-log(2)*(x**2 + y**2)/beta**2))
 rho_0 = rho_inf * (1 + AMP * exp(-log(2)*(x**2 + y**2)/beta**2))
@@ -61,13 +62,16 @@ class Pulse(Benchmark):
                  tree: ResultsDirectoryTree,
                  maxh: float = 0.2,
                  buffer: bool = False,
+                 factor: int = 1,
                  draw: bool = False) -> None:
 
         super().__init__(cfg, tree, draw)
 
         self.sound = RectangleDomain(H=2, W=2, mat="sound", maxh=maxh)
         self.buffer = buffer
+        self.factor = factor
         self.comment = __doc__
+        self.save_state_every = 2
 
     def add_meta_data(self):
         self.cfg.info["Sound Domain"] = (f"W: {self.sound.W}, H: {self.sound.H}")
@@ -77,9 +81,10 @@ class Pulse(Benchmark):
         main = RectangleGrid(self.sound)
 
         if self.buffer:
-            sponge_length = self.sound.W
+            sponge_length = self.factor * self.sound.W
             maxh = sponge_length/(self.cfg.order + 1)
-            rings = [RectangleDomain(2*maxh, 2*maxh, mat=str(k), maxh=maxh) for k in range(self.cfg.order, -1, -1)]
+            rings = [RectangleDomain(2*maxh, 2*maxh, mat=str(k), maxh=maxh/self.factor)
+                     for k in range(self.cfg.order, -1, -1)]
 
             for ring in rings:
                 main.add_ring(ring)
@@ -105,7 +110,7 @@ class NSCBC(Pulse):
                  dim: str = "1d",
                  draw: bool = False) -> None:
         super().__init__(cfg, tree, buffer=False, draw=draw)
-        name = f"nscbc{dim}"
+        name = f"nscbc_{dim}"
         self.tree.directory_name = name
 
         self.dim = dim
@@ -136,22 +141,17 @@ class PSponge(Pulse):
                  tree: ResultsDirectoryTree,
                  dB: float,
                  projection: str,
+                 factor: int = 1,
                  draw: bool = False) -> None:
-        super().__init__(cfg, tree, buffer=True, draw=draw)
+        super().__init__(cfg, tree, buffer=True, factor=factor, draw=draw)
 
         self.projection = projection
         self.dB = dB
-
-        name = f"psponge_P{projection}_dB{-dB}"
-        self.tree.directory_name = name
 
         if projection == "k":
             self.order = dcs.PSpongeLayer.range(self.cfg.order)
         elif projection == "0":
             self.order = tuple(dcs.PSpongeLayer.SpongeOrder(k, 0) for k in range(cfg.order, -1, -1))
-
-    def set_boundary_conditions(self):
-        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf), "left|right|bottom|top")
 
     def add_meta_data(self):
         super().add_meta_data()
@@ -215,6 +215,36 @@ class PSponge(Pulse):
         self.sponge_y = sponge_y
 
 
+class PSpongeNSCBC(PSponge):
+
+    def __init__(
+            self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, projection: str, factor: int = 1,
+            draw: bool = False) -> None:
+        super().__init__(cfg, tree, dB, projection, factor, draw)
+        name = f"psponge_nscbc_P{projection}_dB{-dB}"
+        if factor != 1:
+            name += f"_fac{factor}"
+        self.tree.directory_name = name
+
+    def set_boundary_conditions(self):
+        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf), "left|right|bottom|top")
+
+
+class PSpongeFarfield(PSponge):
+
+    def __init__(
+            self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, projection: str, factor: int = 1,
+            draw: bool = False) -> None:
+        super().__init__(cfg, tree, dB, projection, factor, draw)
+        name = f"psponge_farfield_P{projection}_dB{-dB}"
+        if factor != 1:
+            name += f"_fac{factor}"
+        self.tree.directory_name = name
+
+    def set_boundary_conditions(self):
+        self.solver.boundary_conditions.set(bcs.FarField(farfield), "left|right|bottom|top")
+
+
 class Sponge(Pulse):
 
     def __init__(self,
@@ -223,14 +253,7 @@ class Sponge(Pulse):
                  dB: float,
                  draw: bool = False) -> None:
         super().__init__(cfg, tree, buffer=True, draw=draw)
-
         self.dB = dB
-
-        name = f"sponge_dB{-dB}"
-        self.tree.directory_name = name
-
-    def set_boundary_conditions(self):
-        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf), "left|right|bottom|top")
 
     def add_meta_data(self):
         super().add_meta_data()
@@ -274,17 +297,53 @@ class Sponge(Pulse):
         self.sponge_y = sponge_y
 
 
+class SpongeNSCBC(Sponge):
+    def __init__(self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, draw: bool = False) -> None:
+        super().__init__(cfg, tree, dB, draw)
+        name = f"sponge_nscbc_dB{-dB}"
+        self.tree.directory_name = name
+
+    def set_boundary_conditions(self):
+        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf), "left|right|bottom|top")
+
+
+class SpongeFarfield(Sponge):
+    def __init__(self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, draw: bool = False) -> None:
+        super().__init__(cfg, tree, dB, draw)
+        name = f"sponge_farfield_dB{-dB}"
+        self.tree.directory_name = name
+
+    def set_boundary_conditions(self):
+        self.solver.boundary_conditions.set(bcs.FarField(farfield), "left|right|bottom|top")
+
+
 if __name__ == "__main__":
 
     benchmarks = [
         NSCBC(cfg, tree, "1d"),
         NSCBC(cfg, tree, "2d"),
-        Sponge(cfg, tree, dB=-40),
-        Sponge(cfg, tree, dB=-200),
-        PSponge(cfg, tree, dB=-40, projection="0"),
-        PSponge(cfg, tree, dB=-200, projection="0"),
-        PSponge(cfg, tree, dB=-40, projection="k"),
-        PSponge(cfg, tree, dB=-200, projection="k"),
+        SpongeNSCBC(cfg, tree, dB=-40),
+        SpongeNSCBC(cfg, tree, dB=-200),
+        SpongeFarfield(cfg, tree, dB=-40),
+        SpongeFarfield(cfg, tree, dB=-200),
+        PSpongeNSCBC(cfg, tree, dB=-40, projection="0"),
+        PSpongeNSCBC(cfg, tree, dB=-200, projection="0"),
+        PSpongeNSCBC(cfg, tree, dB=-40, projection="k"),
+        PSpongeNSCBC(cfg, tree, dB=-200, projection="k"),
+        PSpongeFarfield(cfg, tree, dB=-40, projection="0"),
+        PSpongeFarfield(cfg, tree, dB=-200, projection="0"),
+        PSpongeFarfield(cfg, tree, dB=-40, projection="k"),
+        PSpongeFarfield(cfg, tree, dB=-200, projection="k"),
+        PSpongeFarfield(cfg, tree, dB=-40, projection="0", factor=2),
+        PSpongeFarfield(cfg, tree, dB=-200, projection="0", factor=2),
+        PSpongeFarfield(cfg, tree, dB=-40, projection="k", factor=2),
+        PSpongeFarfield(cfg, tree, dB=-200, projection="k", factor=2),
+    ]
+
+    benchmarks = [
+        NSCBC(cfg, tree, "2d", draw=True),
+        SpongeNSCBC(cfg, tree, dB=-40, draw=True),
+        PSpongeFarfield(cfg, tree, dB=-200, projection="k", factor=2, draw=True),
     ]
 
     for benchmark in benchmarks:
