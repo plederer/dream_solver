@@ -77,14 +77,14 @@ class FiniteElementSpace(NamedTuple):
 
     class Settings:
 
-        def __init__(self, 
-                     PRIMAL, 
-                     PRIMAL_FACET, 
-                     MIXED=None, 
-                     PML=None, 
-                     NSCBC=None, 
+        def __init__(self,
+                     PRIMAL,
+                     PRIMAL_FACET,
+                     MIXED=None,
+                     PML=None,
+                     NSCBC=None,
                      **kwargs) -> None:
-        
+
             self.PRIMAL = PRIMAL
             self.PRIMAL_FACET = PRIMAL_FACET
             self.MIXED = MIXED
@@ -97,7 +97,7 @@ class FiniteElementSpace(NamedTuple):
 
     @classmethod
     def from_settings(cls, settings: Settings):
-        
+
         fes = settings.PRIMAL * settings.PRIMAL_FACET
 
         settings = vars(settings)
@@ -374,12 +374,6 @@ class _Formulation(Formulation):
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
 
-        nscbc = self.dmesh.bcs.nscbc_boundaries
-        if nscbc:
-            nscbc = self.dmesh.boundary(self.dmesh.pattern(nscbc))
-            Uhathat, Vhathat = self.TnT.NSCBC
-            blf += Uhathat * Vhathat * ds(element_boundary=True, definedon=nscbc)
-
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
             blf += Q * P * dx
@@ -418,8 +412,9 @@ class _Formulation(Formulation):
     def convective_stabilisation_matrix(self, Uhat, unit_vector):
         riemann_solver = self.cfg.riemann_solver
         un = InnerProduct(self.velocity(Uhat), unit_vector)
-        un_abs = IfPos(un, un, -un)
         c = self.speed_of_sound(Uhat)
+        un_abs = IfPos(un, un, -un)
+        splus = IfPos(un + c, un + c, 0)
 
         if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
             lambda_max = un_abs + c
@@ -430,16 +425,12 @@ class _Formulation(Formulation):
             stabilisation_matrix = self.DME_from_CHAR_matrix(Lambda_abs, Uhat, unit_vector)
 
         elif riemann_solver is RiemannSolver.HLL:
-            splus = IfPos(un + c, un + c, 0)
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
-                theta = c/(un_abs + c)
-            else:
-                theta_0 = 1e-6
-                theta = un_abs/(un_abs + c)
-                IfPos(theta - theta_0, theta, theta_0)
+            theta_0 = 1e-8
+            theta = un_abs/(un_abs + c)
+            theta = IfPos(theta - theta_0, theta, theta_0)
 
             if self.mesh.dim == 2:
                 Theta = CF((1, 0, 0, 0,
@@ -455,7 +446,6 @@ class _Formulation(Formulation):
                             0, 0, 0, 0, 1), dims=(5, 5))
 
             Theta = self.DME_from_CHAR_matrix(Theta, Uhat, unit_vector)
-            splus = IfPos(un + c, un + c, 0)
 
             stabilisation_matrix = splus * Theta
 

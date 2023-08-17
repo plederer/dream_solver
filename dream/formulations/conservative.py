@@ -102,12 +102,6 @@ class ConservativeFormulation(_Formulation):
             cf = U_f * V * dx(definedon=domain, bonus_intorder=bonus_vol)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
 
-            nscbc = self.dmesh.bcs.nscbc_boundaries
-            if nscbc:
-                nscbc = self.dmesh.boundary(self.dmesh.pattern(nscbc))
-                _, Vhathat = self.TnT.NSCBC
-                lf += U_f * Vhathat * ds(element_boundary=True, definedon=nscbc)
-
             if mixed_method is MixedMethods.GRADIENT:
                 Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
                 cf += InnerProduct(Q_f, P) * dx(definedon=domain, bonus_intorder=bonus_vol)
@@ -640,6 +634,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         order = self.cfg.order
         mixed_method = self.cfg.mixed_method
 
+        nscbc = self.dmesh.bcs.nscbc_boundaries
         p_sponge_layers = self.dmesh.dcs.psponge_layers
         if self.dmesh.highest_order_psponge > order:
             raise ValueError("Polynomial sponge order higher than polynomial discretization order")
@@ -650,6 +645,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         V = L2(self.mesh, order=order, order_policy=order_policy)
         VHAT = FacetFESpace(self.mesh, order=order)
+        if nscbc:
+            VHAT = H1(self.mesh, order=order, orderinner=0)
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
 
         if p_sponge_layers:
@@ -676,15 +673,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
             VHAT = Periodic(VHAT)
 
         spaces = FiniteElementSpace.Settings(V**4, VHAT**4)
-
-        nscbc = self.dmesh.bcs.nscbc_boundaries
-        if nscbc:
-            VHATHAT = H1(self.mesh, order=1)
-            bnd_dofs = VHATHAT.GetDofs(self.dmesh.boundary(self.dmesh.pattern(nscbc)))
-            VHATHAT = Compress(VHATHAT, bnd_dofs)
-            if self.dmesh.is_periodic:
-                VHATHAT = Periodic(VHATHAT)
-            spaces.NSCBC = VHATHAT**4
 
         if mixed_method is MixedMethods.NONE:
             pass
@@ -903,13 +891,13 @@ class ConservativeFormulation2D(ConservativeFormulation):
             gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
             gradient_u_t = self.velocity_gradient(U, Q) * t
 
-            beta_l = 1
+            beta_l = Mn
             beta_t = Mn
 
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
             amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
-            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(Uhat) * t)) * Vhat
+            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(U) * t)) * Vhat
             amplitude_in -= CF((amp_t, 0, 0, 0))
 
         if not mu.is_inviscid:
@@ -940,10 +928,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
         amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
         cf += (P * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
-        blf += cf.Compile(compile_flag)
-
-        cf = self.cfg.order**2/self.meshsize * (Uhat.Trace() - Uhathat) * (
-            Vhat.Trace() - Vhathat) * ds(element_boundary=True, definedon=boundary)
         blf += cf.Compile(compile_flag)
 
     def conservative_diffusive_jacobian_x(self, U, Q):

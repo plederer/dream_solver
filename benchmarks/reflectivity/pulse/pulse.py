@@ -1,4 +1,4 @@
-""" 
+"""
 Simulation of an Gaussian pressure pulse in an Euler setting at
 Mach number zero and polynomial order 6. The sound region consists of a
 square domain with bounding box (-1, -1) x (1, 1).
@@ -30,7 +30,7 @@ cfg.bonus_int_order_vol = cfg.order
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 0.025
+cfg.time.step = 0.05
 cfg.time.interval = (0, 100)
 
 cfg.linear_solver = "pardiso"
@@ -148,6 +148,11 @@ class PSponge(Pulse):
         self.projection = projection
         self.dB = dB
 
+        name = f"psponge_P{projection}_dB{-dB}"
+        if factor != 1:
+            name += f"_fac{factor}"
+        self.tree.directory_name = name
+
         if projection == "k":
             self.order = dcs.PSpongeLayer.range(self.cfg.order)
         elif projection == "0":
@@ -214,33 +219,6 @@ class PSponge(Pulse):
         self.sponge_x = sponge_x
         self.sponge_y = sponge_y
 
-
-class PSpongeNSCBC(PSponge):
-
-    def __init__(
-            self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, projection: str, factor: int = 1,
-            draw: bool = False) -> None:
-        super().__init__(cfg, tree, dB, projection, factor, draw)
-        name = f"psponge_nscbc_P{projection}_dB{-dB}"
-        if factor != 1:
-            name += f"_fac{factor}"
-        self.tree.directory_name = name
-
-    def set_boundary_conditions(self):
-        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf), "left|right|bottom|top")
-
-
-class PSpongeFarfield(PSponge):
-
-    def __init__(
-            self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, projection: str, factor: int = 1,
-            draw: bool = False) -> None:
-        super().__init__(cfg, tree, dB, projection, factor, draw)
-        name = f"psponge_farfield_P{projection}_dB{-dB}"
-        if factor != 1:
-            name += f"_fac{factor}"
-        self.tree.directory_name = name
-
     def set_boundary_conditions(self):
         self.solver.boundary_conditions.set(bcs.FarField(farfield), "left|right|bottom|top")
 
@@ -254,6 +232,9 @@ class Sponge(Pulse):
                  draw: bool = False) -> None:
         super().__init__(cfg, tree, buffer=True, draw=draw)
         self.dB = dB
+
+        name = f"sponge_dB{-dB}"
+        self.tree.directory_name = name
 
     def add_meta_data(self):
         super().add_meta_data()
@@ -296,23 +277,6 @@ class Sponge(Pulse):
         self.sponge_x = sponge_x
         self.sponge_y = sponge_y
 
-
-class SpongeNSCBC(Sponge):
-    def __init__(self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, draw: bool = False) -> None:
-        super().__init__(cfg, tree, dB, draw)
-        name = f"sponge_nscbc_dB{-dB}"
-        self.tree.directory_name = name
-
-    def set_boundary_conditions(self):
-        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf), "left|right|bottom|top")
-
-
-class SpongeFarfield(Sponge):
-    def __init__(self, cfg: SolverConfiguration, tree: ResultsDirectoryTree, dB: float, draw: bool = False) -> None:
-        super().__init__(cfg, tree, dB, draw)
-        name = f"sponge_farfield_dB{-dB}"
-        self.tree.directory_name = name
-
     def set_boundary_conditions(self):
         self.solver.boundary_conditions.set(bcs.FarField(farfield), "left|right|bottom|top")
 
@@ -322,28 +286,16 @@ if __name__ == "__main__":
     benchmarks = [
         NSCBC(cfg, tree, "1d"),
         NSCBC(cfg, tree, "2d"),
-        SpongeNSCBC(cfg, tree, dB=-40),
-        SpongeNSCBC(cfg, tree, dB=-200),
-        SpongeFarfield(cfg, tree, dB=-40),
-        SpongeFarfield(cfg, tree, dB=-200),
-        PSpongeNSCBC(cfg, tree, dB=-40, projection="0"),
-        PSpongeNSCBC(cfg, tree, dB=-200, projection="0"),
-        PSpongeNSCBC(cfg, tree, dB=-40, projection="k"),
-        PSpongeNSCBC(cfg, tree, dB=-200, projection="k"),
-        PSpongeFarfield(cfg, tree, dB=-40, projection="0"),
-        PSpongeFarfield(cfg, tree, dB=-200, projection="0"),
-        PSpongeFarfield(cfg, tree, dB=-40, projection="k"),
-        PSpongeFarfield(cfg, tree, dB=-200, projection="k"),
-        PSpongeFarfield(cfg, tree, dB=-40, projection="0", factor=2),
-        PSpongeFarfield(cfg, tree, dB=-200, projection="0", factor=2),
-        PSpongeFarfield(cfg, tree, dB=-40, projection="k", factor=2),
-        PSpongeFarfield(cfg, tree, dB=-200, projection="k", factor=2),
-    ]
-
-    benchmarks = [
-        NSCBC(cfg, tree, "2d", draw=True),
-        SpongeNSCBC(cfg, tree, dB=-40, draw=True),
-        PSpongeFarfield(cfg, tree, dB=-200, projection="k", factor=2, draw=True),
+        Sponge(cfg, tree, dB=-40),
+        Sponge(cfg, tree, dB=-200),
+        PSponge(cfg, tree, dB=-40, projection="0"),
+        PSponge(cfg, tree, dB=-200, projection="0"),
+        PSponge(cfg, tree, dB=-40, projection="k"),
+        PSponge(cfg, tree, dB=-200, projection="k"),
+        PSponge(cfg, tree, dB=-40, projection="0", factor=2),
+        PSponge(cfg, tree, dB=-200, projection="0", factor=2),
+        PSponge(cfg, tree, dB=-40, projection="k", factor=2),
+        PSponge(cfg, tree, dB=-200, projection="k", factor=2),
     ]
 
     for benchmark in benchmarks:
