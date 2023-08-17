@@ -149,9 +149,7 @@ class PSponge(Pulse):
         self.projection = projection
         self.dB = dB
 
-        name = f"psponge_P{projection}_dB{-dB}"
-        if factor != 1:
-            name += f"_fac{factor}"
+        name = f"psponge_fac{factor}_P{projection}_dB{-dB}"
         self.tree.directory_name = name
 
         if projection == "k":
@@ -184,8 +182,8 @@ class PSponge(Pulse):
         y0, yn = self.sound.H/2, sum([ring.H - ring.Hi for ring in rings])/2 + self.sound.H/2
         self.x_, self.y_ = BufferCoordinate.x(x0, xn), BufferCoordinate.y(y0, yn)
 
-        grid_x = GridDeformationFunction.ExponentialThickness(15, self.x_, True)
-        grid_y = GridDeformationFunction.ExponentialThickness(15, self.y_, True)
+        grid_x = GridDeformationFunction.ExponentialThickness(15/self.factor, self.x_, True)
+        grid_y = GridDeformationFunction.ExponentialThickness(15/self.factor, self.y_, True)
         self.grid = GridDeformationFunction(grid_x, grid_y)
 
         for ring in rings:
