@@ -18,7 +18,6 @@ tree = ResultsDirectoryTree()
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
-cfg.fem = "edg"
 cfg.scaling = "acoustic"
 cfg.riemann_solver = 'lax_friedrich'
 
@@ -113,6 +112,7 @@ class NSCBC(Pulse):
         super().__init__(cfg, tree, buffer=False, draw=draw)
         name = f"nscbc_{dim}"
         self.tree.directory_name = name
+        self.cfg.fem = "edg"
 
         self.dim = dim
         self.sigma = 0.25
@@ -145,6 +145,7 @@ class PSponge(Pulse):
                  factor: int = 1,
                  draw: bool = False) -> None:
         super().__init__(cfg, tree, buffer=True, factor=factor, draw=draw)
+        self.cfg.fem = "hdg"
 
         self.projection = projection
         self.dB = dB
@@ -168,7 +169,7 @@ class PSponge(Pulse):
         self.cfg.info["\u03A0-Sponge Function Y"] = self.sponge_y
         self.cfg.info["\u03A0-Sponge Weights X"] = self.weights_x
         self.cfg.info["\u03A0-Sponge Weights Y"] = self.weights_y
-        self.cfg.info["Grid Factor"] = 15
+        self.cfg.info["Grid Factor"] = 15/self.factor
         self.cfg.info["Grid Function X"] = repr(self.grid.x)
         self.cfg.info["Grid Function Y"] = repr(self.grid.y)
 
@@ -230,6 +231,7 @@ class Sponge(Pulse):
                  dB: float,
                  draw: bool = False) -> None:
         super().__init__(cfg, tree, buffer=True, draw=draw)
+        self.cfg.fem = "hdg"
         self.dB = dB
 
         name = f"sponge_dB{-dB}"
