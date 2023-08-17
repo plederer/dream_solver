@@ -10,14 +10,15 @@ from dream.utils import RectangleDomain, Rectangle1DGrid
 from benchmarks.template import Benchmark
 
 ngsglobals.msg_level = 0
-SetNumThreads(8)
+SetNumThreads(32)
 
 tree = ResultsDirectoryTree()
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
+cfg.fem = "hdg"
 cfg.scaling = "aeroacoustic"
-cfg.riemann_solver = 'hll'
+cfg.riemann_solver = 'hllem'
 
 cfg.Mach_number = 0
 cfg.heat_capacity_ratio = 1.4
@@ -28,8 +29,8 @@ cfg.bonus_int_order_vol = cfg.order
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 0.05
-cfg.time.interval = (0, 25)
+cfg.time.step = 0.2
+cfg.time.interval = (0, 150)
 
 cfg.linear_solver = "pardiso"
 cfg.damping_factor = 1
@@ -66,7 +67,7 @@ class Vortex(Benchmark):
         gamma = self.cfg.heat_capacity_ratio
         c = INF.speed_of_sound(cfg)
 
-        Gamma = 0.01
+        Gamma = 0.01 * M/(M + 1)
         Rv = 0.1
         r = sqrt(x**2 + y**2)
         psi = Gamma * exp(-r**2/(2*Rv**2))
@@ -173,7 +174,7 @@ class PSponge(Vortex):
 
     def set_boundary_conditions(self):
         super().set_boundary_conditions()
-        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(self.farfield.pressure), "right")
+        self.solver.boundary_conditions.set(bcs.FarField(self.farfield), "right")
 
     def add_meta_data(self):
         super().add_meta_data()
@@ -236,7 +237,7 @@ class Sponge(Vortex):
 
     def set_boundary_conditions(self):
         super().set_boundary_conditions()
-        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(self.farfield.pressure), "right")
+        self.solver.boundary_conditions.set(bcs.FarField(self.farfield), "right")
 
     def add_meta_data(self):
         super().add_meta_data()
@@ -273,7 +274,7 @@ class Sponge(Vortex):
 
 
 if __name__ == "__main__":
-    Mach_numbers = [0.05, 0.2]
+    Mach_numbers = [0.05]
 
     for Mach in Mach_numbers:
 

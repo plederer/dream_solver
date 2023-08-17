@@ -19,6 +19,11 @@ if TYPE_CHECKING:
     from ngsolve.comp import ProxyFunction
 
 
+class FEM(enum.Enum):
+    HDG = "hdg"
+    EDG = "edg"
+
+
 class CompressibleFormulations(enum.Enum):
     PRIMITIVE = "primitive"
     CONSERVATIVE = "conservative"

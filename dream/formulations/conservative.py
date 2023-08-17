@@ -634,7 +634,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
         order = self.cfg.order
         mixed_method = self.cfg.mixed_method
 
-        nscbc = self.dmesh.bcs.nscbc_boundaries
         p_sponge_layers = self.dmesh.dcs.psponge_layers
         if self.dmesh.highest_order_psponge > order:
             raise ValueError("Polynomial sponge order higher than polynomial discretization order")
@@ -644,8 +643,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
             order_policy = ORDER_POLICY.VARIABLE
 
         V = L2(self.mesh, order=order, order_policy=order_policy)
-        VHAT = FacetFESpace(self.mesh, order=order)
-        if nscbc:
+        if self.cfg.fem is self.cfg.fem.HDG:
+            VHAT = FacetFESpace(self.mesh, order=order)
+        elif self.cfg.fem is self.cfg.fem.EDG:
             VHAT = H1(self.mesh, order=order, orderinner=0)
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
 

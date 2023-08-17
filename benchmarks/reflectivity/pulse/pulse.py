@@ -18,6 +18,7 @@ tree = ResultsDirectoryTree()
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
+cfg.fem = "edg"
 cfg.scaling = "acoustic"
 cfg.riemann_solver = 'lax_friedrich'
 
