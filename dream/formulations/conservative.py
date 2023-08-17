@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ngsolve import *
 from typing import Optional, NamedTuple
-from .interface import _Formulation, MixedMethods, TensorIndices, TestAndTrialFunction
+from .interface import _Formulation, MixedMethods, TensorIndices, FiniteElementSpace
 from ..region import BoundaryConditions as bcs
 from ..region import DomainConditions as dcs
 
@@ -189,10 +189,19 @@ class ConservativeFormulation(_Formulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        An_out = self.convective_stabilisation_matrix(Uhat, self.normal)
-        An_in = self.convective_stabilisation_matrix(Uhat, -self.normal)
+        riemann_solver = self.cfg.riemann_solver.LAX_FRIEDRICH
+
+        An_out = self.convective_stabilisation_matrix(Uhat, self.normal, riemann_solver)
+        An_in = self.convective_stabilisation_matrix(Uhat, -self.normal, riemann_solver)
+
+        u_in = self.characteristic_velocities(Uhat, self.normal, type="in", as_matrix=True)
+        u_out = self.characteristic_velocities(Uhat, self.normal, type="out", as_matrix=True)
+
+        An_in = self.DME_from_CHAR_matrix(u_in, Uhat, self.normal)
+        An_out = self.DME_from_CHAR_matrix(u_out, Uhat, self.normal)
+
         cf = An_out * (U - Uhat)
-        cf += An_in * (farfield - Uhat)
+        cf -= An_in * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)
@@ -637,7 +646,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
                        STRAIN=TensorIndices(XX=0, XY=1, YX=1, YY=2),
                        TEMPERATURE_GRADIENT=slice(3, 5))
 
-    def _initialize_FE_space(self) -> ProductSpace:
+    def _initialize_FE_space(self) -> FiniteElementSpace:
 
         order = self.cfg.order
         mixed_method = self.cfg.mixed_method
@@ -651,7 +660,14 @@ class ConservativeFormulation2D(ConservativeFormulation):
             order_policy = ORDER_POLICY.VARIABLE
 
         V = L2(self.mesh, order=order, order_policy=order_policy)
+<<<<<<< HEAD
         VHAT = FacetFESpace(self.mesh, order=order, nodal=False)
+=======
+        if self.cfg.fem is self.cfg.fem.HDG:
+            VHAT = FacetFESpace(self.mesh, order=order)
+        elif self.cfg.fem is self.cfg.fem.EDG:
+            VHAT = H1(self.mesh, order=order, orderinner=0)
+>>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
 
         nscbc = self.dmesh.bcs.outflow_nscbc
@@ -691,21 +707,22 @@ class ConservativeFormulation2D(ConservativeFormulation):
         if self.dmesh.is_periodic:
             VHAT = Periodic(VHAT)
 
+<<<<<<< HEAD
         space = V**4 * VHAT**4 * VHATHAT**4 * QHATHAT**4
+=======
+        spaces = FiniteElementSpace.Settings(V**4, VHAT**4)
+>>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
 
         if mixed_method is MixedMethods.NONE:
             pass
         elif mixed_method is MixedMethods.STRAIN_HEAT:
-            space *= V**5
+            spaces.MIXED = V**5
         elif mixed_method is MixedMethods.GRADIENT:
-            space *= Q**4
+            spaces.MIXED = Q**4
         else:
             raise NotImplementedError(f"Mixed method {mixed_method} not implemented for {self}!")
 
-        return space
-
-    def _initialize_TnT(self) -> TestAndTrialFunction:
-        return TestAndTrialFunction(*zip(*self.fes.TnT()))
+        return FiniteElementSpace.from_settings(spaces)
 
     def _add_mixed_bilinearform(self, blf):
 
@@ -883,9 +900,13 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+<<<<<<< HEAD
         Uhathat, Vhathat = self.TnT.PRIMAL_HATHAT
         Phathat, Qhathat = self.TnT.SURFACE_HATHAT
 
+=======
+        Uhathat, Vhathat = self.TnT.NSCBC
+>>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
         Q, _ = self.TnT.MIXED
 
         time_levels_gfu = self._gfus.get_component(1)
@@ -893,21 +914,25 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
 
-        amplitude_out = self.characteristic_amplitudes(U, Q, Uhat, self.normal, type="out")
+        amplitude_out = self.characteristic_amplitudes(U, Q, U, self.normal, type="out")
 
-        rho = self.density(Uhat)
-        c = self.speed_of_sound(Uhat)
-        ut = InnerProduct(self.velocity(Uhat), t)
-        un = InnerProduct(self.velocity(Uhat), n)
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+        ut = InnerProduct(self.velocity(U), t)
+        un = InnerProduct(self.velocity(U), n)
         Mn = IfPos(un, un, -un)/c
         M = self.cfg.Mach_number
 
-        P = self.DME_from_CHAR(Uhat, self.normal)
-        Pinv = self.CHAR_from_DME(Uhat, self.normal)
+        P = self.DME_from_CHAR(U, self.normal)
+        Pinv = self.CHAR_from_DME(U, self.normal)
 
         ref_length = bc.reference_length
 
+<<<<<<< HEAD
         amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
+=======
+        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(U) - bc.state.pressure)
+>>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
         amplitude_in = CF((amp, 0, 0, 0))
 
         if bc.tang_conv_flux:
@@ -915,13 +940,13 @@ class ConservativeFormulation2D(ConservativeFormulation):
             gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
             gradient_u_t = self.velocity_gradient(U, Q) * t
 
-            beta_l = 1
+            beta_l = Mn
             beta_t = Mn
 
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
             amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
-            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(Uhat) * t)) * Vhat
+            cf += (self.DME_convective_jacobian(U, t) * (grad(U) * t)) * Vhat
             amplitude_in -= CF((amp_t, 0, 0, 0))
 
         if not mu.is_inviscid:
@@ -949,7 +974,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
                 # cf -= (mixe_diff_jac_norm * (grad(Q) * n)) * Vhat
                 # amplitude_in += Pinv * ((mixe_diff_jac_norm) * (grad(Q) * n))
 
-        amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
+        amplitudes = amplitude_out + self.identity_matrix_incoming(U, self.normal) * amplitude_in
         cf += (P * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)

@@ -15,6 +15,8 @@ class Benchmark(abc.ABC):
         self.tree.update(tree)
 
         self.draw = draw
+        self.comment = None
+        self.save_state_every = 1
 
     def start(self, save_state: bool = False):
 
@@ -44,7 +46,7 @@ class Benchmark(abc.ABC):
         if self.draw:
             self.draw_scenes()
 
-        self.solver.solve_transient()
+        self.solver.solve_transient(save_state_every_num_step=self.save_state_every)
 
     def postprocessing(self):
         self.add_meta_data()
@@ -53,7 +55,7 @@ class Benchmark(abc.ABC):
         saver.save_dream_mesh()
         saver.save_state_time_scheme()
         saver.save_sensor_data()
-        saver.save_configuration()
+        saver.save_configuration(comment=self.comment)
 
     @abc.abstractmethod
     def get_mesh(self): ...

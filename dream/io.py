@@ -322,8 +322,9 @@ class SolverSaver(Saver):
 
     def save_state_time_scheme(self, name: str = "time_level"):
         gfus = self.solver.formulation._gfus
+        t = self.solver.solver_configuration.time.t.Get()
         for time_level, gfu in gfus.items():
-            super().save_state(gfu, f"{name}_{time_level}")
+            super().save_state(gfu, f"{name}_{t}_{time_level}")
 
     def save_sensor_data(self, sensor: Optional[Sensor] = None, save_dataframe: bool = True):
 

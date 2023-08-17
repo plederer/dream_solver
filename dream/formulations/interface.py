@@ -2,7 +2,7 @@ from __future__ import annotations
 import abc
 import enum
 import dataclasses
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, NamedTuple
 
 from ngsolve import *
 
@@ -17,6 +17,11 @@ logger = logging.getLogger("DreAm.Formulations")
 if TYPE_CHECKING:
     from configuration import SolverConfiguration
     from ngsolve.comp import ProxyFunction
+
+
+class FEM(enum.Enum):
+    HDG = "hdg"
+    EDG = "edg"
 
 
 class CompressibleFormulations(enum.Enum):
@@ -69,22 +74,60 @@ class TensorIndices:
             yield value
 
 
-@dataclasses.dataclass
-class TestAndTrialFunction:
-    PRIMAL: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
-    PRIMAL_FACET: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
-    PRIMAL_HATHAT: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
-    SURFACE_HATHAT: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
-    MIXED: tuple[Optional[ProxyFunction], Optional[ProxyFunction]] = (None, None)
+class FiniteElementSpace(NamedTuple):
+
+    space: Optional[ProductSpace] = None
+    TnT: Optional[Settings] = None
+    components: Optional[Settings] = None
+
+    class Settings:
+
+        def __init__(self,
+                     PRIMAL,
+                     PRIMAL_FACET,
+                     MIXED=None,
+                     PML=None,
+                     NSCBC=None,
+                     **kwargs) -> None:
+
+            self.PRIMAL = PRIMAL
+            self.PRIMAL_FACET = PRIMAL_FACET
+            self.MIXED = MIXED
+            self.PML = PML
+            self.NSCBC = NSCBC
+            self.__dict__.update(**kwargs)
+
+        def __repr__(self) -> str:
+            return "(" + ", ".join([f"{key}: {val}" for key, val in vars(self).items()]) + ")"
+
+    @classmethod
+    def from_settings(cls, settings: Settings):
+
+        fes = settings.PRIMAL * settings.PRIMAL_FACET
+
+        settings = vars(settings)
+        spaces = {type: space for type, space in settings.items() if space is not None}
+
+        non_default_spaces = tuple(spaces.values())[2:]
+        for space in non_default_spaces:
+            fes *= space
+
+        TnTs = {type: (None, None) for type in settings.keys()}
+        TnT = ((trial, test) for trial, test in zip(*fes.TnT()))
+        TnT = {type: TnT for type, TnT in zip(spaces.keys(), TnT)}
+        TnTs.update(TnT)
+        TnTs = cls.Settings(**TnTs)
+
+        components = {type: idx for idx, type in enumerate(spaces)}
+        components = cls.Settings(**components)
+
+        return cls(fes, TnTs, components)
 
 
 class Formulation(abc.ABC):
 
     @abc.abstractmethod
-    def _initialize_FE_space(self) -> ProductSpace: ...
-
-    @abc.abstractmethod
-    def _initialize_TnT(self) -> TestAndTrialFunction: ...
+    def _initialize_FE_space(self) -> FiniteElementSpace: ...
 
     @abc.abstractmethod
     def add_time_bilinearform(self, blf) -> None: ...
@@ -218,8 +261,6 @@ class _Formulation(Formulation):
         self._cfg = solver_configuration
         self._calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
 
-        # self.bcs = co.BoundaryConditions(mesh.GetBoundaries(), solver_configuration)
-        # self.dcs = co.DomainConditions(mesh.GetMaterials(), solver_configuration)
         self.time_scheme = time_scheme_factory(solver_configuration.time)
 
         self._gfus = None
@@ -256,13 +297,13 @@ class _Formulation(Formulation):
     def fes(self) -> ProductSpace:
         if self._fes is None:
             raise RuntimeError("Call 'formulation.initialize()' before accessing the Finite Element space")
-        return self._fes
+        return self._fes.space
 
     @property
-    def TnT(self) -> TestAndTrialFunction:
+    def TnT(self):
         if self._fes is None:
             raise RuntimeError("Call 'formulation.initialize()' before accessing the TestAndTrialFunctions")
-        return self._TnT
+        return self._fes.TnT
 
     @property
     def calc(self) -> IdealGasCalculator:
@@ -270,7 +311,6 @@ class _Formulation(Formulation):
 
     def initialize(self):
         self._fes = self._initialize_FE_space()
-        self._TnT = self._initialize_TnT()
         self._gfus = TimeLevelsGridfunction({level: GridFunction(self.fes) for level in self.time_scheme.time_levels})
 
     def update_gridfunctions(self, initial_value: bool = False):
@@ -382,11 +422,15 @@ class _Formulation(Formulation):
 
         return CF(flux, dims=(dim + 2, dim))
 
-    def convective_stabilisation_matrix(self, Uhat, unit_vector):
-        riemann_solver = self.cfg.riemann_solver
+    def convective_stabilisation_matrix(self, Uhat, unit_vector, riemann_solver=None):
+
+        if riemann_solver is None:
+            riemann_solver = self.cfg.riemann_solver
+
         un = InnerProduct(self.velocity(Uhat), unit_vector)
-        un_abs = IfPos(un, un, -un)
         c = self.speed_of_sound(Uhat)
+        un_abs = IfPos(un, un, -un)
+        splus = IfPos(un + c, un + c, 0)
 
         if riemann_solver is RiemannSolver.LAX_FRIEDRICH:
             lambda_max = un_abs + c
@@ -397,16 +441,12 @@ class _Formulation(Formulation):
             stabilisation_matrix = self.DME_from_CHAR_matrix(Lambda_abs, Uhat, unit_vector)
 
         elif riemann_solver is RiemannSolver.HLL:
-            splus = IfPos(un + c, un + c, 0)
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
-                theta = c/(un_abs + c)
-            else:
-                theta_0 = 1e-6
-                theta = un_abs/(un_abs + c)
-                IfPos(theta - theta_0, theta, theta_0)
+            theta_0 = 1e-6
+            theta = un_abs/(un_abs + c)
+            theta = IfPos(theta - theta_0, theta, theta_0)
 
             if self.mesh.dim == 2:
                 Theta = CF((1, 0, 0, 0,
@@ -422,7 +462,6 @@ class _Formulation(Formulation):
                             0, 0, 0, 0, 1), dims=(5, 5))
 
             Theta = self.DME_from_CHAR_matrix(Theta, Uhat, unit_vector)
-            splus = IfPos(un + c, un + c, 0)
 
             stabilisation_matrix = splus * Theta
 
