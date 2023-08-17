@@ -7,13 +7,14 @@ from ngsolve.meshes import MakeStructured2DMesh
 ngsglobals.msg_level = 0
 SetNumThreads(8)
 
-periodic = False
+periodic = True
 circle = False
 structured = False
 maxh = 0.15
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
+cfg.fem = "hdg"
 # cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
 # cfg.mixed_method = "strain_heat"
@@ -26,14 +27,14 @@ cfg.Mach_number = 0.05
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
-cfg.order = 3
-cfg.bonus_int_order_bnd = 0
-cfg.bonus_int_order_vol = 0
+cfg.order = 6
+cfg.bonus_int_order_bnd = cfg.order
+cfg.bonus_int_order_vol = cfg.order
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 0.01
-cfg.time.interval = (0, 100)
+cfg.time.step = 0.2
+cfg.time.interval = (0, 200)
 
 cfg.linear_solver = "pardiso"
 cfg.damping_factor = 1
@@ -65,7 +66,7 @@ else:
             periodic_edge = face.edges[0]
             periodic_edge.Identify(face.edges[2], "periodic", IdentificationType.PERIODIC)
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
-mesh.Refine()
+# mesh.Refine()
 gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
 
@@ -76,7 +77,8 @@ p_inf = farfield.pressure
 T_inf = farfield.temperature
 c = INF.speed_of_sound(cfg)
 
-Gamma = 0.02
+M = cfg.Mach_number
+Gamma = 0.01 * M/(M + 1)
 Rv = 0.1
 r = sqrt(x**2 + y**2)
 psi = Gamma * exp(-r**2/(2*Rv**2))
@@ -97,8 +99,8 @@ initial = State(u_0, rho_0, p_0)
 # initial = State(u_0, rho_0, p_0)
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set(bcs.FarField(farfield), "left|right")
-solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf, 0.8), "right")
+solver.boundary_conditions.set(bcs.FarField(farfield), "left")
+solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf, 0.28), "right")
 solver.boundary_conditions.set(bcs.InviscidWall(), "top|bottom")
 if periodic:
     solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")

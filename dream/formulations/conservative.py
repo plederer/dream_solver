@@ -181,10 +181,19 @@ class ConservativeFormulation(_Formulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        An_out = self.convective_stabilisation_matrix(Uhat, self.normal)
-        An_in = self.convective_stabilisation_matrix(Uhat, -self.normal)
+        riemann_solver = self.cfg.riemann_solver.LAX_FRIEDRICH
+
+        An_out = self.convective_stabilisation_matrix(Uhat, self.normal, riemann_solver)
+        An_in = self.convective_stabilisation_matrix(Uhat, -self.normal, riemann_solver)
+
+        u_in = self.characteristic_velocities(Uhat, self.normal, type="in", as_matrix=True)
+        u_out = self.characteristic_velocities(Uhat, self.normal, type="out", as_matrix=True)
+
+        An_in = self.DME_from_CHAR_matrix(u_in, Uhat, self.normal)
+        An_out = self.DME_from_CHAR_matrix(u_out, Uhat, self.normal)
+
         cf = An_out * (U - Uhat)
-        cf += An_in * (farfield - Uhat)
+        cf -= An_in * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)
@@ -869,21 +878,21 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
 
-        amplitude_out = self.characteristic_amplitudes(U, Q, Uhat, self.normal, type="out")
+        amplitude_out = self.characteristic_amplitudes(U, Q, U, self.normal, type="out")
 
-        rho = self.density(Uhat)
-        c = self.speed_of_sound(Uhat)
-        ut = InnerProduct(self.velocity(Uhat), t)
-        un = InnerProduct(self.velocity(Uhat), n)
+        rho = self.density(U)
+        c = self.speed_of_sound(U)
+        ut = InnerProduct(self.velocity(U), t)
+        un = InnerProduct(self.velocity(U), n)
         Mn = IfPos(un, un, -un)/c
         M = self.cfg.Mach_number
 
-        P = self.DME_from_CHAR(Uhat, self.normal)
-        Pinv = self.CHAR_from_DME(Uhat, self.normal)
+        P = self.DME_from_CHAR(U, self.normal)
+        Pinv = self.CHAR_from_DME(U, self.normal)
 
         ref_length = bc.reference_length
 
-        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
+        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(U) - bc.state.pressure)
         amplitude_in = CF((amp, 0, 0, 0))
 
         if bc.tang_conv_flux:
@@ -897,7 +906,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
             amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
 
-            cf += (self.DME_convective_jacobian(Uhat, t) * (grad(U) * t)) * Vhat
+            cf += (self.DME_convective_jacobian(U, t) * (grad(U) * t)) * Vhat
             amplitude_in -= CF((amp_t, 0, 0, 0))
 
         if not mu.is_inviscid:
@@ -925,7 +934,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
                 # cf -= (mixe_diff_jac_norm * (grad(Q) * n)) * Vhat
                 # amplitude_in += Pinv * ((mixe_diff_jac_norm) * (grad(Q) * n))
 
-        amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
+        amplitudes = amplitude_out + self.identity_matrix_incoming(U, self.normal) * amplitude_in
         cf += (P * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)

@@ -414,8 +414,11 @@ class _Formulation(Formulation):
 
         return CF(flux, dims=(dim + 2, dim))
 
-    def convective_stabilisation_matrix(self, Uhat, unit_vector):
-        riemann_solver = self.cfg.riemann_solver
+    def convective_stabilisation_matrix(self, Uhat, unit_vector, riemann_solver=None):
+
+        if riemann_solver is None:
+            riemann_solver = self.cfg.riemann_solver
+
         un = InnerProduct(self.velocity(Uhat), unit_vector)
         c = self.speed_of_sound(Uhat)
         un_abs = IfPos(un, un, -un)
@@ -433,7 +436,7 @@ class _Formulation(Formulation):
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-8
+            theta_0 = 1e-6
             theta = un_abs/(un_abs + c)
             theta = IfPos(theta - theta_0, theta, theta_0)
 
