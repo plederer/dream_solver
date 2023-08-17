@@ -660,14 +660,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
             order_policy = ORDER_POLICY.VARIABLE
 
         V = L2(self.mesh, order=order, order_policy=order_policy)
-<<<<<<< HEAD
-        VHAT = FacetFESpace(self.mesh, order=order, nodal=False)
-=======
         if self.cfg.fem is self.cfg.fem.HDG:
             VHAT = FacetFESpace(self.mesh, order=order)
         elif self.cfg.fem is self.cfg.fem.EDG:
             VHAT = H1(self.mesh, order=order, orderinner=0)
->>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
 
         nscbc = self.dmesh.bcs.outflow_nscbc
@@ -707,11 +703,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         if self.dmesh.is_periodic:
             VHAT = Periodic(VHAT)
 
-<<<<<<< HEAD
-        space = V**4 * VHAT**4 * VHATHAT**4 * QHATHAT**4
-=======
         spaces = FiniteElementSpace.Settings(V**4, VHAT**4)
->>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
 
         if mixed_method is MixedMethods.NONE:
             pass
@@ -900,13 +892,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
-<<<<<<< HEAD
-        Uhathat, Vhathat = self.TnT.PRIMAL_HATHAT
-        Phathat, Qhathat = self.TnT.SURFACE_HATHAT
-
-=======
         Uhathat, Vhathat = self.TnT.NSCBC
->>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
         Q, _ = self.TnT.MIXED
 
         time_levels_gfu = self._gfus.get_component(1)
@@ -928,11 +914,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         ref_length = bc.reference_length
 
-<<<<<<< HEAD
-        amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.state.pressure)
-=======
         amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(U) - bc.state.pressure)
->>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
         amplitude_in = CF((amp, 0, 0, 0))
 
         if bc.tang_conv_flux:
