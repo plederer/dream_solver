@@ -897,8 +897,8 @@ class BoundaryConditions(UserDict):
         return "|".join(keys)
 
     @property
-    def nscbc_boundaries(self) -> tuple(str):
-        return tuple(name for name, bc in self.items() if isinstance(bc, self.Outflow_NSCBC))
+    def nscbc(self) -> dict[str, Outflow_NSCBC]:
+        return {name: bc for name, bc in self.items() if isinstance(bc, self.Outflow_NSCBC)}
 
     class _Boundary(Condition):
         ...
