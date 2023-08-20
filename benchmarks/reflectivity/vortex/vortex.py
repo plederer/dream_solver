@@ -128,7 +128,7 @@ class NSCBC(Vortex):
         self.tree.directory_name = name
 
         self.dim = dim
-        self.sigma = 0.25
+        self.sigma = 0.28
         self.L = 1
 
     def add_meta_data(self):
