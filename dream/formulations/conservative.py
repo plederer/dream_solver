@@ -883,8 +883,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
         rho = self.density(U)
         c = self.speed_of_sound(U)
         ut = InnerProduct(self.velocity(U), t)
-        un = InnerProduct(self.velocity(U), n)
-        Mn = IfPos(un, un, -un)/c
         M = self.cfg.Mach_number
 
         P = self.DME_from_CHAR(U, self.normal)
@@ -900,8 +898,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
             gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
             gradient_u_t = self.velocity_gradient(U, Q) * t
 
-            beta_l = Mn
-            beta_t = Mn
+            beta_l = M
+            beta_t = M
 
             amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
             amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
