@@ -624,6 +624,10 @@ class _Formulation(Formulation):
         lam = u_dir
         lam_p_c = u_dir + c
 
+        Im_c = IfPos(lam_m_c, 1, 0)
+        Im = IfPos(lam, 1, 0)
+        Ip_c = IfPos(lam_p_c, 1, 0)
+
         if type is None:
             pass
         elif type == "absolute":
@@ -631,13 +635,13 @@ class _Formulation(Formulation):
             lam = IfPos(lam, lam, -lam)
             lam_p_c = IfPos(lam_p_c, lam_p_c, -lam_p_c)
         elif type == "in":
-            lam_m_c = IfPos(lam_m_c, 0, lam_m_c)
-            lam = IfPos(lam, 0, lam)
-            lam_p_c = IfPos(lam_p_c, 0, lam_p_c)
+            lam_m_c = (1 - Im_c) * lam_m_c
+            lam = (1 - Im) * lam
+            lam_p_c = (1 - Ip_c) * lam_p_c
         elif type == "out":
-            lam_m_c = IfPos(lam_m_c, lam_m_c, 0)
-            lam = IfPos(lam, lam, 0)
-            lam_p_c = IfPos(lam_p_c, lam_p_c, 0)
+            lam_m_c = Im_c * lam_m_c
+            lam = Im * lam
+            lam_p_c = Ip_c * lam_p_c
         else:
             raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {[None, 'absolute', 'in', 'out']}")
 
@@ -672,24 +676,28 @@ class _Formulation(Formulation):
         c = self.speed_of_sound(U)
         u_dir = InnerProduct(self.velocity(U), unit_vector)
 
-        lam_m_c = IfPos(u_dir - c, 1, 0)
-        lam = IfPos(u_dir, 1, 0)
-        lam_p_c = IfPos(u_dir + c, 1, 0)
+        lam_m_c = u_dir - c
+        lam = u_dir
+        lam_p_c = u_dir + c
+
+        Im_c = IfPos(lam_m_c, 1, 0)
+        Im = IfPos(lam, 1, 0)
+        Ip_c = IfPos(lam_p_c, 1, 0)
 
         if self.mesh.dim == 2:
 
-            identity = CF((lam_m_c, 0, 0, 0,
-                           0, lam, 0, 0,
-                           0, 0, lam, 0,
-                           0, 0, 0, lam_p_c), dims=(4, 4))
+            identity = CF((Im_c, 0, 0, 0,
+                           0, Im, 0, 0,
+                           0, 0, Im, 0,
+                           0, 0, 0, Ip_c), dims=(4, 4))
 
         elif self.mesh.dim == 3:
 
-            identity = CF((lam_m_c, 0, 0, 0, 0,
-                           0, lam, 0, 0, 0,
-                           0, 0, lam, 0, 0,
-                           0, 0, 0, lam, 0,
-                           0, 0, 0, 0, lam_p_c), dims=(5, 5))
+            identity = CF((Im_c, 0, 0, 0, 0,
+                           0, Im, 0, 0, 0,
+                           0, 0, Im, 0, 0,
+                           0, 0, 0, Im, 0,
+                           0, 0, 0, 0, Ip_c), dims=(5, 5))
 
         return identity
 
@@ -697,24 +705,28 @@ class _Formulation(Formulation):
         c = self.speed_of_sound(U)
         u_dir = InnerProduct(self.velocity(U), unit_vector)
 
-        lam_m_c = IfPos(u_dir - c, 0, 1)
-        lam = IfPos(u_dir, 0, 1)
-        lam_p_c = IfPos(u_dir + c, 0, 1)
+        lam_m_c = u_dir - c
+        lam = u_dir
+        lam_p_c = u_dir + c
+
+        Im_c = 1 - IfPos(lam_m_c, 1, 0)
+        Im = 1 - IfPos(lam, 1, 0)
+        Ip_c = 1 - IfPos(lam_p_c, 1, 0)
 
         if self.mesh.dim == 2:
 
-            identity = CF((lam_m_c, 0, 0, 0,
-                           0, lam, 0, 0,
-                           0, 0, lam, 0,
-                           0, 0, 0, lam_p_c), dims=(4, 4))
+            identity = CF((Im_c, 0, 0, 0,
+                           0, Im, 0, 0,
+                           0, 0, Im, 0,
+                           0, 0, 0, Ip_c), dims=(4, 4))
 
         elif self.mesh.dim == 3:
 
-            identity = CF((lam_m_c, 0, 0, 0, 0,
-                           0, lam, 0, 0, 0,
-                           0, 0, lam, 0, 0,
-                           0, 0, 0, lam, 0,
-                           0, 0, 0, 0, lam_p_c), dims=(5, 5))
+            identity = CF((Im_c, 0, 0, 0, 0,
+                           0, Im, 0, 0, 0,
+                           0, 0, Im, 0, 0,
+                           0, 0, 0, Im, 0,
+                           0, 0, 0, 0, Ip_c), dims=(5, 5))
 
         return identity
 
