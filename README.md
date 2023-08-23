@@ -24,13 +24,12 @@ $$
 $$
 with the constitutive relations 
 $$
+\tau = 2\mu(T) \Big(\varepsilon(u)- \frac{1}{3} \operatorname{div}(u)I\Big),
+\quad
+\varepsilon(u) = \frac{1}{2}(\nabla u + (\nabla u)^T),\\
+q = k(T) \nabla T,
+\quad
 p = \rho R T,
-\quad
-\tau = 2\mu(T) \varepsilon(u),
-\quad
-q = k(T) \nabla,
-\quad 
-\varepsilon(u) = \frac{1}{2}(\nabla u + (\nabla u)^T) - \frac{1}{3} \operatorname{div}(u)I,
 $$
 where $k(T)$ is a temperature dependent diffusivity and the viscosity is given by Sutherlands Law (with reference quantities $\mu_0, T_0$ and $S_0$),
 $$
@@ -77,7 +76,7 @@ $$
 \frac{1}{\text{Re}\text{Pr}} \operatorname{div^*}( {q^*}) = 
  \rho^* f^* \cdot u^*.
 $$
-with
+with $\tau^* =  2 \mu^*(T)\Big(\varepsilon^*(u^*) - 1/3 \operatorname{div}^*(u^*)\Big)$ and $q^* = \mu^*(T) \nabla^* T^*$ and 
 $$
 \gamma p^* = (\gamma - 1) \rho^* T^*, \quad E^* = \frac{T^*}{\gamma} + \frac{| u^*|^2}{2}, \quad c = \sqrt{(\gamma-1)T}.
 $$
