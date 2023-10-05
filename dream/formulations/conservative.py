@@ -49,8 +49,8 @@ class ConservativeFormulation(_Formulation):
         var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
         var_form += InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form += mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+        var_form += -mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
+                                         Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
 
         blf += var_form.Compile(compile_flag)
 
@@ -377,10 +377,12 @@ class ConservativeFormulation(_Formulation):
 
         return gradient_rho
 
-    def velocity_gradient(self,  U: Optional[CF] = None, Q: Optional[CF] = None):
+    def velocity_gradient(self,  U: Optional[CF] = None, Q: Optional[CF] = None, Uhat: Optional[CF] = None):
+        if Uhat is None:
+            Uhat = U
 
-        rho = self.density(U)
-        rho_u = self.momentum(U)
+        rho = self.density(Uhat)
+        rho_u = self.momentum(Uhat)
 
         gradient_rho = self.density_gradient(U, Q)
         gradient_rho_u = self.momentum_gradient(U, Q)
@@ -403,7 +405,7 @@ class ConservativeFormulation(_Formulation):
 
         return gradient_rho_u
 
-    def pressure_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+    def pressure_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None, Uhat: Optional[CF] = None):
         mixed_method = self.cfg.mixed_method
         gamma = self.cfg.heat_capacity_ratio
 
@@ -417,7 +419,7 @@ class ConservativeFormulation(_Formulation):
             gradient_p = (gamma - 1)/gamma * (T * gradient_rho + rho * gradient_T)
 
         else:
-            gradient_rho_Ei = self.inner_energy_gradient(U, Q)
+            gradient_rho_Ei = self.inner_energy_gradient(U, Q, Uhat)
             gradient_p = (gamma - 1) * gradient_rho_Ei
         return gradient_p
 
@@ -435,9 +437,9 @@ class ConservativeFormulation(_Formulation):
 
         return gradient_T
 
-    def inner_energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+    def inner_energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None, Uhat: Optional[CF] = None):
         gradient_rho_E = self.energy_gradient(U, Q)
-        gradient_rho_Ek = self.kinetic_energy_gradient(U, Q)
+        gradient_rho_Ek = self.kinetic_energy_gradient(U, Q, Uhat)
         return gradient_rho_E - gradient_rho_Ek
 
     def specific_inner_energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
@@ -445,20 +447,31 @@ class ConservativeFormulation(_Formulation):
         gradient_Ek = self.specific_kinetic_energy_gradient(U, Q)
         return gradient_E - gradient_Ek
 
-    def kinetic_energy_gradient(self, U: Optional[CF] = True, Q: Optional[CF] = None):
-        rho = self.density(U)
-        gradient_rho = self.density_gradient(U, Q)
+    def kinetic_energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None, Uhat: Optional[CF] = None):
+        if Uhat is None:
+            Uhat = U
 
-        rho_u = self.momentum(U)
+        rho = self.density(Uhat)
+        rho_u = self.momentum(Uhat)
+
+        gradient_rho = self.density_gradient(U, Q)
         gradient_rho_m = self.momentum_gradient(U, Q)
+
         return gradient_rho_m.trans*rho_u/rho - InnerProduct(rho_u, rho_u)*gradient_rho/(2*rho**2)
 
-    def specific_kinetic_energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        rho = self.density(U)
-        gradient_rho = self.density_gradient(U, Q)
+    def specific_kinetic_energy_gradient(self,
+                                         U: Optional[CF] = None,
+                                         Q: Optional[CF] = None,
+                                         Uhat: Optional[CF] = None):
+        if Uhat is None:
+            Uhat = U
 
-        rho_u = self.momentum(U)
+        rho = self.density(Uhat)
+        rho_u = self.momentum(Uhat)
+
+        gradient_rho = self.density_gradient(U, Q)
         gradient_rho_m = self.momentum_gradient(U, Q)
+
         return gradient_rho_m.trans*rho_u/rho**2 - InnerProduct(rho_u, rho_u)*gradient_rho/rho**3
 
     def energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
@@ -475,11 +488,14 @@ class ConservativeFormulation(_Formulation):
 
         return gradient_rho_E
 
-    def specific_energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        rho = self.density(U)
-        gradient_rho = self.density_gradient(U, Q)
+    def specific_energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None, Uhat: Optional[CF] = None):
+        if Uhat is None:
+            Uhat = U
 
-        rho_E = self.energy(U)
+        rho = self.density(Uhat)
+        rho_E = self.energy(Uhat)
+
+        gradient_rho = self.density_gradient(U, Q)
         gradient_rho_E = self.energy_gradient(U, Q)
 
         return gradient_rho_E/rho - gradient_rho*rho_E/rho**2
@@ -859,81 +875,62 @@ class ConservativeFormulation2D(ConservativeFormulation):
         # cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
         # blf += cf.Compile(compile_flag)
 
+    def _get_characteristic_amplitudes_incoming(self, bc: bcs.Outflow_NSCBC):
+
+        M = self.cfg.Mach_number
+
+        U, _ = self.TnT.PRIMAL
+        Uhat, _ = self.TnT.PRIMAL_FACET
+        Q, _ = self.TnT.MIXED
+
+        rho = self.density(Uhat)
+        c = self.speed_of_sound(Uhat)
+        un = self.velocity(Uhat) * self.normal
+        Mn = IfPos(un, un, -un)/c
+
+        outflow_amp_in = bc.sigma * c * (1 - M**2)/bc.reference_length * (self.pressure(Uhat) - bc.state.pressure)
+
+        if bc.tang_conv_flux:
+
+            ut = InnerProduct(self.velocity(Uhat), self.tangential)
+
+            gradient_p_t = InnerProduct(self.pressure_gradient(U, Q, Uhat), self.tangential)
+            gradient_u_t = self.velocity_gradient(U, Q, Uhat) * self.tangential
+
+            beta_l = Mn
+            beta_t = Mn
+
+            outflow_amp_in -= (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+            outflow_amp_in -= (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, self.tangential)
+
+        L = CF((outflow_amp_in, 0, 0, 0))
+
+        return L
+
     def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.Outflow_NSCBC):
 
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
         compile_flag = self.cfg.compile_flag
-        mu = self.cfg.dynamic_viscosity
-
-        n = self.normal
-        t = self.tangential
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
-        Uhathat, Vhathat = self.TnT.NSCBC
-        Q, _ = self.TnT.MIXED
+
+        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal)
+        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
+
+        LAM_in = self.characteristic_velocities(Uhat, self.normal, 'in', True)
+        P_in = self.DME_from_CHAR(Uhat, self.normal) * LAM_in
 
         time_levels_gfu = self._gfus.get_component(1)
         time_levels_gfu['n+1'] = Uhat
 
-        cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
+        L = self._get_characteristic_amplitudes_incoming(bc)
 
-        amplitude_out = self.characteristic_amplitudes(U, Q, U, self.normal, type="out")
+        cf = InnerProduct(An_out*(U - Uhat), Vhat)
+        cf += InnerProduct(An_in*self.time_scheme.apply(time_levels_gfu), Vhat)
+        cf += An_in*(self.DME_convective_jacobian(Uhat, self.tangential) * (grad(U) * self.tangential)) * Vhat
+        cf += InnerProduct(P_in * L, Vhat)
 
-        rho = self.density(U)
-        c = self.speed_of_sound(U)
-        ut = InnerProduct(self.velocity(U), t)
-        M = self.cfg.Mach_number
-
-        P = self.DME_from_CHAR(U, self.normal)
-        Pinv = self.CHAR_from_DME(U, self.normal)
-
-        ref_length = bc.reference_length
-
-        amp = bc.sigma * c * (1 - M**2)/ref_length * (self.pressure(U) - bc.state.pressure)
-        amplitude_in = CF((amp, 0, 0, 0))
-
-        if bc.tang_conv_flux:
-
-            gradient_p_t = InnerProduct(self.pressure_gradient(U, Q), t)
-            gradient_u_t = self.velocity_gradient(U, Q) * t
-
-            beta_l = M
-            beta_t = M
-
-            amp_t = (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, n))
-            amp_t += (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, t)
-
-            cf += (self.DME_convective_jacobian(U, t) * (grad(U) * t)) * Vhat
-            amplitude_in -= CF((amp_t, 0, 0, 0))
-
-        if not mu.is_inviscid:
-
-            if bc.tang_visc_flux:
-
-                cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t)
-                cf -= (cons_diff_jac_tang * (grad(U) * t)) * Vhat
-                amplitude_in += Pinv * (cons_diff_jac_tang * (grad(U) * t))
-
-                mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t)
-                cf -= (mixe_diff_jac_tang * (grad(Q) * t)) * Vhat
-                amplitude_in += Pinv * (mixe_diff_jac_tang * (grad(Q) * t))
-
-            if bc.norm_visc_flux:
-
-                cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n)
-                cf -= cons_diff_jac_norm * (grad(U) * n) * Vhat
-                amplitude_in += Pinv * (cons_diff_jac_norm * (grad(U) * n))
-
-                # test = grad(Q)
-                # test = CF((test[0, :], 0, 0,  0, 0, 0, 0, 0,0), dims=(5, 2))
-
-                # mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n)
-                # cf -= (mixe_diff_jac_norm * (grad(Q) * n)) * Vhat
-                # amplitude_in += Pinv * ((mixe_diff_jac_norm) * (grad(Q) * n))
-
-        amplitudes = amplitude_out + self.identity_matrix_incoming(U, self.normal) * amplitude_in
-        cf += (P * amplitudes) * Vhat
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 

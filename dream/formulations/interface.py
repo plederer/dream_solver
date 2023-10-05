@@ -587,8 +587,8 @@ class _Formulation(Formulation):
         c = self.speed_of_sound(Uhat)
 
         gradient_rho_dir = InnerProduct(self.density_gradient(U, Q), unit_vector)
-        gradient_p_dir = InnerProduct(self.pressure_gradient(U, Q), unit_vector)
-        gradient_u_dir = self.velocity_gradient(U, Q) * unit_vector
+        gradient_p_dir = InnerProduct(self.pressure_gradient(U, Q, Uhat), unit_vector)
+        gradient_u_dir = self.velocity_gradient(U, Q, Uhat) * unit_vector
 
         if self.mesh.dim == 2:
 
@@ -1028,6 +1028,14 @@ class _Formulation(Formulation):
         A = self.DME_convective_jacobian_x(U)
         B = self.DME_convective_jacobian_y(U)
         return A * unit_vector[0] + B * unit_vector[1]
+
+    def DME_convective_jacobian_outgoing(self, U, unit_vector: CF) -> CF:
+        u_out = self.characteristic_velocities(U, unit_vector, type="out", as_matrix=True)
+        return self.DME_from_CHAR_matrix(u_out, U, unit_vector)
+
+    def DME_convective_jacobian_incoming(self, U, unit_vector: CF) -> CF:
+        u_in = self.characteristic_velocities(U, unit_vector, type="in", as_matrix=True)
+        return self.DME_from_CHAR_matrix(u_in, U, unit_vector)
 
     def CHAR_from_DVP(self, U, unit_vector: CF) -> CF:
         """
