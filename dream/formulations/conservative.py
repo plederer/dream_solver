@@ -74,7 +74,7 @@ class ConservativeFormulation(_Formulation):
         var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
         var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
-        var_form -= mask * InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
+        var_form += mask * InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
                                         Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
 
         blf += var_form.Compile(compile_flag)
@@ -193,7 +193,7 @@ class ConservativeFormulation(_Formulation):
         An_out = self.DME_from_CHAR_matrix(u_out, Uhat, self.normal)
 
         cf = An_out * (U - Uhat)
-        cf -= An_in * (farfield - Uhat)
+        cf += An_in * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)
@@ -897,8 +897,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
             gradient_p_t = InnerProduct(self.pressure_gradient(U, Q, Uhat), self.tangential)
             gradient_u_t = self.velocity_gradient(U, Q, Uhat) * self.tangential
 
-            beta_l = Mn
-            beta_t = Mn
+            beta_l = M
+            beta_t = M
 
             outflow_amp_in -= (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
             outflow_amp_in -= (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, self.tangential)
@@ -911,9 +911,11 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
         compile_flag = self.cfg.compile_flag
+        mixed_method = self.cfg.mixed_method
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Q, _ = self.TnT.MIXED
 
         An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal)
         An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
@@ -930,6 +932,14 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf += InnerProduct(An_in*self.time_scheme.apply(time_levels_gfu), Vhat)
         cf += An_in*(self.DME_convective_jacobian(Uhat, self.tangential) * (grad(U) * self.tangential)) * Vhat
         cf += InnerProduct(P_in * L, Vhat)
+
+        if mixed_method is not MixedMethods.NONE:
+            cf -= An_in*(self.conservative_diffusive_jacobian(Uhat, Q,
+                         self.tangential)*(grad(U)*self.tangential)) * Vhat
+            cf -= An_in*(self.conservative_diffusive_jacobian(Uhat, Q, self.normal) * (grad(U) * self.normal)) * Vhat
+
+            cf -= An_in*(self.mixed_diffusive_jacobian(Uhat, self.normal) * (grad(Q) * self.normal)) * Vhat
+            cf -= An_in*(self.mixed_diffusive_jacobian(Uhat, self.tangential) * (grad(Q) * self.tangential)) * Vhat
 
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
