@@ -1,11 +1,11 @@
 # Dream solver
 
-This is a solver plugin for NGSolve (www.ngsolve.org) which can be
+This is a solver plugin for [NGSolve](www.ngsolve.org) which can be
 used to solve the compressible Navier-Stokes equations by means of an
 Hybrid Discontinuous (HDG) Galerkin method. The main interest lies in
 computational aeroacoustics.
 
-Checkout the [doumentation](https://plederer.github.io/dream_solver/) for more information!
+Checkout the [documentation](https://plederer.github.io/dream_solver/) for more information!
 
 # Funding  
 
