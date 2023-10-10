@@ -24,13 +24,12 @@ and aim to solve
 with the constitutive relations 
 
 .. math::
+    
 
-    \tau = 2\mu(T) \Big(\varepsilon(u)- \frac{1}{3} \operatorname{div}(u)I\Big),
-    \quad
-    \varepsilon(u) = \frac{1}{2}(\nabla u + (\nabla u)^T),\\
-    q = k(T) \nabla T,
-    \quad
-    p = \rho R T,
+    \tau &= 2\mu(T) \Big(\varepsilon(u)- \frac{1}{3} \operatorname{div}(u)I\Big),
+    \quad & q &= k(T) \nabla T,\\
+    \varepsilon(u) &= \frac{1}{2}(\nabla u + (\nabla u)^T),\
+    & p &= \rho R T,
 
 where :math:`k(T)` is a temperature dependent diffusivity and the
 viscosity is given by Sutherlands Law (with reference quantities
@@ -71,15 +70,15 @@ the dimensionless variables
 
 .. math::
 
-    {x}^* = \frac{x}{L}, \quad 
-    {t}^* = \frac{u_\infty t}{L}, \quad 
-    {{u}}^* = \frac{{u}}{u_\infty}, \\
-    {\mu}^*(T) = \frac{\mu(T)}{\mu_\infty}, \quad 
-    {\rho}^* = \frac{\rho}{\rho_\infty},  \quad 
-    {p}^* = \frac{p}{\rho_{\infty} u_{\infty}^2}, \\
-    {e}^* = \frac{e}{u_\infty^2}, \quad 
-    {T}^* = \frac{T}{T_\infty (\gamma - 1)\text{Ma}_\infty}, \quad 
-    {{q}}^* = \frac{{q} L}{\rho_{\infty} u_{\infty}^3}.
+    {x}^* &= \frac{x}{L}, \quad &
+    {t}^* &= \frac{u_\infty t}{L}, \quad &
+    {{u}}^* &= \frac{{u}}{u_\infty}, \\
+    {\mu}^*(T) &= \frac{\mu(T)}{\mu_\infty}, \quad &
+    {\rho}^* &= \frac{\rho}{\rho_\infty},  \quad &
+    {p}^* &= \frac{p}{\rho_{\infty} u_{\infty}^2}, \\
+    {e}^* &= \frac{e}{u_\infty^2}, \quad &
+    {T}^* &= \frac{T}{T_\infty (\gamma - 1)\text{Ma}_\infty}, \quad &
+    {{q}}^* &= \frac{{q} L}{\rho_{\infty} u_{\infty}^3}.
 
 With the dimensionless numbers 
 
@@ -95,16 +94,17 @@ this results in the following set of equations
 
 .. math::
 
-    \frac{\partial \rho^*}{\partial t^*} + \operatorname{div^*}(\rho^* u^*) = 0, 
+    \frac{\partial \rho^*}{\partial t^*} + {\text{div}}^*(\rho^* u^*) &= 0, 
     \\
-    \frac{\partial \rho^* u^*}{\partial t^*} + \operatorname{div}^*(\rho^* u^*  \otimes u^*) - \frac{1}{\text{Re}}\operatorname{div}^*(\tau^*) +\nabla{p^*} = \frac{1}{\text{Fr}^2} \rho^* f^*, \\
+    \frac{\partial \rho^* u^*}{\partial t^*} + {\text{div}}^*(\rho^* u^*  \otimes u^*) - \frac{1}{\text{Re}}{\text{div}}^*(\tau^*) +\nabla{p^*} &= \frac{1}{\text{Fr}^2} \rho^* f^*, \\
     \frac{\partial \rho^* E^*}{\partial t^*} + 
-    \operatorname{div}^*(\rho^* E^* u^* + p^* u^*) - 
-    \frac{1}{\text{Re}}\operatorname{div}^*(\tau^* u^*)  + 
-    \frac{1}{\text{Re}\text{Pr}} \operatorname{div}^*( {q^*}) = 
+    {\text{div}}^*(\rho^* E^* u^* + p^* u^*) - 
+    \frac{1}{\text{Re}}{\text{div}}^*(\tau^* u^*)  + 
+    \frac{1}{\text{Re}\text{Pr}} {\text{div}}^*( {q^*}) &= 
     \rho^* f^* \cdot u^*.
 
-with :math:`\tau^* =  2 \mu^*(T)\Big(\varepsilon^*(u^*) - 1/3 \operatorname{div}^*(u^*)\Big)` and :math:`q^* = \mu^*(T) \nabla^* T^*` and 
+
+with :math:`\tau^* =  2 \mu^*(T)\Big(\varepsilon^*(u^*) - 1/3 {\text{div}}^*(u^*)\Big)` and :math:`q^* = \mu^*(T) \nabla^* T^*` and 
 
 .. math::
 
