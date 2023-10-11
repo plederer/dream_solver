@@ -71,8 +71,6 @@ extensions = ['sphinx.ext.mathjax', "myst_parser"]
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-from latex_macros import mymacros
-
 mathjax3_config = {                  
     # "loader": {"load": ['[tex]/color']},
     "tex": { 
