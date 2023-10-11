@@ -14,12 +14,24 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ['sphinx.ext.mathjax', "myst_parser"]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+from latex_macros import mymacros
 
+mathjax3_config = {                  
+    # "loader": {"load": ['[tex]/color']},
+    "tex": { 
+        "inlineMath": [['\\(', '\\)']],
+        "displayMath": [["\\[", "\\]"]],
+        # "packages" : {'[+]': ['color']},                       
+        "macros": mymacros
+    }                           
+    }                 
+
+myst_enable_extensions = ["amsmath","dollarmath"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
