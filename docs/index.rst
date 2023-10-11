@@ -11,7 +11,7 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
    :maxdepth: 2
    :caption: Contents:
 
-   basics/navierstokes.rst
+   basics/navierstokes.md
 
 Funding
 ==================
