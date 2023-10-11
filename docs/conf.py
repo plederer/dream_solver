@@ -74,8 +74,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 mathjax3_config = {                  
     # "loader": {"load": ['[tex]/color']},
     "tex": { 
-        "inlineMath": [['\\(', '\\)']],
-        "displayMath": [["\\[", "\\]"]],
         # "packages" : {'[+]': ['color']},                       
         "macros": mymacros
     }                           

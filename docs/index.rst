@@ -12,6 +12,7 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
    :caption: Contents:
 
    basics/navierstokes.md
+   basics/conservative.md
 
 Funding
 ==================
