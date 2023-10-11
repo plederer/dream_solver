@@ -1,6 +1,6 @@
-## Compressible Equations in Conservative Form
+# Conservative Form
 
-### Navier Stokes Equations
+## Navier Stokes Equations
 Neglecting external forces $\vec{f} = 0$, the above derived dimensionless compressible equations can be expressed in a simple matter in conservative form
 
 \begin{align*}
@@ -33,7 +33,7 @@ The conserved variables  are given by
 
 and consist of mass, momentum and energy, respectively.
 
-### Euler Equations
+## Euler Equations
 
 By further neglecting every dissipative contribution, we recover *Euler's* equations
 
@@ -49,7 +49,7 @@ For the analysis the quasi-linear form is very helpful
 \end{align*}
 
 
-#### 2D Setting
+### 2D Setting
 In two dimensions the convective flux vector is defined as
 
 \begin{align*}

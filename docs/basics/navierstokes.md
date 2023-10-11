@@ -1,6 +1,4 @@
-# Considered equations
-
-## Compressible Navier-Stokes equations
+# Compressible Navier-Stokes equations
 
 We consider the following quantities 
 
@@ -240,75 +238,3 @@ Note, that for air one usually sets $\Pr_\infty = 0.72$, as the Prandtl number i
     \Re_{\text{ref}} &= \frac{\Re_{\infty}}{\Ma_\infty} (1 + \Ma_\infty) & \Pr_{\text{ref}} &= \Pr_{\infty}.
    \end{align*}
    
-
-
-<!-- 
-Non-dimensionalization
-######################
-
-We discuss the possible non-dimensionalizations that are (currently)
-available in the dream solver package.  In this section
-non-dimensional quantities are denoted with a superscript :math:`^*`. For
-simplification we omit :math:`^*` in other sections. In the following let
-:math:`\rho_\infty`, :math:`u_\infty`, :math:`T_\infty` and
-:math:`\text{Ma}_\infty` be the free-stream (far-field) density,
-velocity, temperature and Mach number, respectively. Further we use a
-reference length :math:`L` and  a reference viscosity :math:`\mu_\infty`.
-
-Aerodynamic scaling
-*******************
-
-We consider a density-velocity-temperature dimensionalization, i.e. we
-choose the reference values :math:`\rho_{ref} = \rho_\infty`, :math:`u_{ref} =u_\infty` 
-and :math:`T_{ref}=  T_\infty (\gamma - 1)\text{Ma}_\infty` and
-the dimensionless variables
-
-.. math::
-
-    {x}^* &= \frac{x}{L}, \quad &
-    {t}^* &= \frac{u_\infty t}{L}, \quad &
-    {{u}}^* &= \frac{{u}}{u_\infty}, \\
-    {\mu}^*(T) &= \frac{\mu(T)}{\mu_\infty}, \quad &
-    {\rho}^* &= \frac{\rho}{\rho_\infty},  \quad &
-    {p}^* &= \frac{p}{\rho_{\infty} u_{\infty}^2}, \\
-    {e}^* &= \frac{e}{u_\infty^2}, \quad &
-    {T}^* &= \frac{T}{T_\infty (\gamma - 1)\text{Ma}_\infty}, \quad &
-    {{q}}^* &= \frac{{q} L}{\rho_{\infty} u_{\infty}^3}.
-
-With the dimensionless numbers 
-
-.. math::
-
-    \text{Re}_\infty = \frac{\rho_\infty u_\infty L}{\mu_\infty}, \quad
-    \text{Ma}_\infty = \frac{u_\infty}{c_\infty} = \frac{u_\infty}{\sqrt{\gamma R T_\infty}}, \quad 
-    \text{Pr}:= \frac{c_p \mu}{k},
-    \quad   \text{Fr}_\infty := \sqrt{\frac{u_\infty^2}{gL}},
-
-i.e. the Reynolds, Mach, Prandtl and Frode number, 
-this results in the following set of equations
-
-.. math::
-
-    \frac{\partial \rho^*}{\partial t^*} + {\text{div}}^*(\rho^* u^*) &= 0, 
-    \\
-    \frac{\partial \rho^* u^*}{\partial t^*} + {\text{div}}^*(\rho^* u^*  \otimes u^*) - \frac{1}{\text{Re}}{\text{div}}^*(\tau^*) +\nabla{p^*} &= \frac{1}{\text{Fr}^2} \rho^* f^*, \\
-    \frac{\partial \rho^* E^*}{\partial t^*} + 
-    {\text{div}}^*(\rho^* E^* u^* + p^* u^*) - 
-    \frac{1}{\text{Re}}{\text{div}}^*(\tau^* u^*)  + 
-    \frac{1}{\text{Re}\text{Pr}} {\text{div}}^*( {q^*}) &= 
-    \rho^* f^* \cdot u^*.
-
-
-with :math:`\tau^* =  2 \mu^*(T)\Big(\varepsilon^*(u^*) - 1/3 {\text{div}}^*(u^*)\Big)` and :math:`q^* = \mu^*(T) \nabla^* T^*` and 
-
-.. math::
-
-    \gamma p^* = (\gamma - 1) \rho^* T^*, \quad E^* = \frac{T^*}{\gamma} + \frac{| u^*|^2}{2}, \quad c = \sqrt{(\gamma-1)T}.
-
-
-Aeroacoustic scaling
-********************
-
-.. math::
-
-    \pdt{\rho} = 0 -->

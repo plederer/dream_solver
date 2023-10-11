@@ -80,6 +80,7 @@ mathjax3_config = {
     }                 
 
 myst_enable_extensions = ["amsmath","dollarmath"]
+suppress_warnings = ["myst.header"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

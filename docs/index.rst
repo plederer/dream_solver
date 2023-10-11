@@ -8,11 +8,17 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
 
 
 .. toctree::
-   :maxdepth: 3
-   :caption: Contents:
+   :maxdepth: 2
+   :caption: Continuous Formulation:
 
    basics/navierstokes.md
    basics/conservative.md
+   basics/setofvariables.md
+
+.. toctree::
+   :maxdepth: 2
+   :caption: HDG formulation:
+
 
 Funding
 ==================
