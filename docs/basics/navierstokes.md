@@ -29,7 +29,7 @@ $$
     \end{align*}
 $$
 
-# Constitutive Relations
+## Constitutive Relations
 
 
 For the time being we assume the simplest equation of state, namely the ideal gas law
