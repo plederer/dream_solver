@@ -8,10 +8,26 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
 
 
 .. toctree::
-   :maxdepth: 3
-   :caption: Contents:
+   :maxdepth: 2
+   :caption: Contnuous formulation:
 
    basics/navierstokes.md
+   basics/setofvariables.md
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Discretization:
+
+   hdg/hdg.md
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Python-Module:
+
+   module/configuration
+
+
+
 
 Funding
 ==================
