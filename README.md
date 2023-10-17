@@ -1,4 +1,6 @@
-# Dream solver
+<img src="./logo/dream_logo.png" alt="dream_logo" style="height: 100px; width:100px;"/>
+
+# Dream solver 
 
 This is a solver plugin for [NGSolve](www.ngsolve.org) which can be
 used to solve the compressible Navier-Stokes equations by means of an
