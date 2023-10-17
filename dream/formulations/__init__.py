@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .interface import CompressibleFormulations, MixedMethods, _Formulation, RiemannSolver, Scaling, FEM
+from .interface import CompressibleFormulations, MixedMethods, _Formulation, RiemannSolver, Scaling
 from .conservative import ConservativeFormulation2D
 from .primitive import PrimitiveFormulation2D
 

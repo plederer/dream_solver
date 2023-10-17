@@ -6,7 +6,7 @@ from typing import Optional, Any, NamedTuple
 from numbers import Number
 from pathlib import Path
 
-from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver, Scaling, FEM
+from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver, Scaling
 from .time_schemes import TimeSchemes, Simulation
 from .crs import _DynamicViscosity, dynamic_viscosity_factory
 from .utils import Formatter
