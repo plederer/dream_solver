@@ -662,10 +662,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             order_policy = ORDER_POLICY.VARIABLE
 
         V = L2(self.mesh, order=order, order_policy=order_policy)
-        if self.cfg.fem is self.cfg.fem.HDG:
-            VHAT = FacetFESpace(self.mesh, order=order)
-        elif self.cfg.fem is self.cfg.fem.EDG:
-            VHAT = H1(self.mesh, order=order, orderinner=0)
+        VHAT = FacetFESpace(self.mesh, order=order)
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
 
         nscbc = self.dmesh.bcs.outflow_nscbc

@@ -111,7 +111,6 @@ class NSCBC(Pulse):
         super().__init__(cfg, tree, buffer=False, draw=draw)
         name = f"nscbc_{dim}"
         self.tree.directory_name = name
-        self.cfg.fem = "edg"
 
         self.dim = dim
         self.sigma = 0.25
@@ -144,7 +143,6 @@ class PSponge(Pulse):
                  factor: int = 1,
                  draw: bool = False) -> None:
         super().__init__(cfg, tree, buffer=True, factor=factor, draw=draw)
-        self.cfg.fem = "hdg"
 
         self.projection = projection
         self.dB = dB
@@ -230,7 +228,6 @@ class Sponge(Pulse):
                  dB: float,
                  draw: bool = False) -> None:
         super().__init__(cfg, tree, buffer=True, draw=draw)
-        self.cfg.fem = "hdg"
         self.dB = dB
 
         name = f"sponge_dB{-dB}"

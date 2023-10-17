@@ -14,7 +14,6 @@ maxh = 0.15
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
-cfg.fem = "hdg"
 # cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
 # cfg.mixed_method = "strain_heat"

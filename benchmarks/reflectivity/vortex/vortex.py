@@ -16,7 +16,6 @@ tree = ResultsDirectoryTree()
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
-cfg.fem = "hdg"
 cfg.scaling = "aeroacoustic"
 cfg.riemann_solver = 'hllem'
 

@@ -342,16 +342,15 @@ class TimeConfiguration(BaseConfiguration):
 
 class SolverConfiguration(BaseConfiguration):
 
-    __slots__ = ("_formulation",
-                 "_fem",
-                 "_scaling",
-                 "_dynamic_viscosity",
-                 "_mixed_method",
-                 "_riemann_solver",
-                 "_Mach_number",
+    __slots__ = ("_Mach_number",
                  "_Reynolds_number",
                  "_Prandtl_number",
                  "_heat_capacity_ratio",
+                 "_dynamic_viscosity",
+                 "_formulation",
+                 "_scaling",
+                 "_mixed_method",
+                 "_riemann_solver",
                  "_order",
                  "_static_condensation",
                  "_bonus_int_order",
@@ -375,7 +374,6 @@ class SolverConfiguration(BaseConfiguration):
 
         # Formulation Configuration
         self.formulation = "conservative"
-        self.fem = "hdg"
         self.scaling = "aerodynamic"
         self.mixed_method = None
         self.riemann_solver = 'roe'
@@ -473,18 +471,6 @@ class SolverConfiguration(BaseConfiguration):
             formulation = formulation.lower()
 
         self._formulation = self._get_enum(formulation, CompressibleFormulations, "Compressible Formulation")
-
-    @property
-    def fem(self) -> FEM:
-        return self._fem
-
-    @fem.setter
-    def fem(self, fem: str):
-
-        if isinstance(fem, str):
-            fem = fem.lower()
-
-        self._fem = self._get_enum(fem, FEM, "Finite Element Method")
 
     @property
     def scaling(self) -> Scaling:
@@ -638,7 +624,6 @@ class SolverConfiguration(BaseConfiguration):
         formatter.header('Solver Configuration').newline()
         formatter.subheader("Formulation Configuration").newline()
         formatter.entry("Formulation", self.formulation.name)
-        formatter.entry("Finite Element Method", self.fem.name)
         formatter.entry("Scaling", self.scaling.name)
         formatter.entry("Mixed Method", self.mixed_method.name)
         formatter.entry("Riemann Solver", self.riemann_solver.name)
