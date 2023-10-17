@@ -28,8 +28,7 @@ cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
 cfg.order = 6
-cfg.bonus_int_order_bnd = cfg.order
-cfg.bonus_int_order_vol = cfg.order
+cfg.bonus_int_order = {VOL: cfg.order, BND: cfg.order}
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"

@@ -25,8 +25,7 @@ class Vortex(Benchmark):
         cfg.heat_capacity_ratio = 1.4
 
         cfg.order = 6
-        cfg.bonus_int_order_bnd = cfg.order
-        cfg.bonus_int_order_vol = cfg.order
+        cfg.bonus_int_order = {VOL: cfg.order, BND: cfg.order}
 
         cfg.time.simulation = "transient"
         cfg.time.scheme = "BDF2"
@@ -214,8 +213,7 @@ class NSCBC(Vortex):
     def __init__(self, tree: ResultsDirectoryTree, M: float, maxh: float = 0.15, draw: bool = False) -> None:
         tree.directory_name = f"nscbc_vortex_dB_M{M}"
         super().__init__(tree, M, maxh, draw)
-        self.cfg.bonus_int_order_bnd = 3*self.cfg.order
-        self.cfg.bonus_int_order_vol = 3*self.cfg.order
+        self.cfg.bonus_int_order = {VOL: self.cfg.order, BND: self.cfg.order}
 
     def add_meta_data(self):
         super().add_meta_data()

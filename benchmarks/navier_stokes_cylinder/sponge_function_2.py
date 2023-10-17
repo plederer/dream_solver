@@ -26,8 +26,7 @@ cfg.damping_factor = 1
 cfg.max_iterations = 100
 cfg.time.scheme = 'BDF2'
 cfg.linear_solver = 'pardiso'
-cfg.bonus_int_order_bnd = cfg.order
-cfg.bonus_int_order_vol = cfg.order
+cfg.bonus_int_order = {VOL: cfg.order, BND: cfg.order}
 
 # Solver Options
 load_stationary = False

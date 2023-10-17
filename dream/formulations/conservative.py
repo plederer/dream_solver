@@ -34,8 +34,8 @@ class ConservativeFormulation(_Formulation):
     def add_convective_bilinearform(self, blf):
 
         compile_flag = self.cfg.compile_flag
-        bonus_order_vol = self.cfg.bonus_int_order_vol
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        bonus_vol = self.cfg.bonus_int_order[VOL]
+        bonus_bnd = self.cfg.bonus_int_order[BND]
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -46,11 +46,11 @@ class ConservativeFormulation(_Formulation):
         mask.vec[:] = 0
         mask.vec[~mask_fes.GetDofs(self.dmesh.boundary(self.dmesh.bcs.pattern))] = 1
 
-        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
+        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_vol)
         var_form += InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+                                 V) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
         var_form += mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
         blf += var_form.Compile(compile_flag)
 
@@ -58,8 +58,8 @@ class ConservativeFormulation(_Formulation):
 
         mixed_method = self.cfg.mixed_method
         compile_flag = self.cfg.compile_flag
-        bonus_order_vol = self.cfg.bonus_int_order_vol
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        bonus_vol = self.cfg.bonus_int_order[VOL]
+        bonus_bnd = self.cfg.bonus_int_order[BND]
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -71,11 +71,11 @@ class ConservativeFormulation(_Formulation):
         mask.vec[:] = 0
         mask.vec[~mask_fes.GetDofs(self.dmesh.boundary(self.dmesh.bcs.pattern))] = 1
 
-        var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_order_vol)
+        var_form = InnerProduct(self.diffusive_flux(U, Q), grad(V)) * dx(bonus_intorder=bonus_vol)
         var_form -= InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+                                 V) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
         var_form -= mask * InnerProduct(self.diffusive_numerical_flux(U, Uhat, Q, self.normal),
-                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
         blf += var_form.Compile(compile_flag)
 
@@ -85,8 +85,8 @@ class ConservativeFormulation(_Formulation):
     def add_initial_linearform(self, lf):
 
         mixed_method = self.cfg.mixed_method
-        bonus_vol = self.cfg.bonus_int_order_vol
-        bonus_bnd = self.cfg.bonus_int_order_bnd
+        bonus_vol = self.cfg.bonus_int_order[VOL]
+        bonus_bnd = self.cfg.bonus_int_order[BND]
 
         for domain, dc in self.dmesh.dcs.initial_conditions.items():
 
@@ -104,7 +104,7 @@ class ConservativeFormulation(_Formulation):
             state = self.calc.determine_missing(dc.state)
             U_f = CF((state.density, state.momentum, state.energy))
 
-            cf = U_f * V * dx(definedon=domain, bonus_intorder=bonus_vol)
+            cf = U_f * V * dx(definedon=domain)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
             if nscbc:
                 cf += U_f * Vhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
@@ -129,8 +129,8 @@ class ConservativeFormulation(_Formulation):
             lf += cf
 
     def add_perturbation_linearform(self, lf):
-        bonus_vol = self.cfg.bonus_int_order_vol
-        bonus_bnd = self.cfg.bonus_int_order_bnd
+        bonus_vol = self.cfg.bonus_int_order[VOL]
+        bonus_bnd = self.cfg.bonus_int_order[BND]
 
         for domain, dc in self.dmesh.dcs.perturbations.items():
 
@@ -146,8 +146,8 @@ class ConservativeFormulation(_Formulation):
             lf += cf
 
     def add_forcing_linearform(self, lf):
-        bonus_vol = self.cfg.bonus_int_order_vol
-        bonus_bnd = self.cfg.bonus_int_order_bnd
+        bonus_vol = self.cfg.bonus_int_order[VOL]
+        bonus_bnd = self.cfg.bonus_int_order[BND]
 
         for domain, dc in self.dmesh.dcs.force.items():
 
@@ -181,7 +181,7 @@ class ConservativeFormulation(_Formulation):
     def _add_farfield_bilinearform(self, blf,  boundary: Region, bc: bcs.FarField):
 
         compile_flag = self.cfg.compile_flag
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        bonus_bnd = self.cfg.bonus_int_order[BND]
 
         state = self.calc.determine_missing(bc.state)
         farfield = CF((state.density, state.momentum, state.energy))
@@ -202,13 +202,13 @@ class ConservativeFormulation(_Formulation):
 
         cf = An_out * (U - Uhat)
         cf -= An_in * (farfield - Uhat)
-        cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_bnd)
 
         blf += cf.Compile(compile_flag)
 
     def _add_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.Outflow):
 
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        bonus_bnd = self.cfg.bonus_int_order[BND]
         compile_flag = self.cfg.compile_flag
         gamma = self.cfg.heat_capacity_ratio
 
@@ -222,13 +222,13 @@ class ConservativeFormulation(_Formulation):
         outflow = CF((rho, rho_u, energy))
 
         cf = InnerProduct(outflow - Uhat, Vhat)
-        cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_bnd)
 
         blf += cf.Compile(compile_flag)
 
     def _add_inviscid_wall_bilinearform(self, blf, boundary: Region, bc: bcs.InviscidWall):
 
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        bonus_bnd = self.cfg.bonus_int_order[BND]
         compile_flag = self.cfg.compile_flag
 
         U, _ = self.TnT.PRIMAL
@@ -241,7 +241,7 @@ class ConservativeFormulation(_Formulation):
         U_wall = CF((rho, rho_u - InnerProduct(rho_u, n)*n, rho_E))
 
         cf = InnerProduct(U_wall-Uhat, Vhat)
-        cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_bnd)
 
         blf += cf.Compile(compile_flag)
 
@@ -263,6 +263,7 @@ class ConservativeFormulation(_Formulation):
 
     def _add_adiabatic_wall_bilinearform(self, blf, boundary: Region, bc: bcs.AdiabaticWall):
 
+        bonus_bnd = self.cfg.bonus_int_order[BND]
         mixed_method = self.cfg.mixed_method
         if mixed_method is MixedMethods.NONE:
             raise NotImplementedError(f"Adiabatic wall not implemented for {mixed_method}")
@@ -280,7 +281,8 @@ class ConservativeFormulation(_Formulation):
         diff_rho_u = -self.momentum(Uhat)
         diff_rho_E = tau_dE * (self.temperature_gradient(U, Q)*n - (self.energy(U) - self.energy(Uhat)))
 
-        cf = InnerProduct(CF((diff_rho, diff_rho_u, diff_rho_E)), Vhat) * ds(skeleton=True, definedon=boundary)
+        cf = InnerProduct(CF((diff_rho, diff_rho_u, diff_rho_E)), Vhat) * ds(skeleton=True,
+                                                                             definedon=boundary, bonus_intorder=bonus_bnd)
         blf += cf.Compile(compile_flag)
 
     def convective_numerical_flux(self, U, Uhat, unit_vector: CF):
@@ -718,8 +720,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
     def _add_mixed_bilinearform(self, blf):
 
-        bonus_vol = self.cfg.bonus_int_order_vol
-        bonus_bnd = self.cfg.bonus_int_order_bnd
+        bonus_vol = self.cfg.bonus_int_order[VOL]
+        bonus_bnd = self.cfg.bonus_int_order[BND]
         mixed_method = self.cfg.mixed_method
         compile_flag = self.cfg.compile_flag
         n = self.normal
@@ -805,85 +807,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = weight_function * U_high * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
 
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: Region, bc: bcs.Dirichlet):
-        raise NotImplementedError()
-        # bonus_order_bnd = self.cfg.bonus_int_order_bnd
-        # compile_flag = self.cfg.compile_flag
-        # mu = self.cfg.dynamic_viscosity
-        # M = self.cfg.Mach_number
-
-        # n = self.normal
-        # t = self.tangential
-        # region = self.mesh.Boundaries(boundary)
-
-        # U, _ = self.TnT.PRIMAL
-        # Uhat, Vhat = self.TnT.PRIMAL_FACET
-        # Q, _ = self.TnT.MIXED
-
-        # time_levels_gfu = self._gfus.get_component(1)
-        # time_levels_gfu['n+1'] = Uhat
-
-        # cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
-
-        # amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat, self.normal)
-
-        # rho = self.density(Uhat)
-        # c = self.speed_of_sound(Uhat)
-        # ut = InnerProduct(self.velocity(Uhat), t)
-        # un = InnerProduct(self.velocity(Uhat), n)
-        # Mn = IfPos(un, un, -un)/c
-
-        # if bc.type is bc.TYPE.PERFECT:
-        #     amplitude_in = CF((0, 0, 0, 0))
-
-        # elif bc.type is bc.TYPE.PARTIALLY:
-        #     ref_length = bc.reference_length
-
-        #     amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.pressure)
-        #     amplitude_in = CF((amp, 0, 0, 0))
-
-        # if bc.tang_conv_flux:
-
-        #     tang_conv_flux = self.conservative_convective_jacobian(Uhat, t) * (grad(U) * t)
-
-        #     cf += tang_conv_flux * Vhat
-        #     amplitude_in -= CF((tang_conv_flux, tang_conv_flux, tang_conv_flux, 0))
-
-        # if not mu.is_inviscid:
-
-        #     if bc.tang_visc_flux:
-
-        #         cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t) * (grad(U) * t)
-        #         mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t) * (grad(Q) * t)
-
-        #         cf -= cons_diff_jac_tang * Vhat
-        #         cf -= mixe_diff_jac_tang * Vhat
-
-        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_tang
-        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_tang
-
-        #     if bc.norm_visc_flux:
-        #         test = grad(Q)
-        #         test = CF((test[0, :], 0, 0, test[2, :], 0, 0, test[4, :]), dims=(5, 2))
-        #         mixe_diff_jac_norm_test = self.mixed_diffusive_jacobian(Uhat, n) * (test * n)
-
-        #         cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n) * (grad(U) * n)
-        #         mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n) * (grad(Q) * n)
-
-        #         cf -= cons_diff_jac_norm * Vhat
-        #         # cf -= mixe_diff_jac_norm * Vhat
-
-        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_norm
-        #         # amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_norm
-
-        # amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
-        # cf += (self.P_matrix(Uhat, self.normal) * amplitudes) * Vhat
-        # cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
-        # blf += cf.Compile(compile_flag)
-
     def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.Outflow_NSCBC):
 
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        bonus_order_bnd = self.cfg.bonus_int_order[BND]
         compile_flag = self.cfg.compile_flag
         mu = self.cfg.dynamic_viscosity
 
@@ -959,13 +885,11 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
-
         # # cf += 1e6*(Uhat.Trace() - Uhathat) * (Vhat.Trace() - Vhathat) * ds(element_boundary=True)
 
-
         if self.boolean:
-            cf = -1e-8*(Phathat * Qhathat) * ds(element_vb=BBND)#element_boundary=True)
-            cf += -1e-8*(Uhathat * Vhathat) * ds(element_vb=BBND)#element_boundary=True)
+            cf = -1e-8*(Phathat * Qhathat) * ds(element_vb=BBND)  # element_boundary=True)
+            cf += -1e-8*(Uhathat * Vhathat) * ds(element_vb=BBND)  # element_boundary=True)
             cf = (Uhat.Trace() - Uhathat) * Qhathat * ds(element_boundary=True)
             cf += (Vhat.Trace() - Vhathat) * Phathat * ds(element_boundary=True)
             blf += cf.Compile(compile_flag)

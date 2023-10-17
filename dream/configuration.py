@@ -1,9 +1,9 @@
 from __future__ import annotations
 import numpy as np
 from ngsolve import Parameter
+from ngsolve.comp import VorB
 from typing import Optional, Any, NamedTuple
 from numbers import Number
-from math import log10, ceil
 from pathlib import Path
 
 from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver, Scaling, FEM
@@ -354,8 +354,7 @@ class SolverConfiguration(BaseConfiguration):
                  "_heat_capacity_ratio",
                  "_order",
                  "_static_condensation",
-                 "_bonus_int_order_vol",
-                 "_bonus_int_order_bnd",
+                 "_bonus_int_order",
                  "_time",
                  "_compile_flag",
                  "_max_iterations",
@@ -367,13 +366,6 @@ class SolverConfiguration(BaseConfiguration):
 
     def __init__(self) -> None:
 
-        # Formulation Configuration
-        self.formulation = "conservative"
-        self.fem = "hdg"
-        self.scaling = "aerodynamic"
-        self.mixed_method = None
-        self.riemann_solver = 'roe'
-
         # Flow Configuration
         self._Mach_number = Parameter(0.3)
         self._Reynolds_number = Parameter(1)
@@ -381,11 +373,17 @@ class SolverConfiguration(BaseConfiguration):
         self._heat_capacity_ratio = Parameter(1.4)
         self._dynamic_viscosity = dynamic_viscosity_factory('inviscid')
 
+        # Formulation Configuration
+        self.formulation = "conservative"
+        self.fem = "hdg"
+        self.scaling = "aerodynamic"
+        self.mixed_method = None
+        self.riemann_solver = 'roe'
+
         # Finite Element Configuration
         self.order = 2
         self.static_condensation = True
-        self.bonus_int_order_vol = 0
-        self.bonus_int_order_bnd = 0
+        self._bonus_int_order = {VorB.VOL: 0, VorB.BND: 0, VorB.BBND: 0, VorB.BBBND: 0}
 
         # Time Configuration
         self._time = TimeConfiguration()
@@ -487,7 +485,7 @@ class SolverConfiguration(BaseConfiguration):
             fem = fem.lower()
 
         self._fem = self._get_enum(fem, FEM, "Finite Element Method")
-    
+
     @property
     def scaling(self) -> Scaling:
         return self._scaling
@@ -557,20 +555,22 @@ class SolverConfiguration(BaseConfiguration):
         self._static_condensation = bool(static_condensation)
 
     @property
-    def bonus_int_order_vol(self) -> int:
-        return self._bonus_int_order_vol
+    def bonus_int_order(self) -> dict[VorB, int]:
+        return self._bonus_int_order
 
-    @bonus_int_order_vol.setter
-    def bonus_int_order_vol(self, bonus_int_order_vol: int):
-        self._bonus_int_order_vol = int(bonus_int_order_vol)
+    @bonus_int_order.setter
+    def bonus_int_order(self, bonus_int_order: dict[VorB, int]):
+        if isinstance(bonus_int_order, dict):
+            bonus_int_order = {key: value for key, value in bonus_int_order.items() if key in self._bonus_int_order}
 
-    @property
-    def bonus_int_order_bnd(self) -> int:
-        return self._bonus_int_order_bnd
+        elif isinstance(bonus_int_order, (tuple, list)):
+            bonus_int_order = {key: value for key, value in bonus_int_order if key in self._bonus_int_order}
 
-    @bonus_int_order_bnd.setter
-    def bonus_int_order_bnd(self, bonus_int_order_bnd: int):
-        self._bonus_int_order_bnd = int(bonus_int_order_bnd)
+        else:
+            options = {key: 0 for key in self._bonus_int_order}
+            raise TypeError(f"Bonus Integration Order must be a dictionary of format {options}")
+
+        self._bonus_int_order.update(bonus_int_order)
 
     @property
     def compile_flag(self) -> bool:
@@ -656,8 +656,8 @@ class SolverConfiguration(BaseConfiguration):
         formatter.subheader('Finite Element Configuration').newline()
         formatter.entry('Polynomial Order', self._order)
         formatter.entry('Static Condensation', str(self._static_condensation))
-        formatter.entry('Bonus Integration Order BND', self._bonus_int_order_bnd)
-        formatter.entry('Bonus Integration Order VOL', self._bonus_int_order_vol)
+        formatter.entry('Bonus Integration Order', str(
+            {key.name: value for key, value in self._bonus_int_order.items()}))
         formatter.newline()
 
         formatter.add(self.time).newline()

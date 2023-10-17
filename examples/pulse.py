@@ -9,21 +9,12 @@ SetNumThreads(8)
 
 circle = False
 structured = False
-<<<<<<< HEAD
+periodic = True
 maxh = 0.05
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
 cfg.scaling = "acoustic"
-=======
-periodic = False
-maxh = 0.1
-
-cfg = SolverConfiguration()
-cfg.formulation = "conservative"
-cfg.scaling = "aeroacoustic"
-cfg.fem = "edg"
->>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
 # cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
 # cfg.mixed_method = "strain_heat"
@@ -35,21 +26,12 @@ cfg.Mach_number = 0
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
-<<<<<<< HEAD
 cfg.order = 1
-=======
-cfg.order = 6
->>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
-cfg.bonus_int_order_bnd = 0
-cfg.bonus_int_order_vol = 0
+cfg.bonus_int_order = {VOL: cfg.order, BND: cfg.order}
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-<<<<<<< HEAD
 cfg.time.step = 0.01
-=======
-cfg.time.step = 0.1
->>>>>>> d475ff348ec802722884db0c0b5996f5565b9446
 cfg.time.interval = (0, 100)
 
 cfg.linear_solver = "pardiso"
