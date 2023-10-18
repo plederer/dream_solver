@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from ngsolve import Parameter
+from ngsolve import Parameter, CF
 from ngsolve.comp import VorB
 from typing import Optional, Any, NamedTuple
 from numbers import Number
@@ -8,7 +8,6 @@ from pathlib import Path
 
 from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver, Scaling
 from .time_schemes import TimeSchemes, Simulation
-from .crs import _DynamicViscosity, dynamic_viscosity_factory
 from .utils import Formatter
 
 
@@ -175,6 +174,16 @@ class BaseConfiguration:
             msg = f"'{str(value).capitalize()}' is not a valid {variable}. "
             msg += f"Possible alternatives: {[e.value for e in enum]}"
             raise ValueError(msg) from None
+        return value
+
+    @staticmethod
+    def _get_dict(key: Any, dictionary, variable: str):
+        try:
+            value = dictionary[key]
+        except KeyError:
+            msg = f"'{str(key).capitalize()}' is not a valid {variable}. "
+            msg += f"Possible alternatives: {[key for key in dictionary]}"
+            raise KeyError(msg) from None
         return value
 
     def to_dict(self) -> dict[str, Any]:
@@ -370,7 +379,7 @@ class SolverConfiguration(BaseConfiguration):
         self._Reynolds_number = Parameter(1)
         self._Prandtl_number = Parameter(0.72)
         self._heat_capacity_ratio = Parameter(1.4)
-        self._dynamic_viscosity = dynamic_viscosity_factory('inviscid')
+        self.dynamic_viscosity = 'inviscid'
 
         # Formulation Configuration
         self.formulation = "conservative"
@@ -485,12 +494,20 @@ class SolverConfiguration(BaseConfiguration):
         self._scaling = self._get_enum(scaling, Scaling, "Scaling")
 
     @property
-    def dynamic_viscosity(self) -> _DynamicViscosity:
+    def dynamic_viscosity(self) -> DynamicViscosity:
         return self._dynamic_viscosity
 
     @dynamic_viscosity.setter
-    def dynamic_viscosity(self, dynamic_viscosity: _DynamicViscosity):
-        self._dynamic_viscosity = dynamic_viscosity_factory(dynamic_viscosity)
+    def dynamic_viscosity(self, dynamic_viscosity: DynamicViscosity):
+        if isinstance(dynamic_viscosity, str):
+            obj = self._get_dict(dynamic_viscosity.lower(), DynamicViscosity.TYPES, "Dynamic Viscosity")
+            dynamic_viscosity = obj(solver_configuration=self)
+        elif isinstance(dynamic_viscosity, DynamicViscosity):
+            dynamic_viscosity.cfg = self
+        else:
+            raise TypeError(f'Only type {DynamicViscosity} or {str} allowed!')
+        
+        self._dynamic_viscosity = dynamic_viscosity
 
     @property
     def mixed_method(self) -> MixedMethods:
@@ -672,5 +689,120 @@ class SolverConfiguration(BaseConfiguration):
 
                 formatter.entry(str(key), value)
             formatter.newline()
+
+        return formatter.output
+
+
+class DynamicViscosity:
+
+    TYPES: dict[str, DynamicViscosity] = {}
+
+    def __init_subclass__(cls) -> None:
+        label = cls.__name__.lower()
+        cls.TYPES[label] = cls
+
+    def __init__(self, solver_configuration: SolverConfiguration = None) -> None:
+        self.cfg = solver_configuration
+
+    @property
+    def is_inviscid(self):
+        return isinstance(self, Inviscid)
+
+    def get(self, temperature: CF) -> CF:
+        raise NotImplementedError("Implement .get(temperature) member function!")
+
+    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
+        raise NotImplementedError("Implement .get_gradient(temperature) member function!")
+
+    def __call__(self, temperature: CF) -> CF:
+        return self.get(temperature)
+
+    def __repr__(self):
+        formatter = Formatter()
+        formatter.subheader('Dynamic Viscosity').newline()
+        formatter.entry('Type', str(self))
+        return formatter.output
+
+    def __str__(self) -> str:
+        return self.__class__.__name__.capitalize()
+
+
+class Inviscid(DynamicViscosity):
+
+    def get(self, temperature: CF) -> CF:
+        raise TypeError("Can not get dynamic viscosity from inviscid setting!")
+
+    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
+        raise TypeError("Can not get dynamic viscosity gradient from inviscid setting!")
+
+
+class Constant(DynamicViscosity):
+
+    def get(self, temperature: CF) -> CF:
+        return 1
+
+    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
+        return CF(tuple(0 for _ in range(temperature_gradient.dim)))
+
+
+class Sutherland(DynamicViscosity):
+
+    def __init__(self,
+                 temperature_ref: float = 293.15,
+                 temperature_0: float = 110.4,
+                 viscosity_0: float = 1.716e-5,
+                 solver_configuration: SolverConfiguration = None) -> None:
+
+        self._temperature_ref = Parameter(temperature_ref)
+        self._temperature_0 = Parameter(temperature_0)
+        self._viscosity_0 = Parameter(viscosity_0)
+        super().__init__(solver_configuration)
+
+    def get(self, temperature: CF) -> CF:
+        M = self.cfg.Mach_number
+        gamma = self.cfg.heat_capacity_ratio
+
+        T_ = temperature
+        T_ref = self.temperature_ref
+        S0 = self.temperature_0
+
+        S_ = S0/(T_ref * (gamma - 1) * M**2)
+        T_ref_ = 1/((gamma - 1) * M**2)
+
+        return (T_/T_ref_)**(3/2) * (T_ref_ + S_)/(T_ + S_)
+
+    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
+        return super().get_gradient(temperature, temperature_gradient)
+
+    @property
+    def temperature_ref(self) -> Parameter:
+        return self._temperature_ref
+
+    @temperature_ref.setter
+    def temperature_ref(self, temperature_ref):
+        self._temperature_ref.Set(temperature_ref)
+
+    @property
+    def temperature_0(self) -> Parameter:
+        return self._temperature_0
+
+    @temperature_0.setter
+    def temperature_0(self, temperature_0):
+        self._temperature_0.Set(temperature_0)
+
+    @property
+    def viscosity_0(self) -> Parameter:
+        return self._viscosity_0
+
+    @viscosity_0.setter
+    def viscosity_0(self, viscosity_0):
+        self._viscosity_0.Set(viscosity_0)
+
+    def __repr__(self):
+        formatter = Formatter()
+        formatter.output += super().__repr__()
+        formatter.entry('Reference Temperature', self.temperature_ref.Get())
+        formatter.entry('Law Reference Temperature', self.temperature_0.Get())
+        formatter.entry('Law Reference Viscosity', self.viscosity_0.Get())
 
         return formatter.output

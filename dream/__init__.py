@@ -6,6 +6,7 @@ __all__ = [
     'ResultsDirectoryTree',
     'PointSensor',
     'BoundarySensor',
+    'DynamicViscosity',
     'Inviscid',
     'Constant',
     'Sutherland',
@@ -22,10 +23,16 @@ __all__ = [
 ]
 
 from .hdg_solver import CompressibleHDGSolver
-from .configuration import SolverConfiguration, ResultsDirectoryTree, DreAmLogger
+from .configuration import (SolverConfiguration,
+                            ResultsDirectoryTree,
+                            DreAmLogger,
+                            DynamicViscosity,
+                            Inviscid, 
+                            Constant, 
+                            Sutherland)
+
 from .io import Loader, Saver
 from .sensor import PointSensor, BoundarySensor
-from .crs import Inviscid, Constant, Sutherland
 from .state import State, IdealGasCalculator, DimensionlessFarfieldValues
 from .region import BoundaryConditions as bcs
 from .region import DomainConditions as dcs

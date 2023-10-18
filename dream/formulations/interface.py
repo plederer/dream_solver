@@ -9,7 +9,6 @@ from ngsolve import *
 from ..time_schemes import time_scheme_factory, TimeLevelsGridfunction
 from ..region import DreamMesh
 from ..state import IdealGasCalculator
-from ..crs import Inviscid, Constant, Sutherland
 
 import logging
 logger = logging.getLogger("DreAm.Formulations")
@@ -544,37 +543,10 @@ class _Formulation(Formulation):
         return param * self.deviatoric_strain_tensor(U, Q)
 
     def dynamic_viscosity(self, U: Optional[CF] = None) -> CF:
-        mu = self.cfg.dynamic_viscosity
-
-        if isinstance(mu, Inviscid):
-            raise TypeError('Dynamic Viscosity non existent for Inviscid flow')
-        elif isinstance(mu, Constant):
-            return 1
-        elif isinstance(mu, Sutherland):
-            M = self.cfg.Mach_number
-            gamma = self.cfg.heat_capacity_ratio
-
-            T_ = self.temperature(U)
-
-            T_ref = mu.temperature_ref
-            S0 = mu.temperature_0
-
-            S_ = S0/(T_ref * (gamma - 1) * M**2)
-            T_ref_ = 1/((gamma - 1) * M**2)
-
-            return (T_/T_ref_)**(3/2) * (T_ref_ + S_)/(T_ + S_)
-        else:
-            raise NotImplementedError()
+        return self.cfg.dynamic_viscosity(self.temperature(U))
 
     def dynamic_viscosity_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        mu = self.cfg.dynamic_viscosity
-
-        if isinstance(mu, Inviscid):
-            raise TypeError('Dynamic Viscosity non existent for Inviscid flow')
-        elif isinstance(mu, Constant):
-            return CF([0]*self.mesh.dim)
-        else:
-            raise NotImplementedError()
+        return self.cfg.dynamic_viscosity.get_gradient(self.temperature(U), self.temperature_gradient(U, Q))
 
     def characteristic_variables(self, U, Q, Uhat, unit_vector: CF) -> tuple:
         """
