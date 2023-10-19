@@ -1,4 +1,4 @@
-<img src="./logo/dream_logo_long.png" alt="dream_solver" style="height: 150px;"/>  
+<img src="./logo/dream_logo_long.png" alt="dream_solver" style="height: 200px;"/>  
 
 ### About
 ---
@@ -8,7 +8,7 @@ used to solve the compressible Navier-Stokes equations by means of an
 Hybrid Discontinuous (HDG) Galerkin method. The main interest lies in
 computational aeroacoustics.
 
-Checkout the [documentation](https://plederer.github.io/dream_solver/) for more information!
+Checkout the [documentation](https://plederer.github.io/dream_solver/) (work in progress!) for more information!
 
 ### Funding  
 ---
