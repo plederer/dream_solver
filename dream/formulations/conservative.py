@@ -2,8 +2,7 @@ from __future__ import annotations
 from ngsolve import *
 from typing import Optional, NamedTuple
 from .interface import _Formulation, MixedMethods, TensorIndices, FiniteElementSpace
-from ..region import BoundaryConditions as bcs
-from ..region import DomainConditions as dcs
+from ..mesh import bcs, dcs
 
 
 class Indices(NamedTuple):
@@ -96,19 +95,11 @@ class ConservativeFormulation(_Formulation):
             _, Vhat = self.TnT.PRIMAL_FACET
             _, P = self.TnT.MIXED
 
-            nscbc = self.dmesh.bcs.outflow_nscbc
-            if nscbc:
-                _, Vhathat = self.TnT.PRIMAL_HATHAT
-                _, Qhathat = self.TnT.SURFACE_HATHAT
-
             state = self.calc.determine_missing(dc.state)
             U_f = CF((state.density, state.momentum, state.energy))
 
             cf = U_f * V * dx(definedon=domain)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
-            if nscbc:
-                cf += U_f * Vhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
-                cf += CF((0, 0, 0, 0)) * Qhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
 
             if mixed_method is MixedMethods.GRADIENT:
                 Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
@@ -117,8 +108,8 @@ class ConservativeFormulation(_Formulation):
             elif mixed_method is MixedMethods.STRAIN_HEAT:
                 velocity_gradient = CF(tuple(CF(state.velocity).Diff(dir) for dir in (x, y)), dims=(dim, dim)).trans
 
-                strain = velocity_gradient + velocity_gradient.trans
-                strain -= 2/3 * (velocity_gradient[0, 0] + velocity_gradient[1, 1]) * Id(dim)
+                strain = 0.5*(velocity_gradient + velocity_gradient.trans)
+                strain -= 1/3 * (velocity_gradient[0, 0] + velocity_gradient[1, 1]) * Id(dim)
 
                 gradient_T = CF(tuple(CF(state.temperature).Diff(dir) for dir in (x, y)))
 
@@ -519,8 +510,6 @@ class ConservativeFormulation(_Formulation):
 
     def heat_flux_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
-        Re = self.cfg.Reynolds_number
-        Pr = self.cfg.Prandtl_number
         mixed_method = self.cfg.mixed_method
         dim = self.mesh.dim
 
@@ -534,13 +523,13 @@ class ConservativeFormulation(_Formulation):
             mu = self.dynamic_viscosity(U)
             gradient_mu = self.dynamic_viscosity_gradient(U, Q)
 
-            gradient_heat = -1/(Re * Pr) * (OuterProduct(phi, gradient_mu) + mu * gradient_phi)
+            gradient_heat = -(OuterProduct(phi, gradient_mu) + mu * gradient_phi)
         else:
             raise NotImplementedError(f"Deviatoric strain tensor: {mixed_method}")
 
         return gradient_heat
 
-    def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+    def deviatoric_strain_rate_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
 
         mixed_method = self.cfg.mixed_method
         dim = self.mesh.dim
@@ -552,7 +541,7 @@ class ConservativeFormulation(_Formulation):
         elif mixed_method is MixedMethods.GRADIENT:
             gradient_u = self.velocity_gradient(U, Q)
             trace_gradient_u = sum(CF(tuple(gradient_u[i, i] for i in range(dim))))
-            strain = gradient_u + gradient_u.trans - 2/3 * trace_gradient_u * Id(dim)
+            strain = 0.5*(gradient_u + gradient_u.trans) - 1/3 * trace_gradient_u * Id(dim)
 
         else:
             raise NotImplementedError(f"Deviatoric strain tensor: {mixed_method}")
@@ -575,18 +564,15 @@ class ConservativeFormulation(_Formulation):
         return strain_gradient
 
     def deviatoric_stress_tensor_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-
-        Re = self.cfg.Reynolds_number
         dim = self.mesh.dim
 
-        strain = self.deviatoric_strain_tensor(U, Q)
+        strain = self.deviatoric_strain_rate_tensor(U, Q)
         gradient_strain = self.deviatoric_strain_tensor_gradient(U, Q)
 
         mu = self.dynamic_viscosity(U)
         gradient_mu = self.dynamic_viscosity_gradient(U, Q)
 
-        gradient_stress = OuterProduct(strain, gradient_mu).Reshape((dim, dim, dim)) + mu * gradient_strain
-        gradient_stress /= Re
+        gradient_stress = 2*(OuterProduct(strain, gradient_mu).Reshape((dim, dim, dim)) + mu * gradient_strain)
 
         return gradient_stress
 
@@ -665,20 +651,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
         VHAT = FacetFESpace(self.mesh, order=order)
         Q = VectorL2(self.mesh, order=order, order_policy=order_policy)
 
-        nscbc = self.dmesh.bcs.outflow_nscbc
-        if nscbc:
-            VHATHAT = H1(self.mesh, order=1)
-            bnd_dofs = VHATHAT.GetDofs(self.dmesh.boundary(self.dmesh.pattern(nscbc)))
-            VHATHAT = Compress(VHATHAT, bnd_dofs)
-            print(VHATHAT.ndof)
-
-            QHATHAT = SurfaceL2(self.mesh, order=1, nodal=True)
-            bnd_dofs = QHATHAT.GetDofs(self.dmesh.boundary(self.dmesh.pattern(nscbc)))
-            QHATHAT = Compress(QHATHAT, bnd_dofs)
-            print(QHATHAT.ndof)
-
-            self.boolean = True
-
         if p_sponge_layers:
 
             sponge_region = self.dmesh.domain(self.dmesh.pattern(p_sponge_layers.keys()))
@@ -735,12 +707,12 @@ class ConservativeFormulation2D(ConservativeFormulation):
             u = self.velocity(U)
             uhat = self.velocity(Uhat)
 
-            eps = self.deviatoric_strain_tensor(U, Q)
-            zeta = self.deviatoric_strain_tensor(V, P)
+            eps = self.deviatoric_strain_rate_tensor(U, Q)
+            zeta = self.deviatoric_strain_rate_tensor(V, P)
 
-            dev_zeta = 2 * zeta - 2/3 * (zeta[0, 0] + zeta[1, 1]) * Id(2)
-            div_dev_zeta = 2 * CF((gradient_P[0, 0] + gradient_P[1, 1], gradient_P[1, 0] + gradient_P[2, 1]))
-            div_dev_zeta -= 2/3 * CF((gradient_P[0, 0] + gradient_P[2, 0], gradient_P[0, 1] + gradient_P[2, 1]))
+            dev_zeta = zeta - 1/3 * (zeta[0, 0] + zeta[1, 1]) * Id(2)
+            div_dev_zeta = CF((gradient_P[0, 0] + gradient_P[1, 1], gradient_P[1, 0] + gradient_P[2, 1]))
+            div_dev_zeta -= 1/3 * CF((gradient_P[0, 0] + gradient_P[2, 0], gradient_P[0, 1] + gradient_P[2, 1]))
 
             var_form = InnerProduct(eps, zeta) * dx()
             var_form += InnerProduct(u, div_dev_zeta) * dx(bonus_intorder=bonus_vol)
@@ -815,7 +787,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
-        Uhathat, Vhathat = self.TnT.NSCBC
         Q, _ = self.TnT.MIXED
 
         time_levels_gfu = self._gfus.get_component(1)
@@ -882,15 +853,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
-        # # cf += 1e6*(Uhat.Trace() - Uhathat) * (Vhat.Trace() - Vhathat) * ds(element_boundary=True)
-
-        if self.boolean:
-            cf = -1e-8*(Phathat * Qhathat) * ds(element_vb=BBND)  # element_boundary=True)
-            cf += -1e-8*(Uhathat * Vhathat) * ds(element_vb=BBND)  # element_boundary=True)
-            cf = (Uhat.Trace() - Uhathat) * Qhathat * ds(element_boundary=True)
-            cf += (Vhat.Trace() - Vhathat) * Phathat * ds(element_boundary=True)
-            blf += cf.Compile(compile_flag)
-            self.boolean = False
 
     def conservative_diffusive_jacobian_x(self, U, Q):
 

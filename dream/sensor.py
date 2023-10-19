@@ -7,13 +7,13 @@ import pandas as pd
 
 from typing import *
 from ngsolve import *
+from .utils import DreAmLogger
 
 if TYPE_CHECKING:
-    from .formulations import Formulation
-    from .hdg_solver import CompressibleHDGSolver
+    from .formulations import _Formulation
+    from .solver import CompressibleHDGSolver
 
-import logging
-logger = logging.getLogger('DreAm.Sensor')
+logger = DreAmLogger.get_logger('Sensor')
 
 
 class ScalarComponent(NamedTuple):
@@ -97,7 +97,7 @@ class Sensor(abc.ABC):
         self._formulation = None
 
     @property
-    def formulation(self) -> Formulation:
+    def formulation(self) -> _Formulation:
         if self._formulation is None:
             raise ValueError("Assign Solver to Sensor!")
         return self._formulation

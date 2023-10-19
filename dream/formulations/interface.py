@@ -7,15 +7,13 @@ from typing import Optional, TYPE_CHECKING, NamedTuple
 from ngsolve import *
 
 from ..time_schemes import time_scheme_factory, TimeLevelsGridfunction
-from ..region import DreamMesh
-from ..state import IdealGasCalculator
+from ..mesh import DreamMesh
+from ..utils import DreAmLogger, IdealGasCalculator
 
-import logging
-logger = logging.getLogger("DreAm.Formulations")
+logger = DreAmLogger.get_logger("Formulations")
 
 if TYPE_CHECKING:
-    from configuration import SolverConfiguration
-    from ngsolve.comp import ProxyFunction
+    from ..configuration import SolverConfiguration
 
 
 class CompressibleFormulations(enum.Enum):
@@ -34,12 +32,6 @@ class RiemannSolver(enum.Enum):
     ROE = 'roe'
     HLL = 'hll'
     HLLEM = 'hllem'
-
-
-class Scaling(enum.Enum):
-    ACOUSTIC = 'acoustic'
-    AERODYNAMIC = 'aerodynamic'
-    AEROACOUSTIC = 'aeroacoustic'
 
 
 @dataclasses.dataclass
@@ -198,7 +190,7 @@ class Formulation(abc.ABC):
     def vorticity(self, U: Optional[CF] = None, Q: Optional[CF] = None):
         raise NotImplementedError()
 
-    def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
+    def deviatoric_strain_rate_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
         raise NotImplementedError()
 
     def _add_dirichlet_bilinearform(self, blf, boundary, condition):
@@ -370,16 +362,8 @@ class _Formulation(Formulation):
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        nscbc = self.dmesh.bcs.outflow_nscbc
-        if nscbc:
-            Uhathat, Vhathat = self.TnT.PRIMAL_HATHAT
-            Phathat, Qhathat = self.TnT.SURFACE_HATHAT
-
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
-        if nscbc:
-            blf += Uhathat * Vhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
-            blf += Phathat * Qhathat * ds  # (definedon=self.dmesh.boundary(self.dmesh.bcs.pattern))
 
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
@@ -474,19 +458,20 @@ class _Formulation(Formulation):
               https://doi.org/10.1007/s11831-020-09508-z
         """
         dim = self.mesh.dim
+        Re = self.cfg.scaling.get_Reynolds_number_scaled(self.cfg.Reynolds_number, self.cfg.Mach_number)
+        Pr = self.cfg.Prandtl_number
 
         continuity = tuple(0 for i in range(dim))
         u = self.velocity(U)
         tau = self.deviatoric_stress_tensor(U, Q)
         heat_flux = self.heat_flux(U, Q)
 
-        flux = CF((continuity, tau, tau*u - heat_flux), dims=(dim + 2, dim))
+        flux = CF((continuity, tau/Re, tau*u/Re - heat_flux/(Re * Pr)), dims=(dim + 2, dim))
 
         return flux
 
     def diffusive_stabilisation_matrix(self, Uhat):
-
-        Re = self.cfg.Reynolds_number
+        Re = self.cfg.scaling.get_Reynolds_number_scaled(self.cfg.Reynolds_number, self.cfg.Mach_number)
         Pr = self.cfg.Prandtl_number
         mu = self.dynamic_viscosity(Uhat)
 
@@ -506,41 +491,17 @@ class _Formulation(Formulation):
                         0, 0, 0, 0, 1/Pr), dims=(5, 5))
 
         tau_d *= mu / Re
-        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
-            tau_d *= self.cfg.Mach_number
-        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
-            tau_d *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
 
         return tau_d
 
     def heat_flux(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-
-        Re = self.cfg.Reynolds_number
-        Pr = self.cfg.Prandtl_number
-
         gradient_T = self.temperature_gradient(U, Q)
-        mu = self.dynamic_viscosity(U)
-
-        k = mu / (Re * Pr)
-
-        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
-            k *= self.cfg.Mach_number
-        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
-            k *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
-
+        k = self.dynamic_viscosity(U)
         return -k * gradient_T
 
     def deviatoric_stress_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-
-        Re = self.cfg.Reynolds_number
-
-        param = self.dynamic_viscosity(U)/Re
-        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
-            param *= self.cfg.Mach_number
-        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
-            param *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
-
-        return param * self.deviatoric_strain_tensor(U, Q)
+        mu = self.dynamic_viscosity(U)
+        return 2 * mu * self.deviatoric_strain_rate_tensor(U, Q)
 
     def dynamic_viscosity(self, U: Optional[CF] = None) -> CF:
         return self.cfg.dynamic_viscosity(self.temperature(U))

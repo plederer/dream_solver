@@ -1,15 +1,16 @@
 from __future__ import annotations
 from typing import Optional, NamedTuple
-
-from ngsolve import *
-from . import io
-from .sensor import Sensor
-from .formulations import formulation_factory, _Formulation
-from .configuration import SolverConfiguration, DreAmLogger
 from math import isnan
 
-import logging
-logger = logging.getLogger('DreAm.Solver')
+from ngsolve import *
+from .sensor import Sensor
+from .configuration import SolverConfiguration
+from .io import ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
+from .utils import DreAmLogger
+from .formulations import formulation_factory, _Formulation
+
+
+logger = DreAmLogger.get_logger('Solver')
 
 
 class IterationError(NamedTuple):
@@ -85,15 +86,15 @@ class CompressibleHDGSolver:
 
     def __init__(self, mesh: Mesh,
                  solver_configuration: SolverConfiguration,
-                 directory_tree: Optional[io.ResultsDirectoryTree] = None):
+                 directory_tree: Optional[ResultsDirectoryTree] = None):
 
         if directory_tree is None:
-            directory_tree = io.ResultsDirectoryTree()
+            directory_tree = ResultsDirectoryTree()
 
         self._formulation = formulation_factory(mesh, solver_configuration)
         self._status = SolverStatus(self.solver_configuration)
         self._sensors = []
-        self._drawer = io.Drawer(self.formulation)
+        self._drawer = Drawer(self.formulation)
         self._directory_tree = directory_tree
 
     @property
@@ -129,11 +130,11 @@ class CompressibleHDGSolver:
         return self._status
 
     @property
-    def drawer(self) -> io.Drawer:
+    def drawer(self) -> Drawer:
         return self._drawer
 
     @property
-    def directory_tree(self) -> io.ResultsDirectoryTree:
+    def directory_tree(self) -> ResultsDirectoryTree:
         return self._directory_tree
 
     def setup(self, reinitialize: bool = True):
@@ -232,14 +233,14 @@ class CompressibleHDGSolver:
         sensor.assign_solver(self)
         self.sensors.append(sensor)
 
-    def get_saver(self, directory_tree: Optional[io.ResultsDirectoryTree] = None) -> io.SolverSaver:
-        saver = io.SolverSaver(self)
+    def get_saver(self, directory_tree: Optional[ResultsDirectoryTree] = None) -> SolverSaver:
+        saver = SolverSaver(self)
         if directory_tree is not None:
             saver.tree = directory_tree
         return saver
 
-    def get_loader(self, directory_tree: Optional[io.ResultsDirectoryTree] = None) -> io.SolverLoader:
-        loader = io.SolverLoader(self)
+    def get_loader(self, directory_tree: Optional[ResultsDirectoryTree] = None) -> SolverLoader:
+        loader = SolverLoader(self)
         if directory_tree is not None:
             loader.tree = directory_tree
         return loader

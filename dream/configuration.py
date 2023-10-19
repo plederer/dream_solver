@@ -4,162 +4,14 @@ from ngsolve import Parameter, CF
 from ngsolve.comp import VorB
 from typing import Optional, Any, NamedTuple
 from numbers import Number
-from pathlib import Path
 
-from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver, Scaling
+from .formulations import CompressibleFormulations, MixedMethods, RiemannSolver
 from .time_schemes import TimeSchemes, Simulation
-from .utils import Formatter
+from .utils import Formatter, DreAmLogger
+from ._configuration import Scaling, DynamicViscosity, State
 
 
-import logging
-logger = logging.getLogger('DreAm.Configuration')
-
-
-class ResultsDirectoryTree:
-
-    def __init__(self,
-                 directory_name: str = "results",
-                 state_directory_name: str = "states",
-                 sensor_directory_name: str = "sensor",
-                 vtk_directory_name: str = "vtk",
-                 parent_path: Optional[Path] = None) -> None:
-
-        self.parent_path = parent_path
-        self.directory_name = directory_name
-        self.state_directory_name = state_directory_name
-        self.sensor_directory_name = sensor_directory_name
-        self.vtk_directory_name = vtk_directory_name
-
-    @property
-    def main_path(self) -> Path:
-        return self.parent_path.joinpath(self.directory_name)
-
-    @property
-    def state_path(self) -> Path:
-        return self.main_path.joinpath(self.state_directory_name)
-
-    @property
-    def sensor_path(self) -> Path:
-        return self.main_path.joinpath(self.sensor_directory_name)
-
-    @property
-    def vtk_path(self) -> Path:
-        return self.main_path.joinpath(self.vtk_directory_name)
-
-    @property
-    def parent_path(self) -> Path:
-        return self._parent_path
-
-    @parent_path.setter
-    def parent_path(self, parent_path: Path):
-
-        if parent_path is None:
-            self._parent_path = Path.cwd()
-
-        elif isinstance(parent_path, (str, Path)):
-            parent_path = Path(parent_path)
-
-            if not parent_path.exists():
-                raise ValueError(f"Path {parent_path} does not exist!")
-
-            self._parent_path = parent_path
-
-        else:
-            raise ValueError(f"Type {type(parent_path)} not supported!")
-
-    def find_directory_paths(self, pattern: str = "") -> tuple[Path]:
-        return tuple(dir for dir in self.parent_path.glob(pattern + "*") if dir.is_dir())
-
-    def find_directory_names(self, pattern: str = "") -> tuple[str]:
-        return tuple(dir.name for dir in self.parent_path.glob(pattern + "*") if dir.is_dir())
-
-    def update(self, tree: ResultsDirectoryTree):
-        for key, bc in vars(tree).items():
-            setattr(self, key, bc)
-
-    def __repr__(self) -> str:
-        formatter = Formatter()
-        formatter.COLUMN_RATIO = (0.2, 0.8)
-        formatter.header("Results Directory Tree").newline()
-        formatter.entry("Path", str(self.parent_path))
-        formatter.entry("Main", f"{self.parent_path.stem}/{self.directory_name}")
-        formatter.entry("State", f"{self.parent_path.stem}/{self.directory_name}/{self.state_directory_name}")
-        formatter.entry("Sensor", f"{self.parent_path.stem}/{self.directory_name}/{self.sensor_directory_name}")
-
-        return formatter.output
-
-
-class DreAmLogger:
-
-    _iteration_error_digit: int = 8
-    _time_step_digit: int = 1
-
-    @classmethod
-    def set_time_step_digit(cls, time_step: float):
-
-        if isinstance(time_step, Parameter):
-            time_step = time_step.Get()
-
-        if isinstance(time_step, float):
-            digit = len(str(time_step).split(".")[1])
-            cls._time_step_digit = digit
-
-    def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
-        self.logger = logging.getLogger("DreAm")
-        self.tree = ResultsDirectoryTree()
-
-        self.stream_handler = logging.NullHandler()
-        self.file_handler = logging.NullHandler()
-        self.formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-        self.filename = "log.txt"
-
-        self.log_to_terminal = log_to_terminal
-        self.log_to_file = log_to_file
-
-    @property
-    def filepath(self):
-        if not self.tree.main_path.exists():
-            self.tree.main_path.mkdir(parents=True)
-        return self.tree.main_path.joinpath(self.filename)
-
-    def set_level(self, level):
-        self.logger.setLevel(level)
-
-    def silence_logger(self):
-        self.log_to_file = False
-        self.log_to_terminal = False
-
-    @property
-    def log_to_terminal(self):
-        return self._log_to_terminal
-
-    @log_to_terminal.setter
-    def log_to_terminal(self, value: bool):
-        if value:
-            self.stream_handler = logging.StreamHandler()
-            self.stream_handler.setLevel(self.logger.level)
-            self.stream_handler.setFormatter(self.formatter)
-            self.logger.addHandler(self.stream_handler)
-        else:
-            self.logger.removeHandler(self.stream_handler)
-            self.stream_handler = logging.NullHandler()
-        self._log_to_terminal = value
-
-    @property
-    def log_to_file(self):
-        return self._log_to_file
-
-    @log_to_file.setter
-    def log_to_file(self, value: bool):
-        if value:
-            self.file_handler = logging.FileHandler(self.filepath, delay=True)
-            self.file_handler.setLevel(self.logger.level)
-            self.file_handler.setFormatter(self.formatter)
-            self.logger.addHandler(self.file_handler)
-        else:
-            self.logger.removeHandler(self.file_handler)
-            self.file_handler = logging.NullHandler()
-        self._log_to_file = value
+logger = DreAmLogger.get_logger('Configuration')
 
 
 class BaseConfiguration:
@@ -409,6 +261,20 @@ class SolverConfiguration(BaseConfiguration):
         self._info = {}
 
     @property
+    def Mach_number(self) -> Parameter:
+        return self._Mach_number
+
+    @Mach_number.setter
+    def Mach_number(self, Mach_number: float):
+        if isinstance(Mach_number, Parameter):
+            Mach_number = Mach_number.Get()
+
+        if Mach_number < 0:
+            raise ValueError("Invalid Mach number. Value has to be >= 0!")
+        else:
+            self._Mach_number.Set(Mach_number)
+
+    @property
     def Reynolds_number(self) -> Parameter:
         """ Represents the ratio between inertial and viscous forces """
         if self.dynamic_viscosity.is_inviscid:
@@ -424,20 +290,6 @@ class SolverConfiguration(BaseConfiguration):
             raise ValueError("Invalid Reynold number. Value has to be > 0!")
         else:
             self._Reynolds_number.Set(Reynolds_number)
-
-    @property
-    def Mach_number(self) -> Parameter:
-        return self._Mach_number
-
-    @Mach_number.setter
-    def Mach_number(self, Mach_number: float):
-        if isinstance(Mach_number, Parameter):
-            Mach_number = Mach_number.Get()
-
-        if Mach_number < 0:
-            raise ValueError("Invalid Mach number. Value has to be >= 0!")
-        else:
-            self._Mach_number.Set(Mach_number)
 
     @property
     def Prandtl_number(self) -> Parameter:
@@ -470,6 +322,22 @@ class SolverConfiguration(BaseConfiguration):
             self._heat_capacity_ratio.Set(heat_capacity_ratio)
 
     @property
+    def dynamic_viscosity(self) -> DynamicViscosity:
+        return self._dynamic_viscosity
+
+    @dynamic_viscosity.setter
+    def dynamic_viscosity(self, dynamic_viscosity: DynamicViscosity):
+        if isinstance(dynamic_viscosity, str):
+            obj = self._get_dict(dynamic_viscosity.lower(), DynamicViscosity.TYPES, "Dynamic Viscosity")
+            dynamic_viscosity = obj(solver_configuration=self)
+        elif isinstance(dynamic_viscosity, DynamicViscosity):
+            dynamic_viscosity.cfg = self
+        else:
+            raise TypeError(f'Only type {DynamicViscosity} or {str} allowed!')
+
+        self._dynamic_viscosity = dynamic_viscosity
+
+    @property
     def formulation(self) -> CompressibleFormulations:
         return self._formulation
 
@@ -487,27 +355,10 @@ class SolverConfiguration(BaseConfiguration):
 
     @scaling.setter
     def scaling(self, scaling: str):
-
-        if isinstance(scaling, str):
-            scaling = scaling.lower()
-
-        self._scaling = self._get_enum(scaling, Scaling, "Scaling")
-
-    @property
-    def dynamic_viscosity(self) -> DynamicViscosity:
-        return self._dynamic_viscosity
-
-    @dynamic_viscosity.setter
-    def dynamic_viscosity(self, dynamic_viscosity: DynamicViscosity):
-        if isinstance(dynamic_viscosity, str):
-            obj = self._get_dict(dynamic_viscosity.lower(), DynamicViscosity.TYPES, "Dynamic Viscosity")
-            dynamic_viscosity = obj(solver_configuration=self)
-        elif isinstance(dynamic_viscosity, DynamicViscosity):
-            dynamic_viscosity.cfg = self
-        else:
-            raise TypeError(f'Only type {DynamicViscosity} or {str} allowed!')
-        
-        self._dynamic_viscosity = dynamic_viscosity
+        if not isinstance(scaling, str):
+            raise TypeError(f"Scaling must be of type {str}")
+        obj = self._get_dict(scaling.lower(), Scaling.TYPES, "Scaling")
+        self._scaling = obj()
 
     @property
     def mixed_method(self) -> MixedMethods:
@@ -635,13 +486,19 @@ class SolverConfiguration(BaseConfiguration):
     def info(self, info: dict[str, Any]):
         self._info.update(info)
 
+    def get_farfield_state(self,
+                           velocity_direction: tuple[float, ...],
+                           normalize_direction: bool = True,
+                           as_float: bool = False) -> State:
+        return State.FarField(self, velocity_direction, normalize_direction, as_float)
+
     def __repr__(self) -> str:
 
         formatter = Formatter()
         formatter.header('Solver Configuration').newline()
         formatter.subheader("Formulation Configuration").newline()
         formatter.entry("Formulation", self.formulation.name)
-        formatter.entry("Scaling", self.scaling.name)
+        formatter.entry("Scaling", str(self.scaling))
         formatter.entry("Mixed Method", self.mixed_method.name)
         formatter.entry("Riemann Solver", self.riemann_solver.name)
         formatter.newline()
@@ -689,120 +546,5 @@ class SolverConfiguration(BaseConfiguration):
 
                 formatter.entry(str(key), value)
             formatter.newline()
-
-        return formatter.output
-
-
-class DynamicViscosity:
-
-    TYPES: dict[str, DynamicViscosity] = {}
-
-    def __init_subclass__(cls) -> None:
-        label = cls.__name__.lower()
-        cls.TYPES[label] = cls
-
-    def __init__(self, solver_configuration: SolverConfiguration = None) -> None:
-        self.cfg = solver_configuration
-
-    @property
-    def is_inviscid(self):
-        return isinstance(self, Inviscid)
-
-    def get(self, temperature: CF) -> CF:
-        raise NotImplementedError("Implement .get(temperature) member function!")
-
-    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
-        raise NotImplementedError("Implement .get_gradient(temperature) member function!")
-
-    def __call__(self, temperature: CF) -> CF:
-        return self.get(temperature)
-
-    def __repr__(self):
-        formatter = Formatter()
-        formatter.subheader('Dynamic Viscosity').newline()
-        formatter.entry('Type', str(self))
-        return formatter.output
-
-    def __str__(self) -> str:
-        return self.__class__.__name__.capitalize()
-
-
-class Inviscid(DynamicViscosity):
-
-    def get(self, temperature: CF) -> CF:
-        raise TypeError("Can not get dynamic viscosity from inviscid setting!")
-
-    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
-        raise TypeError("Can not get dynamic viscosity gradient from inviscid setting!")
-
-
-class Constant(DynamicViscosity):
-
-    def get(self, temperature: CF) -> CF:
-        return 1
-
-    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
-        return CF(tuple(0 for _ in range(temperature_gradient.dim)))
-
-
-class Sutherland(DynamicViscosity):
-
-    def __init__(self,
-                 temperature_ref: float = 293.15,
-                 temperature_0: float = 110.4,
-                 viscosity_0: float = 1.716e-5,
-                 solver_configuration: SolverConfiguration = None) -> None:
-
-        self._temperature_ref = Parameter(temperature_ref)
-        self._temperature_0 = Parameter(temperature_0)
-        self._viscosity_0 = Parameter(viscosity_0)
-        super().__init__(solver_configuration)
-
-    def get(self, temperature: CF) -> CF:
-        M = self.cfg.Mach_number
-        gamma = self.cfg.heat_capacity_ratio
-
-        T_ = temperature
-        T_ref = self.temperature_ref
-        S0 = self.temperature_0
-
-        S_ = S0/(T_ref * (gamma - 1) * M**2)
-        T_ref_ = 1/((gamma - 1) * M**2)
-
-        return (T_/T_ref_)**(3/2) * (T_ref_ + S_)/(T_ + S_)
-
-    def get_gradient(self, temperature: CF, temperature_gradient: CF) -> CF:
-        return super().get_gradient(temperature, temperature_gradient)
-
-    @property
-    def temperature_ref(self) -> Parameter:
-        return self._temperature_ref
-
-    @temperature_ref.setter
-    def temperature_ref(self, temperature_ref):
-        self._temperature_ref.Set(temperature_ref)
-
-    @property
-    def temperature_0(self) -> Parameter:
-        return self._temperature_0
-
-    @temperature_0.setter
-    def temperature_0(self, temperature_0):
-        self._temperature_0.Set(temperature_0)
-
-    @property
-    def viscosity_0(self) -> Parameter:
-        return self._viscosity_0
-
-    @viscosity_0.setter
-    def viscosity_0(self, viscosity_0):
-        self._viscosity_0.Set(viscosity_0)
-
-    def __repr__(self):
-        formatter = Formatter()
-        formatter.output += super().__repr__()
-        formatter.entry('Reference Temperature', self.temperature_ref.Get())
-        formatter.entry('Law Reference Temperature', self.temperature_0.Get())
-        formatter.entry('Law Reference Viscosity', self.viscosity_0.Get())
 
         return formatter.output

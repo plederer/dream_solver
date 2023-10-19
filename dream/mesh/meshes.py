@@ -4,7 +4,6 @@ from netgen.meshing import Element0D, Element1D, Element2D, MeshPoint, FaceDescr
 from netgen.meshing import Mesh as ng_Mesh
 from netgen.csg import *
 from math import cos, sin, pi
-from typing import Optional
 
 
 def circular_cylinder_mesh(radius: float = 0.5,

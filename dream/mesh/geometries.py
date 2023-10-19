@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from netgen.meshing import IdentificationType
 from math import pi, atan2
 from enum import Enum
-from ..region import BufferCoordinate
+
+from .buffer import BufferCoordinate
 
 
 class BNDS:
