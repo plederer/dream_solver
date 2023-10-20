@@ -34,14 +34,13 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 mathjax3_config = {                  
     # "loader": {"load": ['[tex]/color']},
     "tex": { 
-        "inlineMath": [['\\(', '\\)']],
-        "displayMath": [["\\[", "\\]"]],
         # "packages" : {'[+]': ['color']},                       
         "macros": mymacros
     }                           
     }                 
 
 myst_enable_extensions = ["amsmath","dollarmath"]
+suppress_warnings = ["myst.header"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

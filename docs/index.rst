@@ -9,9 +9,10 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contnuous formulation:
+   :caption: Continuous Formulation:
 
    basics/navierstokes.md
+   basics/conservative.md
    basics/setofvariables.md
 
 .. toctree::
