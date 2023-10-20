@@ -11,6 +11,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install ngsolve
+          pip install numpy
+          pip install pandas
           pip install sphinx sphinx_rtd_theme myst-parser
       - name: Sphinx build
         run: |
