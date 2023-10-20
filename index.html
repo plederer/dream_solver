@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dream-Solver &mdash; dream_solver 0.1 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/documentation_options.js?v=2709fde1"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Compressible Navier-Stokes equations" href="basics/navierstokes.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            dream_solver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Continuous Formulation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="basics/navierstokes.html">Compressible Navier-Stokes equations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics/conservative.html">Conservative Form</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics/setofvariables.html">Transformation of variables</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Discretization:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="hdg/hdg.html">Hybrid Discontinuous Galerkin Method</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python-Module:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="module/configuration.html">Configuration</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">dream_solver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Dream-Solver</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="dream-solver">
+<h1>Dream-Solver<a class="headerlink" href="#dream-solver" title="Link to this heading">¶</a></h1>
+<p>This package contains a Python module for <a class="reference external" href="https://www.ngsolve.org">NGSolve</a> and can be used to solve the compressible
+Euler and Navier-Stokes equations by means of an hybrid discontinuous
+Galerkin Finite element method. The main emphasis lies in high
+fidelity and efficient <strong>d</strong>i<strong>r</strong>ect <strong>ae</strong>rocoustic si<strong>m</strong>ulation (dream).</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Continuous Formulation:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="basics/navierstokes.html">Compressible Navier-Stokes equations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="basics/navierstokes.html#constitutive-relations">Constitutive Relations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics/navierstokes.html#dimensionless-compressible-equations">Dimensionless Compressible Equations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="basics/conservative.html">Conservative Form</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="basics/conservative.html#navier-stokes-equations">Navier Stokes Equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics/conservative.html#euler-equations">Euler Equations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="basics/setofvariables.html">Transformation of variables</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Discretization:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="hdg/hdg.html">Hybrid Discontinuous Galerkin Method</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Python-Module:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="module/configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="module/configuration.html#dream.configuration.SolverConfiguration"><code class="docutils literal notranslate"><span class="pre">SolverConfiguration</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="module/configuration.html#dream.configuration.SolverConfiguration.Reynolds_number"><code class="docutils literal notranslate"><span class="pre">SolverConfiguration.Reynolds_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="module/configuration.html#dream.configuration.SolverConfiguration.info"><code class="docutils literal notranslate"><span class="pre">SolverConfiguration.info</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="funding">
+<h1>Funding<a class="headerlink" href="#funding" title="Link to this heading">¶</a></h1>
+<p>This code is funded by the Austrian-Science fund <a class="reference external" href="https://www.fwf.at">FWF</a> via the stand alone project P35391N.</p>
+<p>Developed at:</p>
+<ul class="simple">
+<li><p>(2022 - ) TU Wien, Institute of Analysis and Scientific Computing</p></li>
+<li><p>(2023 - ) University of Twente, Department of Applied Mathematics</p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="basics/navierstokes.html" class="btn btn-neutral float-right" title="Compressible Navier-Stokes equations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Philip Lederer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

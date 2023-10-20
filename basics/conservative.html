@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conservative Form &mdash; dream_solver 0.1 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/documentation_options.js?v=2709fde1"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script>window.MathJax = {"tex": {"macros": {"bm": ["\\boldsymbol{#1}", 1], "pdt": ["{\\frac{\\partial #1}{\\partial t}}", 1], "pdx": ["{\\frac{\\partial #1}{\\partial x}}", 1], "pdy": ["{\\frac{\\partial #1}{\\partial y}}", 1], "pdz": ["{\\frac{\\partial #1}{\\partial z}}", 1], "pdxi": ["{\\frac{\\partial #1}{\\partial \\xi}}", 1], "pdeta": ["{\\frac{\\partial #1}{\\partial \\eta}}", 1], "pdzeta": ["{\\frac{\\partial #1}{\\partial \\zeta}}", 1], "div": "{\\operatorname{div}}", "eps": "{\\varepsilon}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "dl": ["{#1^*}", 1], "pdtdl": ["{\\frac{\\partial #1}{\\partial \\dl{t}}}", 1], "pdxdl": ["{\\frac{\\partial #1}{\\partial \\dl{x}}}", 1], "pdydl": ["{\\frac{\\partial #1}{\\partial \\dl{y}}}", 1], "pdzdl": ["{\\frac{\\partial #1}{\\partial \\dl{z}}}", 1], "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{#1}", 1], "rhoref": "{\\rho_{\\rm{ref}}}", "uref": "{u_{\\rm{ref}}}", "Tref": "{T_{\\rm{ref}}}", "muref": "{\\mu_{\\rm{ref}}}", "Lref": "{L_{\\rm{ref}}}", "kref": "{k_{\\rm{ref}}}", "uinf": "{u_\\infty}", "cinf": "{c_\\infty}", "muinf": "{\\mu_\\infty}", "rhoinf": "{\\rho_\\infty}", "Tinf": "{T_\\infty}", "pinf": "{p_\\infty}", "VEL": "{\\vec{u}}", "HEAT": "{\\vec{q}}", "TAU": "{\\mat{\\tau}}", "EPS": "{\\mat{\\varepsilon}}", "CVAR": "{\\vec{U}}", "PVAR": "{\\vec{V}}", "CHVAR": "{\\vec{W}}"}}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Transformation of variables" href="setofvariables.html" />
+    <link rel="prev" title="Compressible Navier-Stokes equations" href="navierstokes.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            dream_solver
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Continuous Formulation:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="navierstokes.html">Compressible Navier-Stokes equations</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Conservative Form</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#navier-stokes-equations">Navier Stokes Equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#euler-equations">Euler Equations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#d-setting">2D Setting</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="setofvariables.html">Transformation of variables</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Discretization:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../hdg/hdg.html">Hybrid Discontinuous Galerkin Method</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Python-Module:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../module/configuration.html">Configuration</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">dream_solver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Conservative Form</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/basics/conservative.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="conservative-form">
+<h1>Conservative Form<a class="headerlink" href="#conservative-form" title="Link to this heading">¶</a></h1>
+<section id="navier-stokes-equations">
+<h2>Navier Stokes Equations<a class="headerlink" href="#navier-stokes-equations" title="Link to this heading">¶</a></h2>
+<p>Neglecting external forces <span class="math notranslate nohighlight">\(\vec{f} = 0\)</span>, the above derived dimensionless compressible equations can be expressed in a simple matter in conservative form</p>
+<div class="amsmath math notranslate nohighlight">
+\[\begin{align*}
+\pdt{\CVAR} + \div \left[ \vec{F}(\CVAR) - \vec{G}(\CVAR, \grad \CVAR) \right] &amp;= 0.
+\end{align*}\]</div>
+<p>All the fluxes are split into a convective <span class="math notranslate nohighlight">\(\vec{F}\)</span> and a diffusive <span class="math notranslate nohighlight">\(\vec{G}\)</span> part, respectively.</p>
+<div class="amsmath math notranslate nohighlight">
+\[\begin{align*}
+\vec{F} &amp;= 
+\begin{bmatrix}
+\rho \VEL \\ \rho \VEL \otimes \VEL + p \I \\ (\rho E +p) \VEL
+\end{bmatrix}, &amp;
+\vec{G} &amp;= 
+\frac{1}{\Re_{\text{ref}}} 
+\begin{bmatrix}
+\vec{0} \\ \TAU \\ \TAU \VEL - \frac{1}{\Pr_{\text{ref}}} \HEAT
+\end{bmatrix}
+\end{align*}\]</div>
+<p>The conserved variables  are given by</p>
+<div class="amsmath math notranslate nohighlight">
+\[\begin{align*}
+\CVAR &amp;=
+\begin{bmatrix}
+\rho \\ \rho \VEL \\ \rho E
+\end{bmatrix},
+\end{align*}\]</div>
+<p>and consist of mass, momentum and energy, respectively.</p>
+</section>
+<section id="euler-equations">
+<h2>Euler Equations<a class="headerlink" href="#euler-equations" title="Link to this heading">¶</a></h2>
+<p>By further neglecting every dissipative contribution, we recover <em>Euler’s</em> equations</p>
+<div class="amsmath math notranslate nohighlight">
+\[\begin{align*}
+\pdt{\CVAR} + \div \left[ \vec{F}(\CVAR) \right] &amp;= 0.
+\end{align*}\]</div>
+<p>For the analysis the quasi-linear form is very helpful</p>
+<div class="amsmath math notranslate nohighlight">
+\[\begin{align*}
+\pdt{\CVAR} + \frac{\partial \vec{F}}{\partial \CVAR}\frac{\partial \CVAR}{\partial \vec{x}} &amp;= 0.
+\end{align*}\]</div>
+<section id="d-setting">
+<h3>2D Setting<a class="headerlink" href="#d-setting" title="Link to this heading">¶</a></h3>
+<p>In two dimensions the convective flux vector is defined as</p>
+<div class="amsmath math notranslate nohighlight">
+\[\begin{align*}
+\vec{F} &amp;= 
+\begin{bmatrix}
+\rho u &amp; \rho v \\ \rho u^2 + p &amp; \rho u v  \\ \rho u v &amp; \rho v^2 + p  \\ (\rho E +p ) u &amp; (\rho E +p) v
+\end{bmatrix} = \begin{bmatrix}
+\vec{f} &amp; \vec{g}
+\end{bmatrix}.
+\end{align*}\]</div>
+<p>Then the quasi-linear form is given by</p>
+<div class="math notranslate nohighlight">
+\[
+\pdt{\CVAR} +  \mat{A}_{\CVAR} \frac{\partial \CVAR}{\partial x} + \mat{B}_{\CVAR}  \frac{\partial \CVAR}{\partial y}  = 0,
+\]</div>
+<p>with</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mat{A}_{\CVAR}  = \frac{\partial \vec{f}}{\partial \CVAR} 
+\begin{bmatrix}
+0 &amp; 1 &amp; 0 &amp; 0 \\
+\frac{\gamma - 3}{2} u^2 + \frac{\gamma - 1}{2} v^2  &amp; (3 - \gamma)u &amp; -(\gamma - 1)v &amp; \gamma - 1 \\
+-uv &amp; v &amp; u &amp; 0 \\
+-\gamma u E + (\gamma - 1) u |\VEL |^2 &amp; \gamma E - \frac{\gamma - 1}{2}(v^2 + 3u^2) &amp; -(\gamma - 1) u v &amp; \gamma u
+\end{bmatrix},\\
+\mat{B}_{\CVAR}  = \frac{\partial \vec{g}}{\partial \CVAR} =
+\begin{bmatrix}
+0 &amp; 0 &amp; 1 &amp; 0 \\
+-uv &amp; v &amp; u &amp; 0 \\
+\frac{\gamma - 3}{2} v^2 + \frac{\gamma - 1}{2} u^2  &amp; -(\gamma - 1)u &amp; (3 - \gamma)v  &amp; \gamma - 1 \\
+-\gamma v E + (\gamma - 1) v |\VEL |^2 &amp; -(\gamma - 1) u v &amp; \gamma E - \frac{\gamma - 1}{2}(u^2 + 3v^2) &amp;  \gamma v
+\end{bmatrix}.
+\end{split}\]</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="navierstokes.html" class="btn btn-neutral float-left" title="Compressible Navier-Stokes equations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="setofvariables.html" class="btn btn-neutral float-right" title="Transformation of variables" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Philip Lederer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
