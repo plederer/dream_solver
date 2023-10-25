@@ -49,7 +49,7 @@ mathjax3_config = {
     }                           
     }                 
 
-myst_enable_extensions = ["amsmath","dollarmath"]
+myst_enable_extensions = ["amsmath","dollarmath", "colon_fence"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
