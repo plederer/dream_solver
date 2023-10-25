@@ -22,7 +22,7 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
    hdg/hdg.md
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Python-Module:
 
    module/configuration

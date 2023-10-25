@@ -14,8 +14,6 @@ from .utils import Formatter
 
 import logging
 logger = logging.getLogger('DreAm.Configuration')
-
-
 class ResultsDirectoryTree:
 
     def __init__(self,
@@ -367,19 +365,19 @@ class SolverConfiguration(BaseConfiguration):
 
     def __init__(self) -> None:
 
-        # Formulation Configuration
-        self.formulation = "conservative"
-        self.fem = "hdg"
-        self.scaling = "aerodynamic"
-        self.mixed_method = None
-        self.riemann_solver = 'roe'
-
         # Flow Configuration
         self._Mach_number = Parameter(0.3)
         self._Reynolds_number = Parameter(1)
         self._Prandtl_number = Parameter(0.72)
         self._heat_capacity_ratio = Parameter(1.4)
         self._dynamic_viscosity = dynamic_viscosity_factory('inviscid')
+
+        # Formulation Configuration
+        self.formulation = "conservative"
+        self.fem = "hdg"
+        self.scaling = "aerodynamic"
+        self.mixed_method = None
+        self.riemann_solver = 'roe'
 
         # Finite Element Configuration
         self.order = 2
@@ -404,24 +402,25 @@ class SolverConfiguration(BaseConfiguration):
         self._info = {}
 
     @property
-    def Reynolds_number(self) -> Parameter:
-        """ Represents the ratio between inertial and viscous forces """
-        if self.dynamic_viscosity.is_inviscid:
-            raise Exception("Inviscid solver configuration: Reynolds number not applicable")
-        return self._Reynolds_number
-
-    @Reynolds_number.setter
-    def Reynolds_number(self, Reynolds_number: float):
-        if isinstance(Reynolds_number, Parameter):
-            Reynolds_number = Reynolds_number.Get()
-
-        if Reynolds_number <= 0:
-            raise ValueError("Invalid Reynold number. Value has to be > 0!")
-        else:
-            self._Reynolds_number.Set(Reynolds_number)
-
-    @property
     def Mach_number(self) -> Parameter:
+        r"""  Represents the ratio of flow velocity to speed of sound evaluated at freestream conditions
+
+            .. math:: 
+                \Ma_\infty = \frac{\uinf}{\cinf}
+
+            :default: :py:`0.3`
+            :getter: Returns Mach number 
+            :setter: Sets Mach number
+
+                :type: :py:`Number | Parameter`
+                :raises ValueError: :py:`if value <= 0`
+
+            .. note::
+                Mach number :py:`Ma = 0` is only meaningful in combination with 
+
+                >>> cfg.scaling = 'acoustic' or 'aeroacoustic'
+
+        """
         return self._Mach_number
 
     @Mach_number.setter
@@ -435,7 +434,58 @@ class SolverConfiguration(BaseConfiguration):
             self._Mach_number.Set(Mach_number)
 
     @property
+    def Reynolds_number(self) -> Parameter:
+        r""" Ratio of inertial forces to viscous forces evaluated at freestream conditions
+
+            .. math:: 
+                \Re_\infty = \frac{\rhoinf \uinf \Lref}{\muinf}
+
+            :default: :py:`1`
+            :getter: Returns Reynolds number 
+            :setter: Sets Reynolds number
+
+                :type: :py:`Number | Parameter`
+                :raises ValueError: :py:`if value <= 0`
+
+            .. note::
+                Ignored in the inviscid case
+
+                >>> cfg.dynamic_viscosity = "inviscid"
+        """
+        if self.dynamic_viscosity.is_inviscid:
+            raise Exception("Inviscid solver configuration: Reynolds number not applicable")
+        return self._Reynolds_number
+
+    @Reynolds_number.setter
+    def Reynolds_number(self, Reynolds_number: float):
+        if isinstance(Reynolds_number, Parameter):
+            Reynolds_number = Reynolds_number.Get()
+
+        if Reynolds_number <= 0:
+            raise ValueError("Invalid Reynolds number. Value has to be > 0!")
+        else:
+            self._Reynolds_number.Set(Reynolds_number)
+
+    @property
     def Prandtl_number(self) -> Parameter:
+        r""" Ratio of momentum diffusivity to thermal diffusivity evaluated at freestream conditions
+        
+            .. math:: 
+                \Pr_\infty = \frac{c_p \muinf}{\kinf} 
+
+            :default: :py:`0.72`
+            :getter: Returns Prandtl number 
+            :setter: Sets Prandtl number
+
+                :type: :py:`Number | Parameter`
+                :raises ValueError: :py:`if value <= 0`
+
+            .. note::
+                Ignored in the inviscid case
+
+                >>> cfg.dynamic_viscosity = "inviscid"
+
+        """
         if self.dynamic_viscosity.is_inviscid:
             raise Exception("Inviscid solver configuration: Prandtl number not applicable")
         return self._Prandtl_number
@@ -452,6 +502,18 @@ class SolverConfiguration(BaseConfiguration):
 
     @property
     def heat_capacity_ratio(self) -> Parameter:
+        r"""  Ratio of heat capacity at constant pressure to heat capacity at constant volume
+
+            .. math:: 
+                \gamma = \frac{c_p}{c_v}
+
+            :default: :py:`1.4`
+            :getter: Returns heat capacity ratio
+            :setter: Sets heat capacity ratio
+
+                :type: :py:`Number | Parameter`
+                :raises ValueError: :py:`if value <= 1`
+        """
         return self._heat_capacity_ratio
 
     @heat_capacity_ratio.setter
@@ -465,7 +527,36 @@ class SolverConfiguration(BaseConfiguration):
             self._heat_capacity_ratio.Set(heat_capacity_ratio)
 
     @property
+    def dynamic_viscosity(self) -> _DynamicViscosity:
+        r""" Fluids resistance to a deformation rate
+
+            :default: :py:`'inviscid'`
+            :options: :py:`['inviscid', 'constant', 'sutherland']`
+            :getter: Returns dynamic viscosity
+            :setter: Sets dynamic viscosity 
+        
+                :type: :py:`str | _DynamicViscosity`
+                :raises ValueError: :py:`value not in options`
+                :raises TypeError:  :py:`if not isinstance(value, _DynamicViscosity)`
+        """
+        return self._dynamic_viscosity
+
+    @dynamic_viscosity.setter
+    def dynamic_viscosity(self, dynamic_viscosity: _DynamicViscosity):
+        self._dynamic_viscosity = dynamic_viscosity_factory(dynamic_viscosity)
+
+    @property
     def formulation(self) -> CompressibleFormulations:
+        r""" Compressible formulation defines the quantities to be approximated
+
+            :default: :py:`'conservative'`
+            :options: :py:`['conservative']`
+            :getter: Returns formulation
+            :setter: Sets formulation
+
+                :type: :py:`str`
+                :raises ValueError: :py:`value not in options`
+        """
         return self._formulation
 
     @formulation.setter
@@ -482,14 +573,23 @@ class SolverConfiguration(BaseConfiguration):
 
     @fem.setter
     def fem(self, fem: str):
-
         if isinstance(fem, str):
             fem = fem.lower()
 
         self._fem = self._get_enum(fem, FEM, "Finite Element Method")
-    
+
     @property
     def scaling(self) -> Scaling:
+        r""" Defines the scaling used to derive the dimensionless compressible equations
+
+        :default: :py:`'aerodynamic'`
+        :options: :py:`['aerodynamic', 'acoustic', 'aeroacoustic']`
+        :getter: Returns scaling
+        :setter: Sets scaling
+
+            :type: :py:`str`
+            :raises ValueError: :py:`value not in options`
+        """
         return self._scaling
 
     @scaling.setter
@@ -501,15 +601,22 @@ class SolverConfiguration(BaseConfiguration):
         self._scaling = self._get_enum(scaling, Scaling, "Scaling")
 
     @property
-    def dynamic_viscosity(self) -> _DynamicViscosity:
-        return self._dynamic_viscosity
-
-    @dynamic_viscosity.setter
-    def dynamic_viscosity(self, dynamic_viscosity: _DynamicViscosity):
-        self._dynamic_viscosity = dynamic_viscosity_factory(dynamic_viscosity)
-
-    @property
     def mixed_method(self) -> MixedMethods:
+        r""" Defines the mixed method used to approximate viscous quantitites
+
+            :default: :py:`'strain_heat'`
+            :options: :py:`['strain_heat', 'gradient']`
+            :getter: Returns mixed method
+            :setter: Sets mixed method
+
+                :type: :py:`str`
+                :raises ValueError: :py:`value not in options`
+    
+            .. note::
+                Ignored in the inviscid case
+
+                >>> cfg.dynamic_viscosity = "inviscid"
+        """
         return self._mixed_method
 
     @mixed_method.setter
@@ -522,6 +629,16 @@ class SolverConfiguration(BaseConfiguration):
 
     @property
     def riemann_solver(self) -> RiemannSolver:
+        r""" Approximate riemann solver for the convective numerical fluxes
+
+            :default: :py:`'lax_friedrich'`
+            :options: :py:`['lax_friedrich', 'roe', 'hll', 'hllem']`
+            :getter: Returns riemann solver
+            :setter: Sets riemann solver
+
+                :type: :py:`str`
+                :raises ValueError: :py:`value not in options`
+        """
         return self._riemann_solver
 
     @riemann_solver.setter
@@ -542,6 +659,14 @@ class SolverConfiguration(BaseConfiguration):
 
     @property
     def order(self) -> int:
+        r""" Polynomial order of finite element method
+
+            :default: :py:`2`
+            :getter: Returns polynomial order
+            :setter: Sets polynomial order
+
+                :type: :py:`Number`
+        """
         return self._order
 
     @order.setter
@@ -550,6 +675,14 @@ class SolverConfiguration(BaseConfiguration):
 
     @property
     def static_condensation(self) -> bool:
+        r""" Enable static condensation 
+
+            :default: :py:`True`
+            :getter: Returns static condensation
+            :setter: Sets static condensation
+
+                :type: :py:`bool`
+        """
         return self._static_condensation
 
     @static_condensation.setter
@@ -558,6 +691,14 @@ class SolverConfiguration(BaseConfiguration):
 
     @property
     def bonus_int_order_vol(self) -> int:
+        r""" Increase integration order of volume integrals
+
+            :default: :py:`0`
+            :getter: Returns bonus integration order
+            :setter: Sets bonus integration order
+
+                :type: :py:`int`
+        """
         return self._bonus_int_order_vol
 
     @bonus_int_order_vol.setter
@@ -566,6 +707,14 @@ class SolverConfiguration(BaseConfiguration):
 
     @property
     def bonus_int_order_bnd(self) -> int:
+        r""" Increase integration order of boundary integrals
+
+            :default: :py:`0`
+            :getter: Returns bonus integration order
+            :setter: Sets bonus integration order
+
+                :type: :py:`int`
+        """
         return self._bonus_int_order_bnd
 
     @bonus_int_order_bnd.setter
