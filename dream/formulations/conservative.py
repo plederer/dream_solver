@@ -94,6 +94,7 @@ class ConservativeFormulation(_Formulation):
 
             _, V = self.TnT.PRIMAL
             _, Vhat = self.TnT.PRIMAL_FACET
+            _, Vstar = self.TnT.NSCBC
             _, P = self.TnT.MIXED
 
             state = self.calc.determine_missing(dc.state)
@@ -101,6 +102,7 @@ class ConservativeFormulation(_Formulation):
 
             cf = U_f * V * dx(definedon=domain, bonus_intorder=bonus_vol)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
+            cf += CF((0,0,0,0)) * Vstar * ds(element_boundary=True)
 
             if mixed_method is MixedMethods.GRADIENT:
                 Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
@@ -181,20 +183,13 @@ class ConservativeFormulation(_Formulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        riemann_solver = self.cfg.riemann_solver.LAX_FRIEDRICH
+        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal)
+        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
 
-        An_out = self.convective_stabilisation_matrix(Uhat, self.normal, riemann_solver)
-        An_in = self.convective_stabilisation_matrix(Uhat, -self.normal, riemann_solver)
-
-        u_in = self.characteristic_velocities(Uhat, self.normal, type="in", as_matrix=True)
-        u_out = self.characteristic_velocities(Uhat, self.normal, type="out", as_matrix=True)
-
-        An_in = self.DME_from_CHAR_matrix(u_in, Uhat, self.normal)
-        An_out = self.DME_from_CHAR_matrix(u_out, Uhat, self.normal)
-
-        cf = An_out * (U - Uhat)
-        cf += An_in * (farfield - Uhat)
+        cf = An_out * (U - Uhat) - An_in * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+
+        self._glue_together(blf, boundary)
 
         blf += cf.Compile(compile_flag)
 
@@ -697,6 +692,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
         if self.dmesh.is_periodic:
             VHAT = Periodic(VHAT)
 
+        VSTAR = H1(self.mesh, order=1)
+        VSTAR = Compress(VSTAR, VSTAR.GetDofs(self.dmesh.boundary(self.dmesh.bcs.pattern)))
+
         spaces = FiniteElementSpace.Settings(V**4, VHAT**4)
 
         if mixed_method is MixedMethods.NONE:
@@ -707,6 +705,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
             spaces.MIXED = Q**4
         else:
             raise NotImplementedError(f"Mixed method {mixed_method} not implemented for {self}!")
+
+        spaces.NSCBC = VSTAR**4
 
         return FiniteElementSpace.from_settings(spaces)
 
@@ -799,83 +799,100 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = weight_function * U_high * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
 
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary: Region, bc: bcs.Dirichlet):
-        raise NotImplementedError()
-        # bonus_order_bnd = self.cfg.bonus_int_order_bnd
-        # compile_flag = self.cfg.compile_flag
-        # mu = self.cfg.dynamic_viscosity
-        # M = self.cfg.Mach_number
+    # def _get_characteristic_amplitudes_incoming(self, bc: bcs.NSCBC):
 
-        # n = self.normal
-        # t = self.tangential
-        # region = self.mesh.Boundaries(boundary)
+    #     M = self.cfg.Mach_number
 
-        # U, _ = self.TnT.PRIMAL
-        # Uhat, Vhat = self.TnT.PRIMAL_FACET
-        # Q, _ = self.TnT.MIXED
+    #     U, _ = self.TnT.PRIMAL
+    #     Uhat, _ = self.TnT.PRIMAL_FACET
+    #     Q, _ = self.TnT.MIXED
 
-        # time_levels_gfu = self._gfus.get_component(1)
-        # time_levels_gfu['n+1'] = Uhat
+    #     rho = self.density(Uhat)
+    #     c = self.speed_of_sound(Uhat)
+    #     un = InnerProduct(self.velocity(Uhat), self.normal)
+    #     ut = InnerProduct(self.velocity(Uhat), self.tangential)
+    #     Mn = un/c
+    #     Mt = ut/c
 
-        # cf = InnerProduct(self.time_scheme.apply(time_levels_gfu), Vhat)
+    #     gradient_p_t = InnerProduct(self.pressure_gradient(Uhat, Q, Uhat), self.tangential)
+    #     gradient_rho_t = InnerProduct(self.density_gradient(U, Q), self.tangential)
+    #     gradient_u_n = self.velocity_gradient(U, Q, Uhat) * self.normal
+    #     gradient_u_t = self.velocity_gradient(Uhat, Q, Uhat) * self.tangential
 
-        # amplitude_out = self.characteristic_amplitudes_outgoing(U, Q, Uhat, self.normal)
+    #     # Mn = M * self.normal[0]
+    #     # Mn = IfPos(Mn, Mn, -Mn)
 
-        # rho = self.density(Uhat)
-        # c = self.speed_of_sound(Uhat)
-        # ut = InnerProduct(self.velocity(Uhat), t)
-        # un = InnerProduct(self.velocity(Uhat), n)
-        # Mn = IfPos(un, un, -un)/c
+    #     # acou_outflow_amp_in = bc.sigma * (un - c) * (bc.state.pressure - self.pressure(Uhat))/bc.reference_length
 
-        # if bc.type is bc.TYPE.PERFECT:
-        #     amplitude_in = CF((0, 0, 0, 0))
+    #     acou_outflow_amp_in = bc.sigma * (un - c) * (bc.state.pressure - self.pressure(Uhat))/bc.reference_length
 
-        # elif bc.type is bc.TYPE.PARTIALLY:
-        #     ref_length = bc.reference_length
+    #     # acou_outflow_amp_in =  bc.sigma * rho * (c**2 - un**2) * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.normal)
+    #     # acou_outflow_amp_in -= bc.sigma * rho * (un - c) * ut * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.tangential)
+    #     # acou_outflow_amp_in -= rho * (ut + c) * ut * InnerProduct(gradient_u_t, self.normal)
+    #     # acou_outflow_amp_in += rho * (c**2 - ut**2) * InnerProduct(gradient_u_t, self.tangential)
 
-        #     amp = bc.sigma * c * (1 - Mn**2)/ref_length * (self.pressure(Uhat) - bc.pressure)
-        #     amplitude_in = CF((amp, 0, 0, 0))
+    #     # acou_outflow_amp_in = -bc.sigma * (c**2 - un**2)/un * (bc.state.pressure - self.pressure(Uhat))
+    #     # acou_outflow_amp_in += rho * (c**2 - ut**2) * InnerProduct(gradient_u_t, self.tangential)
+    #     # acou_outflow_amp_in += -(c**2 + un**2)/un * rho* ut * InnerProduct(gradient_u_t, self.normal)
 
-        # if bc.tang_conv_flux:
+    #     # acou_outflow_amp_in = -bc.sigma * c * (1 - M**2) * (bc.state.pressure - self.pressure(Uhat))/bc.reference_length
 
-        #     tang_conv_flux = self.conservative_convective_jacobian(Uhat, t) * (grad(U) * t)
+    #     # acou_inflow_amp_in = -bc.sigma * (un - c) * rho * c * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.normal)/bc.reference_length
+    #     # entr_inflow_amp_in = bc.sigma * un * c**2 * (bc.state.density - self.density(Uhat))/bc.reference_length
+    #     # vort_inflow_amp_in = -bc.sigma * un * ((CF(bc.state.velocity) - self.velocity(Uhat))
+    #     #                                        * self.tangential) / bc.reference_length
 
-        #     cf += tang_conv_flux * Vhat
-        #     amplitude_in -= CF((tang_conv_flux, tang_conv_flux, tang_conv_flux, 0))
+    #     # acou_inflow_amp_in = -bc.sigma * (un - c) * rho * c * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.normal)
+    #     # entr_inflow_amp_in = bc.sigma * un * c**2 * (bc.state.density - self.density(Uhat))
+    #     # vort_inflow_amp_in = -bc.sigma * un * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.tangential)
 
-        # if not mu.is_inviscid:
+    #     acou_inflow_amp_in = -bc.sigma * rho * un**2 * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.normal)
+    #     acou_inflow_amp_in += -bc.sigma * rho * un * ut * (
+    #         (CF(bc.state.velocity) - self.velocity(Uhat)) * self.tangential)
+    #     acou_inflow_amp_in += ut * gradient_p_t
 
-        #     if bc.tang_visc_flux:
+    #     entr_inflow_amp_in = bc.sigma * un * c**2 * (bc.state.density - self.density(Uhat))
+    #     entr_inflow_amp_in += bc.sigma * rho * un**2 * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.normal)
+    #     entr_inflow_amp_in += bc.sigma * rho * un * ut * (
+    #         (CF(bc.state.velocity) - self.velocity(Uhat)) * self.tangential)
 
-        #         cons_diff_jac_tang = self.conservative_diffusive_jacobian(Uhat, Q, t) * (grad(U) * t)
-        #         mixe_diff_jac_tang = self.mixed_diffusive_jacobian(Uhat, t) * (grad(Q) * t)
+    #     vort_inflow_amp_in = -bc.sigma * un * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.tangential)
+    #     vort_inflow_amp_in += bc.sigma * ut * ((CF(bc.state.velocity) - self.velocity(Uhat)) * self.normal)
+    #     vort_inflow_amp_in += -gradient_p_t/rho
 
-        #         cf -= cons_diff_jac_tang * Vhat
-        #         cf -= mixe_diff_jac_tang * Vhat
+    #     if bc.tang_conv_flux:
 
-        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_tang
-        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_tang
+    #         # u_norm = self.velocity(Uhat)
+    #         # u_norm = u_norm/(sqrt(InnerProduct(u_norm, u_norm)))
+    #         beta_l = 1  # IfPos(self.normal[0], self.normal[0], -self.normal[0])
+    #         beta_t = Mn
 
-        #     if bc.norm_visc_flux:
-        #         test = grad(Q)
-        #         test = CF((test[0, :], 0, 0, test[2, :], 0, 0, test[4, :]), dims=(5, 2))
-        #         mixe_diff_jac_norm_test = self.mixed_diffusive_jacobian(Uhat, n) * (test * n)
+    #         # acou_outflow_amp_in -=  (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+    #         # acou_outflow_amp_in -=  (1 - beta_t) * rho * c**2 * InnerProduct(gradient_u_t, self.tangential)
 
-        #         cons_diff_jac_norm = self.conservative_diffusive_jacobian(Uhat, Q, n) * (grad(U) * n)
-        #         mixe_diff_jac_norm = self.mixed_diffusive_jacobian(Uhat, n) * (grad(Q) * n)
+    #         acou_outflow_amp_in += beta_l * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+    #         acou_outflow_amp_in += beta_t * rho * c**2 * InnerProduct(gradient_u_t, self.tangential)
 
-        #         cf -= cons_diff_jac_norm * Vhat
-        #         # cf -= mixe_diff_jac_norm * Vhat
+    #         # beta_l * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+    #         # acou_outflow_amp_in += -rho * (un + c) * ut * InnerProduct(gradient_u_t, self.normal)
+    #         # acou_outflow_amp_in += rho * InnerProduct(gradient_u_t, self.tangential) * (un * c - ut**2)
 
-        #         amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * cons_diff_jac_norm
-        #         # amplitude_in += self.P_inverse_matrix(Uhat, self.normal) * mixe_diff_jac_norm
+    #     #     acou_inflow_amp_in += ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+    #     #     # acou_inflow_amp_in += Mn * rho * c**2 * InnerProduct(gradient_u_t, self.tangential)
 
-        # amplitudes = amplitude_out + self.identity_matrix_incoming(Uhat, self.normal) * amplitude_in
-        # cf += (self.P_matrix(Uhat, self.normal) * amplitudes) * Vhat
-        # cf = cf * ds(skeleton=True, definedon=region, bonus_intorder=bonus_order_bnd)
-        # blf += cf.Compile(compile_flag)
+    #     #     entr_inflow_amp_in += ut * (gradient_rho_t * c**2 - gradient_p_t)
+    #     #     vort_inflow_amp_in += -gradient_p_t/rho - ut * InnerProduct(gradient_u_t, self.tangential)
+    #     #     # acou_inflow_amp_in -= (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, self.tangential)
 
-    def _get_characteristic_amplitudes_incoming(self, bc: bcs.Outflow_NSCBC):
+    #     Lout = CF((acou_outflow_amp_in, 0, 0, 0))
+    #     Lin = CF((acou_inflow_amp_in, entr_inflow_amp_in, vort_inflow_amp_in, 0))
+
+    #     I = self.velocity(Uhat) * self.normal
+    #     L = IfPos(I, Lout, Lin)
+
+    #     return Lout
+
+    def _get_incoming_characteristic_amplitudes(self, bc: bcs.NSCBC):
 
         M = self.cfg.Mach_number
 
@@ -885,29 +902,51 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         rho = self.density(Uhat)
         c = self.speed_of_sound(Uhat)
-        un = self.velocity(Uhat) * self.normal
-        Mn = IfPos(un, un, -un)/c
+        un = InnerProduct(self.velocity(Uhat), self.normal)
+        ut = InnerProduct(self.velocity(Uhat), self.tangential)
+        Mn = un/c
+        Mt = ut/c
 
-        outflow_amp_in = bc.sigma * c * (1 - M**2)/bc.reference_length * (self.pressure(Uhat) - bc.state.pressure)
+        gradient_p_t = InnerProduct(self.pressure_gradient(Uhat, Q, Uhat), self.tangential)
+        # gradient_rho_t = InnerProduct(self.density_gradient(U, Q), self.tangential)
+        gradient_u_t = self.velocity_gradient(Uhat, Q, Uhat) * self.tangential
 
-        if bc.tang_conv_flux:
+        u_diff = CF(bc.state.velocity) - self.velocity(Uhat)
 
-            ut = InnerProduct(self.velocity(Uhat), self.tangential)
+        # Outflow Acoustic Amplitude
+        acou_outflow_amp_in = bc.sigma * (un - c) * (bc.state.pressure - self.pressure(Uhat))/bc.reference_length
+        acou_outflow_amp_in += ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+        acou_outflow_amp_in += Mn * rho * c**2 * InnerProduct(gradient_u_t, self.tangential)
+        # acou_outflow_amp_in -= bc.sigma * (1 - self.normal[0]
+        #                                    ) * (un - c) * rho * c * (u_diff * self.normal)/bc.reference_length
 
-            gradient_p_t = InnerProduct(self.pressure_gradient(U, Q, Uhat), self.tangential)
-            gradient_u_t = self.velocity_gradient(U, Q, Uhat) * self.tangential
+        # Inflow Acoustic Amplitude
+        acou_inflow_amp_in = -bc.sigma * (un - c) * rho * c * (u_diff * self.normal)/bc.reference_length
+        # acou_inflow_amp_in += ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+        # acou_inflow_amp_in += rho * c**2 * InnerProduct(gradient_u_t, self.tangential)
+        # acou_inflow_amp_in += ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
 
-            beta_l = M
-            beta_t = M
+        # Inflow Entropy Amplitude
+        entr_inflow_amp_in = bc.sigma * un * c**2 * (bc.state.density - self.density(Uhat))/bc.reference_length
+        # entr_inflow_amp_in += ut * (c**2 * gradient_rho_t - gradient_p_t)
+        # entr_inflow_amp_in = 0
 
-            outflow_amp_in -= (1 - beta_l) * ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
-            outflow_amp_in -= (1 - beta_t) * c**2 * rho * InnerProduct(gradient_u_t, self.tangential)
+        # Vorticity Amplitude
+        vort_inflow_amp_in = -bc.sigma * un * (u_diff * self.tangential)/bc.reference_length
+        # vort_inflow_amp_in =- bc.sigma * (un * (u_diff * self.tangential) - ut *
+        #                                   (u_diff * self.normal))/bc.reference_length
+        # vort_inflow_amp_in += -ut * InnerProduct(gradient_u_t, self.tangential)
+        # vort_inflow_amp_in += -gradient_p_t/rho
 
-        L = CF((outflow_amp_in, 0, 0, 0))
+        Lout = CF((acou_outflow_amp_in, 0, 0, 0))
+        Lin = CF((acou_inflow_amp_in, entr_inflow_amp_in, vort_inflow_amp_in, 0))
+
+        I = self.velocity(Uhat) * self.normal
+        L = IfPos(I, Lout, Lin)
 
         return L
 
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.Outflow_NSCBC):
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.NSCBC):
 
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
         compile_flag = self.cfg.compile_flag
@@ -926,23 +965,44 @@ class ConservativeFormulation2D(ConservativeFormulation):
         time_levels_gfu = self._gfus.get_component(1)
         time_levels_gfu['n+1'] = Uhat
 
-        L = self._get_characteristic_amplitudes_incoming(bc)
+        L = self._get_incoming_characteristic_amplitudes(bc)
 
         cf = InnerProduct(An_out*(U - Uhat), Vhat)
-        cf += InnerProduct(An_in*self.time_scheme.apply(time_levels_gfu), Vhat)
-        cf += An_in*(self.DME_convective_jacobian(Uhat, self.tangential) * (grad(U) * self.tangential)) * Vhat
-        cf += InnerProduct(P_in * L, Vhat)
+        cf += InnerProduct(An_in*self.time_scheme.scheme(time_levels_gfu), Vhat)
+        cf += self.time_scheme.step() * InnerProduct(P_in * L, Vhat)
 
         if mixed_method is not MixedMethods.NONE:
-            cf -= An_in*(self.conservative_diffusive_jacobian(Uhat, Q,
+            cf += An_in*(self.conservative_diffusive_jacobian(Uhat, Q,
                          self.tangential)*(grad(U)*self.tangential)) * Vhat
-            cf -= An_in*(self.conservative_diffusive_jacobian(Uhat, Q, self.normal) * (grad(U) * self.normal)) * Vhat
+            cf += An_in*(self.conservative_diffusive_jacobian(Uhat, Q, self.normal) * (grad(U) * self.normal)) * Vhat
 
-            cf -= An_in*(self.mixed_diffusive_jacobian(Uhat, self.normal) * (grad(Q) * self.normal)) * Vhat
-            cf -= An_in*(self.mixed_diffusive_jacobian(Uhat, self.tangential) * (grad(Q) * self.tangential)) * Vhat
+            cf += An_in*(self.mixed_diffusive_jacobian(Uhat, self.normal) * (grad(Q) * self.normal)) * Vhat
+            cf += An_in*(self.mixed_diffusive_jacobian(Uhat, self.tangential) * (grad(Q) * self.tangential)) * Vhat
 
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
+
+        self._glue_together(blf, boundary)
+
+    def _glue_together(self, blf, boundary):
+        Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Ustar, Vstar = self.TnT.NSCBC
+
+        nt = self.tangential * CF((-self.normal[1], self.normal[0]))
+        nn = nt * self.normal
+
+        cf = nt * InnerProduct(Uhat.Trace(), Vstar) * ds(element_boundary=True, definedon=boundary)
+        cf += nt * InnerProduct(Ustar, Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
+        # cf = Ustar * Vstar * ds(element_boundary=True, definedon=boundary)
+        blf += cf.Compile(self.cfg.compile_flag)
+
+        # A = self.convective_stabilisation_matrix(Ustar, self.tangential, self.cfg.riemann_solver.LAX_FRIEDRICH)
+        # cf = self.convective_flux(Ustar) * nn * Vstar
+        # cf = (self.convective_flux(Ustar) * self.tangential ) * Vstar
+        # cf -= (self.convective_flux(Ustar) * self.tangential) * Vhat.Trace()
+        # cf = cf * ds(element_boundary=True, definedon=boundary)
+        # cf += InnerProduct(self.convective_flux(Uhat), grad(Vhat)) * ds(skeleton=True, definedon=boundary)
+        # blf += cf.Compile(self.cfg.compile_flag)
 
     def conservative_diffusive_jacobian_x(self, U, Q):
 

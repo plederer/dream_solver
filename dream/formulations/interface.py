@@ -335,7 +335,7 @@ class _Formulation(Formulation):
             elif isinstance(condition, bcs.Outflow):
                 self._add_outflow_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, bcs.Outflow_NSCBC):
+            elif isinstance(condition, bcs.NSCBC):
                 self._add_nonreflecting_outflow_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, (bcs.InviscidWall, bcs.Symmetry)):
@@ -375,10 +375,11 @@ class _Formulation(Formulation):
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Ustar, Vstar = self.TnT.NSCBC
 
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
-
+        blf += Ustar * Vstar * ds(element_boundary=True)
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
             blf += Q * P * dx
@@ -436,7 +437,7 @@ class _Formulation(Formulation):
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-6
+            theta_0 = 1e-8
             theta = un_abs/(un_abs + c)
             theta = IfPos(theta - theta_0, theta, theta_0)
 
@@ -672,7 +673,19 @@ class _Formulation(Formulation):
         variables = self.characteristic_variables(U, Q, Uhat, unit_vector)
         return CF(tuple(vel * var for vel, var in zip(velocities, variables)))
 
-    def identity_matrix_outgoing(self, U, unit_vector: CF) -> CF:
+    def identity_matrix(self, U, unit_vector: CF, type: str, as_matrix: bool = False) -> CF:
+        """
+        The Lambda matrix contains the eigenvalues of the Jacobian matrices
+
+        Equation E16.5.21, page 180
+
+        Literature:
+        [1] - C. Hirsch,
+              Numerical Computation of Internal and External Flows Volume 2:
+              Computational Methods for Inviscid and Viscous Flows,
+              Vrije Universiteit Brussel, Brussels, Belgium
+              ISBN: 978-0-471-92452-4
+        """
         c = self.speed_of_sound(U)
         u_dir = InnerProduct(self.velocity(U), unit_vector)
 
@@ -681,54 +694,39 @@ class _Formulation(Formulation):
         lam_p_c = u_dir + c
 
         Im_c = IfPos(lam_m_c, 1, 0)
-        Im = IfPos(lam, 1, 0)
+        I = IfPos(lam, 1, 0)
         Ip_c = IfPos(lam_p_c, 1, 0)
 
-        if self.mesh.dim == 2:
-
-            identity = CF((Im_c, 0, 0, 0,
-                           0, Im, 0, 0,
-                           0, 0, Im, 0,
-                           0, 0, 0, Ip_c), dims=(4, 4))
-
-        elif self.mesh.dim == 3:
-
-            identity = CF((Im_c, 0, 0, 0, 0,
-                           0, Im, 0, 0, 0,
-                           0, 0, Im, 0, 0,
-                           0, 0, 0, Im, 0,
-                           0, 0, 0, 0, Ip_c), dims=(5, 5))
-
-        return identity
-
-    def identity_matrix_incoming(self, U, unit_vector: CF) -> CF:
-        c = self.speed_of_sound(U)
-        u_dir = InnerProduct(self.velocity(U), unit_vector)
-
-        lam_m_c = u_dir - c
-        lam = u_dir
-        lam_p_c = u_dir + c
-
-        Im_c = 1 - IfPos(lam_m_c, 1, 0)
-        Im = 1 - IfPos(lam, 1, 0)
-        Ip_c = 1 - IfPos(lam_p_c, 1, 0)
+        if type == "in":
+            Im_c = (1 - Im_c)
+            I = (1 - I)
+            Ip_c = (1 - Ip_c)
+        elif type == "out":
+            ...
+        else:
+            raise ValueError(f"{str(type).capitalize()} is invalid! Alternatives: {['in', 'out']}")
 
         if self.mesh.dim == 2:
-
-            identity = CF((Im_c, 0, 0, 0,
-                           0, Im, 0, 0,
-                           0, 0, Im, 0,
-                           0, 0, 0, Ip_c), dims=(4, 4))
-
+            if as_matrix:
+                Lambda = CF((Im_c, 0, 0, 0,
+                             0, I, 0, 0,
+                             0, 0, I, 0,
+                             0, 0, 0, Ip_c),
+                            dims=(4, 4))
+            else:
+                Lambda = (Im_c, I, I, Ip_c)
         elif self.mesh.dim == 3:
+            if as_matrix:
+                Lambda = CF((Im_c, 0, 0, 0, 0,
+                             0, I, 0, 0, 0,
+                             0, 0, I, 0, 0,
+                             0, 0, 0, I, 0,
+                             0, 0, 0, 0, Ip_c),
+                            dims=(5, 5))
+            else:
+                Lambda = (Im_c, I, I, I, Ip_c)
 
-            identity = CF((Im_c, 0, 0, 0, 0,
-                           0, Im, 0, 0, 0,
-                           0, 0, Im, 0, 0,
-                           0, 0, 0, Im, 0,
-                           0, 0, 0, 0, Ip_c), dims=(5, 5))
-
-        return identity
+        return Lambda
 
     def DVP_from_DME(self, U) -> CF:
         """

@@ -897,8 +897,8 @@ class BoundaryConditions(UserDict):
         return "|".join(keys)
 
     @property
-    def nscbc(self) -> dict[str, Outflow_NSCBC]:
-        return {name: bc for name, bc in self.items() if isinstance(bc, self.Outflow_NSCBC)}
+    def nscbc(self) -> dict[str, NSCBC]:
+        return {name: bc for name, bc in self.items() if isinstance(bc, self.NSCBC)}
 
     class _Boundary(Condition):
         ...
@@ -925,25 +925,23 @@ class BoundaryConditions(UserDict):
             self._check_value(state.pressure, "pressure")
             super().__init__(state)
 
-    class Outflow_NSCBC(_Boundary):
+    class NSCBC(_Boundary):
 
         def __init__(self,
-                     pressure: float,
+                     state: State,
                      sigma: float = 0.25,
                      reference_length: float = 1,
-                     tangential_convective_fluxes: bool = True,
-                     tangential_viscous_fluxes: bool = True,
-                     normal_viscous_fluxes: bool = False) -> None:
+                     tangential_convective_fluxes: bool = True) -> None:
 
-            state = State(pressure=pressure)
-            self._check_value(state.pressure, "pressure")
+            self._check_value(state.density, "density")
+            self._check_value(state.velocity, "velocity")
+            if state.all_thermodynamic_none:
+                raise ValueError("A Thermodynamic quantity is required!")
             super().__init__(state)
 
             self.sigma = sigma
             self.reference_length = reference_length
             self.tang_conv_flux = tangential_convective_fluxes
-            self.tang_visc_flux = tangential_viscous_fluxes
-            self.norm_visc_flux = normal_viscous_fluxes
 
     class InviscidWall(_Boundary):
         def __init__(self) -> None:

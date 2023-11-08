@@ -64,6 +64,12 @@ class ImplicitEuler(_TimeSchemes):
 
     time_levels = ('n+1', 'n')
 
+    def step(self):
+        return self.cfg.step
+
+    def scheme(self, cf: TimeLevelsGridfunction):
+        return (cf['n+1'] - cf['n'])
+
     def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.cfg.step
         return 1/dt * (cf['n+1'] - cf['n'])
@@ -78,6 +84,12 @@ class ImplicitEuler(_TimeSchemes):
 class BDF2(_TimeSchemes):
 
     time_levels = ('n+1', 'n', 'n-1')
+
+    def step(self):
+        return  2 * self.cfg.step
+
+    def scheme(self, cf: TimeLevelsGridfunction):
+        return (3*cf['n+1'] - 4 * cf['n'] + cf['n-1']) 
 
     def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.cfg.step

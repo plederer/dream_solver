@@ -232,7 +232,7 @@ class NSCBC(Vortex):
 
     def set_boundary_conditions(self):
         self.solver.boundary_conditions.set(bcs.FarField(self.farfield), "left")
-        self.solver.boundary_conditions.set(bcs.Outflow_NSCBC(
+        self.solver.boundary_conditions.set(bcs.NSCBC(
             self.farfield.pressure, sigma=0.5, reference_length=2
         ), "right")
         self.solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")

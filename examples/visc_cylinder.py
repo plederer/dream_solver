@@ -1,7 +1,6 @@
 from netgen.geom2d import SplineGeometry
 from ngsolve import *
-from dream import CompressibleHDGSolver, SolverConfiguration
-# from dream.utils.geometries import MakeOCCRectangle, MakeOCCCircle, MakeOCCCirclePlane
+from dream import *
 from dream.utils.meshes import Get_Omesh
 
 ngsglobals.msg_level = 0
@@ -43,16 +42,18 @@ mesh.Curve(cfg.order)
 gamma = cfg.heat_capacity_ratio
 M_inf = cfg.Mach_number
 
-u_inf = CF((1, 0))
-p_inf = 1
-rho_inf = p_inf * gamma / (u_inf[0]/M_inf)**2
+farfield = INF.farfield((1,0), cfg)
+p_inf = INF.pressure(cfg)
+u_inf = INF.velocity((1,0), cfg)
+
 
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set_farfield("inflow", u_inf, rho_inf,  p_inf)
-solver.boundary_conditions.set_outflow("outflow", p_inf)
-solver.boundary_conditions.set_adiabatic_wall("cylinder")
-solver.domain_conditions.set_initial(u_inf, rho_inf, pressure=p_inf)
+solver.boundary_conditions.set(bcs.FarField(farfield), 'inflow')
+solver.boundary_conditions.set(bcs.Outflow(p_inf), 'outflow')
+solver.boundary_conditions.set(bcs.NSCBC(p_inf), 'outflow')
+solver.boundary_conditions.set(bcs.AdiabaticWall(), 'cylinder')
+solver.domain_conditions.set(dcs.Initial(farfield))
 
 with TaskManager():
     solver.setup()
