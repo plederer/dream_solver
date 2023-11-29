@@ -1026,21 +1026,6 @@ class _Formulation(Formulation):
         B = self.DME_convective_jacobian_y(U)
         return A * unit_vector[0] + B * unit_vector[1]
 
-    def regularisation_matrix(self, U, unit_vector, theta_0: float = 1e-8):
-
-        un = InnerProduct(self.velocity(U), unit_vector)
-        un_abs = IfPos(un, un, -un)
-
-        theta = IfPos(un_abs - theta_0, 0, theta_0)
-
-        THETA = CF((
-            0, 0, 0, 0,
-            0, theta, 0, 0,
-            0, 0, theta, 0,
-            0, 0, 0, 0), dims=(4, 4))
-
-        return THETA
-
     def DME_convective_jacobian_outgoing(self, U, unit_vector: CF, theta_0: float = 0) -> CF:
         u_out = self.characteristic_velocities(U, unit_vector, type="out", as_matrix=True, theta_0=theta_0)
         return self.DME_from_CHAR_matrix(u_out, U, unit_vector)
