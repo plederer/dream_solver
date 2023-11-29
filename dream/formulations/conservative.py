@@ -820,13 +820,13 @@ class ConservativeFormulation2D(ConservativeFormulation):
         gfu = self._gfus.get_component(1)
         gfu['n+1'] = Uhat
 
-
         # Outflow Acoustic Amplitude
-        acou_outflow_amp_in = bc.sigma * (un - c) * (bc.state.pressure - self.pressure(Uhat))/bc.reference_length
+        acou_outflow_amp_in = bc.sigma * (un - c) * (bc.state.pressure - self.pressure(U))/bc.reference_length
         # acou_outflow_amp_in += -(1 - M) * incoming_tangential(Uhat)
-        acou_outflow_amp_in += (un - c) * rho * c * grad_u_tt_outer
-        acou_outflow_amp_in += incoming_tangential(U)
-        acou_outflow_amp_in += rho * c**2 * grad_u_tt_inner
+        if bc.tang_conv_flux:
+            acou_outflow_amp_in += (un - c) * rho * c * grad_u_tt_outer
+            acou_outflow_amp_in += incoming_tangential(U)
+            acou_outflow_amp_in += rho * c**2 * grad_u_tt_inner
         # acou_outflow_amp_in -= bc.sigma * (1 - self.normal[0]
         #                                    ) * (un - c) * rho * c * (u_diff * self.normal)/bc.reference_length
 
