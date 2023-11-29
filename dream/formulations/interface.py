@@ -603,7 +603,8 @@ class _Formulation(Formulation):
 
         return variables
 
-    def characteristic_velocities(self, U, unit_vector: CF, type: str = None, as_matrix: bool = False) -> CF:
+    def characteristic_velocities(
+            self, U, unit_vector: CF, type: str = None, as_matrix: bool = False, theta_0: float = 0) -> CF:
         """
         The Lambda matrix contains the eigenvalues of the Jacobian matrices
 
@@ -635,11 +636,11 @@ class _Formulation(Formulation):
             lam_p_c = IfPos(lam_p_c, lam_p_c, -lam_p_c)
         elif type == "in":
             lam_m_c = (1 - Im_c) * lam_m_c
-            lam = (1 - Im) * lam
+            lam = (1 - Im) * IfPos(lam + theta_0, -theta_0, lam)
             lam_p_c = (1 - Ip_c) * lam_p_c
         elif type == "out":
             lam_m_c = Im_c * lam_m_c
-            lam = Im * lam
+            lam = Im * IfPos(lam - theta_0, lam, theta_0)
             lam_p_c = Ip_c * lam_p_c
         else:
             raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {[None, 'absolute', 'in', 'out']}")
@@ -1025,12 +1026,27 @@ class _Formulation(Formulation):
         B = self.DME_convective_jacobian_y(U)
         return A * unit_vector[0] + B * unit_vector[1]
 
-    def DME_convective_jacobian_outgoing(self, U, unit_vector: CF) -> CF:
-        u_out = self.characteristic_velocities(U, unit_vector, type="out", as_matrix=True)
+    def regularisation_matrix(self, U, unit_vector, theta_0: float = 1e-8):
+
+        un = InnerProduct(self.velocity(U), unit_vector)
+        un_abs = IfPos(un, un, -un)
+
+        theta = IfPos(un_abs - theta_0, 0, theta_0)
+
+        THETA = CF((
+            0, 0, 0, 0,
+            0, theta, 0, 0,
+            0, 0, theta, 0,
+            0, 0, 0, 0), dims=(4, 4))
+
+        return THETA
+
+    def DME_convective_jacobian_outgoing(self, U, unit_vector: CF, theta_0: float = 0) -> CF:
+        u_out = self.characteristic_velocities(U, unit_vector, type="out", as_matrix=True, theta_0=theta_0)
         return self.DME_from_CHAR_matrix(u_out, U, unit_vector)
 
-    def DME_convective_jacobian_incoming(self, U, unit_vector: CF) -> CF:
-        u_in = self.characteristic_velocities(U, unit_vector, type="in", as_matrix=True)
+    def DME_convective_jacobian_incoming(self, U, unit_vector: CF, theta_0: float = 0) -> CF:
+        u_in = self.characteristic_velocities(U, unit_vector, type="in", as_matrix=True, theta_0=theta_0)
         return self.DME_from_CHAR_matrix(u_in, U, unit_vector)
 
     def CHAR_from_DVP(self, U, unit_vector: CF) -> CF:

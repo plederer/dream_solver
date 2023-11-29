@@ -181,12 +181,8 @@ class ConservativeFormulation(_Formulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        An_in = -self.DME_convective_jacobian_incoming(Uhat, self.normal)
-        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
-
-        if bc.use_riemann_solver:
-            An_in = self.convective_stabilisation_matrix(Uhat, -self.normal)
-            An_out = self.convective_stabilisation_matrix(Uhat, self.normal)
+        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, bc.theta_0)
+        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, bc.theta_0)
 
         cf = -An_out * (U - Uhat) - An_in * (farfield - Uhat)
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
@@ -870,8 +866,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
         Uhat, Vhat = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
 
-        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal)
-        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
+        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, theta_0 = 1e-8)
+        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, theta_0 = 1e-8)
         P = self.DME_from_CHAR(Uhat, self.normal)
 
         time_levels_gfu = self._gfus.get_component(1)

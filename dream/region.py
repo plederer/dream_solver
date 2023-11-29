@@ -912,13 +912,14 @@ class BoundaryConditions(UserDict):
             super().__init__(state)
 
     class FarField(_Boundary):
-        def __init__(self, state: State, use_riemann_solver: bool = False):
+        def __init__(self, state: State, theta_0: float = 0):
             self._check_value(state.density, "density")
             self._check_value(state.velocity, "velocity")
             if state.all_thermodynamic_none:
                 raise ValueError("A Thermodynamic quantity is required!")
-            self.use_riemann_solver = use_riemann_solver  
             super().__init__(state)
+
+            self.theta_0 = theta_0
 
     class Outflow(_Boundary):
         def __init__(self, pressure: float):
