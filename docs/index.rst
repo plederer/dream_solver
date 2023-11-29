@@ -17,7 +17,17 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
 
 .. toctree::
    :maxdepth: 2
-   :caption: HDG formulation:
+   :caption: Discretization:
+
+   hdg/hdg.md
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Python-Module:
+
+   module/configuration
+
+
 
 
 Funding
