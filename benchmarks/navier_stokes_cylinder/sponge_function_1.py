@@ -3,7 +3,7 @@ from dream.utils.meshes import circular_cylinder_mesh
 from ngsolve import *
 
 ngsglobals.msg_level = 0
-SetNumThreads(8)
+SetNumThreads(64)
 
 # Enter Directory Name
 directory_prefix = "sponge_function_1_ffr100"
@@ -34,7 +34,7 @@ load_stationary = False
 draw = True
 
 # Results Directory
-directory_name = f"{directory_prefix}_Ma{cfg.Mach_number.Get()}_Re{cfg.Reynolds_number.Get()}_order{cfg.order}"
+directory_name = f"{directory_prefix}_Ma{cfg.Mach_number.Get()}_Re{cfg.Reynolds_number.Get()}_order{cfg.order}_new"
 tree = ResultsDirectoryTree(directory_name, parent_path=parent_path)
 saver = Saver(tree)
 
@@ -70,15 +70,12 @@ saver.save_mesh(mesh)
 
 
 # Farfield Values
-rho_inf = 1
-u_inf = (1, 0)
-p_inf = 1/(cfg.Mach_number.Get()**2 * cfg.heat_capacity_ratio.Get())
-farfield = State(u_inf, rho_inf, p_inf)
+farfield = INF.farfield((1, 0), cfg)
 
 # Meta Data
 cfg.info['Farfield Density'] = 1
-cfg.info['Farfield Velocity'] = u_inf
-cfg.info['Farfield Pressure'] = p_inf
+cfg.info['Farfield Velocity'] = farfield.velocity
+cfg.info['Farfield Pressure'] = farfield.pressure
 cfg.info['Sponge Function'] = 'r⁵'
 
 cfg.info['Radius'] = R
@@ -113,8 +110,8 @@ with TaskManager():
 
 if draw:
     solver.drawer.draw()
-    solver.drawer.draw_particle_velocity(u_inf)
-    solver.drawer.draw_acoustic_pressure(p_inf, sd=3, autoscale=False, min=-1e-4, max=1e-4)
+    solver.drawer.draw_particle_velocity(farfield.velocity)
+    solver.drawer.draw_acoustic_pressure(farfield.pressure, sd=3, autoscale=False, min=-1e-4, max=1e-4)
 
 # Solve Stationary
 if load_stationary:
@@ -130,30 +127,30 @@ else:
     saver.save_configuration(name="stationary")
 
 # Add perturbation to the solution
-r = sqrt((x+4)**2 + (y-0.1)**2)
-p_0 = 1.2 * exp(-r**2)
-psi = 1.2 * exp(-r**2)
-u_0 = CF((psi.Diff(y), -psi.Diff(x)))
-rho_0 = (p_0/p_inf)**(1/cfg.heat_capacity_ratio) * rho_inf
-perturbation = State(u_0, rho_0, p_0)
-solver.domain_conditions.set(dcs.Perturbation(perturbation))
-with TaskManager():
-    solver.solve_perturbation()
+# r = sqrt((x+4)**2 + (y-0.1)**2)
+# p_0 = 1.2 * exp(-r**2)
+# psi = 1.2 * exp(-r**2)
+# u_0 = CF((psi.Diff(y), -psi.Diff(x)))
+# rho_0 = (p_0/p_inf)**(1/cfg.heat_capacity_ratio) * rho_inf
+# perturbation = State(u_0, rho_0, p_0)
+# solver.domain_conditions.set(dcs.Perturbation(perturbation))
+# with TaskManager():
+#     solver.solve_perturbation()
 
 # Solver Transient
 cfg.time.step = 0.1
-cfg.time.interval = (0, 100)
+cfg.time.interval = (0, 200)
 cfg.convergence_criterion = 1e-12
 
 with TaskManager():
     solver.solve_transient()
 saver.save_configuration(name=f"transient")
-saver.save_state_time_scheme(f"transient_{cfg.time.interval.end}")
+saver.save_state_time_scheme(f"transient")
 
 # Solver Transient
-cfg.time.interval = (100, 400)
+cfg.time.interval = (200, 700)
 cfg.save_state = True
 
 with TaskManager():
     solver.solve_transient()
-saver.save_state_time_scheme(f"transient_{cfg.time.interval.end}")
+saver.save_state_time_scheme(f"transient")
