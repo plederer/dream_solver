@@ -6,7 +6,7 @@ ngsglobals.msg_level = 0
 SetNumThreads(64)
 
 # Enter Directory Name
-directory_prefix = "sponge_function_1_ffr100"
+directory_prefix = "sponge_function_1_ffr200"
 parent_path = None
 
 # General Solver Configuration
@@ -20,7 +20,7 @@ cfg.Mach_number = 0.3
 cfg.Reynolds_number = 150
 cfg.Prandtl_number = 0.75
 cfg.heat_capacity_ratio = 1.4
-cfg.order = 4
+cfg.order = 6
 cfg.compile_flag = True
 cfg.damping_factor = 1
 cfg.max_iterations = 100
@@ -45,11 +45,11 @@ boundary_layer_thickness = 0.08
 transition_layer_levels = 4
 transition_layer_growth = 1
 transition_radial_factor = 10
-farfield_radial_factor = 200
+farfield_radial_factor = 400
 sponge_radial_factor = 3000
 wake_maxh = 2
 farfield_maxh = 12
-sponge_maxh = 600
+sponge_maxh = 200
 
 mesh = circular_cylinder_mesh(R,
                               True,
