@@ -6,10 +6,10 @@ from numpy.fft import *
 import numpy as np
 
 # Result Directory
-parent_path = "/media/jellmenr/DreAm/simulation_results/navier_stokes_benchmark"
-directory = "sponge_function_2_ffr100_Ma0.2_Re150.0_order4"
+parent_path = ""
+directory = ""
 
-tree = ResultsDirectoryTree(directory, parent_path=parent_path)
+tree = ResultsDirectoryTree(directory, parent_dir=parent_path)
 loader = Loader(tree=tree)
 
 cfg = loader.load_configuration("transient")
@@ -31,7 +31,7 @@ sensor.sample_drag_coefficient(1, 1, 1, (1, 0))
 sensor.assign_solver(solver)
 
 with TaskManager():
-    for idx, t in enumerate(loader.load_state_time_sequence(sleep_time=0, load_step=1)):
+    for idx, t in enumerate(loader.load_gridfunction_sequence(sleep_time=0, load_step=1)):
         sensor.take_single_sample(t)
         print(f"Time Step = {t}", end='\r')
 
@@ -49,19 +49,19 @@ p_mean = GridFunction(L2(mesh, order=cfg.order))
 def calculate_mean_pressure(load_step: int = 1, name: str = "p_mean"):
     p_mean_load = GridFunction(L2(mesh, order=cfg.order))
     with TaskManager():
-        for t in loader.load_state_time_sequence(sleep_time=0, load_step=load_step):
+        for t in loader.load_gridfunction_sequence(sleep_time=0, load_step=load_step):
             p_mean_load.Set(solver.formulation.pressure())
             p_mean.vec.data += p_mean_load.vec
             print(f"Time Step = {t}", end='\r')
         p_mean.vec.data /= cfg.time.interval.array().size/load_step
-    saver.save_state(p_mean, name)
+    saver.save_gridfunction(p_mean, name)
 
 
 if recalculate:
     calculate_mean_pressure(load_step, name)
 else:
     try:
-        loader.load_state(p_mean, name)
+        loader.load_gridfunction(p_mean, name)
     except Exception:
         calculate_mean_pressure(load_step, name)
 
@@ -77,19 +77,19 @@ p_rms = GridFunction(L2(mesh, order=2 * cfg.order))
 def calculate_rms_pressure(load_step: int = 1, name: str = "p_rms"):
     p_rms_load = GridFunction(L2(mesh, order=2 * cfg.order))
     with TaskManager():
-        for t in loader.load_state_time_sequence(sleep_time=0, load_step=load_step):
+        for t in loader.load_gridfunction_sequence(sleep_time=0, load_step=load_step):
             p_rms_load.Set((solver.formulation.pressure() - p_mean)**2)
             p_rms.vec.data += p_rms_load.vec
             print(f"Time Step = {t}", end='\r')
         p_rms.vec.data /= cfg.time.interval.array().size/load_step
-    saver.save_state(p_rms, name)
+    saver.save_gridfunction(p_rms, name)
 
 
 if recalculate:
     calculate_rms_pressure(load_step, name)
 else:
     try:
-        loader.load_state(p_rms, name)
+        loader.load_gridfunction(p_rms, name)
     except Exception:
         calculate_rms_pressure(load_step, name)
 
@@ -121,7 +121,7 @@ plt.show()
 %matplotlib qt5
 
 file = "transient_349.0"
-loader.load_state(name=file)
+loader.load_gridfunction(name=file)
 p = solver.formulation.pressure()
 p_acou = p - p_mean
 R = np.linspace(0.5, 100, 1000)
@@ -161,7 +161,7 @@ for theta in [180 - 50, 180-78.5, 180-120]:
 fig, ax = plt.subplots(figsize=(4.3, 5.8), dpi=200)
 
 for file in [f'transient_{round(i,1)}' for i in np.linspace(349, 351, 3)]:
-    loader.load_state(name=file)
+    loader.load_gridfunction(name=file)
     p_acou = solver.formulation.pressure() - p_mean
 
     R = np.linspace(0.5, 100, 1000)

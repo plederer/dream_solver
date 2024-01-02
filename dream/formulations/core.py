@@ -6,11 +6,12 @@ from typing import Optional, TYPE_CHECKING, NamedTuple
 
 from ngsolve import *
 
-from ..time_schemes import time_scheme_factory, TimeLevelsGridfunction
-from ..mesh import DreamMesh
-from ..utils import DreAmLogger, IdealGasCalculator
+# from ..time_schemes import time_scheme_factory, TimeLevelsGridfunction
+from dream.mesh import DreamMesh
+from dream.io import dlogger
 
-logger = DreAmLogger.get_logger("Formulations")
+
+logger = dlogger.getChild("Formulations")
 
 if TYPE_CHECKING:
     from ..configuration import SolverConfiguration
@@ -110,127 +111,26 @@ class FiniteElementSpace(NamedTuple):
         return cls(fes, TnTs, components)
 
 
-class Formulation(abc.ABC):
+class Formulation:
 
-    @abc.abstractmethod
-    def _initialize_FE_space(self) -> FiniteElementSpace: ...
+    def __init__(self, mesh: Mesh | DreamMesh) -> None:
 
-    @abc.abstractmethod
-    def add_time_bilinearform(self, blf) -> None: ...
+        if isinstance(mesh, Mesh):
+            mesh = DreamMesh(mesh)
 
-    @abc.abstractmethod
-    def add_convective_bilinearform(self, blf) -> None: ...
+        self._mesh = mesh
 
-    @abc.abstractmethod
-    def add_diffusive_bilinearform(self, blf) -> None: ...
+        self.normal = specialcf.normal(mesh.dim)
+        self.tangential = specialcf.tangential(mesh.dim)
+        self.mesh_size = specialcf.mesh_size
 
-    def density(self, U: Optional[CF] = None):
-        raise NotImplementedError()
+    @property
+    def dmesh(self) -> DreamMesh:
+        return self._mesh
 
-    def velocity(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def momentum(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def pressure(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def temperature(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def enthalpy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_enthalpy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def kinetic_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_kinetic_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def inner_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def specific_inner_energy(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def speed_of_sound(self, U: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def density_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def velocity_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def momentum_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def pressure_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def temperature_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def energy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def enthalpy_gradient(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def vorticity(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def deviatoric_strain_rate_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
-        raise NotImplementedError()
-
-    def _add_dirichlet_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_farfield_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_outflow_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_nonreflecting_inflow_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_inviscid_wall_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_isothermal_wall_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition):
-        raise NotImplementedError()
-
-    def add_initial_linearform(self, lf):
-        raise NotImplementedError()
-
-    def add_perturbation_linearform(self, lf):
-        raise NotImplementedError()
-
-    def add_forcing_linearform(self, lf):
-        raise NotImplementedError()
-
-    def _add_sponge_bilinearform(self, blf, domain, condition, weight_function):
-        raise NotImplementedError()
-
-    def _add_psponge_bilinearform(self, blf, domain, condition, weight_function):
-        raise NotImplementedError()
+    @property
+    def mesh(self) -> Mesh:
+        return self.dmesh.ngsmesh
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -245,7 +145,6 @@ class _Formulation(Formulation):
 
         self._mesh = mesh
         self._cfg = solver_configuration
-        self._calc = IdealGasCalculator(self.cfg.heat_capacity_ratio)
 
         self.time_scheme = time_scheme_factory(solver_configuration.time)
 
@@ -291,10 +190,6 @@ class _Formulation(Formulation):
             raise RuntimeError("Call 'formulation.initialize()' before accessing the TestAndTrialFunctions")
         return self._fes.TnT
 
-    @property
-    def calc(self) -> IdealGasCalculator:
-        return self._calc
-
     def initialize(self):
         self._fes = self._initialize_FE_space()
         self._gfus = TimeLevelsGridfunction({level: GridFunction(self.fes) for level in self.time_scheme.time_levels})
@@ -321,7 +216,7 @@ class _Formulation(Formulation):
             elif isinstance(condition, bcs.Outflow):
                 self._add_outflow_bilinearform(blf, boundary, condition)
 
-            elif isinstance(condition, bcs.Outflow_NSCBC):
+            elif isinstance(condition, bcs.NSCBC):
                 self._add_nonreflecting_outflow_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, (bcs.InviscidWall, bcs.Symmetry)):
@@ -458,7 +353,7 @@ class _Formulation(Formulation):
               https://doi.org/10.1007/s11831-020-09508-z
         """
         dim = self.mesh.dim
-        Re = self.cfg.scaling.get_Reynolds_number_scaled(self.cfg.Reynolds_number, self.cfg.Mach_number)
+        Re = self.cfg.scaling.reference_Reynolds_number(self.cfg.Reynolds_number, self.cfg.Mach_number)
         Pr = self.cfg.Prandtl_number
 
         continuity = tuple(0 for i in range(dim))
@@ -471,7 +366,7 @@ class _Formulation(Formulation):
         return flux
 
     def diffusive_stabilisation_matrix(self, Uhat):
-        Re = self.cfg.scaling.get_Reynolds_number_scaled(self.cfg.Reynolds_number, self.cfg.Mach_number)
+        Re = self.cfg.scaling.reference_Reynolds_number(self.cfg.Reynolds_number, self.cfg.Mach_number)
         Pr = self.cfg.Prandtl_number
         mu = self.dynamic_viscosity(Uhat)
 
@@ -667,7 +562,7 @@ class _Formulation(Formulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
 
         rho = self.density(U)
         u = self.velocity(U)
@@ -717,7 +612,7 @@ class _Formulation(Formulation):
 
     def DVP_from_PVT(self, U):
         """ From low mach primitive to compressible primitive """
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         R = (gamma - 1)/gamma
 
         p = self.pressure(U)
@@ -816,7 +711,7 @@ class _Formulation(Formulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
 
         rho = self.density(U)
         u = self.velocity(U)
@@ -845,7 +740,7 @@ class _Formulation(Formulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         rho = self.density(U)
         c = self.speed_of_sound(U)
 
@@ -871,7 +766,7 @@ class _Formulation(Formulation):
 
     def DME_from_PVT(self, U):
 
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         R = (gamma - 1)/gamma
 
         p = self.pressure(U)
@@ -911,7 +806,7 @@ class _Formulation(Formulation):
         See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2
         '''
 
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         velocity = self.velocity(U)
         ux, uy = velocity[0], velocity[1]
         u = InnerProduct(velocity, velocity)
@@ -933,7 +828,7 @@ class _Formulation(Formulation):
         input: u = (rho, rho * u, rho * E)
         See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2
         '''
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         velocity = self.velocity(U)
         ux, uy = velocity[0], velocity[1]
         u = InnerProduct(velocity, velocity)
@@ -952,6 +847,14 @@ class _Formulation(Formulation):
         A = self.DME_convective_jacobian_x(U)
         B = self.DME_convective_jacobian_y(U)
         return A * unit_vector[0] + B * unit_vector[1]
+
+    def DME_convective_jacobian_outgoing(self, U, unit_vector: CF) -> CF:
+        u_out = self.characteristic_velocities(U, unit_vector, type="out", as_matrix=True)
+        return self.DME_from_CHAR_matrix(u_out, U, unit_vector)
+
+    def DME_convective_jacobian_incoming(self, U, unit_vector: CF) -> CF:
+        u_in = self.characteristic_velocities(U, unit_vector, type="in", as_matrix=True)
+        return self.DME_from_CHAR_matrix(u_in, U, unit_vector)
 
     def CHAR_from_DVP(self, U, unit_vector: CF) -> CF:
         """
@@ -996,7 +899,7 @@ class _Formulation(Formulation):
               Vrije Universiteit Brussel, Brussels, Belgium
               ISBN: 978-0-471-92452-4
         """
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         rho = self.density(U)
         c = self.speed_of_sound(U)
 
@@ -1029,7 +932,7 @@ class _Formulation(Formulation):
 
     def PVT_from_DVP(self, U):
         """ From compressible primitive to low mach primitive """
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         R = (gamma - 1)/gamma
 
         p = self.pressure(U)
@@ -1051,7 +954,7 @@ class _Formulation(Formulation):
 
     def PVT_from_DME(self, U):
 
-        gamma = self.cfg.heat_capacity_ratio
+        gamma = self.cfg.equation_of_state.heat_capacity_ratio
         R = (gamma - 1)/gamma
 
         rho = self.density(U)

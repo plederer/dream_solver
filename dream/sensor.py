@@ -7,13 +7,13 @@ import pandas as pd
 
 from typing import *
 from ngsolve import *
-from .utils import DreAmLogger
+# from .utils import DreAmLogger
 
 if TYPE_CHECKING:
     from .formulations import _Formulation
     from .solver import CompressibleHDGSolver
 
-logger = DreAmLogger.get_logger('Sensor')
+# logger = DreAmLogger.get_logger('Sensor')
 
 
 class ScalarComponent(NamedTuple):

@@ -18,17 +18,16 @@ Literature:
 """
 from ngsolve import *
 from dream import *
-from dream.utils.meshes import Get_Omesh
+from dream.mesh.meshes import Get_Omesh
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)
 
 cfg = SolverConfiguration()
 cfg.formulation = 'conservative'
-cfg.scaling = "aerodynamic"
+cfg.scaling = "aeroacoustic"
 cfg.riemann_solver = "hllem"
-cfg.Mach_number = 0.1
-cfg.heat_capacity_ratio = 1.4
+cfg.Mach_number = 0.001
 cfg.order = 3
 cfg.damping_factor = 1.0
 cfg.time.scheme = 'BDF2'
@@ -36,22 +35,20 @@ cfg.time.step = 0.001
 cfg.time.max_step = 10
 cfg.time.simulation = 'stationary'
 cfg.max_iterations = 300
-cfg.convergence_criterion = 1e-12
+cfg.convergence_criterion = 1e-16
 cfg.linear_solver = 'pardiso'
 cfg.compile_flag = True
 
 R = 1
 R_farfield = R * 30
-rho_inf = 1
-u_inf = (1, 0)
-p_inf = 1/(cfg.Mach_number.Get()**2 * cfg.heat_capacity_ratio.Get())
-farfield = State(u_inf, rho_inf, p_inf)
+
+farfield = cfg.get_farfield_state((1, 0))
 
 cfg.info['Cylinder Radius'] = R
 cfg.info['Farfield Radius'] = R_farfield
-cfg.info['Farfield Density'] = rho_inf
-cfg.info['Farfield Velocity'] = u_inf
-cfg.info['Farfield Pressure'] = p_inf
+cfg.info['Farfield Density'] = farfield.density
+cfg.info['Farfield Velocity'] = farfield.velocity
+cfg.info['Farfield Pressure'] = farfield.pressure
 
 mesh = Mesh(Get_Omesh(R, R_farfield, 28, 12, geom=1.8))
 mesh.Curve(cfg.order)
@@ -60,12 +57,12 @@ tree = ResultsDirectoryTree()
 
 solver = CompressibleHDGSolver(mesh, cfg, tree)
 solver.boundary_conditions.set(bcs.FarField(farfield), 'inflow')
-solver.boundary_conditions.set(bcs.Outflow(p_inf), 'outflow')
+solver.boundary_conditions.set(bcs.Outflow(farfield.pressure), 'outflow')
 solver.boundary_conditions.set(bcs.InviscidWall(), 'cylinder')
 solver.domain_conditions.set(dcs.Initial(farfield))
 
 sensor = PointSensor.from_boundary('cylinder', mesh, 'pressure_coefficient')
-sensor.sample_pressure_coefficient(p_inf, reference_velocity=1, reference_density=rho_inf, name="c_p")
+sensor.sample_pressure_coefficient(farfield.pressure, reference_velocity=farfield.velocity[0], reference_density=farfield.density, name="c_p")
 solver.add_sensor(sensor)
 
 saver = solver.get_saver()

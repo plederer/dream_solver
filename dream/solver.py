@@ -1,16 +1,135 @@
 from __future__ import annotations
-from typing import Optional, NamedTuple
+import ngsolve as ngs
+import logging
+
+from typing import Optional, NamedTuple, Any
 from math import isnan
 
-from ngsolve import *
 from .sensor import Sensor
-from .configuration import SolverConfiguration
-from .io import ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
-from .utils import DreAmLogger
-from .formulations import formulation_factory, _Formulation
+from .formulations import FlowConfig, CompressibleFlowConfig
+from .config import BaseConfig, FiniteElementConfig
+from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, SimulationConfig
+from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
+
+logger = logging.getLogger(__name__)
 
 
-logger = DreAmLogger.get_logger('Solver')
+class SolverConfiguration(BaseConfig):
+
+    def __init__(self) -> None:
+
+        # Flow Configuration
+        self.flow = "compressible"
+
+        # Time Configuration
+        self.simulation = "transient"
+        self._fem = FiniteElementConfig()
+
+        # Solution routine Configuration
+        self.compile_flag = True
+        self.max_iterations = 10
+        self.convergence_criterion = 1e-8
+        self.damping_factor = 1
+        self.linear_solver = "pardiso"
+
+        # Output Configuration
+        self._io = IOConfig()
+
+    @property
+    def flow(self) -> CompressibleFlowConfig:
+        return self._flow
+
+    @flow.setter
+    def flow(self, flow):
+        self._flow = self._get_type(flow, FlowConfig)
+
+    @property
+    def simulation(self) -> StationaryConfig | TransientConfig | PseudoTimeSteppingConfig:
+        return self._simulation
+
+    @simulation.setter
+    def simulation(self, simulation: str) -> None:
+        self._simulation = self._get_type(simulation, SimulationConfig)
+
+    @property
+    def fem(self) -> FiniteElementConfig:
+        return self._fem
+
+    @fem.setter
+    def fem(self, fem: dict[str, Any]) -> None:
+        self._fem.update(fem)
+
+    @property
+    def compile_flag(self) -> bool:
+        return self._compile_flag
+
+    @compile_flag.setter
+    def compile_flag(self, compile_flag: bool):
+        self._compile_flag = bool(compile_flag)
+
+    @property
+    def max_iterations(self) -> int:
+        return self._max_iterations
+
+    @max_iterations.setter
+    def max_iterations(self, max_iterations: int):
+        self._max_iterations = int(max_iterations)
+
+    @property
+    def convergence_criterion(self) -> float:
+        return self._convergence_criterion
+
+    @convergence_criterion.setter
+    def convergence_criterion(self, convergence_criterion: float):
+        convergence_criterion = float(convergence_criterion)
+        if convergence_criterion <= 0:
+            raise ValueError("Convergence Criterion must be greater zero!")
+        self._convergence_criterion = convergence_criterion
+
+    @property
+    def damping_factor(self) -> float:
+        return self._damping_factor
+
+    @damping_factor.setter
+    def damping_factor(self, damping_factor: float):
+        self._damping_factor = float(damping_factor)
+
+    @property
+    def linear_solver(self) -> str:
+        return self._linear_solver
+
+    @linear_solver.setter
+    def linear_solver(self, linear_solver: str):
+        self._linear_solver = str(linear_solver).lower()
+
+    @property
+    def io(self) -> IOConfig:
+        return self._io
+
+    @io.setter
+    def io(self, io: IOConfig):
+        self._io.update(io)
+
+    def __repr__(self) -> str:
+
+        formatter = self.formatter.new()
+        formatter.header('Solver Configuration').newline()
+
+        formatter.add_config(self.flow).newline()
+        formatter.add_config(self.time).newline()
+        formatter.add_config(self.fem).newline()
+
+        formatter.subheader('Solution Routine Configuration').newline()
+        formatter.entry('Compile Flag', str(self._compile_flag))
+        formatter.entry('Linear Solver', self._linear_solver)
+        formatter.entry('Damping Factor', self._damping_factor)
+        formatter.entry('Convergence Criterion', self._convergence_criterion)
+        formatter.entry('Maximal Iterations', self._max_iterations)
+        formatter.newline()
+
+        formatter.add_config(self.io).newline()
+
+        return formatter.output
 
 
 class IterationError(NamedTuple):
@@ -82,20 +201,14 @@ class SolverStatus:
             logger.info(self.iteration_error)
 
 
-class CompressibleHDGSolver:
+class Solver:
 
-    def __init__(self, mesh: Mesh,
-                 solver_configuration: SolverConfiguration,
-                 directory_tree: Optional[ResultsDirectoryTree] = None):
-
-        if directory_tree is None:
-            directory_tree = ResultsDirectoryTree()
+    def __init__(self, mesh: ngs.Mesh, cfg: SolverConfiguration):
 
         self._formulation = formulation_factory(mesh, solver_configuration)
         self._status = SolverStatus(self.solver_configuration)
         self._sensors = []
         self._drawer = Drawer(self.formulation)
-        self._directory_tree = directory_tree
 
     @property
     def formulation(self) -> _Formulation:
@@ -132,10 +245,6 @@ class CompressibleHDGSolver:
     @property
     def drawer(self) -> Drawer:
         return self._drawer
-
-    @property
-    def directory_tree(self) -> ResultsDirectoryTree:
-        return self._directory_tree
 
     def setup(self, reinitialize: bool = True):
 
@@ -191,7 +300,7 @@ class CompressibleHDGSolver:
             sensor.take_single_sample()
 
         if self.solver_configuration.save_state:
-            saver.save_state(name=state_name)
+            saver.save_gridfunction(name=state_name)
 
         self.drawer.redraw()
 
@@ -212,7 +321,7 @@ class CompressibleHDGSolver:
 
             if self.solver_configuration.save_state:
                 if idx % save_state_every_num_step == 0:
-                    saver.save_state(name=f"{state_name}_{t}")
+                    saver.save_gridfunction(name=f"{state_name}_{t}")
 
             if self.status.is_nan:
                 break

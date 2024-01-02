@@ -7,31 +7,29 @@ from ngsolve.meshes import MakeStructured2DMesh
 ngsglobals.msg_level = 0
 SetNumThreads(8)
 
-periodic = True
-circle = False
+periodic = False
+circle = True
 structured = False
 maxh = 0.15
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
 # cfg.dynamic_viscosity = "constant"
-# cfg.dynamic_viscosity = None
 # cfg.mixed_method = "strain_heat"
-# cfg.mixed_method = None
-cfg.scaling = "aeroacoustic"
+cfg.scaling = "aerodynamic"
 cfg.riemann_solver = 'hllem'
 
-cfg.Reynolds_number = 166
-cfg.Mach_number = 0.05
+cfg.Reynolds_number = 150
+cfg.Mach_number = 0.3
 cfg.Prandtl_number = 0.72
-cfg.heat_capacity_ratio = 1.4
+cfg.equation_of_state.heat_capacity_ratio = 1.4
 
 cfg.order = 6
-cfg.bonus_int_order = {VOL: cfg.order, BND: cfg.order}
+cfg.bonus_int_order = {VOL: 6, BND: 6}
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 0.2
+cfg.time.step = 0.1
 cfg.time.interval = (0, 200)
 
 cfg.linear_solver = "pardiso"
@@ -44,7 +42,7 @@ cfg.static_condensation = True
 
 if circle:
 
-    face = WorkPlane().MoveTo(0, -0.5).Arc(0.5, 180).Arc(0.5, 180).Face()
+    face = WorkPlane().MoveTo(0, -1).Arc(1, 180).Arc(1, 180).Face()
     for bc, edge in zip(['right', 'left'], face.edges):
         edge.name = bc
     mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
@@ -64,41 +62,35 @@ else:
             periodic_edge = face.edges[0]
             periodic_edge.Identify(face.edges[2], "periodic", IdentificationType.PERIODIC)
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
-# mesh.Refine()
-gamma = cfg.heat_capacity_ratio
+
+
+gamma = cfg.equation_of_state.heat_capacity_ratio
 M = cfg.Mach_number
 
-farfield = INF.farfield((1,0), cfg)
+farfield = INF.state(M, (1, 0))
 u_inf = CF(farfield.velocity)
 rho_inf = farfield.density
 p_inf = farfield.pressure
 T_inf = farfield.temperature
-c = INF.speed_of_sound(cfg)
 
-M = cfg.Mach_number
-Gamma = 0.01 * M/(M + 1)
-Rv = 0.1
+
+# Vortex Pirozzoli
+Mt = 0.01
+R = 0.1
 r = sqrt(x**2 + y**2)
-psi = Gamma * exp(-r**2/(2*Rv**2))
+vt = Mt/cfg.Mach_number * INF.velocity_magnitude(M) #cfg.scaling.farfield_velocity(cfg.Mach_number)
 
-# Vortex Isothermal
+psi = vt * R * exp((R**2 - r**2)/(2*R**2))
 u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
-p_0 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2 * exp(-r**2/Rv**2))
-rho_0 = gamma/(gamma - 1)/T_inf * p_0
-p_00 = p_inf * exp(-gamma/2*(Gamma/(c * Rv))**2)
-initial = State(u_0, rho_0, p_0)
-
-# # Vortex Isentropic
-# constant = (gamma-1)/(2*gamma) * rho_inf/p_inf
-# u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
-# p_0 = p_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(gamma/(gamma - 1))
-# rho_0 = rho_inf * (1 - constant * (Gamma/Rv)**2 * exp(-r**2/Rv**2))**(1/(gamma - 1))
-# p_00 = p_inf * (1 - constant * (Gamma/Rv)**2)**(gamma/(gamma - 1))
-# initial = State(u_0, rho_0, p_0)
+p_0 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(gamma/(gamma - 1))
+rho_0 = rho_inf * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(1/(gamma - 1))
+p_00 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp(1))**(gamma/(gamma - 1))
+initial = State(rho_0, u_0, p_0)
 
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set(bcs.FarField(farfield), "left")
-solver.boundary_conditions.set(bcs.Outflow_NSCBC(p_inf, 0.28), "right")
+solver.boundary_conditions.set(bcs.FarField(farfield), "left|right")
+# solver.boundary_conditions.set(bcs.NSCBC(farfield, 0.28, tangential_convective_fluxes=True), "right")
+# solver.boundary_conditions.set(bcs.NSCBC(farfield, 0.28, tangential_convective_fluxes=True), "left")
 solver.boundary_conditions.set(bcs.InviscidWall(), "top|bottom")
 if periodic:
     solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")

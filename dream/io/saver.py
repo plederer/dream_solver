@@ -4,7 +4,8 @@ from datetime import datetime
 from ngsolve import *
 
 from .tree import ResultsDirectoryTree
-from ..utils import DreAmLogger, Formatter
+from .logger import dlogger
+from .formatter import Formatter
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
@@ -14,44 +15,36 @@ if TYPE_CHECKING:
     from ..sensor import Sensor
     from ..solver import CompressibleHDGSolver
 
-logger = DreAmLogger.get_logger("Saver")
+logger = dlogger.getChild("Saver")
+
+
+class SaveFolderPath:
+
+    __slots__ = ("name")
+
+    def __set_name__(self, owner: Saver, name: str):
+        self.name = name
+
+    def __get__(self, loader: Saver, objtype: Saver) -> Path:
+        path = getattr(loader.tree, self.name)
+        if not path.exists():
+            path.mkdir(parents=True)
+
+        return path
 
 
 class Saver:
+
+    main_folder: Path = SaveFolderPath()
+    state_folder: Path = SaveFolderPath()
+    sensor_folder: Path = SaveFolderPath()
+    vtk_folder: Path = SaveFolderPath()
 
     def __init__(self, tree: Optional[ResultsDirectoryTree] = None) -> None:
         if tree is None:
             tree = ResultsDirectoryTree()
         self.tree = tree
         self._vtk = None
-
-    @property
-    def main_path(self) -> Path:
-        main_path = self.tree.main_path
-        if not main_path.exists():
-            main_path.mkdir(parents=True)
-        return main_path
-
-    @property
-    def state_path(self) -> Path:
-        state_path = self.tree.state_path
-        if not state_path.exists():
-            state_path.mkdir(parents=True)
-        return state_path
-
-    @property
-    def sensor_path(self):
-        sensor_path = self.tree.sensor_path
-        if not sensor_path.exists():
-            sensor_path.mkdir(parents=True)
-        return sensor_path
-
-    @property
-    def vtk_path(self):
-        vtk_path = self.tree.vtk_path
-        if not vtk_path.exists():
-            vtk_path.mkdir(parents=True)
-        return vtk_path
 
     def initialize_vtk_handler(self,
                                fields: dict[str, GridFunction],
@@ -63,24 +56,24 @@ class Saver:
         self._vtk = VTKOutput(ma=mesh,
                               coefs=list(fields.values()),
                               names=list(fields.keys()),
-                              filename=str(self.vtk_path.joinpath(filename)),
+                              filename=str(self.vtk_folder.joinpath(filename)),
                               subdivision=subdivision, **kwargs)
 
     def save_dream_mesh(self, dmesh: DreamMesh,
                         name: str = "dmesh",
                         suffix: str = ".pickle") -> None:
 
-        file = self.main_path.joinpath(name + suffix)
+        file = self.main_folder.joinpath(name + suffix)
         with file.open("wb") as openfile:
-            pickle.dump(dmesh, openfile)
+            pickle.dump(dmesh, openfile, protocol=pickle.DEFAULT_PROTOCOL)
 
     def save_mesh(self, mesh: Mesh,
                   name: str = "mesh",
                   suffix: str = ".pickle") -> None:
 
-        file = self.main_path.joinpath(name + suffix)
+        file = self.main_folder.joinpath(name + suffix)
         with file.open("wb") as openfile:
-            pickle.dump(mesh, openfile)
+            pickle.dump(mesh, openfile, protocol=pickle.DEFAULT_PROTOCOL)
 
     def save_configuration(self,
                            configuration: SolverConfiguration,
@@ -94,21 +87,21 @@ class Saver:
         if save_txt:
             self._save_txt_configuration(configuration, name, comment)
 
-    def save_state(self, gfu: GridFunction, name: str = "state") -> None:
-        file = self.state_path.joinpath(name)
+    def save_gridfunction(self, gfu: GridFunction, name: str = "state") -> None:
+        file = self.state_folder.joinpath(name)
         gfu.Save(str(file))
 
     def save_sensor_data(self, sensor: Sensor, save_dataframe: bool = True):
 
-        file = self.sensor_path.joinpath(f"{sensor.name}.csv")
+        file = self.sensor_folder.joinpath(f"{sensor.name}.csv")
 
         df = sensor.to_dataframe_all()
         df.to_csv(file)
 
         if save_dataframe:
-            file = self.sensor_path.joinpath(f"{sensor.name}.pickle")
+            file = self.sensor_folder.joinpath(f"{sensor.name}.pickle")
             with file.open("wb") as openfile:
-                pickle.dump(df, openfile)
+                pickle.dump(df, openfile, protocol=pickle.DEFAULT_PROTOCOL)
 
     def save_vtk(self, time: float = -1, region=None, **kwargs) -> Path:
         if self._vtk is None:
@@ -136,17 +129,17 @@ class Saver:
 
         formatter.add(self.tree)
 
-        file = self.main_path.joinpath(name + ".txt")
+        file = self.main_folder.joinpath(name + ".txt")
 
         with file.open("w") as openfile:
             openfile.write(formatter.output)
 
     def _save_pickle_configuration(self, configuration: SolverConfiguration, name: str, suffix: str = ".pickle"):
-        file = self.main_path.joinpath(name + suffix)
+        file = self.main_folder.joinpath(name + suffix)
         dictionary = configuration.to_dict()
 
         with file.open("wb") as openfile:
-            pickle.dump(dictionary, openfile)
+            pickle.dump(dictionary, openfile, protocol=pickle.DEFAULT_PROTOCOL)
 
     def __repr__(self) -> str:
         return repr(self.tree)
@@ -174,34 +167,21 @@ class SolverSaver(Saver):
         super().save_mesh(mesh, name, suffix)
 
     def save_configuration(self,
-                           configuration: SolverConfiguration = None,
                            name: str = "config",
                            comment: Optional[str] = None,
                            save_pickle: bool = True,
                            save_txt: bool = True):
-        if configuration is None:
-            configuration = self.solver.solver_configuration
-        super().save_configuration(configuration, name, comment, save_pickle, save_txt)
+        super().save_configuration(self.solver.solver_configuration, name, comment, save_pickle, save_txt)
 
-    def save_state(self, gfu: GridFunction = None, name: str = "state"):
-        if gfu is None:
-            gfu = self.solver.formulation.gfu
-        super().save_state(gfu, name)
+    def save_gridfunction(self, name: str = "state"):
+        super().save_gridfunction(self.solver.formulation.gfu, name)
 
-    def save_state_time_scheme(self, name: str = "time_level"):
+    def save_time_scheme_gridfunctions(self, name: str = "time_level"):
         gfus = self.solver.formulation._gfus
         t = self.solver.solver_configuration.time.t.Get()
         for time_level, gfu in gfus.items():
-            super().save_state(gfu, f"{name}_{t}_{time_level}")
+            super().save_gridfunction(gfu, f"{name}_{t}_{time_level}")
 
-    def save_sensor_data(self, sensor: Optional[Sensor] = None, save_dataframe: bool = True):
-
-        if sensor is None:
-            sensors = self.solver.sensors
-        elif isinstance(sensor, Sensor):
-            sensors = [sensor]
-        else:
-            sensors = list(sensor)
-
-        for sensor in sensors:
+    def save_sensor_data(self, save_dataframe: bool = True):
+        for sensor in self.solver.sensors:
             super().save_sensor_data(sensor, save_dataframe)
