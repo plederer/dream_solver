@@ -11,13 +11,13 @@ from dream.state import State
 logger = logging.getLogger(__name__)
 
 
-class DreamMesh:
+def pattern(sequence: Sequence) -> str:
+    if isinstance(sequence, str):
+        return sequence
+    return "|".join(sequence)
 
-    @staticmethod
-    def pattern(sequence: Sequence) -> str:
-        if isinstance(sequence, str):
-            return sequence
-        return "|".join(sequence)
+
+class DreamMesh:
 
     def __init__(self, mesh: ngs.Mesh) -> None:
         self._mesh = mesh
@@ -43,22 +43,22 @@ class DreamMesh:
 
     @property
     def boundaries(self) -> tuple[str]:
-        return tuple(self.bcs)
+        return self.bcs.regions
 
     @property
     def domains(self) -> tuple[str]:
-        return tuple(self.dcs)
+        return self.dcs.regions
 
     @property
     def is_periodic(self) -> bool:
         return self._is_periodic
 
     def boundary(self, boundary: Sequence) -> ngs.Region:
-        boundary = self.pattern(boundary)
+        boundary = pattern(boundary)
         return self.ngsmesh.Boundaries(boundary)
 
     def domain(self, domain: Sequence) -> ngs.Region:
-        domain = self.pattern(domain)
+        domain = pattern(domain)
         return self.ngsmesh.Materials(domain)
 
     def get_grid_deformation(self, grid_deformation: dict[str, GridDeformation] = None):
@@ -330,26 +330,57 @@ class Condition:
     def __str__(self) -> str:
         return self.__class__.__name__
 
+    def __hash__(self) -> int:
+        return id(self)
+
 
 class ConditionContainer(UserDict):
 
-    _region: Condition
-
-    @property
-    def pattern(self) -> str:
-        return DreamMesh.pattern(self)
+    _condition: Condition
 
     def __init__(self, regions) -> None:
-        super().__init__({region: {} for region in set(regions)})
+        self._regions = set(regions)
+        super().__init__({})
+
+    @property
+    def regions(self):
+        return tuple(self._regions)
 
     def set(self, condition, regions):
-        if not isinstance(condition, self._region):
-            raise TypeError(f"Region condition must be instance of '{self._region}'")
+
+        if not isinstance(condition, self._condition):
+            raise TypeError(f"{self._condition.__name__} condition must be instance of '{self._condition}'")
 
         regions = self._filter_region(regions)
 
-        for region in regions:
-            self[region][type(condition)] = condition
+        if regions:
+
+            conditions = self.get(condition)
+
+            if not conditions:
+                self[condition.__class__.__name__] = conditions
+
+            for region in regions:
+                conditions[region] = condition
+
+    def get(self, condition) -> dict[str, Condition]:
+        if isinstance(condition, type) and issubclass(condition, self._condition):
+            key = condition.__name__
+        elif isinstance(condition, self._condition):
+            key = condition.__class__.__name__
+        else:
+            raise TypeError(f"Condition not of type '{self._condition}'")
+        return super().get(key, {})
+
+    def to_pattern(self):
+        regions = type(self)(self._regions)
+
+        for label, condition in self.items():
+            conditions = set(condition.values())
+            data = {pattern([key for key, value in condition.items() if value == a]): a for a in conditions}
+            regions[label] = data
+
+        return regions
 
     def set_from_dict(self, other: dict[str, Condition]):
         for key, bc in other.items():
@@ -361,21 +392,12 @@ class ConditionContainer(UserDict):
             region = region.split("|")
 
         region = set(region)
-        regions = set(self).intersection(region)
+        regions = self._regions.intersection(region)
 
         for miss in region.difference(regions):
-            logger.warning(f"Region {miss} does not exist! Condition can not be set!")
+            logger.warning(f"{self._condition.__name__} {miss} does not exist! Condition can not be set!")
 
         return tuple(regions)
-
-    def has_condition(self, condition_type) -> bool:
-        for region, bc in self.items():
-            if condition_type in bc:
-                return True
-        return False
-
-    def get_condition(self, condition_type) -> dict[str, Condition]:
-        return {region: bc[condition_type] for region, bc in self.items() if condition_type in bc}
 
 
 class Domain(Condition):
@@ -509,32 +531,16 @@ class PSpongeLayer(Buffer):
 
 class DomainConditions(ConditionContainer):
 
-    _region = Domain
+    _condition = Domain
 
     @property
     def initial(self) -> dict[str, Initial]:
-        condition = self.get_condition(Initial)
+        initial = self.get(Initial)
 
-        for region in set(self).difference(condition):
-            logger.warn(f"Initial condition for '{region}' has not been set!")
+        for domain in self._regions.difference(initial):
+            logger.warn(f"Initial condition for '{domain}' has not been set!")
 
-        return condition
-
-    @property
-    def force(self) -> dict[str, Force]:
-        return self.get_condition(Force)
-
-    @property
-    def grid_deformation(self) -> dict[str, GridDeformation]:
-        return self.get_condition(GridDeformation)
-
-    @property
-    def sponge_layers(self) -> dict[str, SpongeLayer]:
-        return self.get_condition(SpongeLayer)
-
-    @property
-    def psponge_layers(self) -> dict[str, PSpongeLayer]:
-        return self.get_condition(PSpongeLayer)
+        return initial
 
     def set(self, condition: Domain, domains: str = "default"):
         super().set(condition, domains)
@@ -550,11 +556,20 @@ class Periodic(Boundary):
 
 class BoundaryConditions(ConditionContainer):
 
-    _region = Boundary
+    _condition = Boundary
 
     @property
     def periodic(self) -> dict[str, Periodic]:
-        return self.get_condition(Periodic)
+        return self.get(Periodic)
+
+    @property
+    def non_periodic(self) -> dict[str, Boundary]:
+        return True
 
     def set(self, condition: Boundary, boundaries: str):
         super().set(condition, boundaries)
+
+    def list(self) -> dict[str, dict[Boundary, Boundary]]:
+        return self._list_regions()
+
+# %%

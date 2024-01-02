@@ -1,7 +1,9 @@
+from tests import ngs, unit_square, unit_circle
 import unittest
 import dream.mesh as dmesh
+import logging
 
-from tests import ngs, unit_square, unit_circle
+logging.disable(50)
 
 
 class Mesh(unittest.TestCase):
@@ -24,8 +26,8 @@ class Mesh(unittest.TestCase):
         self.assertTrue(self.cmesh.is_periodic)
 
     def test_pattern(self):
-        self.assertEqual(self.cmesh.pattern(["left", "right"]), "left|right")
-        self.assertEqual(self.cmesh.pattern("left"), "left")
+        self.assertEqual(dmesh.pattern(["left", "right"]), "left|right")
+        self.assertEqual(dmesh.pattern("left"), "left")
 
     def test_cartesian_grid_deformation(self):
         x = dmesh.BufferCoord.x(0.25, 0.5)
@@ -76,6 +78,98 @@ class Mesh(unittest.TestCase):
         self.assertIsInstance(gfu, ngs.GridFunction)
         result = 2/3 * ngs.pi * 0.125 * (0.5 + 0.375 + 0.25 - 3/7 * 0.125)
         self.assertAlmostEqual(ngs.Integrate(ngs.Norm(gfu), self.pmesh.ngsmesh, order=5), result)
+
+
+class BoundaryConditions(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.bcs = dmesh.BoundaryConditions(("a", "a", "b", "c"))
+
+    def test_label_uniqueness(self):
+        self.assertSetEqual(self.bcs._regions, {"a", "b", "c"})
+
+    def test_set(self):
+        a = dmesh.Periodic()
+        d = dmesh.Domain()
+
+        self.bcs.set(a, "d")
+        self.assertDictEqual(self.bcs.data, {})
+
+        self.bcs.set(a, "c")
+        self.assertDictEqual(self.bcs.data, {'Periodic': {'c': a}})
+        self.bcs.clear()
+
+        self.bcs.set(a, "a|b|c")
+        self.assertDictEqual(self.bcs.data, {'Periodic': {'a': a, 'b': a, 'c': a}})
+        self.bcs.clear()
+
+        with self.assertRaises(TypeError):
+            self.bcs.set(d, "a")
+
+    def test_get(self):
+        a = dmesh.Periodic()
+        d = dmesh.Domain()
+
+        self.bcs.set(a, "c")
+        self.assertDictEqual(self.bcs.get(a), {'c': a})
+        self.bcs.clear()
+
+        with self.assertRaises(TypeError):
+            self.bcs.get(d, "c")
+
+    def test_to_pattern(self):
+        a = dmesh.Periodic()
+
+        self.bcs.set(a, "a|b|c")
+        pattern = dmesh.pattern(self.bcs.get(a))
+        self.assertDictEqual(self.bcs.to_pattern().data, {'Periodic': {pattern: a}})
+        self.bcs.clear()
+
+
+class DomainConditions(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.dcs = dmesh.DomainConditions(("a", "a", "b", "c"))
+
+    def test_label_uniqueness(self):
+        self.assertSetEqual(self.dcs._regions, {"a", "b", "c"})
+
+    def test_set(self):
+        a = dmesh.Periodic()
+        d = dmesh.Domain()
+
+        self.dcs.set(d, "d")
+        self.assertDictEqual(self.dcs.data, {})
+
+        self.dcs.set(d, "c")
+        self.assertDictEqual(self.dcs.data, {'Domain': {'c': d}})
+        self.dcs.clear()
+
+        self.dcs.set(d, "a|b|c")
+        self.assertDictEqual(self.dcs.data, {'Domain': {'a': d, 'b': d, 'c': d}})
+        self.dcs.clear()
+
+        with self.assertRaises(TypeError):
+            self.dcs.set(a, "a")
+
+    def test_get(self):
+        a = dmesh.Periodic()
+        d = dmesh.Domain()
+
+        self.dcs.set(d, "c")
+        self.assertDictEqual(self.dcs.get(d), {'c': d})
+        self.dcs.clear()
+
+        with self.assertRaises(TypeError):
+            self.dcs.get(a, "c")
+
+    def test_to_pattern(self):
+        d = dmesh.Domain()
+
+        self.dcs.set(d, "a|b|c")
+        pattern = dmesh.pattern(self.dcs.get(d))
+        self.assertDictEqual(self.dcs.to_pattern().data, {'Domain': {pattern: d}})
+        self.dcs.clear()
 
 
 class BufferCoord(unittest.TestCase):
