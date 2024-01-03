@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from collections import UserDict
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Any, TypeVar
 
 import ngsolve as ngs
 
@@ -15,6 +15,11 @@ def pattern(sequence: Sequence) -> str:
     if isinstance(sequence, str):
         return sequence
     return "|".join(sequence)
+
+
+def pattern_dict(dictionary: dict[str, Any]) -> dict[str, Any]:
+    values = set(dictionary.values())
+    return {pattern([key for key, value in dictionary.items() if value == a]): a for a in values}
 
 
 class DreamMesh:
@@ -43,11 +48,11 @@ class DreamMesh:
 
     @property
     def boundaries(self) -> tuple[str]:
-        return self.bcs.regions
+        return tuple(self.bcs)
 
     @property
     def domains(self) -> tuple[str]:
-        return self.dcs.regions
+        return tuple(self.dcs)
 
     @property
     def is_periodic(self) -> bool:
@@ -322,6 +327,10 @@ class GridMapping:
 
 class Condition:
 
+    @property
+    def label(self):
+        return self.__class__.__name__
+
     def __init__(self, state: State = None) -> None:
         if state is None:
             state = State()
@@ -334,86 +343,39 @@ class Condition:
         return id(self)
 
 
-class ConditionDescriptor:
-
-    __slots__ = ("condition", "log")
-
-    def __init__(self, condition: Condition, log: bool = False) -> None:
-        self.condition = condition
-        self.log = log
-
-    def __get__(self, dict: ConditionContainer, objtype) -> Condition:
-        value = dict.get(self.condition)
-
-        if self.log:
-            for domain in set(dict.regions).difference(value):
-                logger.warning(f"{self.condition.__name__} condition for '{domain}' has not been set!")
-
-        return value
+CTYPE = TypeVar("CTYPE", bound=Condition)
 
 
 class ConditionContainer(UserDict):
 
-    _condition: Condition
-
     def __init__(self, regions) -> None:
-        self.regions = tuple(dict.fromkeys(regions))
-        super().__init__({})
+        self.data = dict.fromkeys(regions, None)
+        self.clear()
 
-    def set(self, condition, regions):
-
-        if not isinstance(condition, self._condition):
-            raise TypeError(f"{self._condition.__name__} condition must be instance of '{self._condition}'")
-
-        regions = self._filter_region(regions)
-
-        if regions:
-
-            conditions = self.get(condition)
-
-            if not conditions:
-                self[condition.__class__.__name__] = conditions
-
-            for region in regions:
-                conditions[region] = condition
-
-    def get(self, condition) -> dict[str, Condition]:
-        if isinstance(condition, type) and issubclass(condition, self._condition):
-            key = condition.__name__
-        elif isinstance(condition, self._condition):
-            key = condition.__class__.__name__
-        else:
-            raise TypeError(f"Condition not of type '{self._condition}'")
-        return super().get(key, {})
+    def set(self, condition: Condition, regions: Sequence[str]):
+        self[regions] = condition
 
     def set_from_dict(self, other: dict[str, Condition]):
         for key, bc in other.items():
-            self.set(bc, key)
+            self[key] = bc
 
-    def to_unique_pattern(self):
-        regions = type(self)(self.regions)
-
-        for label, condition in self.items():
-            conditions = set(condition.values())
-            data = {pattern([key for key, value in condition.items() if value == a]): a for a in conditions}
-            regions[label] = data
-
-        return regions
+    def get(self, condition: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
+        return {}
 
     def _filter_region(self, region) -> tuple[str]:
 
         if isinstance(region, str):
             region = region.split("|")
 
-        regions = tuple(r for r in region if r in self.regions)
+        regions = tuple(r for r in region if r in self)
 
         for miss in set(region).difference(regions):
-            logger.warning(f"{self._condition.__name__} {miss} does not exist! Condition can not be set!")
+            logger.warning(f"{miss} does not exist! Condition can not be set!")
 
         return regions
 
-    def __repr__(self):
-        return repr({key: pattern(val) for key, val in self.items()})
+    def clear(self) -> None:
+        raise NotImplementedError()
 
 
 class Domain(Condition):
@@ -547,17 +509,34 @@ class PSpongeLayer(Buffer):
 
 class DomainConditions(ConditionContainer):
 
-    _condition = Domain
-
-    initial: dict[str, Initial] = ConditionDescriptor(Initial, True)
-    perturbation: dict[str, Perturbation] = ConditionDescriptor(Perturbation)
-    force: dict[str, Force] = ConditionDescriptor(Force)
-    grid_deformation: dict[str, GridDeformation] = ConditionDescriptor(GridDeformation)
-    sponge_layer: dict[str, SpongeLayer] = ConditionDescriptor(SpongeLayer)
-    psponge_layer: dict[str, PSpongeLayer] = ConditionDescriptor(PSpongeLayer)
-
-    def set(self, condition: Domain, domains: str = "default"):
+    def set(self, condition: CTYPE, domains: str = "default"):
         super().set(condition, domains)
+
+    def get(self, condition: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
+        if isinstance(condition, type) and issubclass(condition, Domain):
+            label = condition.__name__
+        elif isinstance(condition, Domain):
+            label = condition.label
+        else:
+            raise TypeError(f"Condition not of type '{Domain}'")
+
+        conditions = {key: value[label] for key, value in self.items() if label in value}
+
+        if as_pattern:
+            conditions = pattern_dict(conditions)
+
+        return conditions
+
+    def clear(self) -> None:
+        for domain in self:
+            self.data[domain] = dict()
+
+    def __setitem__(self, regions: str, condition: CTYPE) -> None:
+        if not isinstance(condition, Domain):
+            raise TypeError(f"Domain condition must be instance of '{Domain}'")
+
+        for region in self._filter_region(regions):
+            self.data[region][condition.label] = condition
 
 
 class Boundary(Condition):
@@ -570,9 +549,46 @@ class Periodic(Boundary):
 
 class BoundaryConditions(ConditionContainer):
 
-    _condition = Boundary
+    def get_domain_boundaries(self, as_pattern: bool = False) -> list | str:
+        """ Returns a list or pattern of the domain boundaries!
 
-    periodic: dict[str, Periodic] = ConditionDescriptor(Periodic)
+            The domain boundaries are deduced by the current set boundary conditions,
+            while periodic boundaries are neglected! 
+        """
+
+        bnds = [bnd for bnd, bc in self.items() if not isinstance(bc, Periodic) or bc is None]
+
+        if as_pattern:
+            bnds = pattern(bnds)
+
+        return bnds
 
     def set(self, condition: Boundary, boundaries: str):
         super().set(condition, boundaries)
+
+    def get(self, condition: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
+        if not isinstance(condition, type):
+            condition = type(condition)
+
+        if not issubclass(condition, Boundary):
+            raise TypeError(f"Condition not of type '{Boundary}'")
+
+        conditions = {key: value for key, value in self.items() if isinstance(value, condition)}
+        if as_pattern:
+            conditions = pattern_dict(conditions)
+
+        return conditions
+
+    def clear(self) -> None:
+        for bnd in self:
+            self.data[bnd] = None
+
+    def __setitem__(self, regions: str, condition: CTYPE) -> None:
+        if not isinstance(condition, Boundary):
+            raise TypeError(f"Boundary condition must be instance of '{Boundary}'")
+
+        for region in self._filter_region(regions):
+            self.data[region] = condition
+
+    def __repr__(self):
+        return "".join(f"{key}: {str(val)}\n" for key, val in self.items() if val)
