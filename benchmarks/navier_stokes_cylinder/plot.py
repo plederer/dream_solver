@@ -1,13 +1,14 @@
 # %% Initialize Results Directory and Load Configuration
-from dream import ResultsDirectoryTree, Loader, CompressibleHDGSolver, BoundarySensor
+from dream import ResultsDirectoryTree, Loader, CompressibleHDGSolver, BoundarySensor, PointSensor
 from ngsolve import *
 import matplotlib.pyplot as plt
 from numpy.fft import *
 import numpy as np
 
+SetNumThreads(8)
 # Result Directory
-parent_path = "/media/jellmenr/DreAm/simulation_results/navier_stokes_benchmark"
-directory = "sponge_function_2_ffr100_Ma0.2_Re150.0_order4"
+parent_path = "/media/jellmenr/DreAm/simulation_results/navier_stokes_benchmark/c_shape"
+directory = "c_shape_sponge_outflow"
 
 tree = ResultsDirectoryTree(directory, parent_path=parent_path)
 loader = Loader(tree=tree)
@@ -23,19 +24,52 @@ loader = solver.get_loader()
 saver = solver.get_saver()
 
 # %% Sample Lift and Drag Coefficient
-cfg.time.interval = (300, 400)
+cfg.time.interval = (0, 300)
 
 sensor = BoundarySensor("cylinder", name='cylinder')
+sensor = BoundarySensor("cyl", name='cyl')
 sensor.sample_lift_coefficient(1, 1, 1, (0, 1))
 sensor.sample_drag_coefficient(1, 1, 1, (1, 0))
 sensor.assign_solver(solver)
 
+points = PointSensor([(0, 0), (-25, 1), (-25, -1), (-15, 1.5), (-15, -1.5), (-15, 0)], name="Components")
+points.sample_pressure()
+points.sample_voritcity()
+points.sample_velocity()
+points.assign_solver(solver)
+
 with TaskManager():
     for idx, t in enumerate(loader.load_state_time_sequence(sleep_time=0, load_step=1)):
         sensor.take_single_sample(t)
+        points.take_single_sample(t)
+
         print(f"Time Step = {t}", end='\r')
 
 saver.save_sensor_data(sensor)
+saver.save_sensor_data(points)
+
+# %% Plot Lift and Drag
+%matplotlib qt5
+df = loader.load_sensor_data("cyl")
+df = loader.load_sensor_data("Components")
+# dff = df.xs((-25, 1), axis=1, level=2)
+dff = df.xs('pressure', axis=1, level=0)
+
+t = df.index
+
+fig, ax = plt.subplots(figsize=(6, 6), dpi=200)
+# ax.plot(t, df['drag_coefficient'], label=r"$c_D$")
+# ax.plot(t, df['lift_coefficient'], label=r"$c_L$")
+ax.plot(t, dff-1/(1.4*0.3**2), label=dff.columns)
+ax.legend()
+# ticks = np.pi * np.linspace(-1, 1, 13)[1:]
+# ax.set_xticks(ticks)
+# ax.set_thetalim(-np.pi, np.pi)
+
+# ax.set_yticklabels(['', '', '', r"$1 \times 10^{-4}$"])
+# ax.set_title(r"$\Delta \tilde{p}_{rms}$ at $r = 75 \cdot ( 1 - \rm{M} \cos(\theta))$")
+plt.tight_layout()
+plt.show()
 
 # %% Calculate Mean Pressure
 recalculate = True
