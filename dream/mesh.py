@@ -1,9 +1,9 @@
 from __future__ import annotations
-import ngsolve as ngs
 import logging
-
 from collections import UserDict
 from typing import Callable, Sequence
+
+import ngsolve as ngs
 
 from dream import bla
 from dream.state import State
@@ -334,17 +334,31 @@ class Condition:
         return id(self)
 
 
+class ConditionDescriptor:
+
+    __slots__ = ("condition", "log")
+
+    def __init__(self, condition: Condition, log: bool = False) -> None:
+        self.condition = condition
+        self.log = log
+
+    def __get__(self, dict: ConditionContainer, objtype) -> Condition:
+        value = dict.get(self.condition)
+
+        if self.log:
+            for domain in set(dict.regions).difference(value):
+                logger.warning(f"{self.condition.__name__} condition for '{domain}' has not been set!")
+
+        return value
+
+
 class ConditionContainer(UserDict):
 
     _condition: Condition
 
     def __init__(self, regions) -> None:
-        self._regions = set(regions)
+        self.regions = tuple(dict.fromkeys(regions))
         super().__init__({})
-
-    @property
-    def regions(self):
-        return tuple(self._regions)
 
     def set(self, condition, regions):
 
@@ -372,8 +386,12 @@ class ConditionContainer(UserDict):
             raise TypeError(f"Condition not of type '{self._condition}'")
         return super().get(key, {})
 
-    def to_pattern(self):
-        regions = type(self)(self._regions)
+    def set_from_dict(self, other: dict[str, Condition]):
+        for key, bc in other.items():
+            self.set(bc, key)
+
+    def to_unique_pattern(self):
+        regions = type(self)(self.regions)
 
         for label, condition in self.items():
             conditions = set(condition.values())
@@ -382,22 +400,20 @@ class ConditionContainer(UserDict):
 
         return regions
 
-    def set_from_dict(self, other: dict[str, Condition]):
-        for key, bc in other.items():
-            self.set(bc, key)
-
     def _filter_region(self, region) -> tuple[str]:
 
         if isinstance(region, str):
             region = region.split("|")
 
-        region = set(region)
-        regions = self._regions.intersection(region)
+        regions = tuple(r for r in region if r in self.regions)
 
-        for miss in region.difference(regions):
+        for miss in set(region).difference(regions):
             logger.warning(f"{self._condition.__name__} {miss} does not exist! Condition can not be set!")
 
-        return tuple(regions)
+        return regions
+
+    def __repr__(self):
+        return repr({key: pattern(val) for key, val in self.items()})
 
 
 class Domain(Condition):
@@ -533,14 +549,12 @@ class DomainConditions(ConditionContainer):
 
     _condition = Domain
 
-    @property
-    def initial(self) -> dict[str, Initial]:
-        initial = self.get(Initial)
-
-        for domain in self._regions.difference(initial):
-            logger.warn(f"Initial condition for '{domain}' has not been set!")
-
-        return initial
+    initial: dict[str, Initial] = ConditionDescriptor(Initial, True)
+    perturbation: dict[str, Perturbation] = ConditionDescriptor(Perturbation)
+    force: dict[str, Force] = ConditionDescriptor(Force)
+    grid_deformation: dict[str, GridDeformation] = ConditionDescriptor(GridDeformation)
+    sponge_layer: dict[str, SpongeLayer] = ConditionDescriptor(SpongeLayer)
+    psponge_layer: dict[str, PSpongeLayer] = ConditionDescriptor(PSpongeLayer)
 
     def set(self, condition: Domain, domains: str = "default"):
         super().set(condition, domains)
@@ -558,18 +572,7 @@ class BoundaryConditions(ConditionContainer):
 
     _condition = Boundary
 
-    @property
-    def periodic(self) -> dict[str, Periodic]:
-        return self.get(Periodic)
-
-    @property
-    def non_periodic(self) -> dict[str, Boundary]:
-        return True
+    periodic: dict[str, Periodic] = ConditionDescriptor(Periodic)
 
     def set(self, condition: Boundary, boundaries: str):
         super().set(condition, boundaries)
-
-    def list(self) -> dict[str, dict[Boundary, Boundary]]:
-        return self._list_regions()
-
-# %%

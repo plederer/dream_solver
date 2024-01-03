@@ -86,7 +86,7 @@ class BoundaryConditions(unittest.TestCase):
         self.bcs = dmesh.BoundaryConditions(("a", "a", "b", "c"))
 
     def test_label_uniqueness(self):
-        self.assertSetEqual(self.bcs._regions, {"a", "b", "c"})
+        self.assertTupleEqual(self.bcs.regions, ("a", "b", "c"))
 
     def test_set(self):
         a = dmesh.Periodic()
@@ -122,7 +122,7 @@ class BoundaryConditions(unittest.TestCase):
 
         self.bcs.set(a, "a|b|c")
         pattern = dmesh.pattern(self.bcs.get(a))
-        self.assertDictEqual(self.bcs.to_pattern().data, {'Periodic': {pattern: a}})
+        self.assertDictEqual(self.bcs.to_unique_pattern().data, {'Periodic': {pattern: a}})
         self.bcs.clear()
 
 
@@ -132,7 +132,7 @@ class DomainConditions(unittest.TestCase):
         self.dcs = dmesh.DomainConditions(("a", "a", "b", "c"))
 
     def test_label_uniqueness(self):
-        self.assertSetEqual(self.dcs._regions, {"a", "b", "c"})
+        self.assertTupleEqual(self.dcs.regions, ("a", "b", "c"))
 
     def test_set(self):
         a = dmesh.Periodic()
@@ -168,7 +168,7 @@ class DomainConditions(unittest.TestCase):
 
         self.dcs.set(d, "a|b|c")
         pattern = dmesh.pattern(self.dcs.get(d))
-        self.assertDictEqual(self.dcs.to_pattern().data, {'Domain': {pattern: d}})
+        self.assertDictEqual(self.dcs.to_unique_pattern().data, {'Domain': {pattern: d}})
         self.dcs.clear()
 
 
