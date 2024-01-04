@@ -6,7 +6,7 @@ from typing import Callable, Sequence, Any, TypeVar
 import ngsolve as ngs
 
 from dream import bla
-from dream.state import State
+from dream.config import State
 
 logger = logging.getLogger(__name__)
 
@@ -68,20 +68,20 @@ class DreamMesh:
 
     def get_grid_deformation(self, grid_deformation: dict[str, GridDeformation] = None):
         if grid_deformation is None:
-            grid_deformation = self.dcs.grid_deformation
+            grid_deformation = self.dcs.get(GridDeformation, as_pattern=True)
         return self._buffer_function_(grid_deformation, GridDeformation)
 
     def get_sponge_function(self, sponge_layers: dict[str, SpongeLayer] = None):
         if sponge_layers is None:
-            sponge_layers = self.dcs.sponge_layers
+            sponge_layers = self.dcs.get(SpongeLayer, as_pattern=True)
         return self._buffer_function_(sponge_layers, SpongeLayer)
 
     def get_psponge_function(self, psponge_layers:  dict[str, PSpongeLayer] = None):
         if psponge_layers is None:
-            psponge_layers = self.dcs.psponge_layers
+            psponge_layers = self.dcs.get(PSpongeLayer, as_pattern=True)
         return self._buffer_function_(psponge_layers, PSpongeLayer)
 
-    def _buffer_function_(self, domains: dict[str, Buffer] = None, buffer_type: Buffer = None):
+    def _buffer_function_(self, domains: dict[str, Buffer] = None, buffer_type: Buffer = None) -> ngs.GridFunction:
 
         if not domains:
             logger.warning(f"{buffer_type} has not been set in domain conditions!")
@@ -101,13 +101,68 @@ class DreamMesh:
 
             lf += bc.buffer_function * v * ngs.dx(definedon=self.domain(region))
 
-        gfu = ngs.GridFunction(fes, name=buffer_type.__name__)
+        gfu = ngs.GridFunction(fes, name=str(buffer_type))
         blf.Assemble()
         lf.Assemble()
 
         gfu.vec.data = blf.mat.Inverse(inverse="sparsecholesky") * lf.vec
 
         return gfu
+
+    def _reduce_psponge_layers_order_elementwise(self, space: ngs.L2 | ngs.VectorL2) -> ngs.L2 | ngs.VectorL2:
+
+        if not isinstance(space, (ngs.L2, ngs.VectorL2)):
+            raise TypeError("Can not reduce element order of non L2-spaces!")
+
+        psponge_layers = self.dcs.get(PSpongeLayer, as_pattern=True)
+
+        if psponge_layers:
+
+            space = type(space)(space.mesh, **space.flags, order_policy=ngs.ORDER_POLICY.VARIABLE)
+
+            for domain, bc in psponge_layers.items():
+
+                bc.check_fem_order(space.globalorder)
+
+                domain = self.domain(domain)
+
+                for el in domain.Elements():
+                    space.SetOrder(ngs.NodeId(ngs.ELEMENT, el.nr), bc.high_order)
+
+            space.UpdateDofTables()
+
+        return space
+
+    def _reduce_psponge_layers_order_facetwise(self, space: ngs.FacetFESpace) -> ngs.FacetFESpace:
+
+        if not isinstance(space, ngs.FacetFESpace):
+            raise TypeError("Can not reduce element order of non FacetFESpace-spaces!")
+
+        psponge_layers = self.dcs.get(PSpongeLayer)
+
+        if psponge_layers:
+
+            space = type(space)(space.mesh, **space.flags, order_policy=ngs.ORDER_POLICY.VARIABLE)
+
+            if self.dim != 2:
+                raise NotImplementedError("3D PSpongeLayer not implemented for the moment!")
+
+            psponge_region = self.domain(pattern(psponge_layers))
+            vhat_dofs = ~space.GetDofs(psponge_region)
+
+            for domain, bc in psponge_layers.items():
+                bc.check_fem_order(space.globalorder)
+
+                domain = self.domain(domain)
+                domain_dofs = space.GetDofs(domain)
+                for i in range(bc.high_order + 1, space.globalorder + 1, 1):
+                    domain_dofs[i::space.globalorder + 1] = 0
+
+                vhat_dofs |= domain_dofs
+
+            space = ngs.Compress(space, vhat_dofs)
+
+        return space
 
 
 class BufferCoord(ngs.CF):
@@ -332,8 +387,6 @@ class Condition:
         return self.__class__.__name__
 
     def __init__(self, state: State = None) -> None:
-        if state is None:
-            state = State()
         self.state = state
 
     def __str__(self) -> str:

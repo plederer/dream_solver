@@ -38,14 +38,14 @@ def unit_circle(maxh=0.125, shift=(0, 0)) -> ngs.Mesh:
     return ngs.Mesh(occ.OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
 
 
-def simplex(maxh=1) -> ngs.Mesh:
-    wp = occ.WorkPlane()
-    wp = wp.LineTo(1, 0).LineTo(0, 1).LineTo(0, 0).Face()
+def simplex(maxh=1, dim: int = 2) -> ngs.Mesh:
+    if dim == 2:
+        wp = occ.WorkPlane()
+        wp = wp.LineTo(1, 0).LineTo(0, 1).LineTo(0, 0).Face()
+    elif dim == 3:
+        wp = occ.Box(occ.Pnt(0, 0, 0), occ.Pnt(1, 1, 1))
+        wp -= occ.WorkPlane(occ.Axes(p=(1, 0, 0), n=(1, 1, 1), h=(-1, 1, 0)), ).RectangleC(3, 3).Face().Extrude(3)
+    else:
+        raise ValueError(f"{dim}-simplex not supported!")
 
-    return ngs.Mesh(occ.OCCGeometry(wp, dim=2).GenerateMesh(maxh=maxh))
-
-
-def tet(maxh=1) -> ngs.Mesh:
-    box = occ.Box(occ.Pnt(0, 0, 0), occ.Pnt(1, 1, 1))
-    box -= occ.WorkPlane(occ.Axes(p=(1, 0, 0), n=(1, 1, 1), h=(-1, 1, 0)), ).RectangleC(3, 3).Face().Extrude(3)
-    return ngs.Mesh(occ.OCCGeometry(box, dim=3).GenerateMesh(maxh=maxh))
+    return ngs.Mesh(occ.OCCGeometry(wp, dim=dim).GenerateMesh(maxh=maxh))

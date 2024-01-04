@@ -3,7 +3,7 @@ import logging
 import typing
 import textwrap
 
-from ngsolve import Parameter
+import ngsolve as ngs
 
 
 class Formatter:
@@ -33,7 +33,7 @@ class Formatter:
 
     def entry(self, text: str, value, equal: str = ":"):
 
-        if isinstance(value, Parameter):
+        if isinstance(value, ngs.Parameter):
             value = value.Get()
 
         txt_width, value_width = tuple(int(self.TERMINAL_WIDTH * ratio) for ratio in self.COLUMN_RATIO)
@@ -233,3 +233,121 @@ class FiniteElementConfig(BaseConfig):
         formatter.entry('Static Condensation', str(self._static_condensation))
         formatter.add_config(self.bonus_int_order)
         return formatter.output
+
+
+class Descriptor:
+
+    __slots__ = ("_label", )
+
+    @property
+    def label(self) -> str:
+        return self._label[1:]
+
+    def __set_name__(self, owner: DescriptorDict, label: str):
+        self._label = f"_{label}"
+
+    def __delete__(self, obj):
+        delattr(obj, self._label)
+
+
+class DescriptorDict(typing.MutableMapping):
+
+    def __init__(self, **kwargs) -> None:
+        self.update(**kwargs)
+
+    def update(self, **kwargs):
+        for key, value in kwargs.items():
+            key = self._remove_underscore(key)
+            setattr(self, key, value)
+
+    def keys(self):
+        return vars(self).keys()
+
+    def values(self):
+        return vars(self).values()
+
+    def items(self):
+        return vars(self).items()
+
+    def __setitem__(self, key: str, value):
+        key = self._remove_underscore(key)
+        setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __delitem__(self, key) -> None:
+        delattr(self, key)
+
+    def __iter__(self):
+        for key in vars(self):
+            yield key
+
+    def __len__(self):
+        return len(vars(self))
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def _remove_underscore(self, key: str):
+        if key.startswith("_"):
+            key = key[1:]
+        return key
+
+    def __repr__(self) -> str:
+        state = {self._remove_underscore(key): value for key, value in self.items()}
+        return f"{str(self)}{state}"
+
+
+class Variable_(Descriptor):
+    """
+    Variable is a descriptor that sets private variables to an instance with an underscore.
+
+    Since it ressembles a scalar, a vector or a matrix it is possible to pass a cast function
+    to the constructor such that every time an attribute is set, the value gets cast to the appropriate
+    tensor dimensions.
+
+    By default, if an instance does not hold an attribute of a given name, the descriptor returns None.
+    """
+
+    __slots__ = ("cast",)
+
+    def __init__(self, cast: typing.Callable) -> None:
+        self.cast = cast
+
+    def __get__(self, state: State, objtype) -> ngs.CF:
+        return getattr(state, self._label, None)
+
+    def __set__(self, state: State, value) -> None:
+        if value is not None:
+            value = self.cast(value)
+            setattr(state, self._label, value)
+
+
+class State(DescriptorDict):
+
+    logger = logging.getLogger('State')
+
+    @staticmethod
+    def is_set(*args) -> bool:
+        return all([arg is not None for arg in args])
+
+    def to_python(self) -> State:
+        """ Casts a state to a base state in which every NGSolve Coefficientfunction is cast back to a python object.
+        """
+        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+        mip = mesh()
+        return State(**{key: value(mip) if isinstance(value, ngs.CF) else value for key, value in self.items()})
+
+    @staticmethod
+    def merge_state(*states: State) -> State:
+        merge = {}
+        for state in states:
+            for label, var in state.items():
+                if label in merge:
+                    raise ValueError(f"Merge conflict! '{label.capitalize()}' included multiple times!")
+                merge[label] = var
+        return State(**merge)
+
+
+STATE = typing.TypeVar("STATE", bound=State)
