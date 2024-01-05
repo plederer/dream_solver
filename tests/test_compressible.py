@@ -1,5 +1,7 @@
 from __future__ import annotations
-from tests import ngs, unittest, nptest, simplex
+import unittest
+import numpy.testing as nptest
+from tests import simplex
 
 from dream.formulations import compressible as cp
 

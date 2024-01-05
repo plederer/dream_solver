@@ -52,7 +52,7 @@ def trace(x: MATRIX) -> SCALAR:
     if is_symmetric(x):
         return sum(x[i, i] for i in range(x.dims[0]))
     else:
-        raise NotImplementedError(f"Can not return trace for non symmetric matrix!")
+        raise ValueError(f"Can not return trace for non symmetric matrix!")
 
 
 def diagonal(x: VECTOR) -> MATRIX:
@@ -144,7 +144,10 @@ def is_matrix(x: MATRIX):
 
 
 def is_symmetric(x: MATRIX):
-    return x.dims[0] == x.dims[1]
+    if is_matrix(x):
+        return x.dims[0] == x.dims[1]
+    else:
+        return False
 
 
 def is_zero(x: SCALAR | VECTOR | MATRIX) -> bool:
@@ -156,7 +159,7 @@ def is_zero(x: SCALAR | VECTOR | MATRIX) -> bool:
         raise TypeError("Can not determine if it is zero!")
 
 
-def fixpoint(x0: float, func, it: int = 100, tol: float = 1e-16):
+def fixpoint_iteration(x0: float, func, it: int = 100, tol: float = 1e-16):
 
     for i in range(it):
 
@@ -169,4 +172,5 @@ def fixpoint(x0: float, func, it: int = 100, tol: float = 1e-16):
 
         if err < tol:
             break
+
     return x0

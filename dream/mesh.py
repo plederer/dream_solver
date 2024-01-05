@@ -307,7 +307,7 @@ class GridMapping:
         start = coordinate.x0
         L = coordinate.xn - coordinate.x0
 
-        c1 = bla.fixpoint(L, lambda c: ngs.log(1 + scale * L * c)/L, it=100, tol=1e-16)
+        c1 = bla.fixpoint_iteration(L, lambda c: ngs.log(1 + scale * L * c)/L, it=100, tol=1e-16)
         c0 = -1/c1
 
         def map(x_): return c0 * (1 - ngs.exp(c1 * (x_ - start))) + start
@@ -334,7 +334,7 @@ class GridMapping:
         start = coordinate.x0
         L = coordinate.xn - coordinate.x0
 
-        c1 = bla.fixpoint(L, lambda c: ngs.atan(scale * L * c)/L, it=100, tol=1e-16)
+        c1 = bla.fixpoint_iteration(L, lambda c: ngs.atan(scale * L * c)/L, it=100, tol=1e-16)
         c0 = 1/c1
 
         def map(x_): return c0 * ngs.tan(c1 * (x_ - start)) + start

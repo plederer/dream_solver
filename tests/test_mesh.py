@@ -1,7 +1,8 @@
 from tests import ngs, unit_square, unit_circle
-import unittest
-import dream.mesh as mesh
 import logging
+import unittest
+
+import dream.mesh as mesh
 
 logging.disable(50)
 

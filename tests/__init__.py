@@ -1,5 +1,3 @@
-import unittest
-import numpy.testing as nptest
 import netgen.occ as occ
 import ngsolve as ngs
 
