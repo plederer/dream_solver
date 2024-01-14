@@ -8,6 +8,7 @@ from typing import Sequence, Generator
 
 logger = logging.getLogger(__name__)
 
+ngs.Parameter.__repr__ = lambda self: str(self.Get())
 
 SCALAR = ngs.CF | Number
 VECTOR = ngs.CF
