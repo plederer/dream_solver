@@ -2,8 +2,401 @@ from __future__ import annotations
 import logging
 import typing
 import textwrap
+import collections
+import abc
 
 import ngsolve as ngs
+
+logger = logging.getLogger(__name__)
+
+# ------- Descriptors ------- #
+
+
+class descriptor:
+
+    __slots__ = ("label", )
+
+    def __set_name__(self, owner: DescriptorDict, label: str):
+        self.label = label
+
+
+class variable(descriptor):
+    """
+    Variable is a descriptor that sets private variables to an instance with an underscore.
+
+    Since it ressembles a scalar, a vector or a matrix it is possible to pass a cast function
+    to the constructor such that every time an attribute is set, the value gets cast to the appropriate
+    tensor dimensions.
+
+    By default, if an instance does not hold an attribute of a given name, the descriptor returns None.
+    """
+
+    __slots__ = ("cast",)
+
+    def __init__(self, cast: typing.Callable) -> None:
+        self.cast = cast
+
+    def __get__(self, state: State, objtype) -> ngs.CF:
+        return state.data.get(self.label, None)
+
+    def __set__(self, state: State, value) -> None:
+        if value is not None:
+            value = self.cast(value)
+            state.data[self.label] = value
+
+    def __delete__(self, state: State):
+        del state.data[self.label]
+
+
+class cfg(descriptor):
+
+    __slots__ = ('_default', 'fset_', 'fget_', '__doc__')
+
+    @property
+    def default(self):
+        return self._default
+
+    def __init__(self, default, fset_=None, fget_=None, doc: str = None):
+        self._default = default
+        self.fset_ = fset_
+        self.fget_ = fget_
+        self.__doc__ = doc
+
+        if doc is None and fset_ is not None:
+            doc = fset_.__doc__
+
+        self.__doc__ = doc
+        self.label = ''
+
+    @typing.overload
+    def __get__(self, instance: None, owner: type[object]) -> cfg:
+        """ Called when an attribute is accessed via class not an instance """
+
+    @typing.overload
+    def __get__(self, instance: UserConfig, owner: type[object]) -> typing.Any:
+        """ Called when an attribute is accessed on an instance variable """
+
+    def __get__(self, cfg: UserConfig, owner: type[UserConfig]):
+        if cfg is None:
+            return self
+
+        if self.fget_ is not None:
+            self.fget_(cfg)
+
+        return cfg.data[self.label]
+
+    def __set__(self, cfg: UserConfig, value):
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        cfg.data[self.label] = value
+
+    def __delete__(self, cfg: UserConfig):
+        del cfg.data[self.label]
+
+    def reset(self, cfg: UserConfig):
+        self.__set__(cfg, self.default)
+
+    def get_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> cfg:
+        prop = type(self)(self._default, self.fset_, fget_, self.__doc__)
+        prop.label = self.label
+        return prop
+
+    def set_check(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> cfg:
+        prop = type(self)(self._default, fset_, self.fget_, self.__doc__)
+        prop.label = self.label
+        return prop
+
+    def __call__(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> cfg:
+        return self.set_check(fset_)
+
+
+class parameter(cfg):
+
+    def reset(self, cfg: UserConfig):
+        cfg.data[self.label] = ngs.Parameter(self.default)
+
+    def __set__(self, cfg: UserConfig, value: float) -> None:
+        if isinstance(value, ngs.Parameter):
+            value = value.Get()
+
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        cfg.data[self.label].Set(value)
+
+
+class types(cfg):
+
+    @property
+    def default(self) -> str:
+        return self._default.label
+
+    @property
+    def types(self) -> TypeConfigDict:
+        return self._default.types
+
+    def __set__(self, cfg: UserConfig, value: str | TypeConfig) -> None:
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        cfg.data[self.label] = self.types[value]()
+
+
+class user(cfg):
+
+    @property
+    def default(self) -> str:
+        return self._default.label
+
+    @property
+    def types(self) -> TypeConfigDict:
+        return self._default.types
+
+    def __set__(self, cfg: UserConfig, value: str | UserConfig | dict) -> None:
+
+        if isinstance(value, self.types.interface):
+            cfg.data[self.label] = value
+            return
+
+        if isinstance(value, str) or value is None:
+            value = self.types.label_to_dict(value)
+
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        if not isinstance(value, dict) and 'type' in value:
+            msg = "Don't know which type to instantiate!"
+            msg += "Dictionary with key 'type' required!"
+            raise TypeError(msg)
+
+        type_ = self.types[value.pop('type')]
+        current = cfg.data.get(self.label, None)
+
+        if isinstance(current, type_):
+            current.update(**value)
+        else:
+            cfg.data[self.label] = type_(**value)
+
+
+# ------- Type Configuration Container ------- #
+class TypeConfigMeta(abc.ABCMeta):
+
+    label: str
+    aliases: tuple[str]
+    types: TypeConfigDict
+    logger: logging.Logger
+    cfgs: list[cfg]
+
+    def __new__(cls, clsname, bases, attrs, is_interface: bool = False):
+        if 'label' not in attrs:
+            attrs['label'] = clsname
+
+        if 'aliases' not in attrs:
+            attrs['aliases'] = ()
+
+        cls = super().__new__(cls, clsname, bases, attrs)
+
+        cfgs = [cfg_ for cfg_ in attrs.values() if isinstance(cfg_, cfg)]
+        if is_interface:
+            cls.types = TypeConfigDict(cls)
+            cls.logger = logger.getChild(cls.__name__)
+            cls.cfgs = cfgs
+
+        else:
+
+            cls.types[cls.label] = cls
+            for alias in cls.aliases:
+                cls.types[alias] = cls
+
+            cls.cfgs = cfgs + cls.cfgs
+
+        return cls
+
+
+class TypeConfigDict(collections.UserDict):
+
+    @classmethod
+    def type_to_dict(cls, type_, **kwargs) -> dict[str, typing.Any]:
+        return cls.label_to_dict(type_.label, **kwargs)
+
+    @classmethod
+    def label_to_dict(cls, label, **kwargs) -> dict[str, typing.Any]:
+        dict_ = {'type': label}
+        dict_.update(**kwargs)
+        return dict_
+
+    def __init__(self, interface):
+        self.interface = interface
+        super().__init__()
+
+    def __getitem__(self, alias):
+        if isinstance(alias, self.interface):
+            return type(alias)
+        elif isinstance(alias, type) and issubclass(alias, self.interface):
+            return alias
+        elif alias in self:
+            return super().__getitem__(alias)
+        else:
+            msg = f"Invalid type '{alias}' for class '{self.interface}'.\n"
+            msg += f"Allowed options: {list(self)}!"
+            raise TypeError(msg)
+
+    def __contains__(self, key: object) -> bool:
+        if isinstance(key, self.interface):
+            return True
+        elif isinstance(key, type) and issubclass(key, self.interface):
+            return True
+        return super().__contains__(key)
+
+
+class TypeConfig(metaclass=TypeConfigMeta, is_interface=True):
+
+    label: str
+    aliases: tuple[str]
+    types: TypeConfigDict
+    logger: logging.Logger
+    cfgs: list[cfg]
+
+
+# ------- Descriptor Container ------- #
+
+class DescriptorDict(collections.UserDict):
+
+    def __setitem__(self, key: str, value):
+        setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __delitem__(self, key) -> None:
+        delattr(self, key)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return f"{str(self)}{self.data}"
+
+
+class State(DescriptorDict):
+
+    logger = logger.getChild("State")
+
+    @staticmethod
+    def is_set(*args) -> bool:
+        return all([arg is not None for arg in args])
+
+    def to_python(self) -> State:
+        """ Casts a state to a base state in which every NGSolve Coefficientfunction is cast back to a python object.
+        """
+        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+        mip = mesh()
+        return State(**{key: value(mip) if isinstance(value, ngs.CF) else value for key, value in self.items()})
+
+    def merge(self, *states: State, inplace: bool = False) -> State:
+        merge = State()
+        if inplace:
+            merge = self
+
+        for state in states:
+
+            duplicates = set(state).intersection(merge)
+            if duplicates:
+                raise ValueError(f"Merge conflict! '{duplicates}' included multiple times!")
+
+            merge.update(**state)
+
+        return merge
+
+
+class UserConfig(DescriptorDict, metaclass=TypeConfigMeta, is_interface=True):
+
+    label: str
+    aliases: tuple[str]
+    types: TypeConfigDict
+    logger: logging.Logger
+    cfgs: list[cfg]
+
+    def __init__(self, **kwargs):
+        self.clear()
+        self.update(**kwargs)
+
+    def update(self, **kwargs):
+        for key, value in kwargs.items():
+            self[key] = value
+
+            if key not in self:
+                msg = f"'{key}' is not predefined for {type(self)}. "
+                msg += "It is either deprecated or set manually!"
+                self.logger.info(msg)
+
+    def clear(self) -> None:
+        self.__dict__.clear()
+        self.data = {}
+        for value in self.cfgs:
+            value.reset(self)
+
+    def flatten(self) -> dict[str, typing.Any]:
+        items = {key: value.flatten() if isinstance(value, UserConfig) else value for key, value in self.items()}
+        return self.types.type_to_dict(self, **items)
+
+    def __repr__(self) -> str:
+        cfg = f"{str(self)}" + "{\n"
+        cfg += "".join([f"  {key}: {repr(value)} \n" for key, value in self.items()])
+        cfg += '}'
+        return cfg
+
+
+class BonusIntegrationOrder(UserConfig):
+
+    @cfg(default=0)
+    def VOL(self, VOL):
+        return int(VOL)
+
+    @cfg(default=0)
+    def BND(self, BND):
+        return int(BND)
+
+    @cfg(default=0)
+    def BBND(self, BBND):
+        return int(BBND)
+
+    @cfg(default=0)
+    def BBBND(self, BBBND):
+        return int(BBBND)
+
+    VOL: int
+    BND: int
+    BBND: int
+    BBBND: int
+
+
+class FiniteElementConfig(UserConfig):
+
+    @cfg(default=2)
+    def order(self, order):
+        return int(order)
+
+    @cfg(default=True)
+    def static_condensation(self, static_condensation):
+        return bool(static_condensation)
+
+    @user(default=BonusIntegrationOrder)
+    def bonus_int_order(self, dict_):
+        return dict_
+
+    def format(self):
+        formatter = self.formatter.new()
+        formatter.subheader('Finite Element Configuration').newline()
+        formatter.entry('Polynomial Order', self._order)
+        formatter.entry('Static Condensation', str(self._static_condensation))
+        formatter.add_config(self.bonus_int_order)
+        return formatter.output
+
+    order: int
+    static_condensation: bool
+    bonus_int_order: BonusIntegrationOrder
 
 
 class Formatter:
@@ -63,291 +456,3 @@ class Formatter:
 
     def __repr__(self) -> str:
         return self.output
-
-
-class BaseConfig:
-
-    logger = logging.getLogger(__name__)
-    formatter = Formatter()
-
-    @classmethod
-    def _get_enum(cls, value: str, enum, variable: str):
-        try:
-            value = enum(value)
-        except ValueError:
-            msg = f"'{str(value).capitalize()}' is not a valid {variable}. "
-            msg += f"Possible alternatives: {[e.value for e in enum]}"
-            raise ValueError(msg) from None
-        return value
-
-    @classmethod
-    def _is_type(cls, _type, _class):
-        if not hasattr(_class, "types"):
-            raise ValueError(f"Class '{_class}' needs to have subclass dictionary 'types'")
-
-        if not isinstance(_type, str) and _type in _class.types:
-            types = list(_class.types.keys())
-            raise TypeError(f"Type '{_type}' invalid for '{_class}'. Allowed types: {types}!")
-
-        return _type
-
-    @classmethod
-    def _get_type(cls, _type, _class, **init_kwargs):
-
-        if not isinstance(_type, _class):
-            _type = cls._is_type(_type, _class)
-            _type = _class.types[_type](**init_kwargs)
-        else:
-            for key, value in init_kwargs:
-                setattr(_type, key, value)
-
-        return _type
-
-    def to_dict(self) -> dict[str, typing.Any]:
-        return {key: value for key, value in self.items()}
-
-    def update(self, cfg: dict[str, typing.Any]):
-        cfg_ = vars(self)
-
-        if isinstance(cfg, (dict, type(self))):
-            for key, value in cfg.items():
-                if key.startswith("_"):
-                    key = key[1:]
-
-                setattr(self, key, value)
-
-                if key not in cfg_:
-                    msg = f"Trying to set '{key}' attribute in {str(self)}. "
-                    msg += "It is either deprecated or not supported"
-                    self.logger.warning(msg)
-
-        elif isinstance(cfg, BaseConfig):
-            sub_cfg = [value for key, value in self.items() if isinstance(value, type(cfg))]
-
-            for value in sub_cfg:
-                value.update(cfg)
-
-            if not sub_cfg:
-                msg = f"Subconfiguration {type(cfg)} can not updated!"
-                msg += "It is either not included or you have to set it manually!"
-                self.logger.warning(msg)
-
-        else:
-            raise TypeError(f"Update requires dictionary or type '{str(self)}'")
-
-    def items(self) -> tuple[str, typing.Any]:
-        for key in vars(self):
-            yield key, getattr(self, key)
-
-    def format(self):
-        raise NotImplementedError()
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return self.format()
-
-
-class BonusIntegrationOrder(BaseConfig):
-
-    def __init__(self) -> None:
-        self.VOL = 0
-        self.BND = 0
-        self.BBND = 0
-        self.BBBND = 0
-
-    @property
-    def VOL(self):
-        return self._VOL
-
-    @VOL.setter
-    def VOL(self, value):
-        self._VOL = int(value)
-
-    @property
-    def BND(self):
-        return self._BND
-
-    @BND.setter
-    def BND(self, value):
-        self._BND = int(value)
-
-    @property
-    def BBND(self):
-        return self._BBND
-
-    @BBND.setter
-    def BBND(self, value):
-        self._BBND = int(value)
-
-    @property
-    def BBBND(self):
-        return self._BBBND
-
-    @BBBND.setter
-    def BBBND(self, value):
-        self._BBBND = int(value)
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.entry('Bonus Integration Order', str({key[1:]: value for key, value in self.items()}))
-        return formatter.output
-
-
-class FiniteElementConfig(BaseConfig):
-
-    def __init__(self) -> None:
-        self.order = 2
-        self.static_condensation = True
-        self._bonus_int_order = BonusIntegrationOrder()
-
-    @property
-    def order(self) -> int:
-        return self._order
-
-    @order.setter
-    def order(self, order: int):
-        self._order = int(order)
-
-    @property
-    def static_condensation(self) -> bool:
-        return self._static_condensation
-
-    @static_condensation.setter
-    def static_condensation(self, static_condensation: bool):
-        self._static_condensation = bool(static_condensation)
-
-    @property
-    def bonus_int_order(self) -> BonusIntegrationOrder:
-        return self._bonus_int_order
-
-    @bonus_int_order.setter
-    def bonus_int_order(self, bonus_int_order: BonusIntegrationOrder):
-        self._bonus_int_order.update(bonus_int_order)
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.subheader('Finite Element Configuration').newline()
-        formatter.entry('Polynomial Order', self._order)
-        formatter.entry('Static Condensation', str(self._static_condensation))
-        formatter.add_config(self.bonus_int_order)
-        return formatter.output
-
-
-class Descriptor:
-
-    __slots__ = ("_label", )
-
-    @property
-    def label(self) -> str:
-        return self._label[1:]
-
-    def __set_name__(self, owner: DescriptorDict, label: str):
-        self._label = f"_{label}"
-
-    def __delete__(self, obj):
-        delattr(obj, self._label)
-
-
-class DescriptorDict(typing.MutableMapping):
-
-    def __init__(self, **kwargs) -> None:
-        self.update(**kwargs)
-
-    def update(self, **kwargs):
-        for key, value in kwargs.items():
-            key = self._remove_underscore(key)
-            setattr(self, key, value)
-
-    def keys(self):
-        return vars(self).keys()
-
-    def values(self):
-        return vars(self).values()
-
-    def items(self):
-        return vars(self).items()
-
-    def __setitem__(self, key: str, value):
-        key = self._remove_underscore(key)
-        setattr(self, key, value)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __delitem__(self, key) -> None:
-        delattr(self, key)
-
-    def __iter__(self):
-        for key in vars(self):
-            yield key
-
-    def __len__(self):
-        return len(vars(self))
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def _remove_underscore(self, key: str):
-        if key.startswith("_"):
-            key = key[1:]
-        return key
-
-    def __repr__(self) -> str:
-        state = {self._remove_underscore(key): value for key, value in self.items()}
-        return f"{str(self)}{state}"
-
-
-class Variable_(Descriptor):
-    """
-    Variable is a descriptor that sets private variables to an instance with an underscore.
-
-    Since it ressembles a scalar, a vector or a matrix it is possible to pass a cast function
-    to the constructor such that every time an attribute is set, the value gets cast to the appropriate
-    tensor dimensions.
-
-    By default, if an instance does not hold an attribute of a given name, the descriptor returns None.
-    """
-
-    __slots__ = ("cast",)
-
-    def __init__(self, cast: typing.Callable) -> None:
-        self.cast = cast
-
-    def __get__(self, state: State, objtype) -> ngs.CF:
-        return getattr(state, self._label, None)
-
-    def __set__(self, state: State, value) -> None:
-        if value is not None:
-            value = self.cast(value)
-            setattr(state, self._label, value)
-
-
-class State(DescriptorDict):
-
-    logger = logging.getLogger('State')
-
-    @staticmethod
-    def is_set(*args) -> bool:
-        return all([arg is not None for arg in args])
-
-    def to_python(self) -> State:
-        """ Casts a state to a base state in which every NGSolve Coefficientfunction is cast back to a python object.
-        """
-        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
-        mip = mesh()
-        return State(**{key: value(mip) if isinstance(value, ngs.CF) else value for key, value in self.items()})
-
-    @staticmethod
-    def merge_state(*states: State) -> State:
-        merge = {}
-        for state in states:
-            for label, var in state.items():
-                if label in merge:
-                    raise ValueError(f"Merge conflict! '{label.capitalize()}' included multiple times!")
-                merge[label] = var
-        return State(**merge)
-
-
-STATE = typing.TypeVar("STATE", bound=State)

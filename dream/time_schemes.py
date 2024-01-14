@@ -3,7 +3,7 @@ import numpy as np
 import ngsolve as ngs
 import logging
 
-from dream.config import BaseConfig
+from dream.config import UserConfig
 from collections import UserDict
 
 
@@ -83,7 +83,7 @@ class Timer:
         self._step_digit = len(digit.rstrip("0"))
 
 
-class SimulationConfig(BaseConfig):
+class SimulationConfig(UserConfig):
 
     types: dict[str, SimulationConfig] = {}
 
