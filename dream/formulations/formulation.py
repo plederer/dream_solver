@@ -9,7 +9,7 @@ import ngsolve as ngs
 
 from dream import bla
 from dream import mesh as dmesh
-from dream.config import BaseConfig, Formatter, STATE
+from dream.config import OptionDictConfig, State
 from dream.time_schemes import TransientGridfunction
 
 logger = logging.getLogger(__name__)
@@ -20,37 +20,12 @@ if typing.TYPE_CHECKING:
 # ------- State -------- #
 
 
-# ------- Dynamic Configuration ------- #
-
-
-# ------- Dynamic Equations ------- #
-
-
-class DynamicEquations:
-
-    types: dict[str, DynamicEquations]
-    formatter: Formatter
-
-    def __init_subclass__(cls, labels: list[str] = []):
-
-        if not labels:
-            cls.types = {}
-            cls.logger = logger.getChild(cls.__name__)
-            cls.formatter = Formatter()
-
-        for label in labels:
-            cls.types[label] = cls
-
-    def __str__(self) -> str:
-        return self.__class__.__name__.upper()
-
-
 # ------- Equations ------- #
 
 def equation(func):
 
     @wraps(func)
-    def state(self, state: STATE, *args, **kwargs):
+    def state(self, state: State, *args, **kwargs):
 
         _state = getattr(state, func.__name__, None)
 
@@ -64,14 +39,14 @@ def equation(func):
         if _state is None:
             raise NotImplementedError(f"Can not determine {func.__name__} from given state!")
 
+        setattr(state, func.__name__, _state)
+
         return _state
 
     return state
 
 
-class FlowEquations:
-
-    logger = logger.getChild("Equations")
+class Equations(OptionDictConfig, is_interface=True):
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -102,7 +77,7 @@ class FormulationDC:
 
 # ------- Formulations ------- #
 
-class SpaceInterface:
+class Space:
 
     @property
     def fes(self):
@@ -124,15 +99,17 @@ class SpaceInterface:
     def dt(self) -> TransientGridfunction | None:
         return self._dt
 
-    def initialize(self):
-        self._fes = self.get_space()
-        self._TnT = self.get_TnT()
-        self._gfu = self.get_gridfunction()
-
-    def initialize_time_derivative(self):
-        self._dt = self.get_transient_gridfunction()
+    def __init__(self, cfg: SolverConfiguration, dmesh: dmesh.DreamMesh):
+        self.cfg = cfg
+        self.dmesh = dmesh
 
     def get_space(self) -> ngs.FESpace:
+        raise NotImplementedError()
+
+    def get_state_from_variable(self, gfu: ngs.GridFunction = None) -> State:
+        raise NotImplementedError()
+
+    def get_variable_from_state(self, state: State) -> ngs.CF:
         raise NotImplementedError()
 
     def get_TnT(self) -> tuple[ngs.CF, ngs.CF]:
@@ -143,6 +120,17 @@ class SpaceInterface:
 
     def get_transient_gridfunction(self) -> TransientGridfunction | None:
         return None
+
+    def initialize(self):
+        self._fes = self.get_space()
+        self._TnT = self.get_TnT()
+        self._gfu = self.get_gridfunction()
+
+    def initialize_time_derivative(self):
+        self._dt = self.get_transient_gridfunction()
+
+    def initialize_trial_state(self) -> None:
+        self.trial_state = self.get_state_from_variable(self.trial)
 
     def update_time_step(self):
         if self.dt:
@@ -155,20 +143,7 @@ class SpaceInterface:
     def add_mass_bilinearform(self, blf: ngs.BilinearForm, dx=ngs.dx, **dx_kwargs):
         blf += bla.inner(self.trial, self.test) * dx(**dx_kwargs)
 
-
-class Space(SpaceInterface):
-
-    def __init__(self, cfg: SolverConfiguration, dmesh: dmesh.DreamMesh):
-        self.cfg = cfg
-        self.dmesh = dmesh
-
-    def get_state_from_variable(self, gfu: ngs.GridFunction = None) -> STATE:
-        raise NotImplementedError()
-
-    def get_variable_from_state(self, state: STATE) -> ngs.CF:
-        raise NotImplementedError()
-
-    def add_mass_linearform(self, state: STATE, lf: ngs.LinearForm, dx=ngs.dx, **dx_kwargs):
+    def add_mass_linearform(self, state: State, lf: ngs.LinearForm, dx=ngs.dx, **dx_kwargs):
         f = self.get_variable_from_state(state)
         lf += bla.inner(f, self.test) * dx(**dx_kwargs)
 
@@ -176,7 +151,7 @@ class Space(SpaceInterface):
         return self.__class__.__name__.lower()
 
 
-class Spaces(SpaceInterface, UserDict):
+class Spaces(UserDict):
 
     def initialize(self) -> None:
         super().initialize()
@@ -209,7 +184,7 @@ class Spaces(SpaceInterface, UserDict):
         for space in self.values():
             space.add_mass_bilinearform(blf, **dx_kwargs)
 
-    def add_mass_linearform(self, state: STATE, lf: ngs.LinearForm, **dx_kwargs):
+    def add_mass_linearform(self, state: State, lf: ngs.LinearForm, **dx_kwargs):
         for space in self.values():
             space.add_mass_linearform(state, lf, **dx_kwargs)
 
@@ -255,20 +230,8 @@ class Spaces(SpaceInterface, UserDict):
         return space
 
 
-SPACE = typing.TypeVar("SPACE", bound=Space | Spaces)
 
-
-class Formulation:
-
-    types: dict[str, Formulation]
-
-    def __init_subclass__(cls, label: str = ""):
-
-        if not label:
-            cls.types = {}
-
-        if label:
-            cls.types[label] = cls
+class Formulation(OptionDictConfig, is_interface=True):
 
     def __init__(self, cfg: SolverConfiguration, mesh: ngs.Mesh | dmesh.DreamMesh) -> None:
 
@@ -302,7 +265,7 @@ class Formulation:
     def get_space(self) -> Spaces | Space:
         raise NotImplementedError()
 
-    def assemble_system(self, blf: ngs.BilinearForm, lf: ngs.LinearForm):
+    def get_system(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
         raise NotImplementedError()
 
     def initialize(self):
@@ -316,34 +279,14 @@ class Formulation:
 # ------- Configuration ------- #
 
 
-class FlowConfig(BaseConfig):
+class FlowConfig(OptionDictConfig, is_interface=True):
 
-    types: dict[str, FlowConfig] = {}
-    formulation: Formulation
     bcs: FormulationBC
     dcs: FormulationDC
 
-    def __init_subclass__(cls, label: str) -> None:
-        cls.types[label] = cls
+    # @cfg(default=Formulation)
+    # def formulation(self, formulation) -> Formulation:
+    #     print(formulation)
 
-    def __init__(self, equations) -> None:
-        self._equations = equations
-        self.formulation = list(type(self).formulation.types.keys())[0]
+    #     raise NotImplementedError('Override formulation')
 
-    @property
-    def formulation(self) -> str:
-        return self._formulation
-
-    @formulation.setter
-    def formulation(self, formulation: str) -> str:
-        self._formulation = self._is_type(formulation, type(self).formulation)
-
-    def get_formulation(self, cfg: SolverConfiguration, mesh: ngs.Mesh | dmesh.DreamMesh, *args, **kwargs) -> Formulation:
-        return self._get_type(self.formulation, type(self).formulation, cfg=cfg, mesh=mesh, *args, **kwargs)
-
-    @property
-    def _formulation_type(self) -> Formulation:
-        raise NotImplementedError()
-
-    def __repr__(self) -> str:
-        return str(self)

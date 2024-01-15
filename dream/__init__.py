@@ -1,3 +1,5 @@
+import ngsolve as ngs
+ngs.Parameter.__repr__ = lambda self: str(self.Get())
 # from .solver import CompressibleHDGSolver
 # from .configuration import SolverConfiguration
 
@@ -6,7 +8,6 @@
 # from .mesh import *
 # from .io import DreAmLogger, ResultsDirectoryTree
 # from .bla.state import State
-
 
 
 # __all__ = [

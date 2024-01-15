@@ -4,77 +4,81 @@ import ngsolve as ngs
 
 from dream import bla
 from dream import mesh as dmesh
-from dream.config import State, Variable_
+from dream.config import OptionDictConfig, State, cfg, variable, parameter, optionsdict
 from dream.time_schemes import TransientGridfunction
-
-from . import formulation as form
+from dream.formulations import formulation as form
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
 
 
-# ------- CompressibleState -------- #
+# ------- State -------- #
 
 class CompressibleState(State):
 
-    density = Variable_(bla.as_scalar)
-    velocity = Variable_(bla.as_vector)
-    momentum = Variable_(bla.as_vector)
-    pressure = Variable_(bla.as_scalar)
-    temperature = Variable_(bla.as_scalar)
-    energy = Variable_(bla.as_scalar)
-    specific_energy = Variable_(bla.as_scalar)
-    inner_energy = Variable_(bla.as_scalar)
-    specific_inner_energy = Variable_(bla.as_scalar)
-    kinetic_energy = Variable_(bla.as_scalar)
-    specific_kinetic_energy = Variable_(bla.as_scalar)
-    enthalpy = Variable_(bla.as_scalar)
-    specific_enthalpy = Variable_(bla.as_scalar)
-    speed_of_sound = Variable_(bla.as_scalar)
+    density = variable(bla.as_scalar)
+    velocity = variable(bla.as_vector)
+    momentum = variable(bla.as_vector)
+    pressure = variable(bla.as_scalar)
+    temperature = variable(bla.as_scalar)
+    energy = variable(bla.as_scalar)
+    specific_energy = variable(bla.as_scalar)
+    inner_energy = variable(bla.as_scalar)
+    specific_inner_energy = variable(bla.as_scalar)
+    kinetic_energy = variable(bla.as_scalar)
+    specific_kinetic_energy = variable(bla.as_scalar)
+    enthalpy = variable(bla.as_scalar)
+    specific_enthalpy = variable(bla.as_scalar)
+    speed_of_sound = variable(bla.as_scalar)
 
-    viscosity = Variable_(bla.as_scalar)
-    strain_rate_tensor = Variable_(bla.as_matrix)
-    deviatoric_stress_tensor = Variable_(bla.as_matrix)
-    heat_flux = Variable_(bla.as_vector)
+    convective_flux = variable(bla.as_matrix)
+    convective_stab = variable(bla.as_matrix)
+    diffusive_flux = variable(bla.as_matrix)
+    diffusive_stab = variable(bla.as_matrix)
 
-    density_gradient = Variable_(bla.as_vector)
-    velocity_gradient = Variable_(bla.as_matrix)
-    momentum_gradient = Variable_(bla.as_matrix)
-    pressure_gradient = Variable_(bla.as_vector)
-    temperature_gradient = Variable_(bla.as_vector)
-    energy_gradient = Variable_(bla.as_vector)
-    specific_energy_gradient = Variable_(bla.as_vector)
-    inner_energy_gradient = Variable_(bla.as_vector)
-    specific_inner_energy_gradient = Variable_(bla.as_vector)
-    kinetic_energy_gradient = Variable_(bla.as_vector)
-    specific_kinetic_energy_gradient = Variable_(bla.as_vector)
-    enthalpy_gradient = Variable_(bla.as_vector)
-    specific_enthalpy_gradient = Variable_(bla.as_vector)
+    viscosity = variable(bla.as_scalar)
+    strain_rate_tensor = variable(bla.as_matrix)
+    deviatoric_stress_tensor = variable(bla.as_matrix)
+    heat_flux = variable(bla.as_vector)
+
+    density_gradient = variable(bla.as_vector)
+    velocity_gradient = variable(bla.as_matrix)
+    momentum_gradient = variable(bla.as_matrix)
+    pressure_gradient = variable(bla.as_vector)
+    temperature_gradient = variable(bla.as_vector)
+    energy_gradient = variable(bla.as_vector)
+    specific_energy_gradient = variable(bla.as_vector)
+    inner_energy_gradient = variable(bla.as_vector)
+    specific_inner_energy_gradient = variable(bla.as_vector)
+    kinetic_energy_gradient = variable(bla.as_vector)
+    specific_kinetic_energy_gradient = variable(bla.as_vector)
+    enthalpy_gradient = variable(bla.as_vector)
+    specific_enthalpy_gradient = variable(bla.as_vector)
 
 
 class ScalingState(CompressibleState):
 
-    length = Variable_(bla.as_scalar)
-    density = Variable_(bla.as_scalar)
-    momentum = Variable_(bla.as_scalar)
-    velocity = Variable_(bla.as_scalar)
-    speed_of_sound = Variable_(bla.as_scalar)
-    temperature = Variable_(bla.as_scalar)
-    pressure = Variable_(bla.as_scalar)
-    energy = Variable_(bla.as_scalar)
-    inner_energy = Variable_(bla.as_scalar)
-    kinetic_energy = Variable_(bla.as_scalar)
+    length = variable(bla.as_scalar)
+    density = variable(bla.as_scalar)
+    momentum = variable(bla.as_scalar)
+    velocity = variable(bla.as_scalar)
+    speed_of_sound = variable(bla.as_scalar)
+    temperature = variable(bla.as_scalar)
+    pressure = variable(bla.as_scalar)
+    energy = variable(bla.as_scalar)
+    inner_energy = variable(bla.as_scalar)
+    kinetic_energy = variable(bla.as_scalar)
 
 # ------- Dynamic Configuration ------- #
 
 
-class MixedMethod:
+class MixedMethod(OptionDictConfig, is_interface=True):
+    ...
 
-    types: dict[str, MixedMethod] = {}
 
-    def __init_subclass__(cls, label: str) -> None:
-        cls.types[label] = cls
-        cls.types[str(None)] = cls
+class Inactive(MixedMethod):
+
+    aliases = (None,)
 
     def get_mixed_space(self, cfg: SolverConfiguration, dmesh: dmesh.DreamMesh) -> None:
         if cfg.flow.dynamic_viscosity.is_inviscid:
@@ -82,7 +86,9 @@ class MixedMethod:
         return None
 
 
-class StrainHeat(MixedMethod, label="strain_heat"):
+class StrainHeat(MixedMethod):
+
+    label: str = "strain_heat"
 
     def get_mixed_space(self, cfg: SolverConfiguration, dmesh: dmesh.DreamMesh) -> StrainHeatSpace:
         if cfg.flow.dynamic_viscosity.is_inviscid:
@@ -91,7 +97,9 @@ class StrainHeat(MixedMethod, label="strain_heat"):
         return StrainHeatSpace(cfg, dmesh)
 
 
-class Gradient(MixedMethod, label="gradient"):
+class Gradient(MixedMethod):
+
+    label: str = "gradient"
 
     def get_mixed_space(self, cfg: SolverConfiguration, dmesh: dmesh.DreamMesh) -> GradientSpace:
 
@@ -104,7 +112,7 @@ class Gradient(MixedMethod, label="gradient"):
 # ------- Dynamic Equations ------- #
 
 
-class EquationOfState(form.DynamicEquations):
+class EquationOfState(OptionDictConfig, is_interface=True):
 
     def density(self, state: CompressibleState) -> ngs.CF:
         raise NotImplementedError()
@@ -180,20 +188,13 @@ class EquationOfState(form.DynamicEquations):
         return formatter.output
 
 
-class IdealGas(EquationOfState, labels=["ideal", "perfect"]):
+class IdealGas(EquationOfState):
 
-    def __init__(self, heat_capacity_ratio: float = 1.4) -> None:
-        self._heat_capacity_ratio = ngs.Parameter(heat_capacity_ratio)
+    aliases = ('ideal', 'perfect', )
 
-    @property
-    def heat_capacity_ratio(self):
-        return self._heat_capacity_ratio
-
-    @heat_capacity_ratio.setter
-    def heat_capacity_ratio(self, value):
-        if isinstance(value, ngs.Parameter):
-            value = value.Get()
-        self._heat_capacity_ratio.Set(value)
+    @parameter(default=1.4)
+    def heat_capacity_ratio(self, heat_capacity_ratio: float):
+        return heat_capacity_ratio
 
     def density(self, state: CompressibleState) -> bla.SCALAR:
         r"""Returns the density from a given state
@@ -863,11 +864,13 @@ class IdealGas(EquationOfState, labels=["ideal", "perfect"]):
         formatter.entry('Heat Capacity Ratio', self.heat_capacity_ratio)
         return formatter.output
 
+    heat_capacity_ratio: ngs.Parameter
 
-class DynamicViscosity(form.DynamicEquations):
+
+class DynamicViscosity(OptionDictConfig, is_interface=True):
 
     @property
-    def is_inviscid(self):
+    def is_inviscid(self) -> bool:
         return isinstance(self, Inviscid)
 
     def viscosity(self, state: CompressibleState, *args):
@@ -879,42 +882,27 @@ class DynamicViscosity(form.DynamicEquations):
         return formatter.output
 
 
-class Inviscid(DynamicViscosity, labels=['inviscid']):
+class Inviscid(DynamicViscosity):
 
     def viscosity(self, state: CompressibleState, *args):
         raise TypeError("Inviscid Setting! Dynamic Viscosity not defined!")
 
 
-class Constant(DynamicViscosity, labels=['constant']):
+class Constant(DynamicViscosity):
 
     def viscosity(self, state: CompressibleState, *args):
         return 1
 
 
-class Sutherland(DynamicViscosity, labels=['sutherland']):
+class Sutherland(DynamicViscosity):
 
-    def __init__(self,
-                 measurement_temperature: float = 110.4,
-                 measurement_viscosity: float = 1.716e-5) -> None:
+    @cfg(default=110.4)
+    def measurement_temperature(self, value: float) -> float:
+        return value
 
-        self._measurement_temperature = measurement_temperature
-        self._measurement_viscosity = measurement_viscosity
-
-    @property
-    def measurement_temperature(self):
-        return self._measurement_temperature
-
-    @measurement_temperature.setter
-    def measurement_temperature(self, value):
-        self._measurement_temperature = value
-
-    @property
-    def measurement_viscosity(self):
-        return self._measurement_viscosity
-
-    @measurement_viscosity.setter
-    def measurement_viscosity(self, value):
-        self._measurement_viscosity = value
+    @cfg(default=1.716e-5)
+    def measurement_viscosity(self, value: float) -> float:
+        return value
 
     def viscosity(self, state: CompressibleState, equations: CompressibleEquations):
 
@@ -939,24 +927,11 @@ class Sutherland(DynamicViscosity, labels=['sutherland']):
         return formatter.output
 
 
-class Scaling(form.DynamicEquations):
+class Scaling(OptionDictConfig, is_interface=True):
 
-    @property
-    def INF(self) -> ScalingState:
-        return self._INF
-
-    def __init__(self, farfield_state: ScalingState = None) -> None:
-
-        if farfield_state is None:
-            farfield_state = ScalingState()
-            farfield_state.length = 1
-            farfield_state.density = 1.293
-            farfield_state.velocity = 102.9
-            farfield_state.speed_of_sound = 343
-            farfield_state.temperature = 293.15
-            farfield_state.pressure = 101325
-
-        self._INF = farfield_state
+    @cfg(default={'length': 1, 'density': 1.293, 'velocity': 102.9, 'speed_of_sound': 343, 'temperature': 293.15, 'pressure': 101325})
+    def dimensional_infinity_values(self, state: State):
+        return ScalingState(**state)
 
     def density(self) -> float:
         return 1.0
@@ -976,8 +951,10 @@ class Scaling(form.DynamicEquations):
         formatter.entry('Scaling', str(self))
         return formatter.output
 
+    dimensional_infinity_values: ScalingState
 
-class Aerodynamic(Scaling, labels=["aerodynamic"]):
+
+class Aerodynamic(Scaling):
 
     def _check_Mach_number(self, Mach_number: float):
         Ma = Mach_number
@@ -995,7 +972,7 @@ class Aerodynamic(Scaling, labels=["aerodynamic"]):
         return 1/Mach_number
 
 
-class Acoustic(Scaling,  labels=["acoustic"]):
+class Acoustic(Scaling):
 
     def velocity_magnitude(self, Mach_number: float):
         return Mach_number
@@ -1004,7 +981,7 @@ class Acoustic(Scaling,  labels=["acoustic"]):
         return 1.0
 
 
-class Aeroacoustic(Scaling, labels=["aeroacoustic"]):
+class Aeroacoustic(Scaling):
 
     def velocity_magnitude(self, Mach_number: float):
         Ma = Mach_number
@@ -1015,50 +992,50 @@ class Aeroacoustic(Scaling, labels=["aeroacoustic"]):
         return 1/(1 + Ma)
 
 
-class RiemannSolver(form.DynamicEquations):
+class RiemannSolver(OptionDictConfig, is_interface=True):
 
-    def __init__(self, cfg: CompressibleFlowConfig = None) -> None:
+    def __init__(self, cfg: CompressibleFlowConfig = None, **kwargs):
+        super().__init__(**kwargs)
+
         if cfg is None:
             cfg = CompressibleFlowConfig()
 
         self.cfg = cfg
 
-    @property
-    def eq(self) -> CompressibleEquations:
-        return self.cfg.equations
-
-    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR):
+    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         NotImplementedError()
 
 
-class LaxFriedrich(RiemannSolver, labels=["lf", "lax_friedrich"]):
+class LaxFriedrich(RiemannSolver):
 
-    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR):
+    aliases = ('lf', )
+
+    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         unit_vector = bla.as_vector(unit_vector)
 
-        u = self.eq.velocity(state)
-        c = self.eq.speed_of_sound(state)
+        u = self.cfg.equations.velocity(state)
+        c = self.cfg.equations.speed_of_sound(state)
 
         lambda_max = bla.abs(bla.inner(u, unit_vector)) + c
         return lambda_max * ngs.Id(unit_vector.dim + 2)
 
 
-class Roe(RiemannSolver, labels=["roe"]):
+class Roe(RiemannSolver):
 
-    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR):
+    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         unit_vector = bla.as_vector(unit_vector)
 
-        lambdas = self.eq.characteristic_velocities(state, unit_vector, type_="absolute")
-        return self.eq.transform_characteristic_to_conservative(bla.diagonal(lambdas), state, unit_vector)
+        lambdas = self.cfg.equations.characteristic_velocities(state, unit_vector, type_="absolute")
+        return self.cfg.equations.transform_characteristic_to_conservative(bla.diagonal(lambdas), state, unit_vector)
 
 
-class HLL(RiemannSolver, labels=["hll"]):
+class HLL(RiemannSolver):
 
-    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR):
+    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         unit_vector = bla.as_vector(unit_vector)
 
-        u = self.eq.velocity(state)
-        c = self.eq.speed_of_sound(state)
+        u = self.cfg.equations.velocity(state)
+        c = self.cfg.equations.speed_of_sound(state)
 
         un = bla.inner(u, unit_vector)
         s_plus = bla.max(un + c)
@@ -1066,29 +1043,21 @@ class HLL(RiemannSolver, labels=["hll"]):
         return s_plus * ngs.Id(unit_vector.dim + 2)
 
 
-class HLLEM(RiemannSolver, labels=["hllem"]):
+class HLLEM(RiemannSolver):
 
-    def __init__(self, theta_0: float = 1e-8, cfg: CompressibleFlowConfig = None) -> None:
-        self.theta_0 = theta_0
-        super().__init__(cfg)
-
-    @property
-    def theta_0(self):
+    @cfg(default=1e-8)
+    def theta_0(self, value):
         """ Defines a threshold value used to stabilize contact waves, when the eigenvalue tends to zero.
 
         This can occur if the flow is parallel to the element or domain boundary!
         """
-        return self._theta_0
+        return float(value)
 
-    @theta_0.setter
-    def theta_0(self, value):
-        self._theta_0 = float(value)
-
-    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR):
+    def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         unit_vector = bla.as_vector(unit_vector)
 
-        u = self.eq.velocity(state)
-        c = self.eq.speed_of_sound(state)
+        u = self.cfg.equations.velocity(state)
+        c = self.cfg.equations.speed_of_sound(state)
 
         un = bla.inner(u, unit_vector)
         un_abs = bla.abs(un)
@@ -1096,18 +1065,18 @@ class HLLEM(RiemannSolver, labels=["hllem"]):
 
         theta = bla.max(un_abs/(un_abs + c), self.theta_0)
         THETA = bla.diagonal([1] + unit_vector.dim * [theta] + [1])
-        THETA = self.eq.transform_characteristic_to_conservative(THETA, state, unit_vector)
+        THETA = self.cfg.equations.transform_characteristic_to_conservative(THETA, state, unit_vector)
 
         return s_plus * THETA
 
+    theta_0: float
 
 # ------- Equations ------- #
 
 
-class CompressibleEquations(form.FlowEquations):
+class CompressibleEquations(form.Equations):
 
-    def __init__(self, cfg: CompressibleFlowConfig = None) -> None:
-
+    def __init__(self, cfg: CompressibleFlowConfig = None):
         if cfg is None:
             cfg = CompressibleFlowConfig()
 
@@ -1120,25 +1089,25 @@ class CompressibleEquations(form.FlowEquations):
 
         INF.density = self.cfg.scaling.density()
         INF.speed_of_sound = self.cfg.scaling.speed_of_sound(Ma)
-        INF.temperature = self.temperature(INF)
-        INF.pressure = self.pressure(INF)
+        self.temperature(INF)
+        self.pressure(INF)
 
         if direction is not None:
             direction = bla.as_vector(direction)
 
             if not 1 <= direction.dim <= 3:
-                raise ValueError(f"Direction")
+                raise ValueError(f"Invalid Dimension!")
 
             INF.velocity = self.cfg.scaling.velocity(direction, Ma)
-            INF.inner_energy = self.inner_energy(INF)
-            INF.kinetic_energy = self.kinetic_energy(INF)
-            INF.energy = self.energy(INF)
+            self.inner_energy(INF)
+            self.kinetic_energy(INF)
+            self.energy(INF)
 
         return INF
 
     def reference_state(self, direction: tuple[float, ...] = None) -> CompressibleState:
         INF = self.farfield_state(direction)
-        INF_ = self.cfg.scaling.INF
+        INF_ = self.cfg.scaling.dimensional_infinity_values
         REF = ScalingState()
 
         for key, value in INF_.items():
@@ -1168,6 +1137,7 @@ class CompressibleEquations(form.FlowEquations):
         mu = self.viscosity(state)
         return rho * u / mu
 
+    @form.equation
     def convective_flux(self, state: CompressibleState) -> bla.MATRIX:
         """
         Conservative convective flux
@@ -1190,6 +1160,7 @@ class CompressibleEquations(form.FlowEquations):
 
         return bla.as_matrix(flux, dims=(u.dim + 2, u.dim))
 
+    @form.equation
     def diffusive_flux(self, state: CompressibleState) -> bla.MATRIX:
         """
         Conservative diffusive flux
@@ -1668,11 +1639,11 @@ class CompressibleEquations(form.FlowEquations):
     def characteristic_from_conservative(self, state: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         return self.cfg.equation_of_state.characteristic_from_conservative(state, unit_vector)
 
-
 # ------- Boundary Conditions ------- #
 
 
 class FarField(dmesh.Boundary):
+
     def __init__(self, state: CompressibleState, theta_0: float = 0):
         super().__init__(state)
         self.theta_0 = theta_0
@@ -1750,7 +1721,7 @@ class CompressibleDC(form.FormulationDC):
 
 # ------- Formulations ------- #
 
-class CompressibleFormulation(form.Formulation):
+class CompressibleFormulation(form.Formulation, is_interface=True):
     ...
 
 # --- Conservative --- #
@@ -1769,27 +1740,14 @@ class Primal(form.Space):
 
         return state
 
-    def get_variable_from_state(self, state: CompressibleState) -> ngs.CF:
+    def get_variable_from_state(self, state: State) -> ngs.CF:
+        state = CompressibleState(**state)
         eq = self.cfg.flow.equations
 
         density = eq.density(state)
         momentum = eq.momentum(state)
         energy = eq.energy(state)
         return ngs.CF((density, momentum, energy))
-
-    def set_variables(self, state: CompressibleState):
-        state.velocity = self.equations.velocity(state)
-        state.inner_energy = self.equations.inner_energy(state)
-        state.kinetic_energy = self.equations.kinetic_energy(state)
-        state.specific_inner_energy = self.equations.specific_inner_energy(state)
-        state.specific_kinetic_energy = self.equations.specific_kinetic_energy(state)
-        state.pressure = self.equations.pressure(state)
-        state.temperature = self.equations.temperature(state)
-        state.speed_of_sound = self.equations.speed_of_sound(state)
-        state.enthalpy = self.equations.enthalpy(state)
-        state.specific_enthalpy = self.equations.specific_enthalpy(state)
-
-        return state
 
 
 class PrimalElement(Primal):
@@ -1819,18 +1777,13 @@ class PrimalFacet(Primal):
 
     @property
     def mask(self) -> ngs.GridFunction:
-        mask = getattr(self, "_mask", None)
+        """ Mask is a indicator Gridfunction, which vanishes on the domain boundaries.
 
-        if mask is None:
+            This is required to implement different boundary conditions on the the domain boundaries,
+            while using a Riemann-Solver in the interior!
+        """
 
-            dmesh = self.dmesh
-
-            fes = ngs.FacetFESpace(dmesh.ngsmesh, order=0)
-            mask = ngs.GridFunction(fes, name="mask")
-            mask.vec[:] = 0
-            mask.vec[~fes.GetDofs(self.dmesh.bcs.get_domain_boundaries(True))] = 1
-
-        return mask
+        return getattr(self, "_mask", None)
 
     def get_space(self) -> ngs.FacetFESpace:
         dim = self.dmesh.dim + 2
@@ -1854,6 +1807,20 @@ class PrimalFacet(Primal):
 
     def add_mass_linearform(self, state: CompressibleState, lf: ngs.LinearForm, dx=ngs.dx, **dx_kwargs):
         return super().add_mass_linearform(state, lf, dx=ngs.dx, element_boundary=True, **dx_kwargs)
+
+    def set_mask(self):
+        """ Unsets the correct degrees of freedom on the domain boundaries
+
+        """
+
+        mask = self.mask
+        if mask is None:
+            fes = ngs.FacetFESpace(self.dmesh.ngsmesh, order=0)
+            mask = ngs.GridFunction(fes, name="mask")
+            self._mask = mask
+
+        mask.vec[:] = 0
+        mask.vec[~fes.GetDofs(self.dmesh.bcs.get_domain_boundaries(True))] = 1
 
 
 class StrainHeatSpace(form.Space):
@@ -1882,7 +1849,7 @@ class GradientSpace(form.Space):
         return Q**dim
 
 
-class Conservative(CompressibleFormulation, label="conservative"):
+class Conservative(CompressibleFormulation):
 
     @property
     def U(self) -> PrimalElement:
@@ -1906,14 +1873,22 @@ class Conservative(CompressibleFormulation, label="conservative"):
 
         return spaces
 
-    def assemble_system(self, blf: ngs.BilinearForm, lf: ngs.ngs.LinearForm):
+    def pre_assemble(self):
+
+        self.U.initialize_trial_state()
+
+        self.Uhat.set_mask()
+        self.Uhat.initialize_trial_state()
+
+    def get_system(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
+        self.pre_assemble()
 
         if self.U.dt:
             self.add_time_derivative(blf, lf)
 
         self.add_convection(blf, lf)
 
-    def add_time_derivative(self, blf: ngs.BilinearForm, lf: ngs.ngs.LinearForm):
+    def add_time_derivative(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
         scheme = self.cfg.simulation.scheme
         U = self.U
 
@@ -1921,170 +1896,126 @@ class Conservative(CompressibleFormulation, label="conservative"):
 
         blf += bla.inner(scheme.scheme(dt), U.test) * ngs.dx
 
-    def add_convection(self, blf: ngs.BilinearForm, lf: ngs.ngs.LinearForm):
+    def add_convection(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
 
+        eq = self.cfg.flow.equations
         bonus_vol = self.cfg.fem.bonus_int_order.VOL
         bonus_bnd = self.cfg.fem.bonus_int_order.BND
 
-        U = self.spaces.U
-        Uhat = self.spaces.Uhat
+        U, U_ = self.U, self.U.trial_state
+        Uhat, Uhat_ = self.Uhat, self.Uhat.trial_state
 
-        dx = ngs.dx(bonus_intorder=self.cfg.fem.bonus_int_order.VOL)
-        dxe = ngs.dx(element_boundary=True, bonus_intorder=self.cfg.fem.bonus_int_order.BND)
+        F = eq.convective_flux(U_)
+        Fhat = self.convective_numerical_flux(self.normal)
 
-        U_ = U.get_state_from_variable(U.trial)
-        flux = self.cfg.flow.equations.convective_flux(U_)
+        blf += -bla.inner(F, ngs.grad(U.test)) * ngs.dx(bonus_intorder=bonus_vol)
+        blf += bla.inner(Fhat, U.test) * ngs.dx(element_boundary=True, bonus_intorder=bonus_bnd)
+        blf += -Uhat.mask * bla.inner(Fhat, Uhat.test) * ngs.dx(element_boundary=True, bonus_intorder=bonus_bnd)
 
-        fes_mask = ngs.FacetFESpace(self.mesh, order=0)
-        mask = ngs.GridFunction
+    def convective_numerical_flux(self, unit_vector: bla.VECTOR):
+        eq = self.cfg.flow.equations
+        U, Uhat = self.U, self.Uhat
 
-        blf -= bla.inner(flux, ngs.grad(U.test)) * dx
+        unit_vector = bla.as_vector(unit_vector)
+        tau_c = self.cfg.flow.riemann_solver.convective_stabilisation_matrix(Uhat.trial_state, unit_vector)
 
-        U, V = self.TnT.PRIMAL
-        Uhat, Vhat = self.TnT.PRIMAL_FACET
+        F = eq.convective_flux(Uhat.trial_state)
 
-        # Subtract boundary regions
-        mask_fes = FacetFESpace(self.mesh, order=0)
-        mask = GridFunction(mask_fes)
-        mask.vec[:] = 0
-        mask.vec[~mask_fes.GetDofs(self.dmesh.boundary(self.dmesh.bcs.pattern))] = 1
-
-        var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_vol)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                 V) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
-        var_form -= mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_bnd)
-
-        blf += var_form.Compile(compile_flag)
-
-    def convective_numerical_flux(self, U_: CompressibleState, Uhat_: CompressibleState):
-        ...
+        return F * unit_vector + tau_c * (U.trial - Uhat.trial)
 
 
 # ------- Configuration ------- #
 
 
-class CompressibleFlowConfig(form.FlowConfig, label="compressible"):
+class CompressibleFlowConfig(form.FlowConfig):
 
-    formulation = CompressibleFormulation
+    label: str = "compressible"
     bcs = CompressibleBC
     dcs = CompressibleDC
 
-    def __init__(self) -> None:
-        super().__init__(CompressibleEquations(self))
-        self._Mach_number = ngs.Parameter(0.3)
-        self._Reynolds_number = ngs.Parameter(1)
-        self._Prandtl_number = ngs.Parameter(0.72)
-        self.equation_of_state = 'ideal'
-        self.dynamic_viscosity = 'inviscid'
-        self.scaling = "aerodynamic"
-        self.riemann_solver = "lax_friedrich"
-        self.mixed_method = None
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.equations = CompressibleEquations(self)
 
-    def INF(self, direction: tuple[float, ...]) -> CompressibleState:
+    def dimensionless_infinity_values(self, direction: tuple[float, ...]) -> CompressibleState:
         return self.equations.farfield_state(direction)
 
-    @property
-    def equations(self) -> CompressibleEquations:
-        return self._equations
+    @cfg(Conservative)
+    def formulation(self, formulation) -> CompressibleFormulation:
+        return formulation
 
-    @property
-    def Mach_number(self) -> ngs.Parameter:
-        return self._Mach_number
-
-    @Mach_number.setter
+    @parameter(default=0.3)
     def Mach_number(self, Mach_number: float):
-        if isinstance(Mach_number, ngs.Parameter):
-            Mach_number = Mach_number.Get()
 
         if Mach_number < 0:
             raise ValueError("Invalid Mach number. Value has to be >= 0!")
-        else:
-            self._Mach_number.Set(Mach_number)
 
-    @property
-    def Reynolds_number(self) -> ngs.Parameter:
-        """ Represents the ratio between inertial and viscous forces """
-        if self.dynamic_viscosity.is_inviscid:
-            raise Exception("Inviscid solver configuration: Reynolds number not applicable")
-        return self._Reynolds_number
+        return Mach_number
 
-    @Reynolds_number.setter
+    @parameter(default=1)
     def Reynolds_number(self, Reynolds_number: float):
-        if isinstance(Reynolds_number, ngs.Parameter):
-            Reynolds_number = Reynolds_number.Get()
-
+        """ Represents the ratio between inertial and viscous forces """
         if Reynolds_number <= 0:
             raise ValueError("Invalid Reynold number. Value has to be > 0!")
-        else:
-            self._Reynolds_number.Set(Reynolds_number)
 
-    @property
-    def Prandtl_number(self) -> ngs.Parameter:
+        return Reynolds_number
+
+    @Reynolds_number.get_check
+    def Reynolds_number(self):
         if self.dynamic_viscosity.is_inviscid:
-            raise Exception("Inviscid solver configuration: Prandtl number not applicable")
-        return self._Prandtl_number
+            raise ValueError("Inviscid solver configuration: Reynolds number not applicable")
 
-    @Prandtl_number.setter
+    @parameter(default=0.72)
     def Prandtl_number(self, Prandtl_number: float):
-        if isinstance(Prandtl_number, ngs.Parameter):
-            Prandtl_number = Prandtl_number.Get()
-
         if Prandtl_number <= 0:
             raise ValueError("Invalid Prandtl_number. Value has to be > 0!")
-        else:
-            self._Prandtl_number.Set(Prandtl_number)
 
-    @property
-    def equation_of_state(self) -> IdealGas:
-        return self._equation_of_state
+        return Prandtl_number
 
-    @equation_of_state.setter
-    def equation_of_state(self, equation_of_state: str):
-        self._equation_of_state = self._get_type(equation_of_state, EquationOfState)
+    @Prandtl_number.get_check
+    def Prandtl_number(self):
+        if self.dynamic_viscosity.is_inviscid:
+            raise ValueError("Inviscid solver configuration: Prandtl number not applicable")
 
-    @property
-    def dynamic_viscosity(self) -> Constant | Inviscid | Sutherland:
-        return self._dynamic_viscosity
+    @optionsdict(default=IdealGas)
+    def equation_of_state(self, equation_of_state):
+        return equation_of_state
 
-    @dynamic_viscosity.setter
-    def dynamic_viscosity(self, dynamic_viscosity: str):
-        self._dynamic_viscosity = self._get_type(dynamic_viscosity, DynamicViscosity)
+    @optionsdict(default=Inviscid)
+    def dynamic_viscosity(self, dynamic_viscosity):
+        return dynamic_viscosity
 
-    @property
-    def scaling(self) -> Aerodynamic | Aeroacoustic | Acoustic:
-        return self._scaling
+    @optionsdict(default=Aerodynamic)
+    def scaling(self, scaling):
+        return scaling
 
-    @scaling.setter
-    def scaling(self, scaling: str):
-        self._scaling = self._get_type(scaling, Scaling)
+    @optionsdict(default=LaxFriedrich)
+    def riemann_solver(self, riemann_solver):
+        riemann_solver['cfg'] = self
+        return riemann_solver
 
-    @property
-    def riemann_solver(self) -> LaxFriedrich | Roe | HLL | HLLEM:
-        return self._riemann_solver
+    @optionsdict(default=Inactive)
+    def mixed_method(self, mixed_method):
+        return mixed_method
 
-    @riemann_solver.setter
-    def riemann_solver(self, riemann_solver: str):
-        self._riemann_solver = self._get_type(riemann_solver, RiemannSolver, cfg=self)
+    Mach_number: ngs.Parameter
+    Reynolds_number: ngs.Parameter
+    Prandtl_number: ngs.Parameter
+    equation_of_state: IdealGas
+    dynamic_viscosity: Constant | Inviscid | Sutherland
+    scaling: Aerodynamic | Acoustic | Aeroacoustic
+    riemann_solver: LaxFriedrich | Roe | HLL | HLLEM
+    mixed_method: Inactive | StrainHeat | Gradient
+    # def format(self):
+    #     formatter = self.formatter.new()
+    #     formatter.subheader('Compressible Flow Configuration').newline()
+    #     formatter.entry("Mach Number", self.Mach_number)
+    #     if not self.dynamic_viscosity.is_inviscid:
+    #         formatter.entry("Reynolds Number", self.Reynolds_number)
+    #         formatter.entry("Prandtl Number", self.Prandtl_number)
+    #     formatter.add_config(self.equation_of_state)
+    #     formatter.add_config(self.dynamic_viscosity)
+    #     formatter.add_config(self.scaling)
+    #     return formatter.output
 
-    @property
-    def mixed_method(self) -> MixedMethod | StrainHeat | Gradient:
-        return self._mixed_method
-
-    @mixed_method.setter
-    def mixed_method(self, mixed_method: str | None):
-        if mixed_method is None:
-            mixed_method = str(None)
-        self._mixed_method = self._get_type(mixed_method, MixedMethod)
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.subheader('Compressible Flow Configuration').newline()
-        formatter.entry("Mach Number", self.Mach_number)
-        if not self.dynamic_viscosity.is_inviscid:
-            formatter.entry("Reynolds Number", self.Reynolds_number)
-            formatter.entry("Prandtl Number", self.Prandtl_number)
-        formatter.add_config(self.equation_of_state)
-        formatter.add_config(self.dynamic_viscosity)
-        formatter.add_config(self.scaling)
-        return formatter.output
+# %%

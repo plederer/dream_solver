@@ -73,10 +73,10 @@ class cfg(descriptor):
         """ Called when an attribute is accessed via class not an instance """
 
     @typing.overload
-    def __get__(self, instance: UserConfig, owner: type[object]) -> typing.Any:
+    def __get__(self, instance: DictConfig, owner: type[object]) -> typing.Any:
         """ Called when an attribute is accessed on an instance variable """
 
-    def __get__(self, cfg: UserConfig, owner: type[UserConfig]):
+    def __get__(self, cfg: DictConfig, owner: type[DictConfig]):
         if cfg is None:
             return self
 
@@ -85,16 +85,16 @@ class cfg(descriptor):
 
         return cfg.data[self.label]
 
-    def __set__(self, cfg: UserConfig, value):
+    def __set__(self, cfg: DictConfig, value):
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
         cfg.data[self.label] = value
 
-    def __delete__(self, cfg: UserConfig):
+    def __delete__(self, cfg: DictConfig):
         del cfg.data[self.label]
 
-    def reset(self, cfg: UserConfig):
+    def reset(self, cfg: DictConfig):
         self.__set__(cfg, self.default)
 
     def get_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> cfg:
@@ -113,54 +113,74 @@ class cfg(descriptor):
 
 class parameter(cfg):
 
-    def reset(self, cfg: UserConfig):
-        cfg.data[self.label] = ngs.Parameter(self.default)
+    def __set__(self, cfg: DictConfig, value: float) -> None:
 
-    def __set__(self, cfg: UserConfig, value: float) -> None:
         if isinstance(value, ngs.Parameter):
             value = value.Get()
 
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
-        cfg.data[self.label].Set(value)
+        current = cfg.data.get(self.label, None)
+        if current is None:
+            cfg.data[self.label] = ngs.Parameter(value)
+        else:
+            cfg.data[self.label].Set(value)
 
 
-class types(cfg):
+class cfgdict(cfg):
 
     @property
-    def default(self) -> str:
-        return self._default.label
+    def default(self):
+        return self._default()
 
-    @property
-    def types(self) -> TypeConfigDict:
-        return self._default.types
+    def __set__(self, cfg: DictConfig, value: str | DictConfig) -> None:
 
-    def __set__(self, cfg: UserConfig, value: str | TypeConfig) -> None:
+        if isinstance(value, self._default):
+            cfg.data[self.label] = value
+            return
+
+        if not isinstance(value, dict):
+            msg = "Dictionary is required!"
+            raise TypeError(msg)
+
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
-        cfg.data[self.label] = self.types[value]()
+        cfg.data[self.label].update(**value)
 
 
-class user(cfg):
+class options(cfg):
+
+    @property
+    def options(self) -> OptionHolder:
+        return self._default.options
+
+    def __set__(self, cfg: DictConfig, value: str | OptionConfig) -> None:
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        cfg.data[self.label] = self.options[value]
+
+
+class optionsdict(cfg):
 
     @property
     def default(self) -> str:
         return self._default.label
 
     @property
-    def types(self) -> TypeConfigDict:
-        return self._default.types
+    def options(self) -> OptionHolder:
+        return self._default.options
 
-    def __set__(self, cfg: UserConfig, value: str | UserConfig | dict) -> None:
+    def __set__(self, cfg: OptionDictConfig, value: str | OptionDictConfig | dict) -> None:
 
-        if isinstance(value, self.types.interface):
+        if isinstance(value, self.options.interface):
             cfg.data[self.label] = value
             return
 
         if isinstance(value, str) or value is None:
-            value = self.types.label_to_dict(value)
+            value = self.options.label_to_dict(value)
 
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
@@ -170,7 +190,7 @@ class user(cfg):
             msg += "Dictionary with key 'type' required!"
             raise TypeError(msg)
 
-        type_ = self.types[value.pop('type')]
+        type_ = self.options[value.pop('type')]
         current = cfg.data.get(self.label, None)
 
         if isinstance(current, type_):
@@ -179,42 +199,90 @@ class user(cfg):
             cfg.data[self.label] = type_(**value)
 
 
-# ------- Type Configuration Container ------- #
-class TypeConfigMeta(abc.ABCMeta):
+# ------- Configuration Metaclasses ------- #
+
+class ConfigMeta(abc.ABCMeta):
+
+    logger: logging.Logger
+
+    def __new__(cls, clsname, bases, attrs):
+
+        if 'logger' not in attrs:
+            attrs['logger'] = logger.getChild(clsname)
+
+        return abc.ABCMeta.__new__(cls, clsname, bases, attrs)
+
+    @classmethod
+    def get_configurations(cls, attrs: dict) -> list[cfg]:
+        return [cfg_ for cfg_ in attrs.values() if isinstance(cfg_, cfg)]
+
+
+class DictConfigMeta(ConfigMeta):
+
+    cfgs: list[cfg]
+
+    def __new__(cls, clsname, bases, attrs):
+
+        if 'cfgs' not in attrs:
+            attrs['cfgs'] = cls.get_configurations(attrs)
+
+        return ConfigMeta.__new__(cls, clsname, bases, attrs)
+
+
+class OptionConfigMeta(ConfigMeta):
 
     label: str
     aliases: tuple[str]
-    types: TypeConfigDict
-    logger: logging.Logger
-    cfgs: list[cfg]
+    options: OptionHolder
 
     def __new__(cls, clsname, bases, attrs, is_interface: bool = False):
-        if 'label' not in attrs:
-            attrs['label'] = clsname
+
+        label = attrs.get('label', clsname)
+        attrs['label'] = label.lower()
 
         if 'aliases' not in attrs:
             attrs['aliases'] = ()
 
-        cls = super().__new__(cls, clsname, bases, attrs)
+        if not is_interface:
+            interface = bases[0]
+            attrs['logger'] = interface.logger
 
-        cfgs = [cfg_ for cfg_ in attrs.values() if isinstance(cfg_, cfg)]
+        cls = ConfigMeta.__new__(cls, clsname, bases, attrs)
+
         if is_interface:
-            cls.types = TypeConfigDict(cls)
-            cls.logger = logger.getChild(cls.__name__)
-            cls.cfgs = cfgs
-
+            cls.options = OptionHolder(cls)
         else:
-
-            cls.types[cls.label] = cls
+            cls.options[cls.label] = cls
             for alias in cls.aliases:
-                cls.types[alias] = cls
-
-            cls.cfgs = cfgs + cls.cfgs
+                cls.options[alias] = cls
 
         return cls
 
 
-class TypeConfigDict(collections.UserDict):
+class OptionDictConfigMeta(DictConfigMeta, OptionConfigMeta):
+
+    label: str
+    aliases: tuple[str]
+    options: OptionHolder
+    logger: logging.Logger
+    cfgs: list[cfg]
+
+    def __new__(cls, clsname, bases, attrs, is_interface: bool = False):
+
+        if not is_interface:
+            interface = bases[0]
+            attrs['logger'] = interface.logger
+
+        dict_ = DictConfigMeta.__new__(cls, clsname, bases, attrs)
+
+        if not is_interface:
+            interface = bases[0]
+            attrs['cfgs'] += interface.cfgs
+
+        return OptionConfigMeta.__new__(cls, clsname, bases, attrs, is_interface)
+
+
+class OptionHolder(collections.UserDict):
 
     @classmethod
     def type_to_dict(cls, type_, **kwargs) -> dict[str, typing.Any]:
@@ -250,16 +318,20 @@ class TypeConfigDict(collections.UserDict):
         return super().__contains__(key)
 
 
-class TypeConfig(metaclass=TypeConfigMeta, is_interface=True):
+# ------- Abstract Classes ------- #
+
+class OptionConfig(metaclass=OptionConfigMeta, is_interface=True):
 
     label: str
     aliases: tuple[str]
-    types: TypeConfigDict
-    logger: logging.Logger
-    cfgs: list[cfg]
+    options: OptionHolder
 
+    def __str__(self):
+        return self.__class__.label
 
-# ------- Descriptor Container ------- #
+    def __repr__(self) -> str:
+        return str(self)
+
 
 class DescriptorDict(collections.UserDict):
 
@@ -310,11 +382,8 @@ class State(DescriptorDict):
         return merge
 
 
-class UserConfig(DescriptorDict, metaclass=TypeConfigMeta, is_interface=True):
+class DictConfig(DescriptorDict, metaclass=DictConfigMeta):
 
-    label: str
-    aliases: tuple[str]
-    types: TypeConfigDict
     logger: logging.Logger
     cfgs: list[cfg]
 
@@ -338,8 +407,7 @@ class UserConfig(DescriptorDict, metaclass=TypeConfigMeta, is_interface=True):
             value.reset(self)
 
     def flatten(self) -> dict[str, typing.Any]:
-        items = {key: value.flatten() if isinstance(value, UserConfig) else value for key, value in self.items()}
-        return self.types.type_to_dict(self, **items)
+        return {key: value.flatten() if isinstance(value, DictConfig) else value for key, value in self.items()}
 
     def __repr__(self) -> str:
         cfg = f"{str(self)}" + "{\n"
@@ -348,7 +416,19 @@ class UserConfig(DescriptorDict, metaclass=TypeConfigMeta, is_interface=True):
         return cfg
 
 
-class BonusIntegrationOrder(UserConfig):
+class OptionDictConfig(DictConfig, metaclass=OptionDictConfigMeta, is_interface=True):
+
+    label: str
+    aliases: tuple[str]
+    options: OptionHolder
+
+    def flatten(self) -> dict[str, typing.Any]:
+        return self.options.type_to_dict(self, **super().flatten())
+
+
+# ------- Concrete Classes ------- #
+
+class BonusIntegrationOrder(DictConfig):
 
     @cfg(default=0)
     def VOL(self, VOL):
@@ -372,7 +452,7 @@ class BonusIntegrationOrder(UserConfig):
     BBBND: int
 
 
-class FiniteElementConfig(UserConfig):
+class FiniteElementConfig(DictConfig):
 
     @cfg(default=2)
     def order(self, order):
@@ -382,7 +462,7 @@ class FiniteElementConfig(UserConfig):
     def static_condensation(self, static_condensation):
         return bool(static_condensation)
 
-    @user(default=BonusIntegrationOrder)
+    @cfgdict(default=BonusIntegrationOrder)
     def bonus_int_order(self, dict_):
         return dict_
 
@@ -398,6 +478,8 @@ class FiniteElementConfig(UserConfig):
     static_condensation: bool
     bonus_int_order: BonusIntegrationOrder
 
+
+# ------ Formatter ------- #
 
 class Formatter:
 

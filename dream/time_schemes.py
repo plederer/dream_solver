@@ -3,76 +3,51 @@ import numpy as np
 import ngsolve as ngs
 import logging
 
-from dream.config import UserConfig
+from dream.config import OptionDictConfig, DictConfig, parameter, cfg
 from collections import UserDict
 
 
 logger = logging.getLogger(__name__)
 
 
-class Timer:
+class Timer(DictConfig):
 
-    @property
-    def step(self) -> ngs.Parameter:
-        return self._step
+    @cfg(default=0.0)
+    def start(self, start):
+        return start
 
-    @step.setter
-    def step(self, step: float):
-        if isinstance(step, ngs.Parameter):
-            step = step.Get()
+    @cfg(default=1.0)
+    def end(self, end):
+        return end
 
+    @parameter(default=1e-4)
+    def step(self, step):
         step = float(step)
         self._set_time_step_digit(step)
-        self._step.Set(step)
+        return step
 
-    @property
-    def t(self) -> ngs.Parameter:
-        return self._t
+    @parameter(default=0.0)
+    def t(self, t):
+        return t
 
-    @t.setter
-    def t(self, t) -> None:
-        if isinstance(t, ngs.Parameter):
-            t = t.Get()
-        self._t.Set(t)
-
-    def set(self, start: float = None, stop: float = None, step: float = None):
-        if start is not None:
-            self.start = start
-
-        if stop is not None:
-            self.stop = stop
-
-        if step is not None:
-            self.step = step
-
+    def __call__(self, **kwargs):
+        self.update(**kwargs)
+        for t in self.to_iterator(step=1):
+            self.t = t
+            yield t
+        
     def to_iterator(self, step: int = 1):
         for t in self.to_array()[::step]:
             yield t
 
     def to_array(self, include_start: bool = False) -> np.ndarray:
-        num = round((self.stop - self.start)/self.step.Get()) + 1
+        num = round((self.end - self.start)/self.step.Get()) + 1
 
-        interval = np.linspace(self.start, self.stop, num)
+        interval = np.linspace(self.start, self.end, num)
         if not include_start:
             interval = interval[1:]
 
         return interval.round(self._step_digit)
-
-    def __init__(self, start: float = 0.0, stop: float = 1.0, step: float = 1e-4) -> None:
-        self.start = start
-        self.stop = stop
-        self._step = ngs.Parameter(step)
-        self._t = ngs.Parameter(start)
-
-        self._set_time_step_digit(step)
-
-    def __iter__(self):
-        for t in self.to_iterator(step=1):
-            self.t.Set(t)
-            yield t
-
-    def __repr__(self):
-        return '{' + f"Start: {self.start}, Stop: {self.stop}, Step: {self.step.Get()}" + '}'
 
     def _set_time_step_digit(self, step: float):
 
@@ -83,19 +58,16 @@ class Timer:
         self._step_digit = len(digit.rstrip("0"))
 
 
-class SimulationConfig(UserConfig):
-
-    types: dict[str, SimulationConfig] = {}
-
-    def __init_subclass__(cls, label: str) -> None:
-        cls.types[label] = cls
+class SimulationConfig(OptionDictConfig, is_interface=True):
 
     @property
     def is_stationary(self) -> bool:
         return isinstance(self, StationaryConfig)
 
 
-class StationaryConfig(SimulationConfig, label="stationary"):
+class StationaryConfig(SimulationConfig):
+
+    label: str = "stationary"
 
     def format(self):
         formatter = self.formatter.new()
@@ -103,7 +75,9 @@ class StationaryConfig(SimulationConfig, label="stationary"):
         return formatter.output
 
 
-class TransientConfig(SimulationConfig, label="transient"):
+class TransientConfig(SimulationConfig):
+
+    label: str = "transient"
 
     def __init__(self):
         self._scheme = "IE"
@@ -115,7 +89,7 @@ class TransientConfig(SimulationConfig, label="transient"):
 
     @timer.setter
     def timer(self, timer: Timer):
-        self._timer.set(timer.start, timer.stop, timer.step)
+        self._timer.set(timer.start, timer.end, timer.step)
 
     @property
     def scheme(self) -> TimeSchemes:
@@ -133,7 +107,9 @@ class TransientConfig(SimulationConfig, label="transient"):
         return formatter.output
 
 
-class PseudoTimeSteppingConfig(TransientConfig, label="pseudo"):
+class PseudoTimeSteppingConfig(TransientConfig):
+
+    label: str = "pseudo"
 
     def __init__(self):
         super().__init__()
@@ -230,3 +206,5 @@ class BDF2(TimeSchemes, labels=["BDF2"]):
 
     def denominator(self) -> ngs.CF:
         return 2*self.cfg.timer.step
+
+# %%

@@ -2,6 +2,7 @@ from __future__ import annotations
 import unittest
 import numpy.testing as nptest
 from tests import simplex
+import ngsolve as ngs
 
 from dream.formulations import compressible as cp
 
@@ -352,15 +353,15 @@ class Sutherland(unittest.TestCase):
         state = cp.CompressibleState(temperature=1)
 
         self.cfg.scaling = "aerodynamic"
-        self.cfg.scaling.INF.temperature = 1
+        self.cfg.scaling.dimensional_infinity_values.temperature = 1
         self.assertAlmostEqual(self.mu.viscosity(state, self.cfg.equations)(self.mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
         self.cfg.scaling = "acoustic"
-        self.cfg.scaling.INF.temperature = 1
+        self.cfg.scaling.dimensional_infinity_values.temperature = 1
         self.assertAlmostEqual(self.mu.viscosity(state, self.cfg.equations)(self.mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
         self.cfg.scaling = "aeroacoustic"
-        self.cfg.scaling.INF.temperature = 1
+        self.cfg.scaling.dimensional_infinity_values.temperature = 1
         self.assertAlmostEqual(self.mu.viscosity(state, self.cfg.equations)(self.mip), (1.6)**(3/2) * (2/1.6)/(1+1/1.6))
 
 

@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import Any
 
-from dream.config import UserConfig
+from dream.config import DictConfig
 
 from .tree import ResultsDirectoryTree
 
 
-class IOConfig(UserConfig):
+class IOConfig(DictConfig):
 
     def __init__(self) -> None:
         self._tree = ResultsDirectoryTree()

@@ -4,6 +4,48 @@ import unittest
 import dream.config as cfg
 import ngsolve as ngs
 
+class SubTest(cfg.OptionDictConfig, is_interface=True):
+    ...
+
+class Test_A(SubTest):
+
+    label: str = "A"
+
+    @cfg.cfg(default="abc")
+    def sub_a(self, c: str):
+        return str(c)
+
+class Test_B(SubTest):
+
+    @cfg.cfg(default=0.3)
+    def sub_b(self, b):
+        return float(b)
+
+class Test(cfg.OptionDictConfig, is_interface=True):
+
+    @cfg.cfg(default=2)
+    def a(self, a: int):
+        """ Polynomial Order """
+        if a < 0:
+            raise ValueError("Order must be greater > 0")
+        return int(a)
+
+    @cfg.parameter(default=2)
+    def b(self, b):
+        """ Heat Capacity Ratio """
+        return b
+
+    @b.get_check
+    def b(self):
+        if self.a > 10:
+            raise ValueError("Polynomial Order to high!")
+
+    @cfg.optionsdict(default=Test_A)
+    def c(self, cfg: SubTest):
+        return cfg
+    
+    c: SubTest
+
 
 class Descriptor(unittest.TestCase):
 
@@ -115,83 +157,33 @@ class DescriptorDict(unittest.TestCase):
 
 class UserConfig(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
-        
-        class SubTest(cfg.UserConfig, is_interface=True):
-            ...
-
-        class Test_A(SubTest):
-
-            label: str = "A"
-
-            @cfg.cfg(default="abc")
-            def sub_a(self, c: str):
-                return str(c)
-
-        class Test_B(SubTest):
-
-            @cfg.cfg(default=0.3)
-            def sub_b(self, b):
-                return float(b)
-
-        class Test(cfg.UserConfig, is_interface=True):
-
-            @cfg.cfg(default=2)
-            def a(self, a: int):
-                """ Polynomial Order """
-                if a < 0:
-                    raise ValueError("Order must be greater > 0")
-                return int(a)
-
-            @cfg.parameter(default=2)
-            def b(self, b):
-                """ Heat Capacity Ratio """
-                return b
-
-            @b.get_check
-            def b(self):
-                if self.a > 10:
-                    raise ValueError("Polynomial Order to high!")
-
-            @cfg.user(default=Test_A)
-            def c(self, cfg: SubTest):
-                return cfg
-            
-            c: SubTest
-
-        cls.subclass_ = SubTest
-        cls.subclass_A = Test_A
-        cls.subclass_B = Test_B
-        cls.class_ = Test
-
     def setUp(self):
-        self.obj = self.class_()
+        self.obj = Test()
 
     def tearDown(self) -> None:
         self.obj.clear()
 
     def test_types(self):
-        self.assertDictEqual(self.obj.types.data, {})
-        self.assertDictEqual(self.obj.c.types.data, {'A': self.subclass_A, 'Test_B': self.subclass_B})
+        self.assertDictEqual(self.obj.options.data, {})
+        self.assertDictEqual(self.obj.c.options.data, {'a': Test_A, 'test_b': Test_B})
 
     def test_nested_configuration_string_constructor(self):
-        self.obj.c = "A"
+        self.obj.c = "a"
         self.assertDictEqual(self.obj.c.data, {'sub_a': 'abc'})
 
-        self.obj.c = "Test_B"
+        self.obj.c = "test_b"
         self.assertDictEqual(self.obj.c.data, {'sub_b': 0.3})
 
+
     def test_nested_configuration_dict_constructor(self):
-        self.obj.c = {'type': 'A', 'sub_a': 'art', '_private': 2}
+        self.obj.c = {'type': 'a', 'sub_a': 'art', '_private': 2}
         self.assertDictEqual(self.obj.c.data, {'sub_a': 'art'})
 
-        self.obj.c = {'type': 'Test_B', 'sub_b': 0.1, '_private': 2}
+        self.obj.c = {'type': 'test_b', 'sub_b': 0.1, '_private': 2}
         self.assertDictEqual(self.obj.c.data, {'sub_b': 0.1})
 
     def test_flatten(self):
-        print(self.obj.flatten())
-        self.assertDictEqual(self.obj.flatten(), {'type': 'Test', 'a': 2, 'b': self.obj.b, 'c': {'type': 'A', 'sub_a': 'abc'}})
+        self.assertDictEqual(self.obj.flatten(), {'type': 'test', 'a': 2, 'b': self.obj.b, 'c': {'type': 'a', 'sub_a': 'abc'}})
 
     def test_clear_id(self):
         old = [self.obj.b, self.obj.c]
@@ -205,7 +197,7 @@ class UserConfig(unittest.TestCase):
     def test_update_id(self):
         old = [self.obj.b, self.obj.c]
 
-        self.obj.update(**{'a': 2, 'b': 0.3, 'c': {'type': 'A', '_sub_b': 3}})
+        self.obj.update(**{'a': 2, 'b': 0.3, 'c': {'type': 'a', '_sub_b': 3}})
         new = [self.obj.b, self.obj.c]
 
         for new, old in zip(old, new):
