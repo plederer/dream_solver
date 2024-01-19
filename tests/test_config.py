@@ -2,45 +2,44 @@ from __future__ import annotations
 import unittest
 
 import dream.config as cfg
-import ngsolve as ngs
 
-class SubTest(cfg.OptionDictConfig, is_interface=True):
+class SubTest(cfg.MultipleConfiguration, is_interface=True):
     ...
 
 class Test_A(SubTest):
 
     label: str = "A"
 
-    @cfg.cfg(default="abc")
+    @cfg.standard_configuration(default="abc")
     def sub_a(self, c: str):
         return str(c)
 
 class Test_B(SubTest):
 
-    @cfg.cfg(default=0.3)
+    @cfg.standard_configuration(default=0.3)
     def sub_b(self, b):
         return float(b)
 
-class Test(cfg.OptionDictConfig, is_interface=True):
+class Test(cfg.MultipleConfiguration, is_interface=True):
 
-    @cfg.cfg(default=2)
+    @cfg.standard_configuration(default=2)
     def a(self, a: int):
         """ Polynomial Order """
         if a < 0:
             raise ValueError("Order must be greater > 0")
         return int(a)
 
-    @cfg.parameter(default=2)
+    @cfg.parameter_configuration(default=2)
     def b(self, b):
         """ Heat Capacity Ratio """
         return b
 
-    @b.get_check
+    @b.getter_check
     def b(self):
         if self.a > 10:
             raise ValueError("Polynomial Order to high!")
 
-    @cfg.optionsdict(default=Test_A)
+    @cfg.multiple_configuration(default=Test_A)
     def c(self, cfg: SubTest):
         return cfg
     

@@ -6,20 +6,20 @@ from typing import Optional, NamedTuple, Any
 from math import isnan
 
 from .sensor import Sensor
-from .formulations import FlowConfig, CompressibleFlowConfig
-from .config import DictConfig, FiniteElementConfig
+from .formulations import PDEConfiguration, CompressibleFlowConfiguration
+from .config import SingleConfiguration, FiniteElementConfig
 from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, SimulationConfig
 from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
 
 logger = logging.getLogger(__name__)
 
 
-class SolverConfiguration(DictConfig):
+class SolverConfiguration(SingleConfiguration):
 
     def __init__(self) -> None:
 
         # Flow Configuration
-        self.flow = "compressible"
+        self.pde = "compressible_flow"
 
         # Time Configuration
         self.simulation = "transient"
@@ -36,12 +36,12 @@ class SolverConfiguration(DictConfig):
         self._io = IOConfig()
 
     @property
-    def flow(self) -> CompressibleFlowConfig:
+    def pde(self) -> CompressibleFlowConfiguration:
         return self._flow
 
-    @flow.setter
-    def flow(self, flow):
-        self._flow = self._get_type(flow, FlowConfig)
+    @pde.setter
+    def pde(self, flow):
+        self._flow = self._get_type(flow, PDEConfiguration)
 
     @property
     def simulation(self) -> StationaryConfig | TransientConfig | PseudoTimeSteppingConfig:
@@ -115,7 +115,7 @@ class SolverConfiguration(DictConfig):
         formatter = self.formatter.new()
         formatter.header('Solver Configuration').newline()
 
-        formatter.add_config(self.flow).newline()
+        formatter.add_config(self.pde).newline()
         formatter.add_config(self.time).newline()
         formatter.add_config(self.fem).newline()
 

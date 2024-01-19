@@ -22,7 +22,7 @@ class descriptor:
 
 class variable(descriptor):
     """
-    Variable is a descriptor that sets private variables to an instance with an underscore.
+    Variable is a descriptor that mimics a physical quantity.
 
     Since it ressembles a scalar, a vector or a matrix it is possible to pass a cast function
     to the constructor such that every time an attribute is set, the value gets cast to the appropriate
@@ -48,7 +48,7 @@ class variable(descriptor):
         del state.data[self.label]
 
 
-class cfg(descriptor):
+class standard_configuration(descriptor):
 
     __slots__ = ('_default', 'fset_', 'fget_', '__doc__')
 
@@ -69,14 +69,14 @@ class cfg(descriptor):
         self.label = ''
 
     @typing.overload
-    def __get__(self, instance: None, owner: type[object]) -> cfg:
+    def __get__(self, instance: None, owner: type[object]) -> standard_configuration:
         """ Called when an attribute is accessed via class not an instance """
 
     @typing.overload
-    def __get__(self, instance: DictConfig, owner: type[object]) -> typing.Any:
+    def __get__(self, instance: SingleConfiguration, owner: type[object]) -> typing.Any:
         """ Called when an attribute is accessed on an instance variable """
 
-    def __get__(self, cfg: DictConfig, owner: type[DictConfig]):
+    def __get__(self, cfg: SingleConfiguration, owner: type[SingleConfiguration]):
         if cfg is None:
             return self
 
@@ -85,35 +85,35 @@ class cfg(descriptor):
 
         return cfg.data[self.label]
 
-    def __set__(self, cfg: DictConfig, value):
+    def __set__(self, cfg: SingleConfiguration, value):
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
         cfg.data[self.label] = value
 
-    def __delete__(self, cfg: DictConfig):
+    def __delete__(self, cfg: SingleConfiguration):
         del cfg.data[self.label]
 
-    def reset(self, cfg: DictConfig):
+    def reset(self, cfg: SingleConfiguration):
         self.__set__(cfg, self.default)
 
-    def get_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> cfg:
+    def getter_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> standard_configuration:
         prop = type(self)(self._default, self.fset_, fget_, self.__doc__)
         prop.label = self.label
         return prop
 
-    def set_check(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> cfg:
+    def set_check(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> standard_configuration:
         prop = type(self)(self._default, fset_, self.fget_, self.__doc__)
         prop.label = self.label
         return prop
 
-    def __call__(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> cfg:
+    def __call__(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> standard_configuration:
         return self.set_check(fset_)
 
 
-class parameter(cfg):
+class parameter_configuration(standard_configuration):
 
-    def __set__(self, cfg: DictConfig, value: float) -> None:
+    def __set__(self, cfg: SingleConfiguration, value: float) -> None:
 
         if isinstance(value, ngs.Parameter):
             value = value.Get()
@@ -128,13 +128,15 @@ class parameter(cfg):
             cfg.data[self.label].Set(value)
 
 
-class cfgdict(cfg):
+class single_configuration(standard_configuration):
+
+    _default: SingleConfiguration
 
     @property
     def default(self):
         return self._default()
 
-    def __set__(self, cfg: DictConfig, value: str | DictConfig) -> None:
+    def __set__(self, cfg: SingleConfiguration, value: str | SingleConfiguration) -> None:
 
         if isinstance(value, self._default):
             cfg.data[self.label] = value
@@ -150,20 +152,24 @@ class cfgdict(cfg):
         cfg.data[self.label].update(**value)
 
 
-class options(cfg):
+class interface_configuration(standard_configuration):
+
+    _default: InterfaceConfiguration
 
     @property
     def options(self) -> OptionHolder:
         return self._default.options
 
-    def __set__(self, cfg: DictConfig, value: str | OptionConfig) -> None:
+    def __set__(self, cfg: SingleConfiguration, value: str | InterfaceConfiguration) -> None:
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
         cfg.data[self.label] = self.options[value]
 
 
-class optionsdict(cfg):
+class multiple_configuration(standard_configuration):
+
+    _default: MultipleConfiguration
 
     @property
     def default(self) -> str:
@@ -173,7 +179,7 @@ class optionsdict(cfg):
     def options(self) -> OptionHolder:
         return self._default.options
 
-    def __set__(self, cfg: OptionDictConfig, value: str | OptionDictConfig | dict) -> None:
+    def __set__(self, cfg: MultipleConfiguration, value: str | MultipleConfiguration | dict) -> None:
 
         if isinstance(value, self.options.interface):
             cfg.data[self.label] = value
@@ -213,13 +219,13 @@ class ConfigMeta(abc.ABCMeta):
         return abc.ABCMeta.__new__(cls, clsname, bases, attrs)
 
     @classmethod
-    def get_configurations(cls, attrs: dict) -> list[cfg]:
-        return [cfg_ for cfg_ in attrs.values() if isinstance(cfg_, cfg)]
+    def get_configurations(cls, attrs: dict) -> list[standard_configuration]:
+        return [cfg_ for cfg_ in attrs.values() if isinstance(cfg_, standard_configuration)]
 
 
-class DictConfigMeta(ConfigMeta):
+class SingleConfigurationMeta(ConfigMeta):
 
-    cfgs: list[cfg]
+    cfgs: list[standard_configuration]
 
     def __new__(cls, clsname, bases, attrs):
 
@@ -229,7 +235,7 @@ class DictConfigMeta(ConfigMeta):
         return ConfigMeta.__new__(cls, clsname, bases, attrs)
 
 
-class OptionConfigMeta(ConfigMeta):
+class InterfaceMeta(ConfigMeta):
 
     label: str
     aliases: tuple[str]
@@ -259,13 +265,13 @@ class OptionConfigMeta(ConfigMeta):
         return cls
 
 
-class OptionDictConfigMeta(DictConfigMeta, OptionConfigMeta):
+class MultipleConfigurationMeta(SingleConfigurationMeta, InterfaceMeta):
 
     label: str
     aliases: tuple[str]
     options: OptionHolder
     logger: logging.Logger
-    cfgs: list[cfg]
+    cfgs: list[standard_configuration]
 
     def __new__(cls, clsname, bases, attrs, is_interface: bool = False):
 
@@ -273,20 +279,20 @@ class OptionDictConfigMeta(DictConfigMeta, OptionConfigMeta):
             interface = bases[0]
             attrs['logger'] = interface.logger
 
-        dict_ = DictConfigMeta.__new__(cls, clsname, bases, attrs)
+        dict_ = SingleConfigurationMeta.__new__(cls, clsname, bases, attrs)
 
         if not is_interface:
             interface = bases[0]
             attrs['cfgs'] += interface.cfgs
 
-        return OptionConfigMeta.__new__(cls, clsname, bases, attrs, is_interface)
+        return InterfaceMeta.__new__(cls, clsname, bases, attrs, is_interface)
 
 
 class OptionHolder(collections.UserDict):
 
     @classmethod
-    def type_to_dict(cls, type_, **kwargs) -> dict[str, typing.Any]:
-        return cls.label_to_dict(type_.label, **kwargs)
+    def option_to_dict(cls, option: InterfaceConfiguration, **kwargs) -> dict[str, typing.Any]:
+        return cls.label_to_dict(option.label, **kwargs)
 
     @classmethod
     def label_to_dict(cls, label, **kwargs) -> dict[str, typing.Any]:
@@ -294,7 +300,7 @@ class OptionHolder(collections.UserDict):
         dict_.update(**kwargs)
         return dict_
 
-    def __init__(self, interface):
+    def __init__(self, interface: InterfaceConfiguration):
         self.interface = interface
         super().__init__()
 
@@ -319,18 +325,6 @@ class OptionHolder(collections.UserDict):
 
 
 # ------- Abstract Classes ------- #
-
-class OptionConfig(metaclass=OptionConfigMeta, is_interface=True):
-
-    label: str
-    aliases: tuple[str]
-    options: OptionHolder
-
-    def __str__(self):
-        return self.__class__.label
-
-    def __repr__(self) -> str:
-        return str(self)
 
 
 class DescriptorDict(collections.UserDict):
@@ -360,13 +354,13 @@ class State(DescriptorDict):
         return all([arg is not None for arg in args])
 
     def to_python(self) -> State:
-        """ Casts a state to a base state in which every NGSolve Coefficientfunction is cast back to a python object.
+        """ Returns the current state represented by pure python objects. 
         """
         mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
         mip = mesh()
         return State(**{key: value(mip) if isinstance(value, ngs.CF) else value for key, value in self.items()})
 
-    def merge(self, *states: State, inplace: bool = False) -> State:
+    def merge_states(self, *states: State, overwrite: bool = False, inplace: bool = False) -> State:
         merge = State()
         if inplace:
             merge = self
@@ -375,17 +369,34 @@ class State(DescriptorDict):
 
             duplicates = set(state).intersection(merge)
             if duplicates:
-                raise ValueError(f"Merge conflict! '{duplicates}' included multiple times!")
+
+                if not overwrite:
+                    raise ValueError(f"Merge conflict! '{duplicates}' included multiple times!")
+
+                logger.warning(f"Found duplicates '{duplicates}'! Overwriting state!")
 
             merge.update(**state)
 
         return merge
 
 
-class DictConfig(DescriptorDict, metaclass=DictConfigMeta):
+class InterfaceConfiguration(metaclass=InterfaceMeta, is_interface=True):
+
+    label: str
+    aliases: tuple[str]
+    options: OptionHolder
+
+    def __str__(self):
+        return self.__class__.label
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class SingleConfiguration(DescriptorDict, metaclass=SingleConfigurationMeta):
 
     logger: logging.Logger
-    cfgs: list[cfg]
+    cfgs: list[standard_configuration]
 
     def __init__(self, **kwargs):
         self.clear()
@@ -401,13 +412,12 @@ class DictConfig(DescriptorDict, metaclass=DictConfigMeta):
                 self.logger.info(msg)
 
     def clear(self) -> None:
-        self.__dict__.clear()
         self.data = {}
         for value in self.cfgs:
             value.reset(self)
 
     def flatten(self) -> dict[str, typing.Any]:
-        return {key: value.flatten() if isinstance(value, DictConfig) else value for key, value in self.items()}
+        return {key: value.flatten() if isinstance(value, SingleConfiguration) else value for key, value in self.items()}
 
     def __repr__(self) -> str:
         cfg = f"{str(self)}" + "{\n"
@@ -416,33 +426,33 @@ class DictConfig(DescriptorDict, metaclass=DictConfigMeta):
         return cfg
 
 
-class OptionDictConfig(DictConfig, metaclass=OptionDictConfigMeta, is_interface=True):
+class MultipleConfiguration(SingleConfiguration, metaclass=MultipleConfigurationMeta, is_interface=True):
 
     label: str
     aliases: tuple[str]
     options: OptionHolder
 
     def flatten(self) -> dict[str, typing.Any]:
-        return self.options.type_to_dict(self, **super().flatten())
+        return self.options.option_to_dict(self, **super().flatten())
 
 
 # ------- Concrete Classes ------- #
 
-class BonusIntegrationOrder(DictConfig):
+class BonusIntegrationOrder(SingleConfiguration):
 
-    @cfg(default=0)
+    @standard_configuration(default=0)
     def VOL(self, VOL):
         return int(VOL)
 
-    @cfg(default=0)
+    @standard_configuration(default=0)
     def BND(self, BND):
         return int(BND)
 
-    @cfg(default=0)
+    @standard_configuration(default=0)
     def BBND(self, BBND):
         return int(BBND)
 
-    @cfg(default=0)
+    @standard_configuration(default=0)
     def BBBND(self, BBBND):
         return int(BBBND)
 
@@ -452,17 +462,17 @@ class BonusIntegrationOrder(DictConfig):
     BBBND: int
 
 
-class FiniteElementConfig(DictConfig):
+class FiniteElementConfig(SingleConfiguration):
 
-    @cfg(default=2)
+    @standard_configuration(default=2)
     def order(self, order):
         return int(order)
 
-    @cfg(default=True)
+    @standard_configuration(default=True)
     def static_condensation(self, static_condensation):
         return bool(static_condensation)
 
-    @cfgdict(default=BonusIntegrationOrder)
+    @single_configuration(default=BonusIntegrationOrder)
     def bonus_int_order(self, dict_):
         return dict_
 

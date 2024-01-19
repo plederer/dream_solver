@@ -16,7 +16,7 @@ def test_equation(throws: bool = False, is_vector: bool = False):
 
             if throws:
                 state = cp.CompressibleState()
-                with self.assertRaises(NotImplementedError):
+                with self.assertRaises(ValueError):
                     getattr(self.eq, name)(state)
 
             value = 1
@@ -335,7 +335,7 @@ class Sutherland(unittest.TestCase):
         self.mu = cp.Sutherland()
         self.mu.measurement_temperature = 1
 
-        self.cfg = cp.CompressibleFlowConfig()
+        self.cfg = cp.CompressibleFlowConfiguration()
         self.cfg.Mach_number = 1
         self.cfg.equation_of_state.heat_capacity_ratio = 1.4
 
@@ -533,14 +533,14 @@ class CompressibleEquations(unittest.TestCase):
         A = self.eq.primitive_convective_jacobian_x(state)
         B = self.eq.primitive_convective_jacobian_y(state)
         An_1 = A * unit_vector[0] + B * unit_vector[1]
-        An_2 = self.eq.primitive_convective_jacobian(state, unit_vector)
+        An_2 = self.eq.get_primitive_convective_jacobian(state, unit_vector)
 
         nptest.assert_almost_equal(An_1(self.mip), An_2(self.mip))
 
         A = self.eq.conservative_convective_jacobian_x(state)
         B = self.eq.conservative_convective_jacobian_y(state)
         An_1 = A * unit_vector[0] + B * unit_vector[1]
-        An_2 = self.eq.conservative_convective_jacobian(state, unit_vector)
+        An_2 = self.eq.get_conservative_convective_jacobian(state, unit_vector)
 
         nptest.assert_almost_equal(An_1(self.mip), An_2(self.mip))
 
@@ -549,17 +549,17 @@ class CompressibleEquations(unittest.TestCase):
         unit_vector = (1, 0)
 
         with self.assertRaises(ValueError):
-            self.eq.characteristic_identity(state, unit_vector)(self.mip)
+            self.eq.get_characteristic_identity(state, unit_vector)(self.mip)
 
-        nptest.assert_almost_equal(self.eq.characteristic_identity(state, unit_vector, "incoming")(
+        nptest.assert_almost_equal(self.eq.get_characteristic_identity(state, unit_vector, "incoming")(
             self.mip), (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-        nptest.assert_almost_equal(self.eq.characteristic_identity(state, unit_vector, "outgoing")(
+        nptest.assert_almost_equal(self.eq.get_characteristic_identity(state, unit_vector, "outgoing")(
             self.mip), (0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
 
     def test_farfield_state(self):
 
         self.eq.cfg.scaling = "aerodynamic"
-        INF = self.eq.farfield_state((1, 0)).to_python()
+        INF = self.eq.get_farfield_state((1, 0)).to_python()
         results = {"density": 1.0, "speed_of_sound": 10/3, "temperature": 1/(0.4 * 0.3**2),
                    "pressure": 1/(1.4 * 0.3**2), "velocity": (1.0, 0.0), "inner_energy": 1/(1.4 * 0.3**2 * 0.4),
                    "kinetic_energy": 0.5, "energy": 1/(1.4 * 0.3**2 * 0.4) + 0.5}
@@ -569,7 +569,7 @@ class CompressibleEquations(unittest.TestCase):
             nptest.assert_almost_equal(is_[1], exp_[1])
 
         self.eq.cfg.scaling = "aeroacoustic"
-        INF = self.eq.farfield_state((1, 0)).to_python()
+        INF = self.eq.get_farfield_state((1, 0)).to_python()
         results = {
             "density": 1.0, "speed_of_sound": 10 / 13, "temperature": 1 / (0.4 * (1 + 0.3) ** 2),
             "pressure": 1 / (1.4 * (1 + 0.3) ** 2),
@@ -582,7 +582,7 @@ class CompressibleEquations(unittest.TestCase):
             nptest.assert_almost_equal(is_[1], exp_[1])
 
         self.eq.cfg.scaling = "acoustic"
-        INF = self.eq.farfield_state((1, 0)).to_python()
+        INF = self.eq.get_farfield_state((1, 0)).to_python()
         results = {"density": 1.0, "speed_of_sound": 1, "temperature": 10/4,
                    "pressure": 1/1.4, "velocity": (0.3, 0.0), "inner_energy": 10/5.6,
                    "kinetic_energy": 0.045, "energy": 10/5.6 + 0.045}

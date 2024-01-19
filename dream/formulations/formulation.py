@@ -9,7 +9,7 @@ import ngsolve as ngs
 
 from dream import bla
 from dream import mesh as dmesh
-from dream.config import OptionDictConfig, State
+from dream.config import MultipleConfiguration, State, InterfaceConfiguration
 from dream.time_schemes import TransientGridfunction
 
 logger = logging.getLogger(__name__)
@@ -23,11 +23,20 @@ if typing.TYPE_CHECKING:
 # ------- Equations ------- #
 
 def equation(func):
+    """ Equation is a decorator that wraps a function which takes as first argument a state.
+
+        The name of the function should ressemble a physical quantity like 'density' or 'velocity'.
+
+        When the decorated function get's called the wrapper checks first if the quantity is already defined
+        and returns it. 
+        If the quantity is not defined, the wrapper executes the decorated function, which should
+        return a valid value. Otherwise a ValueError is thrown.
+    """
 
     @wraps(func)
     def state(self, state: State, *args, **kwargs):
 
-        _state = getattr(state, func.__name__, None)
+        _state = state.data.get(func.__name__, None)
 
         if _state is not None:
             name = " ".join(func.__name__.split("_")).capitalize()
@@ -37,28 +46,22 @@ def equation(func):
         _state = func(self, state, *args, **kwargs)
 
         if _state is None:
-            raise NotImplementedError(f"Can not determine {func.__name__} from given state!")
-
-        setattr(state, func.__name__, _state)
+            raise ValueError(f"Can not determine {func.__name__} from given state!")
 
         return _state
 
     return state
 
 
-class Equations(OptionDictConfig, is_interface=True):
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return str(self)
+class Equations(InterfaceConfiguration, is_interface=True):
+    
+    logger: logging.Logger
 
 
 # ------- Boundary Conditions ------- #
 
 
-class FormulationBC:
+class BoundaryConditions:
 
     @classmethod
     def list(cls):
@@ -68,7 +71,7 @@ class FormulationBC:
 # ------- Domain Conditions ------- #
 
 
-class FormulationDC:
+class DomainConditions:
 
     @classmethod
     def list(cls):
@@ -85,7 +88,7 @@ class Space:
 
     @property
     def gfu(self):
-        return self._fes
+        return self._gfu
 
     @property
     def trial(self):
@@ -95,21 +98,16 @@ class Space:
     def test(self):
         return self._TnT[1]
 
-    @property
-    def dt(self) -> TransientGridfunction | None:
-        return self._dt
-
     def __init__(self, cfg: SolverConfiguration, dmesh: dmesh.DreamMesh):
         self.cfg = cfg
         self.dmesh = dmesh
 
+    def initialize(self):
+        self._fes = self.get_space()
+        self._TnT = self.get_TnT()
+        self._gfu = self.get_gridfunction()
+
     def get_space(self) -> ngs.FESpace:
-        raise NotImplementedError()
-
-    def get_state_from_variable(self, gfu: ngs.GridFunction = None) -> State:
-        raise NotImplementedError()
-
-    def get_variable_from_state(self, state: State) -> ngs.CF:
         raise NotImplementedError()
 
     def get_TnT(self) -> tuple[ngs.CF, ngs.CF]:
@@ -118,27 +116,14 @@ class Space:
     def get_gridfunction(self) -> ngs.GridFunction:
         return ngs.GridFunction(self.fes, str(self))
 
-    def get_transient_gridfunction(self) -> TransientGridfunction | None:
-        return None
+    def get_state_from_variable(self, gfu: ngs.GridFunction = None) -> State:
+        raise NotImplementedError()
 
-    def initialize(self):
-        self._fes = self.get_space()
-        self._TnT = self.get_TnT()
-        self._gfu = self.get_gridfunction()
+    def get_variable_from_state(self, state: State) -> ngs.CF:
+        raise NotImplementedError()
 
-    def initialize_time_derivative(self):
-        self._dt = self.get_transient_gridfunction()
-
-    def initialize_trial_state(self) -> None:
+    def get_trial_as_state(self) -> State:
         self.trial_state = self.get_state_from_variable(self.trial)
-
-    def update_time_step(self):
-        if self.dt:
-            self.dt.update_time_step()
-
-    def update_initial(self):
-        if self.dt:
-            self.dt.update_initial()
 
     def add_mass_bilinearform(self, blf: ngs.BilinearForm, dx=ngs.dx, **dx_kwargs):
         blf += bla.inner(self.trial, self.test) * dx(**dx_kwargs)
@@ -151,22 +136,61 @@ class Space:
         return self.__class__.__name__.lower()
 
 
+class TransientSpace(Space):
+
+    @property
+    def dt(self) -> TransientGridfunction | None:
+        return self._dt
+
+    def get_transient_gridfunction(self) -> TransientGridfunction | None:
+        raise NotImplementedError()
+
+    def initialize_time_derivative(self):
+        self._dt = self.get_transient_gridfunction()
+
+    def update_time_step(self):
+        if self.dt:
+            self.dt.update_time_step()
+
+    def update_initial(self):
+        if self.dt:
+            self.dt.update_initial()
+
+
 class Spaces(UserDict):
 
+    @property
+    def fes(self):
+        return self._fes
+
+    @property
+    def gfu(self):
+        return self._gfu
+
+    @property
+    def trial(self):
+        return self._TnT[0]
+
+    @property
+    def test(self):
+        return self._TnT[1]
+
     def initialize(self) -> None:
-        super().initialize()
-        self._broadcast_space_components()
+        self._fes = self.get_space()
+        self._TnT = self._fes.TnT()
+        self._gfu = ngs.GridFunction(self._fes, )
+        self._broadcast_components()
 
     def get_space(self) -> ngs.ProductSpace:
         fes = [space.get_space() for space in self.values()]
 
-        if len(fes) == 0:
+        if not fes:
             raise ValueError("Spaces container is empty!")
 
         for space in fes[1:]:
             fes[0] *= space
 
-        return fes
+        return fes[0]
 
     def initialize_time_derivative(self):
         for space in self.values():
@@ -188,26 +212,24 @@ class Spaces(UserDict):
         for space in self.values():
             space.add_mass_linearform(state, lf, **dx_kwargs)
 
-    def _broadcast_space_components(self):
+    def _broadcast_components(self):
 
         spaces = list(self.values())
 
         match spaces:
 
-            case []:
-                raise ValueError("Spaces container is empty!")
-
             case [space]:
-                space.fes = self.fes
-                space.TnT = self.TnT
-                space.gfu = self.gfu
+                space._fes = self._fes
+                space._TnT = self._TnT
+                space._gfu = self._gfu
 
             case _:
 
-                for space, fes_, trial, test, gfu_ in zip(spaces, self.fes.components, *self.TnT, self.gfu.components):
-                    space.fes = fes_
-                    space.TnT = (trial, test)
-                    space.gfu = gfu_
+                for space, fes_, trial, test, gfu_ in zip(
+                        spaces, self.fes.components, *self.TnT, self.gfu.components, strict=True):
+                    space._fes = fes_
+                    space._TnT = (trial, test)
+                    space._gfu = gfu_
 
     def values(self) -> typing.ValuesView[Space]:
         return super().values()
@@ -230,10 +252,9 @@ class Spaces(UserDict):
         return space
 
 
+class Formulation(InterfaceConfiguration, is_interface=True):
 
-class Formulation(OptionDictConfig, is_interface=True):
-
-    def __init__(self, cfg: SolverConfiguration, mesh: ngs.Mesh | dmesh.DreamMesh) -> None:
+    def initialize(self, cfg: SolverConfiguration, mesh: ngs.Mesh | dmesh.DreamMesh) -> None:
 
         if isinstance(mesh, ngs.Mesh):
             mesh = dmesh.DreamMesh(mesh)
@@ -242,9 +263,13 @@ class Formulation(OptionDictConfig, is_interface=True):
         self._mesh = mesh
         self._spaces = None
 
-        self.normal = ngs.specialcf.normal(mesh.dim)
-        self.tangential = ngs.specialcf.tangential(mesh.dim)
-        self.mesh_size = ngs.specialcf.mesh_size
+    # def initialize(self):
+    #     self._spaces = self.get_space()
+    #     self.spaces.initialize()
+
+    #     self.normal = ngs.specialcf.normal(mesh.dim)
+    #     self.tangential = ngs.specialcf.tangential(mesh.dim)
+    #     self.mesh_size = ngs.specialcf.mesh_size
 
     @property
     def dmesh(self) -> dmesh.DreamMesh:
@@ -268,25 +293,15 @@ class Formulation(OptionDictConfig, is_interface=True):
     def get_system(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
         raise NotImplementedError()
 
-    def initialize(self):
-        self._spaces = self.get_space()
-        self.spaces.initialize()
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
-
 
 # ------- Configuration ------- #
 
 
-class FlowConfig(OptionDictConfig, is_interface=True):
+class PDEConfiguration(MultipleConfiguration, is_interface=True):
 
-    bcs: FormulationBC
-    dcs: FormulationDC
+    bcs: BoundaryConditions
+    dcs: DomainConditions
 
-    # @cfg(default=Formulation)
-    # def formulation(self, formulation) -> Formulation:
-    #     print(formulation)
-
-    #     raise NotImplementedError('Override formulation')
-
+    @property
+    def formulation(self):
+        raise NotImplementedError('Override formulation')

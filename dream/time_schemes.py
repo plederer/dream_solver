@@ -3,30 +3,30 @@ import numpy as np
 import ngsolve as ngs
 import logging
 
-from dream.config import OptionDictConfig, DictConfig, parameter, cfg
+from dream.config import MultipleConfiguration, SingleConfiguration, parameter_configuration, standard_configuration
 from collections import UserDict
 
 
 logger = logging.getLogger(__name__)
 
 
-class Timer(DictConfig):
+class Timer(SingleConfiguration):
 
-    @cfg(default=0.0)
+    @standard_configuration(default=0.0)
     def start(self, start):
         return start
 
-    @cfg(default=1.0)
+    @standard_configuration(default=1.0)
     def end(self, end):
         return end
 
-    @parameter(default=1e-4)
+    @parameter_configuration(default=1e-4)
     def step(self, step):
         step = float(step)
         self._set_time_step_digit(step)
         return step
 
-    @parameter(default=0.0)
+    @parameter_configuration(default=0.0)
     def t(self, t):
         return t
 
@@ -58,7 +58,7 @@ class Timer(DictConfig):
         self._step_digit = len(digit.rstrip("0"))
 
 
-class SimulationConfig(OptionDictConfig, is_interface=True):
+class SimulationConfig(MultipleConfiguration, is_interface=True):
 
     @property
     def is_stationary(self) -> bool:
