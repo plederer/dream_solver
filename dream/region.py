@@ -931,9 +931,10 @@ class BoundaryConditions(UserDict):
 
         def __init__(self,
                      state: State,
-                     sigma: float = 0.25,
+                     type: str = "poinsot",
+                     sigmas: State = State(pressure=0.278, velocity=0.278, temperature=0.278),
                      reference_length: float = 1,
-                     tangential_convective_fluxes: bool = True) -> None:
+                     outflow_tangential_flux: bool = True) -> None:
 
             self._check_value(state.density, "density")
             self._check_value(state.velocity, "velocity")
@@ -941,9 +942,10 @@ class BoundaryConditions(UserDict):
                 raise ValueError("A Thermodynamic quantity is required!")
             super().__init__(state)
 
-            self.sigma = sigma
+            self.type = type
+            self.sigmas = sigmas
             self.reference_length = reference_length
-            self.tang_conv_flux = tangential_convective_fluxes
+            self.outflow_tangential_flux = outflow_tangential_flux
 
     class InviscidWall(_Boundary):
         def __init__(self) -> None:

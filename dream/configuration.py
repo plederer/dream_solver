@@ -101,9 +101,8 @@ class DreAmLogger:
         if isinstance(time_step, Parameter):
             time_step = time_step.Get()
 
-        if isinstance(time_step, float):
-            digit = len(str(time_step).split(".")[1])
-            cls._time_step_digit = digit
+        digit = f"{time_step:.16f}".split(".")[1]
+        cls._time_step_digit = len(digit.rstrip("0"))
 
     def __init__(self, log_to_terminal: bool = False, log_to_file: bool = False) -> None:
         self.logger = logging.getLogger("DreAm")

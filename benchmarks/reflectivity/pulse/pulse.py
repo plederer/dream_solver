@@ -127,11 +127,11 @@ class NSCBC(Pulse):
     def set_boundary_conditions(self):
         if self.dim == "1d":
             self.solver.boundary_conditions.set(
-                bcs.NSCBC(p_inf, self.sigma, self.L, tangential_convective_fluxes=False),
+                bcs.NSCBC(p_inf, self.sigma, self.L, outflow_tangential_flux=False),
                 "left|right|bottom|top")
         elif self.dim == "2d":
             self.solver.boundary_conditions.set(
-                bcs.NSCBC(p_inf, self.sigma, self.L, tangential_convective_fluxes=True),
+                bcs.NSCBC(p_inf, self.sigma, self.L, outflow_tangential_flux=True),
                 "left|right|bottom|top")
 
 

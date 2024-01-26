@@ -59,16 +59,36 @@ class _TimeSchemes(abc.ABC):
     @abc.abstractmethod
     def update_initial_solution(self, cf: TimeLevelsGridfunction): ...
 
+    @abc.abstractmethod
+    def get_nominator(self, cf: TimeLevelsGridfunction):
+        ...
+    @abc.abstractmethod
+    def get_normalized_nominator(self, cf: TimeLevelsGridfunction):
+        ...
+    @abc.abstractmethod
+    def get_denominator(self):
+        ...
+    @abc.abstractmethod
+    def get_normalized_denominator(self):
+        ...
+
+
 
 class ImplicitEuler(_TimeSchemes):
 
     time_levels = ('n+1', 'n')
 
-    def step(self):
+    def get_nominator(self, cf: TimeLevelsGridfunction):
+        return (cf['n+1'] - cf['n'])
+
+    def get_normalized_nominator(self, cf: TimeLevelsGridfunction):
+        return (cf['n+1'] - cf['n'])
+
+    def get_denominator(self):
         return self.cfg.step
 
-    def scheme(self, cf: TimeLevelsGridfunction):
-        return (cf['n+1'] - cf['n'])
+    def get_normalized_denominator(self):
+        return self.cfg.step
 
     def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.cfg.step
@@ -85,11 +105,17 @@ class BDF2(_TimeSchemes):
 
     time_levels = ('n+1', 'n', 'n-1')
 
-    def step(self):
-        return  2 * self.cfg.step
+    def get_nominator(self, cf: TimeLevelsGridfunction):
+        return (3*cf['n+1'] - 4 * cf['n'] + cf['n-1'])
 
-    def scheme(self, cf: TimeLevelsGridfunction):
-        return (3*cf['n+1'] - 4 * cf['n'] + cf['n-1']) 
+    def get_normalized_nominator(self, cf: TimeLevelsGridfunction):
+        return (cf['n+1'] - 4/3 * cf['n'] + 1/3*cf['n-1'])
+
+    def get_denominator(self):
+        return 2 * self.cfg.step
+
+    def get_normalized_denominator(self):
+        return 2/3 * self.cfg.step
 
     def apply(self, cf: TimeLevelsGridfunction) -> CF:
         dt = self.cfg.step

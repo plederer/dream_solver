@@ -9,10 +9,10 @@ ngsglobals.msg_level = 0
 SetNumThreads(8)
 
 
-periodic = False
-circle = True
+periodic = True
+circle = False
 structured = False
-maxh = 0.12
+maxh = 0.1
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
@@ -35,7 +35,7 @@ cfg.bonus_int_order_vol = cfg.order
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 0.005
+cfg.time.step = 1e-2
 cfg.time.interval = (0, 200)
 
 cfg.linear_solver = "pardiso"
@@ -43,7 +43,7 @@ cfg.damping_factor = 1
 cfg.max_iterations = 100
 cfg.convergence_criterion = 1e-16
 
-cfg.compile_flag = False
+cfg.compile_flag = True
 cfg.static_condensation = True
 
 if circle:
@@ -75,12 +75,15 @@ else:
         if periodic:
             periodic_edge = face.edges[0]
             periodic_edge.Identify(face.edges[2], "periodic", IdentificationType.PERIODIC)
+
+        # face.edges[1].maxh = 0.07
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
 
 
 gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
 
+farfield = INF.farfield((cos(pi/6), sin(pi/6)), cfg)
 farfield = INF.farfield((1, 0), cfg)
 u_inf = CF(farfield.velocity)
 rho_inf = farfield.density
@@ -90,9 +93,9 @@ c = INF.speed_of_sound(cfg)
 
 
 # Vortex Pirozzoli
-Mt = 0.001
+Mt = 0.01
 R = 0.1
-r = sqrt(x**2 + y**2)
+r = sqrt((x-0.2)**2 + y**2)
 
 if cfg.scaling is cfg.scaling.AERODYNAMIC:
     vt = Mt/cfg.Mach_number
@@ -108,9 +111,11 @@ rho_0 = rho_inf * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(1/(g
 p_00 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp(1))**(gamma/(gamma - 1))
 initial = State(u_0, rho_0, p_0)
 
+sigma = State(pressure=0.5, velocity=0.5, temperature=0.5)
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set(bcs.FarField(farfield), "left|bottom")
-solver.boundary_conditions.set(bcs.NSCBC(farfield, 0.28, tangential_convective_fluxes=True), "right|top")
+solver.boundary_conditions.set(bcs.NSCBC(farfield, "pirozzoli_temperature", sigma, outflow_tangential_flux=True), "right|left")
+# solver.boundary_conditions.set(bcs.NSCBC(farfield,"pirozzoli", 100, enable_tangential_flux=True), "left")
 
 if periodic:
     solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")
@@ -120,7 +125,7 @@ solver.domain_conditions.set(dcs.Initial(initial))
 with TaskManager():
     solver.setup()
 
-    # solver.drawer.draw(energy=True)
+    solver.drawer.draw(energy=True)
     solver.drawer.draw_particle_velocity(u_inf, autoscale=True, min=-1e-4, max=1e-4)
     solver.drawer.draw_acoustic_pressure(p_inf, autoscale=True, min=-1e-2, max=1e-2)
     Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*",  autoscale=False, min=-1e-4, max=1e-4)

@@ -636,7 +636,7 @@ class _Formulation(Formulation):
             lam_p_c = IfPos(lam_p_c, lam_p_c, -lam_p_c)
         elif type == "in":
             lam_m_c = (1 - Im_c) * lam_m_c
-            lam = (1 - Im) * IfPos(lam + theta_0, -theta_0, lam)
+            lam = (1 - Im) * IfPos(-lam - theta_0, lam, -theta_0)
             lam_p_c = (1 - Ip_c) * lam_p_c
         elif type == "out":
             lam_m_c = Im_c * lam_m_c

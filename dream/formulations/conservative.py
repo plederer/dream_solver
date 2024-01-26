@@ -50,7 +50,7 @@ class ConservativeFormulation(_Formulation):
         var_form += InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
         var_form -= mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
-                                         Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
+                                        Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
 
         blf += var_form.Compile(compile_flag)
 
@@ -581,9 +581,14 @@ class ConservativeFormulation(_Formulation):
         gradient_mu = self.dynamic_viscosity_gradient(U, Q)
 
         gradient_stress = OuterProduct(strain, gradient_mu).Reshape((dim, dim, dim)) + mu * gradient_strain
-        gradient_stress /= Re
 
-        return gradient_stress
+        param = 1/self.cfg.Reynolds_number
+        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
+            param *= self.cfg.Mach_number
+        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
+            param *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
+
+        return param * gradient_stress
 
     def convective_flux_gradient(self, U, Q):
 
@@ -788,108 +793,124 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = weight_function * U_high * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
 
-    def _get_incoming_characteristic_amplitudes(self, bc: bcs.NSCBC):
+    def _get_incoming_charachteristic_pde(self, bc: bcs.NSCBC):
 
+        mixed_method = self.cfg.mixed_method
         M = self.cfg.Mach_number
+        gamma = self.cfg.heat_capacity_ratio
+        R = (gamma - 1)/gamma
 
         U, _ = self.TnT.PRIMAL
         Uhat, _ = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
 
-        t = self.tangential
-        n = self.normal
-
-        def incoming_tangential(U):
-            ut = self.velocity(U) * t
-            grad_p_t = self.pressure_gradient(U, Q, U) * t
-            grad_u_tn = (self.velocity_gradient(U, Q, U) * t) * n
-            return ut * (grad_p_t - c*rho*grad_u_tn)
+        U_ = CF((bc.state.density, bc.state.momentum, bc.state.energy))
 
         rho = self.density(Uhat)
+        un = self.velocity(Uhat) * self.normal
         c = self.speed_of_sound(Uhat)
-        un = InnerProduct(self.velocity(Uhat), n)
-        ut = InnerProduct(self.velocity(U), t)
-        Mn = un/c
-        Mt = ut/c
 
-        grad_u_tt_outer = (self.velocity_gradient(Uhat, Q, Uhat) * t) * t
-        grad_u_tt_inner = (self.velocity_gradient(U, Q, Uhat) * t) * t
+        P = self.DME_from_CHAR(Uhat, self.normal)
 
-        u_diff = CF(bc.state.velocity) - self.velocity(Uhat)
+        un_approx = (self.velocity(U_) - self.velocity(Uhat)) * self.normal/bc.reference_length
+        ut_approx = (self.velocity(U_) - self.velocity(Uhat)) * self.tangential/bc.reference_length
+        rho_approx = (self.density(U_) - self.density(Uhat))/bc.reference_length
+        p_approx = (self.pressure(U_) - self.pressure(Uhat))/bc.reference_length
+        T_approx = (self.temperature(U_) - self.temperature(Uhat))/bc.reference_length
 
-        gfu = self._gfus.get_component(1)
-        gfu['n+1'] = Uhat
+        if bc.type == "poinsot":
+            out_p = bc.sigmas.pressure * (un - c) * p_approx
 
-        # Outflow Acoustic Amplitude
-        acou_outflow_amp_in = bc.sigma * (un - c) * (bc.state.pressure - self.pressure(U))/bc.reference_length
-        # acou_outflow_amp_in += -(1 - M) * incoming_tangential(Uhat)
-        if bc.tang_conv_flux:
-            acou_outflow_amp_in += (un - c) * rho * c * grad_u_tt_outer
-            acou_outflow_amp_in += incoming_tangential(U)
-            acou_outflow_amp_in += rho * c**2 * grad_u_tt_inner
-        # acou_outflow_amp_in -= bc.sigma * (1 - self.normal[0]
-        #                                    ) * (un - c) * rho * c * (u_diff * self.normal)/bc.reference_length
+            in_un = -bc.sigmas.velocity * (un - c) * rho * c * un_approx
+            in_T = -bc.sigmas.temperature * un * rho * R * T_approx
+            in_ut = -bc.sigmas.velocity * un * ut_approx
 
-        # Inflow Acoustic Amplitude
-        acou_inflow_amp_in = -bc.sigma * (un - c) * rho * c * (u_diff * self.normal)/bc.reference_length
-        # acou_inflow_amp_in += ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
-        # acou_inflow_amp_in += rho * c**2 * InnerProduct(gradient_u_t, self.tangential)
-        # acou_inflow_amp_in += ut * (gradient_p_t - c*rho*InnerProduct(gradient_u_t, self.normal))
+            outflow = CF((out_p, 0, 0, 0))
+            inflow = CF((in_un, in_T, in_ut, 0))
 
-        # Inflow Entropy Amplitude
-        entr_inflow_amp_in = bc.sigma * un * c**2 * (bc.state.density - self.density(Uhat))/bc.reference_length
-        # entr_inflow_amp_in += ut * (c**2 * gradient_rho_t - gradient_p_t)
-        # entr_inflow_amp_in = 0
+            L = P * IfPos(-un, inflow, outflow)
 
-        # Vorticity Amplitude
-        vort_inflow_amp_in = -bc.sigma * un * (u_diff * self.tangential)/bc.reference_length
-        # vort_inflow_amp_in =- bc.sigma * (un * (u_diff * self.tangential) - ut *
-        #                                   (u_diff * self.normal))/bc.reference_length
-        # vort_inflow_amp_in += -ut * InnerProduct(gradient_u_t, self.tangential)
-        # vort_inflow_amp_in += -gradient_p_t/rho
+        elif bc.type == "yoo":
+            out_p = -0.278 * c * (1 - M**2) * p_approx
 
-        Lout = CF((acou_outflow_amp_in, 0, 0, 0))
-        Lin = CF((acou_inflow_amp_in, entr_inflow_amp_in, vort_inflow_amp_in, 0))
+            in_un = 0.278 * rho * c**2 * (1 - M**2) * un_approx
+            in_T = 0.278 * c * rho * R * T_approx
+            in_ut = 0.278 * c * ut_approx
 
-        I = self.velocity(Uhat) * self.normal
-        L = IfPos(I, Lout, Lin)
+            outflow = CF((out_p, 0, 0, 0))
+            inflow = CF((in_un, in_T, in_ut, 0))
 
-        return L
+            L = P * IfPos(-un, inflow, outflow)
+
+        elif bc.type == "pirozzoli_temperature":
+            I_in = self.DME_from_CHAR_matrix(
+                self.identity_matrix(Uhat, self.normal, 'in', True),
+                Uhat, self.normal) / self.cfg.time.step
+
+            outflow = -CF((0, 0, 0, p_approx / (gamma - 1)))
+
+            inflow = rho * R * T_approx/c**2 * CF((1, 0, 0, 0))
+            inflow += un_approx * 0.5 * CF((rho/c, -self.normal, rho*c))
+            inflow += ut_approx * CF((0, -self.tangential, 0))
+            inflow = self.DME_from_DVP(Uhat) * inflow
+
+            L = I_in * IfPos(-un, inflow, outflow)
+
+        elif bc.type == "pirozzoli_density":
+            I_in = self.DME_from_CHAR_matrix(
+                self.identity_matrix(Uhat, self.normal, 'in', True),
+                Uhat, self.normal) / self.cfg.time.step
+
+            outflow = CF((0, 0, 0, (self.pressure(Uhat) - self.pressure(U_)) / (gamma - 1)))
+            rho_approx = self.density(Uhat) - self.density(U_)
+            rho_u_approx = self.momentum(Uhat) - self.momentum(U_)
+            rho_Ek_approx = self.kinetic_energy(Uhat) - self.kinetic_energy(U_)
+            inflow = CF((rho_approx, rho_u_approx, rho_Ek_approx))
+
+            L = I_in * IfPos(-un, inflow, outflow)
+
+        if bc.outflow_tangential_flux:
+            ut = self.velocity(Uhat) * self.tangential
+            grad_p_t = self.pressure_gradient(U, Q, Uhat) * self.tangential
+            grad_u_tn = (self.velocity_gradient(U, Q, Uhat) * self.tangential) * self.normal
+            grad_u_tt = (self.velocity_gradient(U, Q, Uhat) * self.tangential) * self.tangential
+            L_tang = un * rho * c * grad_u_tt + ut * (grad_p_t - rho * c * grad_u_tn)
+
+            L += IfPos(-un, CF((0, 0, 0, 0)), P * CF((L_tang, 0, 0, 0)))
+
+        if mixed_method is not MixedMethods.NONE:
+            L -= IfPos(-un, CF((0, 0, 0, 0)), self.conservative_diffusive_jacobian(U,
+                       Q, self.tangential)*(grad(U)*self.tangential))
+            L -= IfPos(-un, CF((0, 0, 0, 0)), self.conservative_diffusive_jacobian(U,
+                       Q, self.normal) * (grad(U) * self.normal))
+            L -= IfPos(-un, CF((0, 0, 0, 0)), self.mixed_diffusive_jacobian(U, self.normal) * (grad(Q) * self.normal))
+            L -= IfPos(-un, CF((0, 0, 0, 0)), self.mixed_diffusive_jacobian(U,
+                       self.tangential) * (grad(Q) * self.tangential))
+
+        time = self._gfus.get_component(0)
+        time['n+1'] = Uhat
+
+        dt = self.time_scheme.get_normalized_denominator()
+        pde = self.time_scheme.get_normalized_nominator(time)
+        pde += dt * L
+
+        return pde
 
     def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.NSCBC):
 
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
         compile_flag = self.cfg.compile_flag
-        mixed_method = self.cfg.mixed_method
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
-        Q, _ = self.TnT.MIXED
 
-        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, theta_0 = 1e-8)
-        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, theta_0 = 1e-8)
-        P = self.DME_from_CHAR(Uhat, self.normal)
+        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, theta_0=1e-8)
+        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, theta_0=1e-8)
 
-        time_levels_gfu = self._gfus.get_component(1)
-        time_levels_gfu['n+1'] = Uhat
+        nscbc = self._get_incoming_charachteristic_pde(bc)
 
-        L = self._get_incoming_characteristic_amplitudes(bc)
-
-        dt = self.time_scheme.step() 
-
-        cf = -InnerProduct(An_out*(U - Uhat), Vhat)
-        cf += InnerProduct(An_in*self.time_scheme.scheme(time_levels_gfu), Vhat)
-        cf += dt * InnerProduct(An_in * (P * L), Vhat)
-
-        if mixed_method is not MixedMethods.NONE:
-            # cf -= dt*An_in*(self.diffusive_flux_gradient(U, Q) * self.normal * self.normal) * Vhat
-            # cf -= dt*An_in*(self.diffusive_flux_gradient(U, Q) * self.tangential * self.tangential) * Vhat
-            cf -= dt*An_in*(self.conservative_diffusive_jacobian(U, Q,
-                         self.tangential)*(grad(U)*self.tangential)) * Vhat
-            cf -= dt*An_in*(self.conservative_diffusive_jacobian(U, Q, self.normal) * (grad(U) * self.normal)) * Vhat
-
-            cf -= dt*An_in*(self.mixed_diffusive_jacobian(U, self.normal) * (grad(Q) * self.normal)) * Vhat
-            cf -= dt*An_in*(self.mixed_diffusive_jacobian(U, self.tangential) * (grad(Q) * self.tangential)) * Vhat
+        cf = InnerProduct(An_out*(Uhat - U), Vhat)
+        cf -= An_in * nscbc * Vhat
 
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
@@ -944,15 +965,20 @@ class ConservativeFormulation2D(ConservativeFormulation):
             1, 0, 0, 0, 0,
             0, 1, 0, 0, 0,
             ux, uy, 0, 1/Pr, 0
-        ), dims=(4, 5)) * mu/Re
+        ), dims=(4, 5))
 
-        return A
+        param = self.dynamic_viscosity(U)/Re
+        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
+            param *= self.cfg.Mach_number
+        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
+            param *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
+
+        return param * A
 
     def mixed_diffusive_jacobian_y(self, U):
 
         Re = self.cfg.Reynolds_number
         Pr = self.cfg.Prandtl_number
-        mu = self.dynamic_viscosity(U)
 
         ux, uy = self.velocity(U)
 
@@ -961,9 +987,15 @@ class ConservativeFormulation2D(ConservativeFormulation):
             0, 1, 0, 0, 0,
             0, 0, 1, 0, 0,
             0, ux, uy, 0, 1/Pr
-        ), dims=(4, 5)) * mu/Re
+        ), dims=(4, 5))
 
-        return B
+        param = self.dynamic_viscosity(U)/Re
+        if self.cfg.scaling is self.cfg.scaling.ACOUSTIC:
+            param *= self.cfg.Mach_number
+        elif self.cfg.scaling is self.cfg.scaling.AEROACOUSTIC:
+            param *= self.cfg.Mach_number/(1 + self.cfg.Mach_number)
+
+        return param * B
 
     def mixed_diffusive_jacobian(self, U, unit_vector: CF) -> CF:
         A = self.mixed_diffusive_jacobian_x(U)

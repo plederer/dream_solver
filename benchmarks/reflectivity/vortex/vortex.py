@@ -142,11 +142,11 @@ class NSCBC(Vortex):
 
         if self.dim == "1d":
             self.solver.boundary_conditions.set(
-                bcs.NSCBC(self.farfield.pressure, self.sigma, self.L, tangential_convective_fluxes=False),
+                bcs.NSCBC(self.farfield.pressure, self.sigma, self.L, outflow_tangential_flux=False),
                 "right")
         elif self.dim == "2d":
             self.solver.boundary_conditions.set(
-                bcs.NSCBC(self.farfield.pressure, self.sigma, self.L, tangential_convective_fluxes=True),
+                bcs.NSCBC(self.farfield.pressure, self.sigma, self.L, outflow_tangential_flux=True),
                 "right")
 
 
