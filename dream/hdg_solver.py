@@ -203,18 +203,7 @@ class CompressibleHDGSolver:
         self.status.reset()
         saver = self.get_saver()
 
-        # fes = H1(self.mesh, order=self.solver_configuration.order)**4
-        # gfu = GridFunction(fes)
-        # # W = self.formulation.CHAR_from_DME(self.formulation.gfu.components[1], self.formulation.normal) * self.formulation.gfu.components[1]
-        # f = self.formulation
-        # W = self.formulation.characteristic_amplitudes(self.formulation.gfu.components[0], None, self.formulation.gfu.components[0], self.formulation.normal, "in")
-        # # W = self.formulation.pressure_gradient() * self.formulation.normal
-        # # W = -f.density() * f.speed_of_sound() * (f.velocity_gradient() * f.normal) * f.normal
-        # W = BoundaryFromVolumeCF(W)
-        # Draw(gfu, self.mesh, "W")
-
         for idx, t in enumerate(self.solver_configuration.time):
-            # gfu.Set(W, definedon=self.mesh.Boundaries(".*"))
             self._solve_timestep(t)
 
             for sensor in self.sensors:
@@ -223,7 +212,6 @@ class CompressibleHDGSolver:
             if self.solver_configuration.save_state:
                 if idx % save_state_every_num_step == 0:
                     saver.save_state(name=f"{state_name}_{t}")
-
 
             if self.status.is_nan:
                 break

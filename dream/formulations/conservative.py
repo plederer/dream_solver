@@ -184,7 +184,7 @@ class ConservativeFormulation(_Formulation):
         An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, bc.theta_0)
         An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, bc.theta_0)
 
-        cf = -An_out * (U - Uhat) - An_in * (farfield - Uhat)
+        cf = An_out * (Uhat - U) - An_in * (Uhat - farfield)
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
 
         blf += cf.Compile(compile_flag)
@@ -833,9 +833,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
         elif bc.type == "yoo":
             out_p = -0.278 * c * (1 - M**2) * p_approx
 
-            in_un = 0.278 * rho * c**2 * (1 - M**2) * un_approx
-            in_T = 0.278 * c * rho * R * T_approx
-            in_ut = 0.278 * c * ut_approx
+            in_un = 4 * rho * c**2 * (1 - M**2) * un_approx
+            in_T = 4 * c * rho * R * T_approx
+            in_ut = 4 * c * ut_approx
 
             outflow = CF((out_p, 0, 0, 0))
             inflow = CF((in_un, in_T, in_ut, 0))
