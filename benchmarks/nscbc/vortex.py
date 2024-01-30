@@ -145,6 +145,24 @@ def solve_poinsot2D():
         solver.setup()
         solver.solve_transient()
 
+def solve_mixed():
+
+    tree.state_directory_name = "mixed"
+    solver = CompressibleHDGSolver(mesh, cfg, tree)
+
+    solver.boundary_conditions.set(
+          solver.boundary_conditions.set(bcs.NSCBC(farfield, "yoo", outflow_tangential_flux=True)),
+        "right|bottom|top")
+    solver.boundary_conditions.set(bcs.FarField(farfield), 'left')
+    if periodic:
+        solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")
+
+    solver.domain_conditions.set(dcs.Initial(initial))
+
+    with TaskManager():
+        solver.setup()
+        solver.solve_transient()
+
 
 if __name__ == '__main__':
     saver.save_mesh(mesh)
@@ -153,3 +171,4 @@ if __name__ == '__main__':
     solve_yoo_tangential()
     solve_yoo_lodi()
     solve_poinsot2D()
+    solve_mixed()
