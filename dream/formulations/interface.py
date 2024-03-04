@@ -375,9 +375,11 @@ class _Formulation(Formulation):
 
         U, V = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Ustar, Vstar = self.TnT.NSCBC
 
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
+        blf += Ustar * Vstar * ds(skeleton=True, definedon=self.nscbc_bc)
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
             blf += Q * P * dx

@@ -46,8 +46,12 @@ class ConservativeFormulation(_Formulation):
         mask.vec[:] = 0
         mask.vec[~mask_fes.GetDofs(self.dmesh.boundary(self.dmesh.bcs.pattern))] = 1
 
+        mask2 = GridFunction(mask_fes)
+        mask2.vec[:] = 0
+        mask2.vec[~mask_fes.GetDofs(self.nscbc_bc)] = 1
+
         var_form = -InnerProduct(self.convective_flux(U), grad(V)) * dx(bonus_intorder=bonus_order_vol)
-        var_form += InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
+        var_form += mask2 * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
                                  V) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
         var_form -= mask * InnerProduct(self.convective_numerical_flux(U, Uhat, self.normal),
                                         Vhat) * dx(element_boundary=True, bonus_intorder=bonus_order_bnd)
@@ -94,13 +98,16 @@ class ConservativeFormulation(_Formulation):
 
             _, V = self.TnT.PRIMAL
             _, Vhat = self.TnT.PRIMAL_FACET
-            _, P = self.TnT.MIXED
+            _, Vstar = self.TnT.NSCBC
+            _, P = self.TnT.MIXED        
+
 
             state = self.calc.determine_missing(dc.state)
             U_f = CF((state.density, state.momentum, state.energy))
 
             cf = U_f * V * dx(definedon=domain, bonus_intorder=bonus_vol)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
+            cf += U_f * Vstar * ds(skeleton=True, definedon=self.nscbc_bc)
 
             if mixed_method is MixedMethods.GRADIENT:
                 Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
@@ -693,6 +700,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         spaces = FiniteElementSpace.Settings(V**4, VHAT**4)
 
+        self.nscbc_bc = self.mesh.Boundaries("|".join([bc for bc, val in self.dmesh.bcs.items() if isinstance(val, bcs.NSCBC)]))
+        nscbc = FacetFESpace(self.mesh, order=order)
+        nscbc = Compress(nscbc, active_dofs=nscbc.GetDofs(self.nscbc_bc))
+
         if mixed_method is MixedMethods.NONE:
             pass
         elif mixed_method is MixedMethods.STRAIN_HEAT:
@@ -701,6 +712,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
             spaces.MIXED = Q**4
         else:
             raise NotImplementedError(f"Mixed method {mixed_method} not implemented for {self}!")
+        
+        spaces.NSCBC = nscbc**4
 
         return FiniteElementSpace.from_settings(spaces)
 
@@ -896,6 +909,53 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         return pde
 
+    def _get_incoming_charachteristic_amp(self, bc: bcs.NSCBC):
+
+        mixed_method = self.cfg.mixed_method
+        M = self.cfg.Mach_number
+        gamma = self.cfg.heat_capacity_ratio
+        R = (gamma - 1)/gamma
+
+        U, _ = self.TnT.PRIMAL
+        U_ = CF((bc.state.density, bc.state.momentum, bc.state.energy))
+
+        rho = self.density(U)
+        un = self.velocity(U) * self.normal
+        c = self.speed_of_sound(U)
+
+        un_approx = (self.velocity(U_) - self.velocity(U)) * self.normal/bc.reference_length
+        ut_approx = (self.velocity(U_) - self.velocity(U)) * self.tangential/bc.reference_length
+        p_approx = (self.pressure(U_) - self.pressure(U))/bc.reference_length
+        T_approx = (self.temperature(U_) - self.temperature(U))/bc.reference_length
+
+        if bc.type == "poinsot":
+            out_p = bc.sigmas.pressure * (un - c) * p_approx
+
+            in_un = -bc.sigmas.velocity * (un - c) * rho * c * un_approx
+            in_T = -bc.sigmas.temperature * un * rho * R * T_approx
+            in_ut = -bc.sigmas.velocity * un * ut_approx
+
+            outflow = CF((out_p, 0, 0, 0))
+            inflow = CF((in_un, in_T, in_ut, 0))
+
+        elif bc.type == "yoo":
+            out_p = -0.278 * c * (1 - M**2) * p_approx
+
+            in_un = 4 * rho * c**2 * (1 - M**2) * un_approx
+            in_T = 4 * c * rho * R * T_approx
+            in_ut = 4 * c * ut_approx
+
+            outflow = CF((out_p, 0, 0, 0))
+            inflow = CF((in_un, in_T, in_ut, 0))
+
+
+        if bc.outflow_tangential_flux:
+            grad_u_tt = (self.velocity_gradient(U, None, U) * self.tangential) * self.tangential
+            outflow += CF(((un - c) * rho * c * grad_u_tt, 0, 0, 0))
+
+        L = IfPos(-un, inflow, outflow)
+        return L
+
     def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.NSCBC):
 
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
@@ -915,6 +975,47 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
+    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.NSCBC):
+
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        compile_flag = self.cfg.compile_flag
+
+        U, V = self.TnT.PRIMAL
+        Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Ustar, Vstar = self.TnT.NSCBC
+
+        state = self.calc.determine_missing(bc.state)
+        farfield = CF((state.density, state.momentum, state.energy))
+
+        # Glue U, Ustar via Uhat Farfield
+
+        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, theta_0=0)
+        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, theta_0=0)
+
+        cf = InnerProduct(An_out*(Uhat - U), Vhat)
+        cf -= InnerProduct(An_in * (Uhat - Ustar), Vhat) 
+        cf += InnerProduct(self.convective_flux(Uhat)*self.normal + An_out*(U - Uhat), V)
+
+        cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        blf += cf.Compile(compile_flag)
+
+        # Define PDE for Ustar
+
+        dt = self._gfus.get_component(0)
+        dt['n+1'] = Ustar
+
+        L = self._get_incoming_charachteristic_amp(bc)
+
+        cf = self.time_scheme.apply(dt) * Vstar
+        cf += self.DME_convective_jacobian_outgoing(U, self.normal) * (grad(U) * self.normal) * Vstar
+        cf += self.DME_from_CHAR(U, self.normal) * L * Vstar
+        # cf += -self.DME_from_CHAR_matrix(self.identity_matrix(U, self.normal, 'in', True), U, self.normal) * CF((0, 0, 0, (state.pressure-self.pressure(U))/(self.cfg.heat_capacity_ratio-1)))/self.cfg.time.step * Vstar
+        
+        cf += self.DME_convective_jacobian(U, self.tangential) * (grad(U) * self.tangential) * Vstar
+
+        cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        blf += cf.Compile(compile_flag)
+    
     def conservative_diffusive_jacobian_x(self, U, Q):
 
         rho = self.density(U)
