@@ -150,9 +150,7 @@ def solve_mixed():
     tree.state_directory_name = "mixed"
     solver = CompressibleHDGSolver(mesh, cfg, tree)
 
-    solver.boundary_conditions.set(
-          solver.boundary_conditions.set(bcs.NSCBC(farfield, "yoo", outflow_tangential_flux=True)),
-        "right|bottom|top")
+    solver.boundary_conditions.set(bcs.NSCBC(farfield, "yoo", outflow_tangential_flux=True), "right|bottom|top")
     solver.boundary_conditions.set(bcs.FarField(farfield), 'left')
     if periodic:
         solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")

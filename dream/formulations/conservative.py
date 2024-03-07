@@ -874,7 +874,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
             grad_p_t = self.pressure_gradient(U, Q, Uhat) * self.tangential
             grad_u_tn = (self.velocity_gradient(U, Q, Uhat) * self.tangential) * self.normal
             grad_u_tt = (self.velocity_gradient(U, Q, Uhat) * self.tangential) * self.tangential
-            L_tang = un * rho * c * grad_u_tt + ut * (grad_p_t - rho * c * grad_u_tn)
+            L_tang = rho * c**2 * grad_u_tt + ut * (grad_p_t - rho * c * grad_u_tn)
+            L_tang *= self.cfg.Mach_number * self.normal[0]
 
             L += IfPos(-un, CF((0, 0, 0, 0)), P * CF((L_tang, 0, 0, 0)))
 

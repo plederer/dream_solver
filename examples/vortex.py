@@ -114,7 +114,7 @@ initial = State(u_0, rho_0, p_0)
 sigma = State(pressure=0.5, velocity=0.5, temperature=0.5)
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set(bcs.FarField(farfield), "left|bottom")
-solver.boundary_conditions.set(bcs.NSCBC(farfield, "pirozzoli_temperature", sigma, outflow_tangential_flux=True), "right|left")
+solver.boundary_conditions.set(bcs.NSCBC(farfield, "yoo", sigma, outflow_tangential_flux=True), "right")
 # solver.boundary_conditions.set(bcs.NSCBC(farfield,"pirozzoli", 100, enable_tangential_flux=True), "left")
 
 if periodic:
