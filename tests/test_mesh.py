@@ -84,7 +84,7 @@ class Mesh(unittest.TestCase):
 class BoundaryConditions(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.bcs = mesh.BoundaryConditions(("a", "a", "b", "c"))
+        self.bcs = mesh.BCContainer(("a", "a", "b", "c"))
 
     def test_label_uniqueness(self):
         self.assertTupleEqual(tuple(self.bcs), ("a", "b", "c"))
@@ -140,7 +140,7 @@ class BoundaryConditions(unittest.TestCase):
 class DomainConditions(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dcs = mesh.DomainConditions(("a", "a", "b", "c"))
+        self.dcs = mesh.DCContainer(("a", "a", "b", "c"))
 
     def test_label_uniqueness(self):
         self.assertTupleEqual(tuple(self.dcs), ("a", "b", "c"))

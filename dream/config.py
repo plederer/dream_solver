@@ -4,10 +4,46 @@ import typing
 import textwrap
 import collections
 import abc
+import functools
 
 import ngsolve as ngs
 
 logger = logging.getLogger(__name__)
+
+
+# ------- Decorators ------- #
+
+
+def equation(func):
+    """ Equation is a decorator that wraps a function which takes as first argument a state.
+
+        The name of the function should ressemble a physical quantity like 'density' or 'velocity'.
+
+        When the decorated function get's called the wrapper checks first if the quantity is already defined
+        and returns it. 
+        If the quantity is not defined, the wrapper executes the decorated function, which should
+        return a valid value. Otherwise a ValueError is thrown.
+    """
+
+    @functools.wraps(func)
+    def state(self, state: State, *args, **kwargs):
+
+        _state = state.data.get(func.__name__, None)
+
+        if _state is not None:
+            name = " ".join(func.__name__.split("_")).capitalize()
+            logger.debug(f"{name} set by user! Returning it.")
+            return _state
+
+        _state = func(self, state, *args, **kwargs)
+
+        if _state is None:
+            raise ValueError(f"Can not determine {func.__name__} from given state!")
+
+        return _state
+
+    return state
+
 
 # ------- Descriptors ------- #
 
@@ -209,15 +245,6 @@ class multiple_configuration(standard_configuration):
 
 class ConfigMeta(abc.ABCMeta):
 
-    logger: logging.Logger
-
-    def __new__(cls, clsname, bases, attrs):
-
-        if 'logger' not in attrs:
-            attrs['logger'] = logger.getChild(clsname)
-
-        return abc.ABCMeta.__new__(cls, clsname, bases, attrs)
-
     @classmethod
     def get_configurations(cls, attrs: dict) -> list[standard_configuration]:
         return [cfg_ for cfg_ in attrs.values() if isinstance(cfg_, standard_configuration)]
@@ -231,6 +258,10 @@ class SingleConfigurationMeta(ConfigMeta):
 
         if 'cfgs' not in attrs:
             attrs['cfgs'] = cls.get_configurations(attrs)
+
+        for base in bases:
+            if hasattr(base, 'cfgs'):
+                attrs['cfgs'] += base.cfgs
 
         return ConfigMeta.__new__(cls, clsname, bases, attrs)
 
@@ -249,10 +280,6 @@ class InterfaceMeta(ConfigMeta):
         if 'aliases' not in attrs:
             attrs['aliases'] = ()
 
-        if not is_interface:
-            interface = bases[0]
-            attrs['logger'] = interface.logger
-
         cls = ConfigMeta.__new__(cls, clsname, bases, attrs)
 
         if is_interface:
@@ -270,21 +297,10 @@ class MultipleConfigurationMeta(SingleConfigurationMeta, InterfaceMeta):
     label: str
     aliases: tuple[str]
     options: OptionHolder
-    logger: logging.Logger
     cfgs: list[standard_configuration]
 
     def __new__(cls, clsname, bases, attrs, is_interface: bool = False):
-
-        if not is_interface:
-            interface = bases[0]
-            attrs['logger'] = interface.logger
-
         dict_ = SingleConfigurationMeta.__new__(cls, clsname, bases, attrs)
-
-        if not is_interface:
-            interface = bases[0]
-            attrs['cfgs'] += interface.cfgs
-
         return InterfaceMeta.__new__(cls, clsname, bases, attrs, is_interface)
 
 
@@ -347,8 +363,6 @@ class DescriptorDict(collections.UserDict):
 
 class State(DescriptorDict):
 
-    logger = logger.getChild("State")
-
     @staticmethod
     def is_set(*args) -> bool:
         return all([arg is not None for arg in args])
@@ -395,7 +409,6 @@ class InterfaceConfiguration(metaclass=InterfaceMeta, is_interface=True):
 
 class SingleConfiguration(DescriptorDict, metaclass=SingleConfigurationMeta):
 
-    logger: logging.Logger
     cfgs: list[standard_configuration]
 
     def __init__(self, **kwargs):
@@ -409,7 +422,7 @@ class SingleConfiguration(DescriptorDict, metaclass=SingleConfigurationMeta):
             if key not in self:
                 msg = f"'{key}' is not predefined for {type(self)}. "
                 msg += "It is either deprecated or set manually!"
-                self.logger.info(msg)
+                logger.info(msg)
 
     def clear(self) -> None:
         self.data = {}

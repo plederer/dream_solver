@@ -1,9 +1,9 @@
 from __future__ import annotations
 import logging
+import ngsolve as ngs
+
 from collections import UserDict
 from typing import Callable, Sequence, Any, TypeVar
-
-import ngsolve as ngs
 
 from dream import bla
 from dream.config import State
@@ -26,8 +26,8 @@ class DreamMesh:
 
     def __init__(self, mesh: ngs.Mesh) -> None:
         self._mesh = mesh
-        self._bcs = BoundaryConditions(mesh.GetBoundaries())
-        self._dcs = DomainConditions(mesh.GetMaterials())
+        self._bcs = BCContainer(mesh.GetBoundaries())
+        self._dcs = DCContainer(mesh.GetMaterials())
         self._is_periodic = bool(mesh.GetPeriodicNodePairs(ngs.VERTEX))
 
     @property
@@ -39,11 +39,11 @@ class DreamMesh:
         return self.ngsmesh.dim
 
     @property
-    def bcs(self) -> BoundaryConditions:
+    def bcs(self) -> BCContainer:
         return self._bcs
 
     @property
-    def dcs(self) -> DomainConditions:
+    def dcs(self) -> DCContainer:
         return self._dcs
 
     @property
@@ -560,7 +560,7 @@ class PSpongeLayer(Buffer):
             raise ValueError("Polynomial sponge order higher than polynomial discretization order")
 
 
-class DomainConditions(ConditionContainer):
+class DCContainer(ConditionContainer):
 
     def set(self, condition: CTYPE, domains: str = "default"):
         super().set(condition, domains)
@@ -600,7 +600,7 @@ class Periodic(Boundary):
     ...
 
 
-class BoundaryConditions(ConditionContainer):
+class BCContainer(ConditionContainer):
 
     def get_domain_boundaries(self, as_pattern: bool = False) -> list | str:
         """ Returns a list or pattern of the domain boundaries!
@@ -645,3 +645,17 @@ class BoundaryConditions(ConditionContainer):
 
     def __repr__(self):
         return "".join(f"{key}: {str(val)}\n" for key, val in self.items() if val)
+
+
+class BoundaryConditions:
+
+    @classmethod
+    def list(cls):
+        return [key for key, bc in vars(cls).items() if isinstance(bc, type) and issubclass(bc, Boundary)]
+
+
+class DomainConditions:
+
+    @classmethod
+    def list(cls):
+        return [key for key, dc in vars(cls).items() if isinstance(dc, type) and issubclass(dc, Domain)]
