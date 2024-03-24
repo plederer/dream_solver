@@ -804,7 +804,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
         Uhat, _ = self.TnT.PRIMAL_FACET
         Q, _ = self.TnT.MIXED
 
-        U_ = CF((bc.state.density, bc.state.momentum, bc.state.energy))
+        state = self.calc.determine_missing(bc.state)
+        U_ = CF((state.density, state.momentum, state.energy))
 
         rho = self.density(Uhat)
         un = self.velocity(Uhat) * self.normal
@@ -817,6 +818,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         rho_approx = (self.density(U_) - self.density(Uhat))/bc.reference_length
         p_approx = (self.pressure(U_) - self.pressure(Uhat))/bc.reference_length
         T_approx = (self.temperature(U_) - self.temperature(Uhat))/bc.reference_length
+
 
         if bc.type == "poinsot":
             out_p = bc.sigmas.pressure * (un - c) * p_approx
@@ -871,9 +873,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         if bc.outflow_tangential_flux:
             ut = self.velocity(Uhat) * self.tangential
-            grad_p_t = self.pressure_gradient(U, Q, Uhat) * self.tangential
-            grad_u_tn = (self.velocity_gradient(U, Q, Uhat) * self.tangential) * self.normal
-            grad_u_tt = (self.velocity_gradient(U, Q, Uhat) * self.tangential) * self.tangential
+            grad_p_t = self.pressure_gradient(Uhat, Q, Uhat) * self.tangential
+            grad_u_tn = (self.velocity_gradient(Uhat, Q, Uhat) * self.tangential) * self.normal
+            grad_u_tt = (self.velocity_gradient(Uhat, Q, Uhat) * self.tangential) * self.tangential
             L_tang = rho * c**2 * grad_u_tt + ut * (grad_p_t - rho * c * grad_u_tn)
             L_tang *= self.cfg.Mach_number * self.normal[0]
 
@@ -888,7 +890,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
             L -= IfPos(-un, CF((0, 0, 0, 0)), self.mixed_diffusive_jacobian(U,
                        self.tangential) * (grad(Q) * self.tangential))
 
-        time = self._gfus.get_component(0)
+        time = self._gfus.get_component(1)
         time['n+1'] = Uhat
 
         dt = self.time_scheme.get_normalized_denominator()
