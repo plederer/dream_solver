@@ -4,7 +4,7 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import MultipleConfiguration, parameter_configuration
+from dream.config import MultipleConfiguration, parameter
 from dream.compressible.state import CompressibleState
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ class IdealGas(EquationOfState):
 
     aliases = ('ideal', 'perfect', )
 
-    @parameter_configuration(default=1.4)
+    @parameter(default=1.4)
     def heat_capacity_ratio(self, heat_capacity_ratio: float):
         return heat_capacity_ratio
 

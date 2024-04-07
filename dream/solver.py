@@ -7,14 +7,14 @@ from math import isnan
 
 from .sensor import Sensor
 from .formulations import PDEConfiguration, CompressibleFlowConfiguration
-from .config import SingleConfiguration, FiniteElementConfig
+from .config import UniqueConfiguration, FiniteElementConfig
 from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, SimulationConfig
 from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
 
 logger = logging.getLogger(__name__)
 
 
-class SolverConfiguration(SingleConfiguration):
+class SolverConfiguration(UniqueConfiguration):
 
     def __init__(self) -> None:
 

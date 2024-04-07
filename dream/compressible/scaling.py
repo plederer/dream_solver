@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import ngsolve as ngs
 from dream import bla
-from dream.config import MultipleConfiguration, standard_configuration
+from dream.config import MultipleConfiguration, any
 from dream.compressible.state import ScalingState
 
 
 class Scaling(MultipleConfiguration, is_interface=True):
 
-    @standard_configuration(default={'length': 1,
+    @any(default={'length': 1,
                                      'density': 1.293,
                                      'velocity': 102.9,
                                      'speed_of_sound': 343,

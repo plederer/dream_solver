@@ -8,8 +8,8 @@ from dream.config import (
     MultipleConfiguration,
     State,
     variable,
-    standard_configuration,
-    parameter_configuration,
+    any,
+    parameter,
     multiple_configuration)
 
 from dream.time_schemes import TransientGridfunction
@@ -197,7 +197,7 @@ class IdealGas(EquationOfState):
 
     aliases = ('ideal', 'perfect', )
 
-    @parameter_configuration(default=1.4)
+    @parameter(default=1.4)
     def heat_capacity_ratio(self, heat_capacity_ratio: float):
         return heat_capacity_ratio
 
@@ -901,11 +901,11 @@ class Constant(DynamicViscosity):
 
 class Sutherland(DynamicViscosity):
 
-    @standard_configuration(default=110.4)
+    @any(default=110.4)
     def measurement_temperature(self, value: float) -> float:
         return value
 
-    @standard_configuration(default=1.716e-5)
+    @any(default=1.716e-5)
     def measurement_viscosity(self, value: float) -> float:
         return value
 
@@ -934,7 +934,7 @@ class Sutherland(DynamicViscosity):
 
 class Scaling(MultipleConfiguration, is_interface=True):
 
-    @standard_configuration(
+    @any(
         default={'length': 1, 'density': 1.293, 'velocity': 102.9, 'speed_of_sound': 343,
                  'temperature': 293.15, 'pressure': 101325})
     def dimensional_infinity_values(self, state: State):
@@ -1052,7 +1052,7 @@ class HLL(RiemannSolver):
 
 class HLLEM(RiemannSolver):
 
-    @standard_configuration(default=1e-8)
+    @any(default=1e-8)
     def theta_0(self, value):
         """ Defines a threshold value used to stabilize contact waves, when the eigenvalue tends to zero.
 
@@ -1914,8 +1914,8 @@ class Conservative(CompressibleFormulation):
     def add_convection(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
 
         eq = self.cfg.pde.equations
-        bonus_vol = self.cfg.fem.bonus_int_order.VOL
-        bonus_bnd = self.cfg.fem.bonus_int_order.BND
+        bonus_vol = self.cfg.fem.bonus_int_order.vol
+        bonus_bnd = self.cfg.fem.bonus_int_order.bnd
 
         U, U_ = self.U, self.U.trial_state
         Uhat, Uhat_ = self.Uhat, self.Uhat.trial_state
@@ -1956,11 +1956,11 @@ class CompressibleFlowConfiguration(form.PDEConfiguration):
     def dimensionless_infinity_values(self, direction: tuple[float, ...]) -> CompressibleState:
         return self.equations.get_farfield_state(direction)
 
-    @standard_configuration(Conservative)
+    @any(Conservative)
     def formulation(self, formulation) -> CompressibleFormulation:
         return formulation
 
-    @parameter_configuration(default=0.3)
+    @parameter(default=0.3)
     def Mach_number(self, Mach_number: float):
 
         if Mach_number < 0:
@@ -1968,7 +1968,7 @@ class CompressibleFlowConfiguration(form.PDEConfiguration):
 
         return Mach_number
 
-    @parameter_configuration(default=1)
+    @parameter(default=1)
     def Reynolds_number(self, Reynolds_number: float):
         """ Represents the ratio between inertial and viscous forces """
         if Reynolds_number <= 0:
@@ -1976,7 +1976,7 @@ class CompressibleFlowConfiguration(form.PDEConfiguration):
 
         return Reynolds_number
 
-    @parameter_configuration(default=0.72)
+    @parameter(default=0.72)
     def Prandtl_number(self, Prandtl_number: float):
         if Prandtl_number <= 0:
             raise ValueError("Invalid Prandtl_number. Value has to be > 0!")

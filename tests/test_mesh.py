@@ -27,8 +27,8 @@ class Mesh(unittest.TestCase):
         self.assertTrue(self.cmesh.is_periodic)
 
     def test_pattern(self):
-        self.assertEqual(mesh.pattern(["left", "right"]), "left|right")
-        self.assertEqual(mesh.pattern("left"), "left")
+        self.assertEqual(mesh.pattern_from_sequence(["left", "right"]), "left|right")
+        self.assertEqual(mesh.pattern_from_sequence("left"), "left")
 
     def test_cartesian_grid_deformation(self):
         x = mesh.BufferCoord.x(0.25, 0.5)

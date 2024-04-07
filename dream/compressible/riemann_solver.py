@@ -3,7 +3,7 @@ from __future__ import annotations
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import MultipleConfiguration, standard_configuration
+from dream.config import MultipleConfiguration, any
 from dream.compressible.state import CompressibleState
 
 
@@ -60,7 +60,7 @@ class HLL(RiemannSolver):
 
 class HLLEM(RiemannSolver):
 
-    @standard_configuration(default=1e-8)
+    @any(default=1e-8)
     def theta_0(self, value):
         """ Defines a threshold value used to stabilize contact waves, when the eigenvalue tends to zero.
 

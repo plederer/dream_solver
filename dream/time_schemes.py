@@ -3,30 +3,30 @@ import numpy as np
 import ngsolve as ngs
 import logging
 
-from dream.config import MultipleConfiguration, SingleConfiguration, parameter_configuration, standard_configuration
+from dream.config import MultipleConfiguration, UniqueConfiguration, parameter, any
 from collections import UserDict
 
 
 logger = logging.getLogger(__name__)
 
 
-class Timer(SingleConfiguration):
+class Timer(UniqueConfiguration):
 
-    @standard_configuration(default=0.0)
+    @any(default=0.0)
     def start(self, start):
         return start
 
-    @standard_configuration(default=1.0)
+    @any(default=1.0)
     def end(self, end):
         return end
 
-    @parameter_configuration(default=1e-4)
+    @parameter(default=1e-4)
     def step(self, step):
         step = float(step)
         self._set_time_step_digit(step)
         return step
 
-    @parameter_configuration(default=0.0)
+    @parameter(default=0.0)
     def t(self, t):
         return t
 

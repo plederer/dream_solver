@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dream.config import MultipleConfiguration, standard_configuration
+from dream.config import MultipleConfiguration, any
 from dream.compressible.state import CompressibleState
 
 
@@ -33,11 +33,11 @@ class Constant(DynamicViscosity):
 
 class Sutherland(DynamicViscosity):
 
-    @standard_configuration(default=110.4)
+    @any(default=110.4)
     def measurement_temperature(self, value: float) -> float:
         return value
 
-    @standard_configuration(default=1.716e-5)
+    @any(default=1.716e-5)
     def measurement_viscosity(self, value: float) -> float:
         return value
 

@@ -1,6 +1,6 @@
 import ngsolve as ngs
 
-from dream.config import standard_configuration, parameter_configuration
+from dream.config import any, parameter
 from dream.compressible.state import CompressibleState
 
 
@@ -18,11 +18,11 @@ class CompressibleFlowConfiguration(form.PDEConfiguration):
     def dimensionless_infinity_values(self, direction: tuple[float, ...]) -> CompressibleState:
         return self.equations.get_farfield_state(direction)
 
-    @standard_configuration(Conservative)
+    @any(Conservative)
     def formulation(self, formulation) -> CompressibleFormulation:
         return formulation
 
-    @parameter_configuration(default=0.3)
+    @parameter(default=0.3)
     def Mach_number(self, Mach_number: float):
 
         if Mach_number < 0:
@@ -30,7 +30,7 @@ class CompressibleFlowConfiguration(form.PDEConfiguration):
 
         return Mach_number
 
-    @parameter_configuration(default=1)
+    @parameter(default=1)
     def Reynolds_number(self, Reynolds_number: float):
         """ Represents the ratio between inertial and viscous forces """
         if Reynolds_number <= 0:
@@ -38,7 +38,7 @@ class CompressibleFlowConfiguration(form.PDEConfiguration):
 
         return Reynolds_number
 
-    @parameter_configuration(default=0.72)
+    @parameter(default=0.72)
     def Prandtl_number(self, Prandtl_number: float):
         if Prandtl_number <= 0:
             raise ValueError("Invalid Prandtl_number. Value has to be > 0!")

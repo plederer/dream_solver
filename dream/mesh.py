@@ -11,15 +11,15 @@ from dream.config import State
 logger = logging.getLogger(__name__)
 
 
-def pattern(sequence: Sequence) -> str:
+def pattern_from_sequence(sequence: Sequence) -> str:
     if isinstance(sequence, str):
         return sequence
     return "|".join(sequence)
 
 
-def pattern_dict(dictionary: dict[str, Any]) -> dict[str, Any]:
+def pattern_from_dictionary(dictionary: dict[str, Any]) -> dict[str, Any]:
     values = set(dictionary.values())
-    return {pattern([key for key, value in dictionary.items() if value == a]): a for a in values}
+    return {pattern_from_sequence([key for key, value in dictionary.items() if value == a]): a for a in values}
 
 
 class DreamMesh:
@@ -59,11 +59,11 @@ class DreamMesh:
         return self._is_periodic
 
     def boundary(self, boundary: Sequence) -> ngs.Region:
-        boundary = pattern(boundary)
+        boundary = pattern_from_sequence(boundary)
         return self.ngsmesh.Boundaries(boundary)
 
     def domain(self, domain: Sequence) -> ngs.Region:
-        domain = pattern(domain)
+        domain = pattern_from_sequence(domain)
         return self.ngsmesh.Materials(domain)
 
     def get_grid_deformation(self, grid_deformation: dict[str, GridDeformation] = None):
@@ -147,7 +147,7 @@ class DreamMesh:
             if self.dim != 2:
                 raise NotImplementedError("3D PSpongeLayer not implemented for the moment!")
 
-            psponge_region = self.domain(pattern(psponge_layers))
+            psponge_region = self.domain(pattern_from_sequence(psponge_layers))
             vhat_dofs = ~space.GetDofs(psponge_region)
 
             for domain, bc in psponge_layers.items():
@@ -576,7 +576,7 @@ class DCContainer(ConditionContainer):
         conditions = {key: value[label] for key, value in self.items() if label in value}
 
         if as_pattern:
-            conditions = pattern_dict(conditions)
+            conditions = pattern_from_dictionary(conditions)
 
         return conditions
 
@@ -612,7 +612,7 @@ class BCContainer(ConditionContainer):
         bnds = [bnd for bnd, bc in self.items() if not isinstance(bc, Periodic) or bc is None]
 
         if as_pattern:
-            bnds = pattern(bnds)
+            bnds = pattern_from_sequence(bnds)
 
         return bnds
 
@@ -628,7 +628,7 @@ class BCContainer(ConditionContainer):
 
         conditions = {key: value for key, value in self.items() if isinstance(value, condition)}
         if as_pattern:
-            conditions = pattern_dict(conditions)
+            conditions = pattern_from_dictionary(conditions)
 
         return conditions
 
