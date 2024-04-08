@@ -3,14 +3,14 @@ import numpy as np
 import ngsolve as ngs
 import logging
 
-from dream.config import MultipleConfiguration, UniqueConfiguration, parameter, any
+from dream.config import DescriptorConfiguration, parameter, any
 from collections import UserDict
 
 
 logger = logging.getLogger(__name__)
 
 
-class Timer(UniqueConfiguration):
+class Timer(DescriptorConfiguration, is_unique=True):
 
     @any(default=0.0)
     def start(self, start):
@@ -58,7 +58,7 @@ class Timer(UniqueConfiguration):
         self._step_digit = len(digit.rstrip("0"))
 
 
-class SimulationConfig(MultipleConfiguration, is_interface=True):
+class SimulationConfig(DescriptorConfiguration, is_interface=True):
 
     @property
     def is_stationary(self) -> bool:
@@ -67,7 +67,7 @@ class SimulationConfig(MultipleConfiguration, is_interface=True):
 
 class StationaryConfig(SimulationConfig):
 
-    label: str = "stationary"
+    name: str = "stationary"
 
     def format(self):
         formatter = self.formatter.new()
@@ -77,7 +77,7 @@ class StationaryConfig(SimulationConfig):
 
 class TransientConfig(SimulationConfig):
 
-    label: str = "transient"
+    name: str = "transient"
 
     def __init__(self):
         self._scheme = "IE"
@@ -109,7 +109,7 @@ class TransientConfig(SimulationConfig):
 
 class PseudoTimeSteppingConfig(TransientConfig):
 
-    label: str = "pseudo"
+    name: str = "pseudo"
 
     def __init__(self):
         super().__init__()

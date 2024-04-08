@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dream.config import MultipleConfiguration, any
+from dream.config import DescriptorConfiguration, any
 from dream.compressible.state import CompressibleState
 
 
-class DynamicViscosity(MultipleConfiguration, is_interface=True):
+class DynamicViscosity(DescriptorConfiguration, is_interface=True):
 
     @property
     def is_inviscid(self) -> bool:

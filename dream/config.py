@@ -156,7 +156,12 @@ class parameter(configuration):
         cfg.data[self.name].Set(value)
 
     def reset(self, cfg: DescriptorConfiguration):
-        cfg.data[self.name] = ngs.Parameter(self.default)
+
+        value = self.default
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+    
+        cfg.data[self.name] = ngs.Parameter(value)
 
 
 class descriptor_configuration(configuration):

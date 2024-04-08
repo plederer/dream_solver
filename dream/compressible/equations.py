@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import ngsolve as ngs
+
 from dream import bla
+from dream.compressible.config import CompressibleFlowConfiguration
 
 from .state import CompressibleState, ScalingState
 

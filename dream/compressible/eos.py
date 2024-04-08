@@ -4,13 +4,13 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import MultipleConfiguration, parameter
+from dream.config import DescriptorConfiguration, parameter
 from dream.compressible.state import CompressibleState
 
 logger = logging.getLogger(__name__)
 
 
-class EquationOfState(MultipleConfiguration, is_interface=True):
+class EquationOfState(DescriptorConfiguration, is_interface=True):
 
     def density(self, state: CompressibleState) -> ngs.CF:
         raise NotImplementedError()
@@ -88,7 +88,8 @@ class EquationOfState(MultipleConfiguration, is_interface=True):
 
 class IdealGas(EquationOfState):
 
-    aliases = ('ideal', 'perfect', )
+    name = 'ideal'
+    aliases = ('perfect', )
 
     @parameter(default=1.4)
     def heat_capacity_ratio(self, heat_capacity_ratio: float):

@@ -3,11 +3,11 @@ from __future__ import annotations
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import MultipleConfiguration, any
+from dream.config import DescriptorConfiguration, any
 from dream.compressible.state import CompressibleState
 
 
-class RiemannSolver(MultipleConfiguration, is_interface=True):
+class RiemannSolver(DescriptorConfiguration, is_interface=True):
 
     def __init__(self, cfg: CompressibleFlowConfiguration = None, **kwargs):
         super().__init__(**kwargs)
@@ -23,6 +23,7 @@ class RiemannSolver(MultipleConfiguration, is_interface=True):
 
 class LaxFriedrich(RiemannSolver):
 
+    name = "lax_friedrich"
     aliases = ('lf', )
 
     def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
@@ -37,6 +38,8 @@ class LaxFriedrich(RiemannSolver):
 
 class Roe(RiemannSolver):
 
+    name = "roe"
+
     def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         unit_vector = bla.as_vector(unit_vector)
 
@@ -45,6 +48,8 @@ class Roe(RiemannSolver):
 
 
 class HLL(RiemannSolver):
+
+    name = "hll"
 
     def convective_stabilisation_matrix(self, state: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         unit_vector = bla.as_vector(unit_vector)
@@ -59,6 +64,8 @@ class HLL(RiemannSolver):
 
 
 class HLLEM(RiemannSolver):
+
+    name = "hllem"
 
     @any(default=1e-8)
     def theta_0(self, value):
