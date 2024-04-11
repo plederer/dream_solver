@@ -104,12 +104,13 @@ elif cfg.scaling is cfg.scaling.ACOUSTIC:
 elif cfg.scaling is cfg.scaling.AEROACOUSTIC:
     vt = Mt/(1 + cfg.Mach_number)
 
-psi = vt * R * exp((R**2 - r**2)/(2*R**2))
+psi = vt * R * exp((1 - (r/R)**2)/2)
 u_0 = u_inf + CF((psi.Diff(y), -psi.Diff(x)))
-p_0 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(gamma/(gamma - 1))
-rho_0 = rho_inf * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(1/(gamma - 1))
-p_00 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp(1))**(gamma/(gamma - 1))
+p_0 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp(1 - (r/R)**2))**(gamma/(gamma - 1))
+rho_0 = rho_inf * (1 - (gamma - 1)/2 * Mt**2 *  exp(1 - (r/R)**2))**(1/(gamma - 1))
 initial = State(u_0, rho_0, p_0)
+p_00 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp(1))**(gamma/(gamma - 1))
+
 
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set(bcs.FarField(farfield), "left|right")
@@ -128,10 +129,10 @@ with TaskManager():
     solver.drawer.draw(energy=True)
     solver.drawer.draw_particle_velocity(u_inf, autoscale=True, min=-1e-4, max=1e-4)
     solver.drawer.draw_acoustic_pressure(p_inf, autoscale=True, min=-1e-2, max=1e-2)
-    Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*",  autoscale=True, min=-1e-8, max=1e-8)
+    Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*",  autoscale=False, min=-1e-4, max=1e-4)
 
     visoptions.deformation = 1
     visoptions.vecfunction = 0
-    visoptions.subdivisions = cfg.order
+    # visoptions.subdivisions = cfg.order
 
     solver.solve_transient()

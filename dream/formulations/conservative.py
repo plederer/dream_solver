@@ -866,11 +866,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
         time = self._gfus.get_component(1)
         time['n+1'] = Uhat
 
-        dt = self.time_scheme.get_normalized_denominator()
-        pde = self.time_scheme.get_normalized_nominator(time)
-        pde += dt * L
-
-        return pde
+        dt = self.cfg.time.step
+        return dt * (self.time_scheme.apply(time) + L)
 
     def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.NSCBC):
 
