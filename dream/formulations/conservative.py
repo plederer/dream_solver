@@ -88,6 +88,8 @@ class ConservativeFormulation(_Formulation):
         bonus_vol = self.cfg.bonus_int_order_vol
         bonus_bnd = self.cfg.bonus_int_order_bnd
 
+        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value.glue])
+
         for domain, dc in self.dmesh.dcs.initial_conditions.items():
 
             dim = self.mesh.dim
@@ -101,6 +103,10 @@ class ConservativeFormulation(_Formulation):
 
             cf = U_f * V * dx(definedon=domain, bonus_intorder=bonus_vol)
             cf += U_f * Vhat * dx(element_boundary=True, definedon=domain, bonus_intorder=bonus_bnd)
+
+            if bnds:
+                _, Vstar = self.TnT.PRIMAL_NODE
+                cf += U_f * Vstar * ds(element_boundary=True, definedon=bnds, bonus_intorder=bonus_bnd)
 
             if mixed_method is MixedMethods.GRADIENT:
                 Q_f = CF(tuple(U_f.Diff(dir) for dir in (x, y)), dims=(dim, dim+2)).trans
@@ -157,19 +163,6 @@ class ConservativeFormulation(_Formulation):
 
             lf += cf
 
-    def _add_dirichlet_bilinearform(self, blf, boundary: Region, bc: bcs.Dirichlet):
-
-        compile_flag = self.cfg.compile_flag
-
-        state = self.calc.determine_missing(bc.state)
-        dirichlet = CF((state.density, state.momentum, state.energy))
-
-        Uhat, Vhat = self.TnT.PRIMAL_FACET
-
-        cf = (dirichlet-Uhat)
-        cf = cf * Vhat * ds(skeleton=True, definedon=boundary)
-        blf += cf.Compile(compile_flag)
-
     def _add_farfield_bilinearform(self, blf,  boundary: Region, bc: bcs.FarField):
 
         compile_flag = self.cfg.compile_flag
@@ -181,12 +174,11 @@ class ConservativeFormulation(_Formulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, bc.theta_0)
-        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, bc.theta_0)
+        Ain = self.DME_convective_jacobian_incoming(Uhat, self.normal)
+        Aout = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
 
-        cf = An_out * (Uhat - U) - An_in * (Uhat - farfield)
+        cf = (Aout - Ain) * Uhat - Aout * U + Ain * farfield
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
-
         blf += cf.Compile(compile_flag)
 
     def _add_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.Outflow):
@@ -702,6 +694,15 @@ class ConservativeFormulation2D(ConservativeFormulation):
         else:
             raise NotImplementedError(f"Mixed method {mixed_method} not implemented for {self}!")
 
+        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value.glue])
+        if bnds:
+            VSTAR = H1(self.mesh, order=1)
+            VSTAR = Compress(VSTAR, VSTAR.GetDofs(self.mesh.Boundaries(bnds)))
+
+            if self.dmesh.is_periodic:
+                VSTAR = Periodic(VSTAR)
+            spaces.PRIMAL_NODE = VSTAR**4
+
         return FiniteElementSpace.from_settings(spaces)
 
     def _add_mixed_bilinearform(self, blf):
@@ -819,7 +820,6 @@ class ConservativeFormulation2D(ConservativeFormulation):
         p_approx = (self.pressure(U_) - self.pressure(Uhat))/bc.reference_length
         T_approx = (self.temperature(U_) - self.temperature(Uhat))/bc.reference_length
 
-
         if bc.type == "poinsot":
             out_p = bc.sigmas.pressure * (un - c) * p_approx
 
@@ -844,40 +844,13 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
             L = P * IfPos(-un, inflow, outflow)
 
-        elif bc.type == "pirozzoli_temperature":
-            I_in = self.DME_from_CHAR_matrix(
-                self.identity_matrix(Uhat, self.normal, 'in', True),
-                Uhat, self.normal) / self.cfg.time.step
-
-            outflow = -CF((0, 0, 0, p_approx / (gamma - 1)))
-
-            inflow = rho * R * T_approx/c**2 * CF((1, 0, 0, 0))
-            inflow += un_approx * 0.5 * CF((rho/c, -self.normal, rho*c))
-            inflow += ut_approx * CF((0, -self.tangential, 0))
-            inflow = self.DME_from_DVP(Uhat) * inflow
-
-            L = I_in * IfPos(-un, inflow, outflow)
-
-        elif bc.type == "pirozzoli_density":
-            I_in = self.DME_from_CHAR_matrix(
-                self.identity_matrix(Uhat, self.normal, 'in', True),
-                Uhat, self.normal) / self.cfg.time.step
-
-            outflow = CF((0, 0, 0, (self.pressure(Uhat) - self.pressure(U_)) / (gamma - 1)))
-            rho_approx = self.density(Uhat) - self.density(U_)
-            rho_u_approx = self.momentum(Uhat) - self.momentum(U_)
-            rho_Ek_approx = self.kinetic_energy(Uhat) - self.kinetic_energy(U_)
-            inflow = CF((rho_approx, rho_u_approx, rho_Ek_approx))
-
-            L = I_in * IfPos(-un, inflow, outflow)
-
-        if bc.outflow_tangential_flux:
+        if bc.tangential_flux:
             ut = self.velocity(Uhat) * self.tangential
             grad_p_t = self.pressure_gradient(Uhat, Q, Uhat) * self.tangential
             grad_u_tn = (self.velocity_gradient(Uhat, Q, Uhat) * self.tangential) * self.normal
             grad_u_tt = (self.velocity_gradient(Uhat, Q, Uhat) * self.tangential) * self.tangential
             L_tang = rho * c**2 * grad_u_tt + ut * (grad_p_t - rho * c * grad_u_tn)
-            L_tang *= self.cfg.Mach_number * self.normal[0]
+            L_tang *= self.cfg.Mach_number * IfPos(self.normal[0], self.normal[0], -self.normal[0])
 
             L += IfPos(-un, CF((0, 0, 0, 0)), P * CF((L_tang, 0, 0, 0)))
 
@@ -917,6 +890,58 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
+
+        if bc.glue:
+            self.glue(blf, boundary)
+
+    def _add_gfarfield_bilinearform(self, blf, boundary: Region, bc: bcs.GFarField):
+        compile_flag = self.cfg.compile_flag
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+
+        U, _ = self.TnT.PRIMAL
+        Uhat, Vhat = self.TnT.PRIMAL_FACET
+        dt = self.cfg.time.step
+
+        state = self.calc.determine_missing(bc.state)
+        farfield = CF((state.density, state.momentum, state.energy))
+        if bc.pressure_relaxation:
+            farfield = CF((self.density(U),
+                           self.momentum(U),
+                           state.pressure / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U)))
+
+        Ain = self.DME_convective_jacobian_incoming(Uhat, self.normal)
+        Aout = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
+
+        time = self._gfus.get_component(1)
+        time['n+1'] = Uhat
+
+        cf = Aout * (Uhat - U) - bc.sigma * Ain * (Uhat - farfield)
+        cf -= Ain * self.time_scheme.apply(time) * dt
+        if bc.tangential_flux:
+            Mn = self.cfg.Mach_number * IfPos(self.normal[0], self.normal[0], -self.normal[0])
+            B = Mn * self.DME_convective_jacobian(Uhat, self.tangential) * (grad(Uhat) * self.tangential)
+            cf -= Ain * B * dt
+
+        cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        blf += cf.Compile(compile_flag)
+
+        if bc.glue:
+            self.glue(blf, boundary)
+
+    def glue(self, blf, boundary, scaling=1):
+
+        Uhat, Vhat = self.TnT.PRIMAL_FACET
+        Ustar, Vstar = self.TnT.PRIMAL_NODE
+
+        nt = self.tangential * CF((-self.normal[1], self.normal[0]))
+
+        cf = nt * InnerProduct(Uhat.Trace(), Vstar) * ds(element_boundary=True, definedon=boundary)
+        cf += nt * InnerProduct(Ustar, Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
+
+        # cf = (Ustar - Uhat.Trace()) * (Vstar - Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
+        # cf = (Ustar * Vhat.Trace() + Uhat.Trace() * Vstar) * self.tangential[1] * ds(element_boundary=True, definedon=boundary)
+
+        blf += scaling * cf
 
     def conservative_diffusive_jacobian_x(self, U, Q):
 

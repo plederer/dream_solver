@@ -22,14 +22,6 @@ class State(NamedTuple):
     def all_thermodynamic_none(self):
         return all([val is None for val in (self.pressure, self.temperature, self.energy)])
 
-    def __repr__(self) -> str:
-        rho = self.density
-        u = self.velocity
-        p = self.pressure
-        T = self.temperature
-        rho_E = self.energy
-        return f"(\u03C1:{rho}, u:{u}, p:{p}, T:{T}, \u03C1E:{rho_E})"
-
 
 class Calculator:
 

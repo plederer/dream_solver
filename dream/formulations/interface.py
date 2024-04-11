@@ -94,7 +94,7 @@ class FiniteElementSpace(NamedTuple):
             self.PRIMAL_FACET = PRIMAL_FACET
             self.MIXED = MIXED
             self.PML = PML
-            self.NSCBC = NSCBC
+            self.PRIMAL_NODE = NSCBC
             self.__dict__.update(**kwargs)
 
         def __repr__(self) -> str:
@@ -207,7 +207,7 @@ class Formulation(abc.ABC):
     def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
         raise NotImplementedError()
 
-    def _add_dirichlet_bilinearform(self, blf, boundary, condition):
+    def _add_gfarfield_bilinearform(self, blf, boundary, condition):
         raise NotImplementedError()
 
     def _add_farfield_bilinearform(self, blf, boundary, condition):
@@ -229,6 +229,9 @@ class Formulation(abc.ABC):
         raise NotImplementedError()
 
     def _add_adiabatic_wall_bilinearform(self, blf, boundary, condition):
+        raise NotImplementedError()
+
+    def _add_custom_bilinearform(self, blf, boundary, condition):
         raise NotImplementedError()
 
     def add_initial_linearform(self, lf):
@@ -326,8 +329,8 @@ class _Formulation(Formulation):
         for name, condition in bcs.items():
             boundary = self.dmesh.boundary(name)
 
-            if isinstance(condition, bcs.Dirichlet):
-                self._add_dirichlet_bilinearform(blf, boundary, condition)
+            if isinstance(condition, bcs.GFarField):
+                self._add_gfarfield_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, bcs.FarField):
                 self._add_farfield_bilinearform(blf, boundary, condition)
@@ -349,6 +352,9 @@ class _Formulation(Formulation):
 
             elif isinstance(condition, bcs.Periodic):
                 continue
+
+            elif isinstance(condition, bcs.Custom):
+                self._add_custom_bilinearform(blf, boundary, condition)
 
             else:
                 logger.warn(f"Boundary condition for '{name}' has not been set!")
@@ -378,6 +384,12 @@ class _Formulation(Formulation):
 
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
+
+        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value.glue])
+        if bnds:
+            Ustar, Vstar = self.TnT.PRIMAL_NODE
+            blf += Ustar * Vstar * ds(element_boundary=True, definedon=bnds)
+
         if mixed_method is not MixedMethods.NONE:
             Q, P = self.TnT.MIXED
             blf += Q * P * dx

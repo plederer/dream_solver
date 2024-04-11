@@ -29,7 +29,7 @@ cfg.Mach_number = 0.1
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
-cfg.order = 6
+cfg.order = 3
 cfg.bonus_int_order_bnd = cfg.order
 cfg.bonus_int_order_vol = cfg.order
 
@@ -48,8 +48,8 @@ cfg.static_condensation = True
 
 if circle:
 
-
-    face = WorkPlane().MoveTo(0, -1).Arc(1, 180).Arc(1, 180).Face()
+    R = 0.5
+    face = WorkPlane().MoveTo(0, -R).Arc(R, 180).Arc(R, 180).Face()
     bnds = ['right', 'left']
 
     # face = WorkPlane().MoveTo(0, -1).Arc(1, 40).Arc(1, 100).Arc(1,40).Arc(1, 180).Face()
@@ -111,11 +111,11 @@ rho_0 = rho_inf * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(1/(g
 p_00 = p_inf * (1 - (gamma - 1)/2 * Mt**2 * exp(1))**(gamma/(gamma - 1))
 initial = State(u_0, rho_0, p_0)
 
-sigma = State(pressure=0.5, velocity=0.5, temperature=0.5)
 solver = CompressibleHDGSolver(mesh, cfg)
-solver.boundary_conditions.set(bcs.FarField(farfield), "left|bottom")
-solver.boundary_conditions.set(bcs.NSCBC(farfield, "yoo", sigma, outflow_tangential_flux=True), "right")
-# solver.boundary_conditions.set(bcs.NSCBC(farfield,"pirozzoli", 100, enable_tangential_flux=True), "left")
+solver.boundary_conditions.set(bcs.FarField(farfield), "left|right")
+sigma = State(pressure=0.28, velocity=0.5, temperature=0.5)
+solver.boundary_conditions.set(bcs.NSCBC(farfield, "poinsot", sigma, tangential_flux=True, glue=False), "right")
+solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=cfg.Mach_number, pressure_relaxation=True, tangential_flux=True, glue=False), "right")
 
 if periodic:
     solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")
@@ -128,9 +128,10 @@ with TaskManager():
     solver.drawer.draw(energy=True)
     solver.drawer.draw_particle_velocity(u_inf, autoscale=True, min=-1e-4, max=1e-4)
     solver.drawer.draw_acoustic_pressure(p_inf, autoscale=True, min=-1e-2, max=1e-2)
-    Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*",  autoscale=False, min=-1e-4, max=1e-4)
+    Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*",  autoscale=True, min=-1e-8, max=1e-8)
 
     visoptions.deformation = 1
     visoptions.vecfunction = 0
+    visoptions.subdivisions = cfg.order
 
     solver.solve_transient()

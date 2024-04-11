@@ -901,15 +901,19 @@ class BoundaryConditions(UserDict):
         return {name: bc for name, bc in self.items() if isinstance(bc, self.NSCBC)}
 
     class _Boundary(Condition):
-        ...
+        glue: bool = False
 
-    class Dirichlet(_Boundary):
-        def __init__(self, state: State):
+    class GFarField(_Boundary):
+        def __init__(self, state: State, sigma:float = 1, pressure_relaxation: bool = False, tangential_flux: bool = False, glue: bool = False):
             self._check_value(state.density, "density")
             self._check_value(state.velocity, "velocity")
             if state.all_thermodynamic_none:
                 raise ValueError("A Thermodynamic quantity is required!")
             super().__init__(state)
+            self.sigma = sigma
+            self.pressure_relaxation = pressure_relaxation
+            self.tangential_flux = tangential_flux
+            self.glue = glue
 
     class FarField(_Boundary):
         def __init__(self, state: State, theta_0: float = 0):
@@ -934,7 +938,8 @@ class BoundaryConditions(UserDict):
                      type: str = "poinsot",
                      sigmas: State = State(pressure=0.278, velocity=0.278, temperature=0.278),
                      reference_length: float = 1,
-                     outflow_tangential_flux: bool = True) -> None:
+                     tangential_flux: bool = True,
+                     glue: bool = False) -> None:
 
             self._check_value(state.density, "density")
             self._check_value(state.velocity, "velocity")
@@ -945,7 +950,8 @@ class BoundaryConditions(UserDict):
             self.type = type
             self.sigmas = sigmas
             self.reference_length = reference_length
-            self.outflow_tangential_flux = outflow_tangential_flux
+            self.tangential_flux = tangential_flux
+            self.glue = glue
 
     class InviscidWall(_Boundary):
         def __init__(self) -> None:
