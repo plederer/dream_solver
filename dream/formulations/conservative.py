@@ -694,7 +694,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         else:
             raise NotImplementedError(f"Mixed method {mixed_method} not implemented for {self}!")
 
-        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value.glue])
+        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value is not None and value.glue])
         if bnds:
             VSTAR = H1(self.mesh, order=1)
             VSTAR = Compress(VSTAR, VSTAR.GetDofs(self.mesh.Boundaries(bnds)))
