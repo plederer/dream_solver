@@ -199,6 +199,75 @@ def farfield_inflow_and_poinsot_outflow(sigmas: State, tg_flux: bool = False, gl
 
     return solver
 
+@test(name)
+def farfield_inflow_and_generalized_Qfarfield_outflow(
+        sigma=1, tg_flux: bool = False, Ut: bool = False, p_relaxation: bool = False, glue: bool = False):
+    """ In this test we set the classical farfield condition known from literature as inflow and as outflow the generalized farfield condition in development with 
+    additional time derivatives and tangential terms. """
+
+    flux = {False: "1d", True: "2d"}
+    Utime = {False: 'Uhat', True: 'U'}
+    rel = {False: 'Uinf', True: 'pinf'}
+
+    def add_gfarfield_bilinearform(self, blf,  boundary: Region, bc: bcs.GFarField):
+        compile_flag = self.cfg.compile_flag
+        bonus_order_bnd = self.cfg.bonus_int_order_bnd
+
+        U, _ = self.TnT.PRIMAL
+        Uhat, Vhat = self.TnT.PRIMAL_FACET
+        dt = self.cfg.time.step
+
+        state = self.calc.determine_missing(bc.state)
+        farfield = CF((state.density, state.momentum, state.energy))
+        if bc.pressure_relaxation:
+            farfield = CF(
+                (self.density(U),
+                 self.momentum(U),
+                 state.pressure / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U)))
+
+        Mn = self.cfg.Mach_number * IfPos(self.normal[0], self.normal[0], -self.normal[0])
+
+        time = self._gfus.get_component(1)
+        time['n+1'] = Uhat
+        B = Mn * self.DME_convective_jacobian(Uhat, self.tangential) * (grad(Uhat) * self.tangential)
+        if Ut:
+            time = self._gfus.get_component(0)
+            time['n+1'] = U
+            B = Mn * self.DME_convective_jacobian(Uhat, self.tangential) * (grad(U) * self.tangential)
+
+        Qin = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'in', True), Uhat, self.normal)
+        Qout = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'out', True), Uhat, self.normal)
+
+        cf = Uhat - Qout*U - Qin*farfield - (1 - bc.sigma) * Qin * (Uhat - farfield)
+        cf += Qin * self.time_scheme.apply(time) * dt
+        if bc.tangential_flux:
+            cf += Qin * B * dt
+
+        cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
+        blf += cf.Compile(compile_flag)
+
+        if bc.glue:
+            self.glue(blf, boundary)
+
+    tree.state_directory_name += f"_{Utime[Ut]}_{flux[tg_flux]}_sigma{sigma}_{rel[p_relaxation]}"
+    if glue:
+        tree.state_directory_name += f"_glue"
+    
+    solver = CompressibleHDGSolver(mesh, cfg, tree)
+    type(solver.formulation)._add_gfarfield_bilinearform = add_gfarfield_bilinearform
+
+    solver.boundary_conditions.set(bcs.FarField(farfield), 'left')
+    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma, p_relaxation, tg_flux, glue), "right")
+
+    label = {False: r"{\bm{u}_{\infty}}", True: r"{p_{\infty}}" }
+
+    cfg.info["Inflow"] = r"$\bm{FF}_{\bm{U}_{\infty}}$"
+    cfg.info["Outflow"] = rf"$\bm{{GFF}}_{label[p_relaxation]}$"
+    cfg.info['Sigma'] = sigma
+    cfg.info["Glue"] = glue
+    cfg.info["Relaxation"] = rel[p_relaxation]
+
+    return solver
 
 @test(name)
 def farfield_inflow_and_generalized_farfield_outflow(
@@ -234,7 +303,7 @@ def farfield_inflow_and_generalized_farfield_outflow(
         if Ut:
             time = self._gfus.get_component(0)
             time['n+1'] = U
-            B = Mn * self.DME_convective_jacobian(U, self.tangential) * (grad(U) * self.tangential)
+            B = Mn * self.DME_convective_jacobian(Uhat, self.tangential) * (grad(U) * self.tangential)
 
         Ain = self.DME_convective_jacobian_incoming(Uhat, self.normal)
         Aout = self.DME_convective_jacobian_outgoing(Uhat, self.normal)

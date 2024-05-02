@@ -182,6 +182,8 @@ class BaseConfiguration:
             value = getattr(self, key)
             if isinstance(value, BaseConfiguration):
                 value = value.to_dict()
+            elif isinstance(value, Parameter):
+                value = value.Get()
             cfg[key] = value
 
         return cfg
