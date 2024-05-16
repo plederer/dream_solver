@@ -174,10 +174,18 @@ class ConservativeFormulation(_Formulation):
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
-        Ain = self.DME_convective_jacobian_incoming(Uhat, self.normal)
-        Aout = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
+        if bc.Qform:
+            Qin = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'in', True), Uhat, self.normal)
+            Qout = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'out', True), Uhat, self.normal)
 
-        cf = (Aout - Ain) * Uhat - Aout * U + Ain * farfield
+            cf = Uhat - Qout * U - Qin * farfield
+
+        else:
+            Ain = self.DME_convective_jacobian_incoming(Uhat, self.normal)
+            Aout = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
+
+            cf = Aout * (Uhat - U) - Ain * (Uhat - farfield)
+
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
@@ -935,7 +943,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = nt * InnerProduct(Uhat.Trace(), Vstar) * ds(element_boundary=True, definedon=boundary)
         cf += nt * InnerProduct(Ustar, Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
 
-        # cf = (Ustar - Uhat.Trace()) * (Vstar - Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
+        cf = (Ustar - Uhat.Trace()) * (Vstar - Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
         # cf = (Ustar * Vhat.Trace() + Uhat.Trace() * Vstar) * self.tangential[1] * ds(element_boundary=True, definedon=boundary)
 
         blf += scaling * cf

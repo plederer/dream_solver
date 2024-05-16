@@ -916,7 +916,7 @@ class BoundaryConditions(UserDict):
             self.glue = glue
 
     class FarField(_Boundary):
-        def __init__(self, state: State, theta_0: float = 0):
+        def __init__(self, state: State, theta_0: float = 0, Qform: bool = False):
             self._check_value(state.density, "density")
             self._check_value(state.velocity, "velocity")
             if state.all_thermodynamic_none:
@@ -924,6 +924,7 @@ class BoundaryConditions(UserDict):
             super().__init__(state)
 
             self.theta_0 = theta_0
+            self.Qform = Qform
 
     class Outflow(_Boundary):
         def __init__(self, pressure: float):

@@ -118,9 +118,9 @@ class DreAmLogger:
 
     @property
     def filepath(self):
-        if not self.tree.main_path.exists():
-            self.tree.main_path.mkdir(parents=True)
-        return self.tree.main_path.joinpath(self.filename)
+        if not self.tree.state_path.exists():
+            self.tree.state_path.mkdir(parents=True)
+        return self.tree.state_path.joinpath(self.filename)
 
     def set_level(self, level):
         self.logger.setLevel(level)

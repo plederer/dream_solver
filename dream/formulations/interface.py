@@ -989,12 +989,12 @@ class _Formulation(Formulation):
         return self.DME_from_PVT(U) * matrix * self.CHAR_from_PVT(U)
 
     def DME_convective_jacobian_x(self, U) -> CF:
-        '''
+        r"""
         First Jacobian of the convective Euler Fluxes F_c = (f_c, g_c) for conservative variables U
         A = \partial f_c / \partial U
         input: u = (rho, rho * u, rho * E)
         See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2
-        '''
+        """
 
         gamma = self.cfg.heat_capacity_ratio
         velocity = self.velocity(U)
@@ -1012,12 +1012,12 @@ class _Formulation(Formulation):
         return A
 
     def DME_convective_jacobian_y(self, U) -> CF:
-        '''
+        r"""
         Second Jacobian of the convective Euler Fluxes F_c = (f_c, g_c)for conservative variables U
         B = \partial g_c / \partial U
         input: u = (rho, rho * u, rho * E)
         See also Page 144 in C. Hirsch, Numerical Computation of Internal and External Flows: Vol.2
-        '''
+        """
         gamma = self.cfg.heat_capacity_ratio
         velocity = self.velocity(U)
         ux, uy = velocity[0], velocity[1]

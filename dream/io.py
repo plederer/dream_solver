@@ -161,28 +161,28 @@ class Saver:
     def main_path(self) -> Path:
         main_path = self.tree.main_path
         if not main_path.exists():
-            main_path.mkdir(parents=True)
+            main_path.mkdir(parents=True, exist_ok=True)
         return main_path
 
     @property
     def state_path(self) -> Path:
         state_path = self.tree.state_path
         if not state_path.exists():
-            state_path.mkdir(parents=True)
+            state_path.mkdir(parents=True, exist_ok=True)
         return state_path
 
     @property
     def sensor_path(self):
         sensor_path = self.tree.sensor_path
         if not sensor_path.exists():
-            sensor_path.mkdir(parents=True)
+            sensor_path.mkdir(parents=True, exist_ok=True)
         return sensor_path
 
     @property
     def vtk_path(self):
         vtk_path = self.tree.vtk_path
         if not vtk_path.exists():
-            vtk_path.mkdir(parents=True)
+            vtk_path.mkdir(parents=True, exist_ok=True)
         return vtk_path
 
     def initialize_vtk_handler(self,
