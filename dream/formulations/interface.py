@@ -385,7 +385,7 @@ class _Formulation(Formulation):
         blf += U * V * dx
         blf += Uhat * Vhat * dx(element_boundary=True)
 
-        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value.glue])
+        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value is not None and value.glue])
         if bnds:
             Ustar, Vstar = self.TnT.PRIMAL_NODE
             blf += Ustar * Vstar * ds(element_boundary=True, definedon=bnds)

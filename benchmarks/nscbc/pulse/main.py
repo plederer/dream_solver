@@ -54,6 +54,9 @@ face = WorkPlane().RectangleC(H, H).Face()
 for bc, edge in zip(['bottom', 'right', 'top', 'left'], face.edges):
     edge.name = bc
 
+face.maxh = maxh
+face.name = "inner"
+
 mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxh))
 gamma = cfg.heat_capacity_ratio
 M = cfg.Mach_number
@@ -266,27 +269,3 @@ def gfarfield_boundary(sigma=1, Ut: bool = False, p_relaxation: bool = False, gl
 
     return solver
 
-
-if __name__ == '__main__':
-
-    # for Ut in [True, False]:
-    #     for tg_flux in [True, False]:
-    #         for sigma in [1, cfg.Mach_number.Get(), 1e-3]:
-    #             for glue in [True, False]:
-    #                 for pressure_relaxation in [True, False]:
-    #                     farfield_inflow_and_generalized_farfield_outflow(sigma, tg_flux, Ut, pressure_relaxation, glue)
-
-    # farfield_inflow_and_generalized_farfield_outflow(1e-3, True, False)
-
-    gfarfield_boundary(Qform=True)
-
-    # for tg_flux in [True, False]:
-    #     for glue in [True, False]:
-    #         farfield_inflow_and_yoo_outflow(tg_flux, glue)
-
-    # for tg_flux in [True, False]:
-    #     for glue in [True, False]:
-    #         for sigma in [State(4, pressure=0.28, temperature=4),
-    #                       State(4, pressure=1e-3, temperature=4),
-    #                       State(4, pressure=5, temperature=4)]:
-    #             farfield_inflow_and_poinsot_outflow(sigma, tg_flux, glue)

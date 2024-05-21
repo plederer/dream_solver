@@ -88,7 +88,7 @@ class ConservativeFormulation(_Formulation):
         bonus_vol = self.cfg.bonus_int_order_vol
         bonus_bnd = self.cfg.bonus_int_order_bnd
 
-        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value.glue])
+        bnds = "|".join([bc for bc, value in self.dmesh.bcs.items() if value is not None and value.glue])
 
         for domain, dc in self.dmesh.dcs.initial_conditions.items():
 
