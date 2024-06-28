@@ -21,13 +21,14 @@ cfg.fem = "hdg"
 # cfg.mixed_method = "strain_heat"
 # cfg.mixed_method = None
 cfg.riemann_solver = 'lax_friedrich'
+cfg.riemann_solver = 'hllem'
 
 cfg.Reynolds_number = 166
-cfg.Mach_number = 0
+cfg.Mach_number = 0.0
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
-cfg.order = 2
+cfg.order = 4
 cfg.bonus_int_order_bnd = 0
 cfg.bonus_int_order_vol = 0
 
@@ -88,6 +89,9 @@ initial = State(u_inf, rho_0, p_0)
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set(bcs.FarField(farfield), 'left')
 solver.boundary_conditions.set(bcs.NSCBC(farfield, 0.2, 1, True), 'left|right|bottom|top')
+solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), 'left|right|bottom|top')
+solver.boundary_conditions.set(bcs.GFarField(farfield, 0.01, False, True, False), 'left|right|bottom|top')
+# solver.boundary_conditions.set(bcs.GFarField(farfield, 0.01, True, True, False), 'right')
 if periodic:
     solver.boundary_conditions.set(bcs.Periodic(), 'top|bottom')
 solver.domain_conditions.set(dcs.Initial(initial))

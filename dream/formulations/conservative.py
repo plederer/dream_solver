@@ -905,34 +905,93 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
-        dt = self.cfg.time.step
 
         state = self.calc.determine_missing(bc.state)
-        farfield = CF((state.density, state.momentum, state.energy))
-        if bc.pressure_relaxation:
-            farfield = CF((self.density(U),
-                           self.momentum(U),
-                           state.pressure / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U)))
+        U_bc = CF((state.density, state.momentum, state.energy))
+        if bc.relaxation == "farfield":
+            ...
+        elif bc.relaxation == "outflow":
+            U_bc = CF((self.density(U),
+                       self.momentum(U),
+                       state.pressure / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U)))
+        elif bc.relaxation == "inflow":
+            U_bc = CF((state.density,
+                       state.momentum,
+                       self.pressure(U) / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U_bc)))
+        else:
+            raise ValueError('Relaxation unknown!')
 
-        Ain = self.DME_convective_jacobian_incoming(Uhat, self.normal)
-        Aout = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
 
+        if bc.type == "gfarfield":
+            Sigma = CF((
+                bc.sigma.pressure, 0, 0, 0,
+                0, bc.sigma.velocity, 0, 0,
+                0, 0, bc.sigma.velocity, 0,
+                0, 0, 0, bc.sigma.pressure,
+            ), dims=(4, 4))
+
+            Sigma /= self.cfg.time.step
+
+        elif bc.type == "yoo":
+
+            rho = self.density(Uhat)
+            M = self.cfg.Mach_number
+            c = self.speed_of_sound(Uhat)
+            un = self.velocity(Uhat) * self.normal
+
+            if bc.relaxation == "outflow":
+                Sigma = CF((
+                    0.278 * c * (1 - M**2), 0, 0, 0,
+                    0, un, 0, 0,
+                    0, 0, un, 0,
+                    0, 0, 0, un + c,
+                ), dims=(4, 4))
+
+            elif bc.relaxation == "inflow":
+                Sigma = CF((
+                    4 * c * (1 - M**2), 0, 0, 0,
+                    0, 4 * c, 0, 0,
+                    0, 0, 4 * c, 0,
+                    0, 0, 0, un + c,
+                ), dims=(4, 4))
+
+            elif bc.relaxation == "farfield":
+                Sigma = CF((
+                    4 * c * (1 - M**2), 0, 0, 0,
+                    0, 4 * c, 0, 0,
+                    0, 0, 4 * c, 0,
+                    0, 0, 0, 4 * c * (1 - M**2),
+                ), dims=(4, 4))
+
+        Sigma = self.DME_from_CHAR_matrix(Sigma, Uhat, self.normal)
+        Qin = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'in', True), Uhat, self.normal)
+        Qout = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'out', True), Uhat, self.normal)
+        dt = self.time_scheme.get_normalized_denominator()
         time = self._gfus.get_component(1)
         time['n+1'] = Uhat
 
-        cf = Aout * (Uhat - U) - bc.sigma * Ain * (Uhat - farfield)
-        cf -= Ain * self.time_scheme.apply(time) * dt
-        if bc.tangential_flux:
+        cf = Uhat - Qout * U - Qin * self.time_scheme.get_previous_steps(time)
+        cf -= Qin * dt * Sigma * (U_bc - Uhat)
+
+        if bc.convective_tangential_flux:
             Mn = self.cfg.Mach_number * IfPos(self.normal[0], self.normal[0], -self.normal[0])
             B = Mn * self.DME_convective_jacobian(Uhat, self.tangential) * (grad(Uhat) * self.tangential)
-            cf -= Ain * B * dt
+            cf += Qin * B * dt
+
+        if self.cfg.mixed_method is not self.cfg.mixed_method.NONE and bc.viscous_fluxes:
+            Q, _ = self.TnT.MIXED
+            cf -= Qin * self.conservative_diffusive_jacobian(U, Q, self.tangential)*(grad(U)*self.tangential) * dt
+            cf -= Qin * self.conservative_diffusive_jacobian(U, Q, self.normal) * (grad(U) * self.normal) * dt
+
+            cf -= Qin * self.mixed_diffusive_jacobian(U, self.tangential) * (grad(Q) * self.tangential) * dt
+            cf -= Qin * self.mixed_diffusive_jacobian(U, self.normal) * (grad(Q) * self.normal) * dt
 
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
 
         if bc.glue:
             self.glue(blf, boundary)
-
+        
     def glue(self, blf, boundary, scaling=1):
 
         Uhat, Vhat = self.TnT.PRIMAL_FACET
@@ -943,8 +1002,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = nt * InnerProduct(Uhat.Trace(), Vstar) * ds(element_boundary=True, definedon=boundary)
         cf += nt * InnerProduct(Ustar, Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
 
-        cf = (Ustar - Uhat.Trace()) * (Vstar - Vhat.Trace()) * ds(element_boundary=True, definedon=boundary)
-        # cf = (Ustar * Vhat.Trace() + Uhat.Trace() * Vstar) * self.tangential[1] * ds(element_boundary=True, definedon=boundary)
+        # cf = (Uhat.Trace() - Ustar) * (Vhat.Trace() - Vstar) * ds(element_boundary=True, definedon=boundary)
 
         blf += scaling * cf
 

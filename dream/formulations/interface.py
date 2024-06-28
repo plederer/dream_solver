@@ -40,6 +40,7 @@ class RiemannSolver(enum.Enum):
     ROE = 'roe'
     HLL = 'hll'
     HLLEM = 'hllem'
+    FARFIELD = "farfield"
 
 
 class Scaling(enum.Enum):
@@ -447,7 +448,7 @@ class _Formulation(Formulation):
             stabilisation_matrix = splus * Id(self.mesh.dim + 2)
 
         elif riemann_solver is RiemannSolver.HLLEM:
-            theta_0 = 1e-8
+            theta_0 = 1e-4
             theta = un_abs/(un_abs + c)
             theta = IfPos(theta - theta_0, theta, theta_0)
 
@@ -467,6 +468,9 @@ class _Formulation(Formulation):
             Theta = self.DME_from_CHAR_matrix(Theta, Uhat, unit_vector)
 
             stabilisation_matrix = splus * Theta
+
+        elif riemann_solver is RiemannSolver.FARFIELD:
+            stabilisation_matrix = self.DME_convective_jacobian_outgoing(Uhat, unit_vector)
 
         return stabilisation_matrix
 
@@ -700,6 +704,8 @@ class _Formulation(Formulation):
         c = self.speed_of_sound(U)
         u_dir = InnerProduct(self.velocity(U), unit_vector)
 
+        eps = 1e-4
+
         lam_m_c = u_dir - c
         lam = u_dir
         lam_p_c = u_dir + c
@@ -711,8 +717,10 @@ class _Formulation(Formulation):
         if type == "in":
             Im_c = (1 - Im_c)
             I = (1 - I)
+            I = 0.5 - atan(lam/eps)/pi
             Ip_c = (1 - Ip_c)
         elif type == "out":
+            I = 0.5 + atan(lam/eps)/pi
             ...
         else:
             raise ValueError(f"{str(type).capitalize()} is invalid! Alternatives: {['in', 'out']}")

@@ -904,15 +904,26 @@ class BoundaryConditions(UserDict):
         glue: bool = False
 
     class GFarField(_Boundary):
-        def __init__(self, state: State, sigma:float = 1, pressure_relaxation: bool = False, tangential_flux: bool = False, glue: bool = False):
+        def __init__(
+                self, state: State, 
+                type: str = 'gfarfield', 
+                relaxation: str = 'farfield', 
+                convective_tangential_flux: bool = False,
+                viscous_fluxes: bool = False,
+                sigma: State = State(1, 1, 1, 1, 1),
+                glue: bool = False):
+        
             self._check_value(state.density, "density")
             self._check_value(state.velocity, "velocity")
             if state.all_thermodynamic_none:
                 raise ValueError("A Thermodynamic quantity is required!")
             super().__init__(state)
+
+            self.type = type
+            self.relaxation = relaxation
+            self.convective_tangential_flux = convective_tangential_flux
+            self.viscous_fluxes = viscous_fluxes
             self.sigma = sigma
-            self.pressure_relaxation = pressure_relaxation
-            self.tangential_flux = tangential_flux
             self.glue = glue
 
     class FarField(_Boundary):
