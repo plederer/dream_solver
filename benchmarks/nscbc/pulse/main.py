@@ -1,9 +1,14 @@
 from ngsolve import *
 from dream import *
 from netgen.occ import OCCGeometry, WorkPlane, IdentificationType
+import argparse
+
+parser = argparse.ArgumentParser(description='Vortex benchmark')
+parser.add_argument('Alpha', metavar='a', type=float, help='Pulse strength')
+args = vars(parser.parse_args())
 
 ngsglobals.msg_level = 0
-SetNumThreads(4)
+SetNumThreads(64)
 
 draw = False
 
@@ -11,7 +16,7 @@ tree = ResultsDirectoryTree()
 # tree.parent_path = ""
 
 LOGGER.tree = tree
-# LOGGER.log_to_terminal = False
+LOGGER.log_to_terminal = False
 
 saver = Saver(tree)
 
@@ -19,7 +24,7 @@ name = ""
 maxh = 0.07
 R = 0.1
 H = 8*R
-alpha = 0.4
+alpha = args['Alpha']
 
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
@@ -35,18 +40,18 @@ cfg.bonus_int_order_vol = cfg.order
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 0.01
-save_step = 1
-cfg.time.interval = (0, 10)
+cfg.time.step = 2e-3
+save_step = 5
+cfg.time.interval = (0, 15)
 cfg.time.interval = (0, 0.01)
-cfg.save_state = False
+cfg.save_state = True
 
 cfg.linear_solver = "pardiso"
 cfg.damping_factor = 1
 cfg.max_iterations = 5
 cfg.convergence_criterion = 1e-8
 
-cfg.compile_flag = False
+cfg.compile_flag = True
 cfg.static_condensation = True
 
 face = WorkPlane().RectangleC(H, H).Face()
@@ -99,22 +104,10 @@ def test(name: str = ""):
                 tree.state_directory_name += f"_{name}"
 
             solver = func(*args, **kwargs)
-
-            i = 0
-            while tree.state_path.exists():
-                labels = tree.state_path.name.split("_")
-
-                if f"{i}" in labels:
-                    labels = labels[:-1]
-
-                i += 1
-                labels.append(f"{i}")
-
-                tree.state_directory_name = '_'.join(labels)
-
             solver.domain_conditions.set(dcs.Initial(initial))
 
             LOGGER.log_to_file = True
+
             with TaskManager():
                 solver.setup()
 
@@ -126,12 +119,10 @@ def test(name: str = ""):
                 solver.solve_transient(save_state_every_num_step=save_step)
 
             saver.save_mesh(mesh)
-            saver.state_path
-            saver.save_configuration(cfg, name=f"{tree.state_directory_name}/cfg", comment=func.__doc__)
-
-            cfg._info = info
+            saver.save_configuration(cfg, name=f"{tree.state_directory_name}/cfg")
             LOGGER.log_to_file = False
 
+            cfg._info = info
 
         return wrapper
 
@@ -139,133 +130,47 @@ def test(name: str = ""):
 
 
 @test(name)
-def farfield_boundary(Qform=False):
-    """ In this test we set the classical farfield condition known from literature as inflow and outflow. """
-
-    if Qform:
-        tree.state_directory_name += f"_Qform"
-
+def farfield_boundary():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.FarField(farfield, Qform=Qform), "left|right|bottom|top")
+    solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), "left|right|top|bottom")
+    return solver
 
+
+@test(name)
+def gfarfield_boundary_farfield_outflow():
+    solver = CompressibleHDGSolver(mesh, cfg, tree)
+    solver.boundary_conditions.set(
+        bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)),
+        'left|top|bottom|right')
+    return solver
+
+
+@test(name)
+def gfarfield_boundary_pressure_outflow():
+    solver = CompressibleHDGSolver(mesh, cfg, tree)
+    solver.boundary_conditions.set(
+        bcs.GFarField(farfield, relaxation='outflow', sigma=State(velocity=0.01, pressure=0.01)),
+        'left|top|bottom|right')
+    return solver
+
+
+@test(name)
+def yoo():
+    solver = CompressibleHDGSolver(mesh, cfg, tree)
+    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo', relaxation="farfield"), 'left|top|bottom|right')
     return solver
 
 
 @test(name)
 def outflow_boundary():
-    """ In this test we set the classical farfield condition known from literature as inflow and outflow. """
-
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.Outflow(farfield.pressure), "left|right|bottom|top")
-
+    solver.boundary_conditions.set(bcs.Outflow(farfield.pressure), 'left|top|bottom|right')
     return solver
 
 
-@test(name)
-def yoo_boundary(glue: bool = False):
-    """ In this test we set the classical farfield condition known from literature as inflow and as outflow the nonreflecting
-    boundary condition of yoo with sigma_p = 0.278, sigma_T = 4 and sigma_u = 4. """
-
-    if glue:
-        tree.state_directory_name += f"_glue"
-
-    solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(
-        bcs.NSCBC(farfield, 'yoo', tangential_flux=False, glue=glue),
-        "right|left|top|bottom")
-
-    cfg.info["Glue"] = glue
-
-    return solver
-
-
-@test(name)
-def poinsot_boundary(sigmas: State, glue: bool = False):
-    """ In this test we set the classical farfield condition known from literature as inflow and as outflow the nonreflecting
-    boundary condition of poinsot with different sigmas. """
-
-    tree.state_directory_name += f"_sigma{sigmas.pressure}"
-    if glue:
-        tree.state_directory_name += f"_glue"
-
-    solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(
-        bcs.NSCBC(farfield, 'poinsot', sigmas, tangential_flux=False, glue=glue),
-        "right|left|top|bottom")
-
-    cfg.info["Glue"] = glue
-    cfg.info['Sigma'] = sigmas.pressure
-
-    return solver
-
-
-@test(name)
-def gfarfield_boundary(sigma=1, Ut: bool = False, p_relaxation: bool = False, glue: bool = False, Qform: bool = False):
-    """ In this test we set the classical farfield condition known from literature as inflow and as outflow the generalized farfield condition in development with 
-    additional time derivatives and tangential terms. """
-
-    Utime = {False: 'Uhat', True: 'U'}
-    rel = {False: 'Uinf', True: 'pinf'}
-
-    def add_gfarfield_bilinearform(self, blf,  boundary: Region, bc: bcs.GFarField):
-        compile_flag = self.cfg.compile_flag
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
-
-        U, _ = self.TnT.PRIMAL
-        Uhat, Vhat = self.TnT.PRIMAL_FACET
-        dt = self.cfg.time.step
-
-        state = self.calc.determine_missing(bc.state)
-        farfield = CF((state.density, state.momentum, state.energy))
-        if bc.pressure_relaxation:
-            farfield = CF(
-                (self.density(U),
-                 self.momentum(U),
-                 state.pressure / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U)))
-
-        time = self._gfus.get_component(1)
-        time['n+1'] = Uhat
-        if Ut:
-            time = self._gfus.get_component(0)
-            time['n+1'] = U
-
-        if Qform:
-
-            Qin = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'in', True), Uhat, self.normal)
-            Qout = self.DME_from_CHAR_matrix(self.identity_matrix(Uhat, self.normal, 'out', True), Uhat, self.normal)
-
-            cf = Uhat - Qout*U - Qin*farfield - (1 - bc.sigma) * Qin * (Uhat - farfield)
-            cf += Qin * self.time_scheme.apply(time) * dt
-
-        else:
-
-            Ain = self.DME_convective_jacobian_incoming(Uhat, self.normal)
-            Aout = self.DME_convective_jacobian_outgoing(Uhat, self.normal)
-
-            cf = Aout * (Uhat - U) - bc.sigma * Ain * (Uhat - farfield)
-            cf -= Ain * self.time_scheme.apply(time) * dt
-
-        cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
-        blf += cf.Compile(compile_flag)
-
-        if bc.glue:
-            self.glue(blf, boundary)
-
-    tree.state_directory_name += f"_{Utime[Ut]}_sigma{sigma}_{rel[p_relaxation]}"
-    if glue:
-        tree.state_directory_name += f"_glue"
-    if Qform:
-        tree.state_directory_name += f"_Qform"
-    
-
-    solver = CompressibleHDGSolver(mesh, cfg, tree)
-    type(solver.formulation)._add_gfarfield_bilinearform = add_gfarfield_bilinearform
-
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma, p_relaxation, glue=glue), "left|right|top|bottom")
-
-    cfg.info['Sigma'] = sigma
-    cfg.info["Glue"] = glue
-    cfg.info["Relaxation"] = rel[p_relaxation]
-
-    return solver
-
+if __name__ == '__main__':
+    gfarfield_boundary_pressure_outflow()
+    gfarfield_boundary_farfield_outflow()
+    farfield_boundary()
+    yoo()
+    outflow_boundary()

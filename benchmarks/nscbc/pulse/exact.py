@@ -5,7 +5,7 @@ from ngsolve import *
 from netgen.occ import *
 
 wp = WorkPlane()
-circle = WorkPlane().Circle(0, 0, 6).Face()
+circle = WorkPlane().Circle(0, 0, 8).Face()
 circle.edges.name = "outer"
 circle.edges.maxh = 0.3
 circle.name = "outer"
@@ -19,7 +19,7 @@ def exact():
     """ Exact solution for pressure pulse! """
 
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), "outer")
+    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(pressure=0.01, velocity=0.01)), "outer")
 
     tree.directory_name = f"Ma{cfg.Mach_number.Get()}/alpha{alpha}"
     return solver
