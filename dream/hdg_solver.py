@@ -270,24 +270,21 @@ class CompressibleHDGSolver:
         self.formulation.add_domain_conditions_bilinearform(self.blf)
 
     def _solve_mass(self, linearform: LinearForm) -> GridFunction:
-        formulation = self.formulation
-        gfu = GridFunction(formulation.fes)
 
-        blf = BilinearForm(formulation.fes)
-        formulation.add_mass_bilinearform(blf)
+        blf = BilinearForm(self.formulation.fes, symmetric=True)
+        self.formulation.add_mass_bilinearform(blf)
 
         blf.Assemble()
         linearform.Assemble()
 
-        blf_inverse = blf.mat.Inverse(formulation.fes.FreeDofs(), inverse="sparsecholesky")
+        blf_inverse = blf.mat.Inverse(self.formulation.fes.FreeDofs(), inverse="sparsecholesky")
 
-        gfu.vec.data = blf_inverse * linearform.vec
-        return gfu
+        self.formulation.gfu.vec.data = blf_inverse * linearform.vec
 
     def _solve_initial(self):
         lf = LinearForm(self.formulation.fes)
         self.formulation.add_initial_linearform(lf)
-        self.formulation.gfu.vec.data = self._solve_mass(lf).vec
+        self._solve_mass(lf)
         self.formulation.update_gridfunctions(initial_value=True)
 
     def _solve_update_step(self):
