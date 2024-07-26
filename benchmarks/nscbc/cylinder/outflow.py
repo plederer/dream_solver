@@ -1,6 +1,6 @@
-from main import *
 import sys
 sys.path.append('.')
+from main import *
 
 
 if __name__ == '__main__':
