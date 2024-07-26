@@ -41,6 +41,7 @@ def reference():
     sponge = SpongeFunction.penta_smooth(r_)
 
     solver.domain_conditions.set(dcs.SpongeLayer(farfield, sponge), 'sponge')
+    solver.get_saver(tree).save_mesh('mesh_exact')
 
     return solver
 #%%
