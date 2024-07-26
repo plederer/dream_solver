@@ -17,9 +17,9 @@ maxh = 0.1
 cfg = SolverConfiguration()
 cfg.formulation = "conservative"
 cfg.fem = "hdg"
-cfg.dynamic_viscosity = "constant"
+# cfg.dynamic_viscosity = "constant"
 # cfg.dynamic_viscosity = None
-cfg.mixed_method = "strain_heat"
+# cfg.mixed_method = "strain_heat"
 # cfg.mixed_method = None
 cfg.scaling = "aerodynamic"
 cfg.riemann_solver = 'farfield'
@@ -35,7 +35,7 @@ cfg.bonus_int_order_vol = cfg.order
 
 cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
-cfg.time.step = 1e-3
+cfg.time.step = 1e-2
 cfg.time.interval = (0, 200)
 
 cfg.linear_solver = "pardiso"
@@ -144,6 +144,8 @@ with TaskManager():
     solver.drawer.draw(energy=True)
     solver.drawer.draw_particle_velocity(u_inf, autoscale=True, min=-1e-4, max=1e-4)
     solver.drawer.draw_acoustic_pressure(p_inf, autoscale=True, min=-1e-2, max=1e-2)
+    Draw((solver.formulation.density() - 1), mesh, "rho*",  autoscale=False, min=-1e-4, max=1e-4)
+    Draw((solver.formulation.temperature() - farfield.temperature), mesh, "T*",  autoscale=False, min=-1e-4, max=1e-4)
     Draw((solver.formulation.pressure() - p_inf)/(p_00 - p_inf), mesh, "p*",  autoscale=False, min=-1e-4, max=1e-4)
 
     visoptions.deformation = 1
