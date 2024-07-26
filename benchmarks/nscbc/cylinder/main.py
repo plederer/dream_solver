@@ -1,7 +1,6 @@
 #%%
 from ngsolve import *
 from netgen.occ import *
-from netgen.webgui import Draw
 from dream import *
 SetNumThreads(8)
 
@@ -16,13 +15,27 @@ cyl = wp.Circle(0, 0, R).Face()
 cyl.edges.name = "cyl"
 cyl.edges.maxh = 0.035
 
+bl = 4
+wp.MoveTo(0, bl*R).Direction(-1, 0).Arc(bl*R, 180)
+wp.LineTo((20+offset)*R, -bl*R)
+wp.LineTo((20+offset)*R, bl*R)
+wp.LineTo(0, bl*R)
+wake = wp.Face()
+
+wake.faces.maxh = 0.5
+wake -= cyl
+
 # domain
 domain = wp.MoveTo(offset*R, 0).RectangleC(40*R, 40*R).Face()
+domain.faces.maxh = 1.5
 
-for edge, name in zip(domain.edges, ['planar', 'outflow', 'planar', 'inflow']):
-    edge.name = name
+for edge, name_ in zip(domain.edges, ['planar', 'outflow', 'planar', 'inflow']):
+    edge.name = name_
 
-dom = domain - cyl
+domain -= cyl
+
+dom = Glue([wake, domain])
+dom.faces.name = "inner"
 
 geo = OCCGeometry(dom, dim=2)
 
@@ -105,7 +118,7 @@ def test(name: str = ""):
                 loader.load_state_time_scheme('stationary_0.0')
             else:
                 cfg.time.step = 0.01
-                cfg.max_iterations = 100
+                cfg.max_iterations = 200
                 cfg.time.max_step = 1
                 with TaskManager():
                     solver.solve_stationary()

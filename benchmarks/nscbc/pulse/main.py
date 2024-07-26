@@ -157,7 +157,7 @@ def gfarfield_boundary_pressure_outflow():
 @test(name)
 def yoo():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo', relaxation="farfield"), 'left|top|bottom|right')
+    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo', relaxation="outflow"), 'left|top|bottom|right')
     return solver
 
 
