@@ -2,18 +2,13 @@ from __future__ import annotations
 
 import ngsolve as ngs
 from dream import bla
-from dream.config import MultipleConfiguration, any
+from dream.config import DescriptorConfiguration, any
 from dream.compressible.state import ScalingState
 
 
-class Scaling(MultipleConfiguration, is_interface=True):
+class Scaling(DescriptorConfiguration, is_interface=True):
 
-    @any(default={'length': 1,
-                                     'density': 1.293,
-                                     'velocity': 102.9,
-                                     'speed_of_sound': 343,
-                                     'temperature': 293.15,
-                                     'pressure': 101325})
+    @any(default={'L': 1, 'rho': 1.293, 'u': 102.9, 'c': 343, 'T': 293.15, 'p': 101325})
     def dimensional_infinity_values(self, state: ScalingState):
         return ScalingState(**state)
 
@@ -40,6 +35,8 @@ class Scaling(MultipleConfiguration, is_interface=True):
 
 class Aerodynamic(Scaling):
 
+    name = "aerodynamic"
+
     def _check_Mach_number(self, Mach_number: float):
         Ma = Mach_number
         if isinstance(Ma, ngs.Parameter):
@@ -58,6 +55,8 @@ class Aerodynamic(Scaling):
 
 class Acoustic(Scaling):
 
+    name = "acoustic"
+
     def velocity_magnitude(self, Mach_number: float):
         return Mach_number
 
@@ -66,6 +65,8 @@ class Acoustic(Scaling):
 
 
 class Aeroacoustic(Scaling):
+
+    name = "aeroacoustic"
 
     def velocity_magnitude(self, Mach_number: float):
         Ma = Mach_number

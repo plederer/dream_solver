@@ -63,7 +63,7 @@ class TestDescriptor(unittest.TestCase):
         self.obj = State_
 
     def test_descriptor_name(self):
-        self.assertEqual(self.obj.dummy.name, "dummy")
+        self.assertEqual(self.obj.dummy.label, "dummy")
 
 
 class TestVariable(unittest.TestCase):

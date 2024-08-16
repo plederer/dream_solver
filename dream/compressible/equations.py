@@ -4,9 +4,9 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.compressible.config import CompressibleFlowConfiguration
+from dream.compressible.config import CompressibleFlowConfiguration, equation
 
-from .state import CompressibleState, ScalingState
+from .state import CompressibleState, ScalingState, CompressibleStateGradient
 
 
 logger = logging.getLogger(__name__)
@@ -31,10 +31,10 @@ class CompressibleEquations:
         Ma = self.cfg.Mach_number
         INF = CompressibleState()
 
-        INF.density = self.cfg.scaling.density()
-        INF.speed_of_sound = self.cfg.scaling.speed_of_sound(Ma)
-        INF.temperature = self.temperature(INF)
-        INF.pressure = self.pressure(INF)
+        INF.rho = self.cfg.scaling.density()
+        INF.c = self.cfg.scaling.speed_of_sound(Ma)
+        INF.T = self.temperature(INF)
+        INF.p = self.pressure(INF)
 
         if direction is not None:
             direction = bla.as_vector(direction)
@@ -42,10 +42,10 @@ class CompressibleEquations:
             if not 1 <= direction.dim <= 3:
                 raise ValueError(f"Invalid Dimension!")
 
-            INF.velocity = self.cfg.scaling.velocity(direction, Ma)
-            INF.inner_energy = self.inner_energy(INF)
-            INF.kinetic_energy = self.kinetic_energy(INF)
-            INF.energy = self.energy(INF)
+            INF.u = self.cfg.scaling.velocity(direction, Ma)
+            INF.rho_Ei = self.inner_energy(INF)
+            INF.rho_Ek = self.kinetic_energy(INF)
+            INF.rho_E = self.energy(INF)
 
         return INF
 
@@ -67,62 +67,60 @@ class CompressibleEquations:
 
         return REF
 
-    def get_primitive_convective_jacobian(self, state: CompressibleState, unit_vector: bla.VECTOR, type_: str = None):
-        lambdas = self.characteristic_velocities(state, unit_vector, type_)
+    def get_primitive_convective_jacobian(self, U: CompressibleState, unit_vector: bla.VECTOR, type_: str = None):
+        lambdas = self.characteristic_velocities(U, unit_vector, type_)
         LAMBDA = bla.diagonal(lambdas)
-        return self.transform_characteristic_to_primitive(LAMBDA, state, unit_vector)
+        return self.transform_characteristic_to_primitive(LAMBDA, U, unit_vector)
 
-    def get_conservative_convective_jacobian(
-            self, state: CompressibleState, unit_vector: bla.VECTOR, type_: str = None):
-        lambdas = self.characteristic_velocities(state, unit_vector, type_)
+    def get_conservative_convective_jacobian(self, U: CompressibleState, unit_vector: bla.VECTOR, type_: str = None):
+        lambdas = self.characteristic_velocities(U, unit_vector, type_)
         LAMBDA = bla.diagonal(lambdas)
-        return self.transform_characteristic_to_conservative(LAMBDA, state, unit_vector)
+        return self.transform_characteristic_to_conservative(LAMBDA, U, unit_vector)
 
     def get_characteristic_identity(
-            self, state: CompressibleState, unit_vector: bla.VECTOR, type_: str = None) -> bla.MATRIX:
-        lambdas = self.characteristic_velocities(state, unit_vector, type_)
+            self, U: CompressibleState, unit_vector: bla.VECTOR, type: str = None) -> bla.MATRIX:
+        lambdas = self.characteristic_velocities(U, unit_vector, type)
 
-        if type_ == "incoming":
+        if type == "incoming":
             lambdas = (ngs.IfPos(-lam, 1, 0) for lam in lambdas)
-        elif type_ == "outgoing":
+        elif type == "outgoing":
             lambdas = (ngs.IfPos(lam, 1, 0) for lam in lambdas)
         else:
             raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {['incoming', 'outgoing']}")
 
         return bla.diagonal(lambdas)
 
-    def transform_primitive_to_conservative(self, matrix: bla.MATRIX, state: CompressibleState):
-        M = self.conservative_from_primitive(state)
-        Minv = self.primitive_from_conservative(state)
+    def transform_primitive_to_conservative(self, matrix: bla.MATRIX, U: CompressibleState):
+        M = self.conservative_from_primitive(U)
+        Minv = self.primitive_from_conservative(U)
         return M * matrix * Minv
 
-    def transform_characteristic_to_primitive(
-            self, matrix: bla.MATRIX, state: CompressibleState, unit_vector: bla.VECTOR):
-        L = self.primitive_from_characteristic(state, unit_vector)
-        Linv = self.characteristic_from_primitive(state, unit_vector)
+    def transform_characteristic_to_primitive(self, matrix: bla.MATRIX, U: CompressibleState, unit_vector: bla.VECTOR):
+        L = self.primitive_from_characteristic(U, unit_vector)
+        Linv = self.characteristic_from_primitive(U, unit_vector)
         return L * matrix * Linv
 
     def transform_characteristic_to_conservative(
-            self, matrix: bla.MATRIX, state: CompressibleState, unit_vector: bla.VECTOR):
-        P = self.conservative_from_characteristic(state, unit_vector)
-        Pinv = self.characteristic_from_conservative(state, unit_vector)
+            self, matrix: bla.MATRIX, U: CompressibleState, unit_vector: bla.VECTOR):
+        P = self.conservative_from_characteristic(U, unit_vector)
+        Pinv = self.characteristic_from_conservative(U, unit_vector)
         return P * matrix * Pinv
 
-    @form.equation
-    def Mach_number(self, state: CompressibleState):
-        u = self.velocity(state)
-        c = self.speed_of_sound(state)
+    @equation
+    def Mach_number(self, U: CompressibleState):
+        u = self.velocity(U)
+        c = self.speed_of_sound(U)
         return ngs.sqrt(bla.inner(u, u))/c
 
-    @form.equation
-    def Reynolds_number(self, state: CompressibleState):
-        rho = self.density(state)
-        u = self.velocity(state)
-        mu = self.viscosity(state)
+    @equation
+    def Reynolds_number(self, U: CompressibleState):
+        rho = self.density(U)
+        u = self.velocity(U)
+        mu = self.viscosity(U)
         return rho * u / mu
 
-    @form.equation
-    def convective_flux(self, state: CompressibleState) -> bla.MATRIX:
+    @equation
+    def convective_flux(self, U: CompressibleState) -> bla.MATRIX:
         """
         Conservative convective flux
 
@@ -134,18 +132,18 @@ class CompressibleEquations:
               Arch Computat Methods Eng 28, 753–784 (2021).
               https://doi.org/10.1007/s11831-020-09508-z
         """
-        rho = self.density(state)
-        rho_u = self.momentum(state)
-        rho_H = self.enthalpy(state)
-        u = self.velocity(state)
-        p = self.pressure(state)
+        rho = self.density(U)
+        rho_u = self.momentum(U)
+        rho_H = self.enthalpy(U)
+        u = self.velocity(U)
+        p = self.pressure(U)
 
         flux = (rho_u, bla.outer(rho_u, rho_u)/rho + p * ngs.Id(u.dim), rho_H * u)
 
         return bla.as_matrix(flux, dims=(u.dim + 2, u.dim))
 
-    @form.equation
-    def diffusive_flux(self, state: CompressibleState) -> bla.MATRIX:
+    @equation
+    def diffusive_flux(self, U: CompressibleState) -> bla.MATRIX:
         """
         Conservative diffusive flux
 
@@ -157,13 +155,13 @@ class CompressibleEquations:
               Arch Computat Methods Eng 28, 753–784 (2021).
               https://doi.org/10.1007/s11831-020-09508-z
         """
-        u = self.velocity(state)
-        tau = self.deviatoric_stress_tensor(state)
-        q = self.heat_flux(state)
+        u = self.velocity(U)
+        tau = self.deviatoric_stress_tensor(U)
+        q = self.heat_flux(U)
 
         Re = self.Reynolds_number_reference
         Pr = self.cfg.Prandtl_number
-        mu = self.viscosity(state)
+        mu = self.viscosity(U)
 
         continuity = tuple(0 for _ in range(u.dim))
 
@@ -171,414 +169,305 @@ class CompressibleEquations:
 
         return bla.as_matrix(flux, dims=(u.dim + 2, u.dim))
 
-    @form.equation
-    def density(self, state: CompressibleState) -> bla.SCALAR:
-        return self.cfg.equation_of_state.density(state)
+    @equation
+    def density(self, U: CompressibleState) -> bla.SCALAR:
+        return self.cfg.equation_of_state.density(U)
 
-    @form.equation
-    def velocity(self, state: CompressibleState) -> bla.VECTOR:
-        rho = state.density
-        rho_u = state.momentum
-
-        if state.is_set(rho, rho_u):
+    @equation
+    def velocity(self, U: CompressibleState) -> bla.VECTOR:
+        if U.is_set(U.rho, U.rho_u):
             logger.debug("Returning velocity from density and momentum.")
 
-            if bla.is_zero(rho_u) and bla.is_zero(rho):
-                return bla.as_vector((0.0 for _ in range(rho_u.dim)))
+            if bla.is_zero(U.rho_u) and bla.is_zero(U.rho):
+                return bla.as_vector((0.0 for _ in range(U.rho_u.dim)))
 
-            return rho_u/rho
+            return U.rho_u/U.rho
 
-    @form.equation
-    def momentum(self, state: CompressibleState) -> bla.VECTOR:
-        rho = state.density
-        u = state.velocity
-
-        if state.is_set(rho, u):
+    @equation
+    def momentum(self, U: CompressibleState) -> bla.VECTOR:
+        if U.is_set(U.rho, U.u):
             logger.debug("Returning momentum from density and velocity.")
-            return rho * u
+            return U.rho * U.u
 
-    @form.equation
-    def pressure(self, state: CompressibleState) -> bla.SCALAR:
-        return self.cfg.equation_of_state.pressure(state)
+    @equation
+    def pressure(self, U: CompressibleState) -> bla.SCALAR:
+        return self.cfg.equation_of_state.pressure(U)
 
-    @form.equation
-    def temperature(self, state: CompressibleState) -> bla.SCALAR:
-        return self.cfg.equation_of_state.temperature(state)
+    @equation
+    def temperature(self, U: CompressibleState) -> bla.SCALAR:
+        return self.cfg.equation_of_state.temperature(U)
 
-    @form.equation
-    def inner_energy(self, state: CompressibleState) -> bla.SCALAR:
-        rho_Ei = self.cfg.equation_of_state.inner_energy(state)
+    @equation
+    def inner_energy(self, U: CompressibleState) -> bla.SCALAR:
+        rho_Ei = self.cfg.equation_of_state.inner_energy(U)
 
         if rho_Ei is None:
-            rho_E = state.energy
-            rho_Ek = state.kinetic_energy
 
-            if state.is_set(rho_E, rho_Ek):
+            if U.is_set(U.rho_E, U.rho_Ek):
                 logger.debug("Returning bla.inner energy from energy and kinetic energy.")
-                return rho_E - rho_Ek
+                return U.rho_E - U.rho_Ek
 
         return rho_Ei
 
-    @form.equation
-    def specific_inner_energy(self, state: CompressibleState) -> bla.SCALAR:
-        Ei = self.cfg.equation_of_state.specific_inner_energy(state)
+    @equation
+    def specific_inner_energy(self, U: CompressibleState) -> bla.SCALAR:
+        Ei = self.cfg.equation_of_state.specific_inner_energy(U)
 
         if Ei is None:
 
-            rho = state.density
-            rho_Ei = state.inner_energy
-
-            Ek = state.specific_kinetic_energy
-            E = state.specific_energy
-
-            if state.is_set(rho, rho_Ei):
+            if U.is_set(U.rho, U.rho_Ei):
                 logger.debug("Returning specific bla.inner energy from bla.inner energy and density.")
-                return rho_Ei/rho
+                return U.rho_Ei/U.rho
 
-            elif state.is_set(E, Ek):
+            elif U.is_set(U.E, U.Ek):
                 logger.debug(
                     "Returning specific bla.inner energy from specific energy and specific kinetic energy.")
-                return E - Ek
+                return U.E - U.Ek
 
         return Ei
 
-    @form.equation
-    def kinetic_energy(self, state: CompressibleState) -> bla.SCALAR:
-        rho = state.density
-        rho_u = state.momentum
-        u = state.velocity
-
-        rho_E = state.energy
-        rho_Ei = state.inner_energy
-
-        Ek = state.specific_kinetic_energy
-
-        if state.is_set(rho, u):
+    @equation
+    def kinetic_energy(self, U: CompressibleState) -> bla.SCALAR:
+        if U.is_set(U.rho, U.u):
             logger.debug("Returning kinetic energy from density and velocity.")
-            return 0.5 * rho * bla.inner(u, u)
+            return 0.5 * U.rho * bla.inner(U.u, U.u)
 
-        elif state.is_set(rho, rho_u):
+        elif U.is_set(U.rho, U.rho_u):
             logger.debug("Returning kinetic energy from density and momentum.")
-            return 0.5 * bla.inner(rho_u, rho_u)/rho
+            return 0.5 * bla.inner(U.rho_u, U.rho_u)/U.rho
 
-        elif state.is_set(rho_E, rho_Ei):
+        elif U.is_set(U.rho_E, U.rho_Ei):
             logger.debug("Returning kinetic energy from energy and bla.inner energy.")
-            return rho_E - rho_Ei
+            return U.rho_E - U.rho_Ei
 
-        elif state.is_set(rho, Ek):
+        elif U.is_set(U.rho, U.Ek):
             logger.debug("Returning kinetic energy from density and specific kinetic energy.")
-            return rho * Ek
+            return U.rho * U.Ek
 
-    @form.equation
-    def specific_kinetic_energy(self, state: CompressibleState) -> bla.SCALAR:
-        rho = state.density
-        rho_u = state.momentum
-        u = state.velocity
-
-        E = state.specific_energy
-        Ei = state.specific_inner_energy
-        rho_Ek = state.kinetic_energy
-
-        if state.is_set(u):
+    @equation
+    def specific_kinetic_energy(self, U: CompressibleState) -> bla.SCALAR:
+        if U.is_set(U.u):
             logger.debug("Returning specific kinetic energy from velocity.")
-            return 0.5 * bla.inner(u, u)
+            return 0.5 * bla.inner(U.u, U.u)
 
-        elif state.is_set(rho, rho_u):
+        elif U.is_set(U.rho, U.rho_u):
             logger.debug("Returning specific kinetic energy from density and momentum.")
-            return 0.5 * bla.inner(rho_u, rho_u)/rho**2
+            return 0.5 * bla.inner(U.rho_u, U.rho_u)/U.rho**2
 
-        elif state.is_set(rho, rho_Ek):
+        elif U.is_set(U.rho, U.rho_Ek):
             logger.debug("Returning specific kinetic energy from density and kinetic energy.")
-            return rho_Ek/rho
+            return U.rho_Ek/U.rho
 
-        elif state.is_set(E, Ei):
+        elif U.is_set(U.E, U.Ei):
             logger.debug("Returning specific kinetic energy from specific energy and speicific bla.inner energy.")
-            return E - Ei
+            return U.E - U.Ei
 
-    @form.equation
-    def energy(self, state: CompressibleState) -> bla.SCALAR:
-        rho = state.density
-        E = state.specific_energy
-
-        rho_Ei = state.inner_energy
-        rho_Ek = state.kinetic_energy
-
-        if state.is_set(rho, E):
+    @equation
+    def energy(self, U: CompressibleState) -> bla.SCALAR:
+        if U.is_set(U.rho, U.E):
             logger.debug("Returning energy from density and specific energy.")
-            return rho * E
+            return U.rho * U.E
 
-        elif state.is_set(rho_Ei, rho_Ek):
+        elif U.is_set(U.rho_Ei, U.rho_Ek):
             logger.debug("Returning energy from bla.inner energy and kinetic energy.")
-            return rho_Ei + rho_Ek
+            return U.rho_Ei + U.rho_Ek
 
-    @form.equation
-    def specific_energy(self, state: CompressibleState) -> bla.SCALAR:
-        rho = state.density
-        rho_E = state.energy
-
-        Ei = state.specific_inner_energy
-        Ek = state.specific_kinetic_energy
-
-        if state.is_set(rho, rho_E):
+    @equation
+    def specific_energy(self, U: CompressibleState) -> bla.SCALAR:
+        if U.is_set(U.rho, U.rho_E):
             logger.debug("Returning specific energy from density and energy.")
-            return rho_E/rho
+            return U.rho_E/U.rho
 
-        elif state.is_set(Ei, Ek):
+        elif U.is_set(U.Ei, U.Ek):
             logger.debug("Returning specific energy from specific bla.inner energy and specific kinetic energy.")
-            return Ei + Ek
+            return U.Ei + U.Ek
 
-    @form.equation
-    def enthalpy(self, state: CompressibleState) -> bla.SCALAR:
-        rho = state.density
-        H = state.specific_enthalpy
-
-        rho_E = state.energy
-        p = state.pressure
-
-        if state.is_set(rho_E, p):
+    @equation
+    def enthalpy(self, U: CompressibleState) -> bla.SCALAR:
+        if U.is_set(U.rho_E, U.p):
             logger.debug("Returning enthalpy from energy and pressure.")
-            return rho_E + p
+            return U.rho_E + U.p
 
-        elif state.is_set(rho, H):
+        elif U.is_set(U.rho, U.H):
             logger.debug("Returning enthalpy from density and specific enthalpy.")
-            return rho * H
+            return U.rho * U.H
 
-    @form.equation
-    def specific_enthalpy(self, state: CompressibleState) -> bla.SCALAR:
-        rho = state.density
-        rho_H = state.enthalpy
-
-        rho_E = state.energy
-        E = state.specific_energy
-        p = state.pressure
-
-        if state.is_set(rho, rho_H):
+    @equation
+    def specific_enthalpy(self, U: CompressibleState) -> bla.SCALAR:
+        if U.is_set(U.rho, U.rho_H):
             logger.debug("Returning specific enthalpy from density and enthalpy.")
-            return rho_H/rho
+            return U.rho_H/U.rho
 
-        elif state.is_set(rho, rho_E, p):
+        elif U.is_set(U.rho, U.rho_E, U.p):
             logger.debug("Returning specific enthalpy from specific energy, density and pressure.")
-            return E + p/rho
+            return U.E + U.p/U.rho
 
-    @form.equation
-    def speed_of_sound(self, state: CompressibleState) -> bla.SCALAR:
-        return self.cfg.equation_of_state.speed_of_sound(state)
+    @equation
+    def speed_of_sound(self, U: CompressibleState) -> bla.SCALAR:
+        return self.cfg.equation_of_state.speed_of_sound(U)
 
-    @form.equation
-    def density_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        return self.cfg.equation_of_state.density_gradient(state)
+    @equation
+    def density_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        return self.cfg.equation_of_state.density_gradient(U, dU)
 
-    @form.equation
-    def velocity_gradient(self, state: CompressibleState) -> bla.MATRIX:
-        rho = state.density
-        rho_u = state.momentum
-
-        grad_rho = state.density_gradient
-        grad_rho_u = state.momentum_gradient
-
-        if state.is_set(rho, rho_u, grad_rho, grad_rho_u):
+    @equation
+    def velocity_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.MATRIX:
+        if U.is_set(U.rho, U.rho_u, dU.rho, dU.rho_u):
             logger.debug("Returning velocity gradient from density and momentum.")
-            return grad_rho_u/rho - bla.outer(rho_u, grad_rho)/rho**2
+            return dU.rho_u/U.rho - bla.outer(U.rho_u, dU.rho)/U.rho**2
 
-    @form.equation
-    def momentum_gradient(self, state: CompressibleState) -> bla.MATRIX:
-        rho = state.density
-        u = state.velocity
-
-        grad_rho = state.density_gradient
-        grad_u = state.velocity_gradient
-
-        if state.is_set(rho, u, grad_rho, grad_u):
+    @equation
+    def momentum_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.MATRIX:
+        if U.is_set(U.rho, U.u, dU.rho, dU.u):
             logger.debug("Returning momentum gradient from density and momentum.")
-            return rho * grad_u + bla.outer(u, grad_rho)
+            return U.rho * dU.u + bla.outer(U.u, dU.rho)
 
-    @form.equation
-    def pressure_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        return self.cfg.equation_of_state.pressure_gradient(state)
+    @equation
+    def pressure_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        return self.cfg.equation_of_state.pressure_gradient(U, dU)
 
-    @form.equation
-    def temperature_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        return self.cfg.equation_of_state.temperature_gradient(state)
+    @equation
+    def temperature_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        return self.cfg.equation_of_state.temperature_gradient(U, dU)
 
-    @form.equation
-    def energy_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        grad_rho_Ei = state.energy_gradient
-        grad_rho_Ek = state.kinetic_energy_gradient
-
-        if state.is_set(grad_rho_Ei, grad_rho_Ek):
+    @equation
+    def energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        if U.is_set(dU.rho_Ei, dU.rho_Ek):
             logger.debug("Returning energy gradient from bla.inner energy and kinetic energy.")
-            return grad_rho_Ei + grad_rho_Ek
+            return dU.rho_Ei + dU.rho_Ek
 
-    @form.equation
-    def specific_energy_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        grad_Ei = state.specific_energy_gradient
-        grad_Ek = state.specific_kinetic_energy_gradient
-
-        if state.is_set(grad_Ei, grad_Ek):
+    @equation
+    def specific_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        if U.is_set(dU.Ei, dU.Ek):
             logger.debug(
                 "Returning specific energy gradient from specific bla.inner energy and specific kinetic energy.")
-            return grad_Ei + grad_Ek
+            return dU.Ei + dU.Ek
 
-    @form.equation
-    def inner_energy_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        grad_rho_E = state.energy_gradient
-        grad_rho_Ek = state.kinetic_energy_gradient
-
-        if state.is_set(grad_rho_E, grad_rho_Ek):
+    @equation
+    def inner_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        if U.is_set(dU.rho_E, dU.rho_Ek):
             logger.debug("Returning bla.inner energy gradient from energy and kinetic energy.")
-            return grad_rho_E - grad_rho_Ek
+            return dU.rho_E - dU.rho_Ek
 
-    @form.equation
-    def specific_inner_energy_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        grad_E = state.specific_energy_gradient
-        grad_Ek = state.specific_kinetic_energy_gradient
-
-        if state.is_set(grad_E, grad_Ek):
+    @equation
+    def specific_inner_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        if U.is_set(dU.E, dU.Ek):
             logger.debug(
                 "Returning specific bla.inner energy gradient from specific energy and specific kinetic energy.")
-            return grad_E - grad_Ek
+            return dU.E - dU.Ek
 
-    @form.equation
-    def kinetic_energy_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        grad_rho_E = state.energy_gradient
-        grad_rho_Ei = state.inner_energy_gradient
-
-        rho = state.density
-        grad_rho = state.density_gradient
-        u = state.velocity
-        grad_u = state.velocity_gradient
-
-        rho_u = state.momentum
-        grad_rho_u = state.momentum_gradient
-
-        if state.is_set(grad_rho_E, grad_rho_Ei):
+    @equation
+    def kinetic_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        if U.is_set(dU.rho_E, dU.rho_Ei):
             logger.debug("Returning kinetic energy gradient from energy and bla.inner energy.")
-            return grad_rho_E - grad_rho_Ei
+            return dU.rho_E - dU.rho_Ei
 
-        elif state.is_set(rho, u, grad_rho, grad_u):
+        elif U.is_set(U.rho, U.u, dU.rho, dU.u):
             logger.debug("Returning kinetic energy gradient from density and velocity.")
-            return rho * (grad_u.trans * u) + 0.5 * grad_rho * bla.inner(u, u)
+            return U.rho * (dU.u.trans * U.u) + 0.5 * dU.rho * bla.inner(U.u, U.u)
 
-        elif state.is_set(rho, rho_u, grad_rho, grad_rho_u):
+        elif U.is_set(U.rho, U.rho_u, dU.rho, dU.rho_u):
             logger.debug("Returning kinetic energy gradient from density and momentum.")
-            return (grad_rho_u.trans * rho_u)/rho - 0.5 * grad_rho * bla.inner(rho_u, rho_u)/rho**2
+            return (dU.rho_u.trans * U.rho_u)/U.rho - 0.5 * dU.rho * bla.inner(U.rho_u, U.rho_u)/U.rho**2
 
-    @form.equation
-    def specific_kinetic_energy_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        grad_E = state.specific_energy_gradient
-        grad_Ei = state.specific_inner_energy_gradient
-
-        rho = state.density
-        grad_rho = state.density_gradient
-        u = state.velocity
-        grad_u = state.velocity_gradient
-
-        rho_u = state.momentum
-        grad_rho_u = state.momentum_gradient
-
-        if state.is_set(grad_E, grad_Ei):
+    @equation
+    def specific_kinetic_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        if U.is_set(dU.E, dU.Ei):
             logger.debug(
                 "Returning specific kinetic energy gradient from specific energy and specific bla.inner energy.")
-            return grad_E - grad_Ei
+            return dU.E - dU.Ei
 
-        elif state.is_set(u, grad_u):
+        elif U.is_set(U.u, dU.u):
             logger.debug("Returning specific kinetic energy gradient from velocity.")
-            return grad_u.trans * u
+            return dU.u.trans * U.u
 
-        elif state.is_set(rho, rho_u, grad_rho, grad_rho_u):
+        elif U.is_set(U.rho, U.rho_u, dU.rho, dU.rho_u):
             logger.debug("Returning specific kinetic energy gradient from density and momentum.")
-            return (grad_rho_u.trans * rho_u)/rho**2 - grad_rho * bla.inner(rho_u, rho_u)/rho**3
+            return (dU.rho_u.trans * U.rho_u)/U.rho**2 - dU.rho * bla.inner(U.rho_u, U.rho_u)/U.rho**3
 
-    @form.equation
-    def enthalpy_gradient(self, state: CompressibleState) -> bla.VECTOR:
-        grad_rho_E = state.energy_gradient
-        grad_p = state.pressure_gradient
-
-        if state.is_set(grad_rho_E, grad_p):
+    @equation
+    def enthalpy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+        if U.is_set(dU.rho_E, dU.p):
             logger.debug("Returning enthalpy gradient from energy and pressure.")
-            return grad_rho_E + grad_p
+            return dU.rho_E + dU.p
 
-    @form.equation
-    def strain_rate_tensor(self, state: CompressibleState) -> bla.MATRIX:
-        grad_u = self.velocity_gradient(state)
-
-        if state.is_set(grad_u):
+    @equation
+    def strain_rate_tensor(self, dU: CompressibleStateGradient) -> bla.MATRIX:
+        if dU.is_set(dU.u):
             logger.debug("Returning strain rate tensor from velocity.")
-            return 0.5 * (grad_u + grad_u.trans) - 1/3 * bla.trace(grad_u, id=True)
+            return 0.5 * (dU.u + dU.u.trans) - 1/3 * bla.trace(dU.u, id=True)
 
-    @form.equation
-    def deviatoric_stress_tensor(self, state: CompressibleState):
+    @equation
+    def deviatoric_stress_tensor(self, U: CompressibleState, dU: CompressibleStateGradient):
 
-        mu = state.viscosity
-        EPS = state.strain_rate_tensor
+        mu = self.viscosity(U)
+        eps = self.strain_rate_tensor(dU)
 
-        if state.is_set(mu, EPS):
+        if U.is_set(mu, eps):
             logger.debug("Returning deviatoric stress tensor from strain rate tensor and viscosity.")
-            return 2 * mu * EPS
+            return 2 * mu * eps
 
-    @form.equation
-    def viscosity(self, state: CompressibleState) -> bla.SCALAR:
-        return self.cfg.dynamic_viscosity.viscosity(state, self)
+    @equation
+    def viscosity(self, U: CompressibleState) -> bla.SCALAR:
+        return self.cfg.dynamic_viscosity.viscosity(U, self)
 
-    @form.equation
-    def heat_flux(self, state: CompressibleState) -> bla.VECTOR:
+    @equation
+    def heat_flux(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
 
-        gradient_T = state.temperature_gradient
-        k = state.viscosity
+        k = self.viscosity(U)
 
-        if state.is_set(k, gradient_T):
-            return -k * gradient_T
+        if U.is_set(k, dU.T):
+            logger.debug("Returning heat flux from temperature gradient.")
+            return -k * dU.T
 
-    @form.equation
-    def characteristic_velocities(
-            self, state: CompressibleState, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
-        return self.cfg.equation_of_state.characteristic_velocities(state, unit_vector, type_)
+    @equation
+    def characteristic_velocities(self, U: CompressibleState, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
+        return self.cfg.equation_of_state.characteristic_velocities(U, unit_vector, type)
 
-    @form.equation
-    def characteristic_variables(self, state: CompressibleState, unit_vector: bla.VECTOR) -> bla.VECTOR:
-        return self.cfg.equation_of_state.characteristic_variables(state, unit_vector)
+    @equation
+    def characteristic_variables(self, U: CompressibleState, dU: CompressibleStateGradient, unit_vector: bla.VECTOR) -> bla.VECTOR:
+        return self.cfg.equation_of_state.characteristic_variables(U, dU, unit_vector)
 
-    @form.equation
-    def characteristic_amplitudes(
-            self, state: CompressibleState, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
-        return self.cfg.equation_of_state.characteristic_amplitudes(state, unit_vector, type_)
+    @equation
+    def characteristic_amplitudes(self, U: CompressibleState, dU: CompressibleStateGradient, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
+        return self.cfg.equation_of_state.characteristic_amplitudes(U, dU, unit_vector, type)
 
-    @form.equation
-    def primitive_from_conservative(self, state: CompressibleState) -> bla.MATRIX:
-        return self.cfg.equation_of_state.primitive_from_conservative(state)
+    @equation
+    def primitive_from_conservative(self, U: CompressibleState) -> bla.MATRIX:
+        return self.cfg.equation_of_state.primitive_from_conservative(U)
 
-    @form.equation
-    def primitive_from_characteristic(self, state: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        return self.cfg.equation_of_state.primitive_from_characteristic(state, unit_vector)
+    @equation
+    def primitive_from_characteristic(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        return self.cfg.equation_of_state.primitive_from_characteristic(U, unit_vector)
 
-    @form.equation
-    def primitive_convective_jacobian_x(self, state: CompressibleState) -> bla.MATRIX:
-        return self.cfg.equation_of_state.primitive_convective_jacobian_x(state)
+    @equation
+    def primitive_convective_jacobian_x(self, U: CompressibleState) -> bla.MATRIX:
+        return self.cfg.equation_of_state.primitive_convective_jacobian_x(U)
 
-    @form.equation
-    def primitive_convective_jacobian_y(self, state: CompressibleState) -> bla.MATRIX:
-        return self.cfg.equation_of_state.primitive_convective_jacobian_y(state)
+    @equation
+    def primitive_convective_jacobian_y(self, U: CompressibleState) -> bla.MATRIX:
+        return self.cfg.equation_of_state.primitive_convective_jacobian_y(U)
 
-    @form.equation
-    def conservative_from_primitive(self, state: CompressibleState) -> bla.MATRIX:
-        return self.cfg.equation_of_state.conservative_from_primitive(state)
+    @equation
+    def conservative_from_primitive(self, U: CompressibleState) -> bla.MATRIX:
+        return self.cfg.equation_of_state.conservative_from_primitive(U)
 
-    @form.equation
-    def conservative_from_characteristic(self, state: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        return self.cfg.equation_of_state.conservative_from_characteristic(state, unit_vector)
+    @equation
+    def conservative_from_characteristic(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        return self.cfg.equation_of_state.conservative_from_characteristic(U, unit_vector)
 
-    @form.equation
-    def conservative_convective_jacobian_x(self, state: CompressibleState) -> bla.MATRIX:
-        return self.cfg.equation_of_state.conservative_convective_jacobian_x(state)
+    @equation
+    def conservative_convective_jacobian_x(self, U: CompressibleState) -> bla.MATRIX:
+        return self.cfg.equation_of_state.conservative_convective_jacobian_x(U)
 
-    @form.equation
-    def conservative_convective_jacobian_y(self, state: CompressibleState) -> bla.MATRIX:
-        return self.cfg.equation_of_state.conservative_convective_jacobian_y(state)
+    @equation
+    def conservative_convective_jacobian_y(self, U: CompressibleState) -> bla.MATRIX:
+        return self.cfg.equation_of_state.conservative_convective_jacobian_y(U)
 
-    @form.equation
-    def characteristic_from_primitive(self, state: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        return self.cfg.equation_of_state.characteristic_from_primitive(state, unit_vector)
+    @equation
+    def characteristic_from_primitive(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        return self.cfg.equation_of_state.characteristic_from_primitive(U, unit_vector)
 
-    @form.equation
-    def characteristic_from_conservative(self, state: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        return self.cfg.equation_of_state.characteristic_from_conservative(state, unit_vector)
+    @equation
+    def characteristic_from_conservative(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        return self.cfg.equation_of_state.characteristic_from_conservative(U, unit_vector)

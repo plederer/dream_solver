@@ -11,7 +11,7 @@ import ngsolve as ngs
 logger = logging.getLogger(__name__)
 
 
-# ------- Decorators ------- #
+# ------- State ------- #
 
 
 def equation(func):
@@ -26,16 +26,16 @@ def equation(func):
     """
 
     @functools.wraps(func)
-    def state(self, state: State, *args, **kwargs):
+    def state(self, U: State, *args, **kwargs):
 
-        _state = state.data.get(func.__name__, None)
+        _state = U.data.get(func.__name__, None)
 
         if _state is not None:
             name = " ".join(func.__name__.split("_")).capitalize()
             logger.debug(f"{name} set by user! Returning it.")
             return _state
 
-        _state = func(self, state, *args, **kwargs)
+        _state = func(self, U, *args, **kwargs)
 
         if _state is None:
             raise ValueError(f"Can not determine {func.__name__} from given state!")
@@ -45,43 +45,87 @@ def equation(func):
     return state
 
 
-# ------- Descriptors ------- #
-
-class descriptor:
-
-    __slots__ = ("name", )
-
-    def __set_name__(self, owner: DescriptorDict, name: str):
-        self.name = name
-
-
-class variable(descriptor):
+class variable:
     """
     Variable is a descriptor that mimics a physical quantity.
 
     Since it ressembles a scalar, a vector or a matrix it is possible to pass a cast function
     to the constructor such that every time an attribute is set, the value gets cast to the appropriate
     tensor dimensions.
-
-    By default, if an instance does not hold an attribute of a given name, the descriptor returns None.
     """
 
-    __slots__ = ("cast",)
+    __slots__ = ("cast", "label")
 
-    def __init__(self, cast: typing.Callable) -> None:
+    def __init__(self, cast: typing.Callable, label: str) -> None:
         self.cast = cast
+        self.label = label
 
     def __get__(self, state: State, objtype) -> ngs.CF:
-        return state.data.get(self.name, None)
+        return state.data.get(self.label, None)
 
     def __set__(self, state: State, value) -> None:
         if value is not None:
             value = self.cast(value)
-            state.data[self.name] = value
+            state.data[self.label] = value
 
     def __delete__(self, state: State):
-        del state.data[self.name]
+        del state.data[self.label]
 
+
+class State(collections.UserDict):
+
+    def __init_subclass__(cls) -> None:
+        cls._alias_map = {value.label: var for var, value in vars(cls).items() if isinstance(value, variable)}
+        return super().__init_subclass__()
+
+    def __setitem__(self, key: str, value):
+        if key in self._alias_map:
+            key = self._alias_map[key]
+        setattr(self, key, value)
+
+    def __getitem__(self, key):
+        if key in self._alias_map:
+            key = self._alias_map[key]
+        return getattr(self, key)
+
+    def __delitem__(self, key) -> None:
+        if key in self._alias_map:
+            key = self._alias_map[key]
+        delattr(self, key)
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return f"{str(self)}{self.data}"
+
+    @staticmethod
+    def is_set(*args) -> bool:
+        return all([arg is not None for arg in args])
+
+    def to_python(self) -> State:
+        """ Returns the current state represented by pure python objects. 
+        """
+        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+        return {key: value(mesh()) if isinstance(value, ngs.CF) else value for key, value in self.items()}
+
+    def __repr__(self) -> str:
+        data = {key: value for key, value in self.data.items() if value is not None}
+        return f"{str(self)}{data}"
+
+    def __str__(self):
+        return self.__class__.__name__
+
+
+# ------- Descriptors ------- #
+
+
+class descriptor:
+
+    __slots__ = ("label", )
+
+    def __set_name__(self, owner: DescriptorDict, label: str):
+        self.label = label
 
 
 class configuration(descriptor):
@@ -114,10 +158,10 @@ class configuration(descriptor):
         if self.fget_ is not None:
             self.fget_(cfg)
 
-        return cfg.data[self.name]
+        return cfg.data[self.label]
 
     def __delete__(self, cfg: DescriptorConfiguration):
-        del cfg.data[self.name]
+        del cfg.data[self.label]
 
     def getter_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
         prop = type(self)(self.default, self.fset_, fget_, self.__doc__)
@@ -137,7 +181,7 @@ class any(configuration):
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
-        cfg.data[self.name] = value
+        cfg.data[self.label] = value
 
     def reset(self, cfg: DescriptorConfiguration):
         self.__set__(cfg, self.default)
@@ -153,15 +197,15 @@ class parameter(configuration):
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
-        cfg.data[self.name].Set(value)
+        cfg.data[self.label].Set(value)
 
     def reset(self, cfg: DescriptorConfiguration):
 
         value = self.default
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
-    
-        cfg.data[self.name] = ngs.Parameter(value)
+
+        cfg.data[self.label] = ngs.Parameter(value)
 
 
 class descriptor_configuration(configuration):
@@ -171,20 +215,20 @@ class descriptor_configuration(configuration):
     def __set__(self, cfg: DescriptorConfiguration, value: str | DescriptorConfiguration) -> None:
 
         if isinstance(value, self.default.leafs.root):
-            cfg.data[self.name] = value
+            cfg.data[self.label] = value
 
         elif isinstance(value, str):
 
             cfg_ = self.default.leafs[value]
-            if not isinstance(cfg.data[self.name], cfg_):
-                cfg.data[self.name] = cfg_()
+            if not isinstance(cfg.data[self.label], cfg_):
+                cfg.data[self.label] = cfg_()
 
         elif isinstance(value, dict):
 
             if self.fset_ is not None:
                 value = self.fset_(cfg, value)
 
-            cfg.data[self.name].update(**value)
+            cfg.data[self.label].update(**value)
 
         else:
             raise TypeError(f"Only string our dict supported!")
@@ -200,21 +244,21 @@ class interface_configuration(any):
     def __set__(self, cfg: InterfaceConfiguration, value: str | DescriptorConfiguration) -> None:
 
         if isinstance(value, self.default):
-            cfg.data[self.name] = value
+            cfg.data[self.label] = value
             return
 
         elif isinstance(value, str):
 
             cfg_ = self.default.leafs[value]
-            if not isinstance(cfg.data[self.name], cfg_):
-                cfg.data[self.name] = cfg_()
+            if not isinstance(cfg.data[self.label], cfg_):
+                cfg.data[self.label] = cfg_()
 
         elif isinstance(value, dict):
 
             if self.fset_ is not None:
                 value = self.fset_(cfg, value)
 
-            cfg.data[self.name].update(**value)
+            cfg.data[self.label].update(**value)
 
         else:
             raise TypeError(f"Only string our dict supported!")
@@ -242,39 +286,6 @@ class DescriptorDict(collections.UserDict):
 
     def __repr__(self) -> str:
         return f"{str(self)}{self.data}"
-
-
-class State(DescriptorDict):
-
-    @staticmethod
-    def is_set(*args) -> bool:
-        return all([arg is not None for arg in args])
-
-    def to_python(self) -> State:
-        """ Returns the current state represented by pure python objects. 
-        """
-        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
-        mip = mesh()
-        return State(**{key: value(mip) if isinstance(value, ngs.CF) else value for key, value in self.items()})
-
-    def merge_states(self, *states: State, overwrite: bool = False, inplace: bool = False) -> State:
-        merge = State()
-        if inplace:
-            merge = self
-
-        for state in states:
-
-            duplicates = set(state).intersection(merge)
-            if duplicates:
-
-                if not overwrite:
-                    raise ValueError(f"Merge conflict! '{duplicates}' included multiple times!")
-
-                logger.warning(f"Found duplicates '{duplicates}'! Overwriting state!")
-
-            merge.update(**state)
-
-        return merge
 
 
 class InheritanceTree(collections.UserDict):

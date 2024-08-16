@@ -1,6 +1,7 @@
 import ngsolve as ngs
 
-from dream.config import any, parameter, descriptor_configuration
+from dream.config import any, parameter, descriptor_configuration, equation
+from dream.formulation import PDEConfiguration
 from dream.compressible.state import CompressibleState
 from dream.compressible.equations import CompressibleEquations
 from dream.compressible.eos import IdealGas
@@ -9,7 +10,7 @@ from dream.compressible.scaling import Aerodynamic, Aeroacoustic, Acoustic
 from dream.compressible.riemann_solver import LaxFriedrich, Roe, HLL, HLLEM
 
 
-class CompressibleFlowConfiguration(form.PDEConfiguration):
+class CompressibleFlowConfiguration(PDEConfiguration):
 
     name = "compressible"
 
