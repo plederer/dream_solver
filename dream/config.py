@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 # ------- State ------- #
 
-
 def equation(func):
     """ Equation is a decorator that wraps a function which takes as first argument a state.
 
@@ -103,7 +102,7 @@ class State(collections.UserDict):
     def is_set(*args) -> bool:
         return all([arg is not None for arg in args])
 
-    def to_python(self) -> State:
+    def to_float(self) -> State:
         """ Returns the current state represented by pure python objects. 
         """
         mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
@@ -122,10 +121,10 @@ class State(collections.UserDict):
 
 class descriptor:
 
-    __slots__ = ("label", )
+    __slots__ = ("name", )
 
-    def __set_name__(self, owner: DescriptorDict, label: str):
-        self.label = label
+    def __set_name__(self, owner: DescriptorDict, name: str):
+        self.name = name
 
 
 class configuration(descriptor):
@@ -158,10 +157,10 @@ class configuration(descriptor):
         if self.fget_ is not None:
             self.fget_(cfg)
 
-        return cfg.data[self.label]
+        return cfg.data[self.name]
 
     def __delete__(self, cfg: DescriptorConfiguration):
-        del cfg.data[self.label]
+        del cfg.data[self.name]
 
     def getter_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
         prop = type(self)(self.default, self.fset_, fget_, self.__doc__)
@@ -181,7 +180,7 @@ class any(configuration):
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
-        cfg.data[self.label] = value
+        cfg.data[self.name] = value
 
     def reset(self, cfg: DescriptorConfiguration):
         self.__set__(cfg, self.default)
@@ -197,7 +196,7 @@ class parameter(configuration):
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
-        cfg.data[self.label].Set(value)
+        cfg.data[self.name].Set(value)
 
     def reset(self, cfg: DescriptorConfiguration):
 
@@ -205,7 +204,7 @@ class parameter(configuration):
         if self.fset_ is not None:
             value = self.fset_(cfg, value)
 
-        cfg.data[self.label] = ngs.Parameter(value)
+        cfg.data[self.name] = ngs.Parameter(value)
 
 
 class descriptor_configuration(configuration):
@@ -215,50 +214,48 @@ class descriptor_configuration(configuration):
     def __set__(self, cfg: DescriptorConfiguration, value: str | DescriptorConfiguration) -> None:
 
         if isinstance(value, self.default.leafs.root):
-            cfg.data[self.label] = value
+            cfg.data[self.name] = value
 
         elif isinstance(value, str):
-
             cfg_ = self.default.leafs[value]
-            if not isinstance(cfg.data[self.label], cfg_):
-                cfg.data[self.label] = cfg_()
-
-        elif isinstance(value, dict):
+            if not isinstance(cfg.data[self.name], cfg_):
+                cfg.data[self.name] = cfg_()
 
             if self.fset_ is not None:
-                value = self.fset_(cfg, value)
+                value = self.fset_(cfg, cfg.data[self.name])
 
-            cfg.data[self.label].update(**value)
+        elif isinstance(value, dict):
+            cfg.data[self.name].update(**value)
 
         else:
-            raise TypeError(f"Only string our dict supported!")
+            raise TypeError(f"Only string or dict supported!")
 
     def reset(self, cfg: DescriptorConfiguration):
         self.__set__(cfg, self.default())
 
 
-class interface_configuration(any):
+class interface_configuration(configuration):
 
     default: InterfaceConfiguration
 
     def __set__(self, cfg: InterfaceConfiguration, value: str | DescriptorConfiguration) -> None:
 
         if isinstance(value, self.default):
-            cfg.data[self.label] = value
+            cfg.data[self.name] = value
             return
 
         elif isinstance(value, str):
 
             cfg_ = self.default.leafs[value]
-            if not isinstance(cfg.data[self.label], cfg_):
-                cfg.data[self.label] = cfg_()
+            if not isinstance(cfg.data[self.name], cfg_):
+                cfg.data[self.name] = cfg_()
 
         elif isinstance(value, dict):
 
             if self.fset_ is not None:
                 value = self.fset_(cfg, value)
 
-            cfg.data[self.label].update(**value)
+            cfg.data[self.name].update(**value)
 
         else:
             raise TypeError(f"Only string our dict supported!")
@@ -344,20 +341,22 @@ class DescriptorConfiguration(DescriptorDict):
 
     def __init_subclass__(cls, is_interface: bool = False, is_unique: bool = False) -> None:
 
+        cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, descriptor)]
+
         if is_unique:
 
             cls.leafs = InheritanceTree(cls)
             cls.name = "-"
             cls.leafs["-"] = cls
             cls.aliases = ()
-            cls.cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, descriptor)]
+            cls.cfgs = cfgs
 
         elif is_interface:
 
             cls.leafs = InheritanceTree(cls)
             cls.name = cls.__name__
             cls.aliases = ()
-            cls.cfgs = []
+            cls.cfgs = cfgs
 
         else:
 
@@ -366,7 +365,7 @@ class DescriptorConfiguration(DescriptorDict):
                     raise ValueError(f"Concrete Class of type {cls.leafs.root} with name {cls.name} already included!")
                 cls.leafs[name] = cls
 
-            cls.cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, descriptor)] + cls.cfgs
+            cls.cfgs = cfgs + cls.cfgs
 
     def __init__(self, **kwargs):
         self.clear()

@@ -2,14 +2,13 @@ from __future__ import annotations
 import typing
 import logging
 import abc
-
 from collections import UserDict
 
 import ngsolve as ngs
 
 from dream import bla
-from dream import mesh as dmesh
-from dream.config import State
+from dream.mesh import DreamMesh, BoundaryConditions, DomainConditions
+from dream.config import State, InterfaceConfiguration, DescriptorConfiguration
 from dream.time_schemes import TransientGridfunction
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class Space:
     def test(self):
         return self._TnT[1]
 
-    def __init__(self, cfg: SolverConfiguration, dmesh: dmesh.DreamMesh):
+    def __init__(self, cfg: SolverConfiguration, dmesh: DreamMesh):
         self.cfg = cfg
         self.dmesh = dmesh
 
@@ -192,12 +191,12 @@ class Spaces(UserDict):
         return space
 
 
-class Formulation(abc.ABCMeta):
+class Formulation(InterfaceConfiguration, is_interface=True):
 
-    def initialize(self, cfg: SolverConfiguration, mesh: ngs.Mesh | dmesh.DreamMesh) -> None:
+    def initialize(self, cfg: SolverConfiguration, mesh: ngs.Mesh | DreamMesh) -> None:
 
         if isinstance(mesh, ngs.Mesh):
-            mesh = dmesh.DreamMesh(mesh)
+            mesh = DreamMesh(mesh)
 
         self._cfg = cfg
         self._mesh = mesh
@@ -212,7 +211,7 @@ class Formulation(abc.ABCMeta):
     #     self.mesh_size = ngs.specialcf.mesh_size
 
     @property
-    def dmesh(self) -> dmesh.DreamMesh:
+    def dmesh(self) -> DreamMesh:
         return self._mesh
 
     @property
@@ -237,10 +236,10 @@ class Formulation(abc.ABCMeta):
 # ------- Configuration ------- #
 
 
-class PDEConfiguration(abc.ABCMeta):
+class PDEConfiguration(DescriptorConfiguration, is_interface=True):
 
-    bcs: dmesh.BoundaryConditions
-    dcs: dmesh.DomainConditions
+    bcs: BoundaryConditions
+    dcs: DomainConditions
 
     @property
     def formulation(self):

@@ -4,8 +4,8 @@ import numpy.testing as nptest
 from tests import simplex
 import ngsolve as ngs
 
-from dream.compressible.equations import CompressibleEquations
-from dream.compressible.state import CompressibleState
+from dream.compressible.config import CompressibleEquations
+from dream.compressible.state import CompressibleState, CompressibleStateGradient
 
 def test_equation(throws: bool = False, is_vector: bool = False):
 
@@ -23,7 +23,7 @@ def test_equation(throws: bool = False, is_vector: bool = False):
             if is_vector:
                 value = (1, 0)
 
-            setattr(U, name, value)
+            U.update({name: value})
             self.assertAlmostEqual(getattr(self.eq, name)(U)(self.mip), value)
 
             func(self)
@@ -40,8 +40,8 @@ class TestCompressibleEquations(unittest.TestCase):
         self.mesh = simplex()
         self.mip = self.mesh(0.25, 0.25)
 
-        self.eq.cfg.Reynolds_number = 2
-        self.eq.cfg.Prandtl_number = 1
+        self.eq.cfg.reynolds_number = 2
+        self.eq.cfg.prandtl_number = 1
         self.eq.cfg.dynamic_viscosity = "constant"
 
     @test_equation(throws=True)
@@ -148,11 +148,13 @@ class TestCompressibleEquations(unittest.TestCase):
     def test_diffusive_flux(self):
 
         U = CompressibleState()
+        dU = CompressibleStateGradient()
         with self.assertRaises(Exception):
-            self.eq.convective_flux(U)
+            self.eq.diffusive_flux(U, dU)
 
-        U = CompressibleState(velocity=(1, 0), deviatoric_stress_tensor=(0, 1, 1, 0), heat_flux=(1, 1))
-        nptest.assert_almost_equal(self.eq.diffusive_flux(U)(self.mip), (0, 0, 0, 0.5, 0.5, 0, -0.5, 0))
+        U = CompressibleState(velocity=(1, 0))
+        dU = CompressibleStateGradient(strain_rate_tensor=(0, 0.5, 0.5,0), temperature=(1, 1))
+        nptest.assert_almost_equal(self.eq.diffusive_flux(U, dU)(self.mip), (0, 0, 0, 0.5, 0.5, 0, 0.5, 1.0))
 
     def test_transformation(self):
         U = CompressibleState(density=2, speed_of_sound=2, velocity=(2, 2), specific_energy=11.14285714)
@@ -187,7 +189,7 @@ class TestCompressibleEquations(unittest.TestCase):
     def test_farfield_state(self):
 
         self.eq.cfg.scaling = "aerodynamic"
-        INF = self.eq.get_farfield_state((1, 0)).to_python()
+        INF = self.eq.get_farfield_state((1, 0)).to_float()
         results = {"density": 1.0, "speed_of_sound": 10/3, "temperature": 1/(0.4 * 0.3**2),
                    "pressure": 1/(1.4 * 0.3**2), "velocity": (1.0, 0.0), "inner_energy": 1/(1.4 * 0.3**2 * 0.4),
                    "kinetic_energy": 0.5, "energy": 1/(1.4 * 0.3**2 * 0.4) + 0.5}
@@ -197,7 +199,7 @@ class TestCompressibleEquations(unittest.TestCase):
             nptest.assert_almost_equal(is_[1], exp_[1])
 
         self.eq.cfg.scaling = "aeroacoustic"
-        INF = self.eq.get_farfield_state((1, 0)).to_python()
+        INF = self.eq.get_farfield_state((1, 0)).to_float()
         results = {
             "density": 1.0, "speed_of_sound": 10 / 13, "temperature": 1 / (0.4 * (1 + 0.3) ** 2),
             "pressure": 1 / (1.4 * (1 + 0.3) ** 2),
@@ -210,7 +212,7 @@ class TestCompressibleEquations(unittest.TestCase):
             nptest.assert_almost_equal(is_[1], exp_[1])
 
         self.eq.cfg.scaling = "acoustic"
-        INF = self.eq.get_farfield_state((1, 0)).to_python()
+        INF = self.eq.get_farfield_state((1, 0)).to_float()
         results = {"density": 1.0, "speed_of_sound": 1, "temperature": 10/4,
                    "pressure": 1/1.4, "velocity": (0.3, 0.0), "inner_energy": 10/5.6,
                    "kinetic_energy": 0.045, "energy": 10/5.6 + 0.045}

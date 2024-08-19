@@ -42,7 +42,7 @@ class CompressibleStateGradient(State):
     eps = variable(bla.as_matrix, 'strain_rate_tensor')
 
 
-class ScalingState(State):
+class ReferenceState(State):
 
     L = variable(bla.as_scalar, "length")
     rho = variable(bla.as_scalar, "density")

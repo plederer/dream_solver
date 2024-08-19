@@ -3,26 +3,26 @@ from __future__ import annotations
 import ngsolve as ngs
 from dream import bla
 from dream.config import DescriptorConfiguration, any
-from dream.compressible.state import ScalingState
+from dream.compressible.state import ReferenceState
 
 
 class Scaling(DescriptorConfiguration, is_interface=True):
 
-    @any(default={'L': 1, 'rho': 1.293, 'u': 102.9, 'c': 343, 'T': 293.15, 'p': 101325})
-    def dimensional_infinity_values(self, state: ScalingState):
-        return ScalingState(**state)
+    @any(default={'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325})
+    def reference_values(self, state: ReferenceState):
+        return ReferenceState(**state)
 
     def density(self) -> float:
         return 1.0
 
-    def velocity_magnitude(self, Mach_number: float):
+    def velocity_magnitude(self, mach_number: float):
         raise NotImplementedError()
 
-    def speed_of_sound(self, Mach_number: float):
+    def speed_of_sound(self, mach_number: float):
         raise NotImplementedError()
 
-    def velocity(self, direction: tuple[float, ...], Mach_number: float):
-        mag = self.velocity_magnitude(Mach_number)
+    def velocity(self, direction: tuple[float, ...], mach_number: float):
+        mag = self.velocity_magnitude(mach_number)
         return mag * bla.unit_vector(direction)
 
     def format(self):
@@ -30,37 +30,37 @@ class Scaling(DescriptorConfiguration, is_interface=True):
         formatter.entry('Scaling', str(self))
         return formatter.output
 
-    dimensional_infinity_values: ScalingState
+    reference_values: ReferenceState
 
 
 class Aerodynamic(Scaling):
 
     name = "aerodynamic"
 
-    def _check_Mach_number(self, Mach_number: float):
-        Ma = Mach_number
-        if isinstance(Ma, ngs.Parameter):
-            Ma = Ma.Get()
+    def _check_Mach_number(self, mach_number: float):
 
-        if Ma <= 0.0:
+        if isinstance(mach_number, ngs.Parameter):
+            mach_number = mach_number.Get()
+
+        if mach_number <= 0.0:
             raise ValueError("Aerodynamic scaling requires Mach number > 0")
 
-    def velocity_magnitude(self, Mach_number: float):
+    def velocity_magnitude(self, mach_number: float):
         return 1.0
 
-    def speed_of_sound(self, Mach_number: float):
-        self._check_Mach_number(Mach_number)
-        return 1/Mach_number
+    def speed_of_sound(self, mach_number: float):
+        self._check_Mach_number(mach_number)
+        return 1/mach_number
 
 
 class Acoustic(Scaling):
 
     name = "acoustic"
 
-    def velocity_magnitude(self, Mach_number: float):
-        return Mach_number
+    def velocity_magnitude(self, mach_number: float):
+        return mach_number
 
-    def speed_of_sound(self, Mach_number: float):
+    def speed_of_sound(self, mach_number: float):
         return 1.0
 
 
@@ -68,10 +68,10 @@ class Aeroacoustic(Scaling):
 
     name = "aeroacoustic"
 
-    def velocity_magnitude(self, Mach_number: float):
-        Ma = Mach_number
+    def velocity_magnitude(self, mach_number: float):
+        Ma = mach_number
         return Ma/(1 + Ma)
 
-    def speed_of_sound(self, Mach_number: float):
-        Ma = Mach_number
+    def speed_of_sound(self, mach_number: float):
+        Ma = mach_number
         return 1/(1 + Ma)

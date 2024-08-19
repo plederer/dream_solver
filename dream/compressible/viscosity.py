@@ -1,7 +1,11 @@
 from __future__ import annotations
+import typing
 
 from dream.config import DescriptorConfiguration, any
 from dream.compressible.state import CompressibleState
+
+if typing.TYPE_CHECKING:
+    from dream.compressible.config import CompressibleEquations
 
 
 class DynamicViscosity(DescriptorConfiguration, is_interface=True):
@@ -10,7 +14,7 @@ class DynamicViscosity(DescriptorConfiguration, is_interface=True):
     def is_inviscid(self) -> bool:
         return isinstance(self, Inviscid)
 
-    def viscosity(self, state: CompressibleState, *args):
+    def viscosity(self, U: CompressibleState, equations: CompressibleEquations = None):
         raise NotImplementedError()
 
     def format(self):
@@ -21,17 +25,24 @@ class DynamicViscosity(DescriptorConfiguration, is_interface=True):
 
 class Inviscid(DynamicViscosity):
 
-    def viscosity(self, state: CompressibleState, *args):
+    name: str = "inviscid"
+    aliases = ('euler', )
+
+    def viscosity(self, U: CompressibleState, equations: CompressibleEquations = None):
         raise TypeError("Inviscid Setting! Dynamic Viscosity not defined!")
 
 
 class Constant(DynamicViscosity):
 
-    def viscosity(self, state: CompressibleState, *args):
+    name: str = "constant"
+
+    def viscosity(self, U: CompressibleState, equations: CompressibleEquations = None):
         return 1
 
 
 class Sutherland(DynamicViscosity):
+
+    name: str = "sutherland"
 
     @any(default=110.4)
     def measurement_temperature(self, value: float) -> float:
@@ -41,19 +52,18 @@ class Sutherland(DynamicViscosity):
     def measurement_viscosity(self, value: float) -> float:
         return value
 
-    def viscosity(self, state: CompressibleState, equations: CompressibleEquations):
+    def viscosity(self, U: CompressibleState, equations: CompressibleEquations):
 
-        T = state.temperature
+        T = U.T
 
-        if state.is_set(T):
+        if U.is_set(T):
 
             REF = equations.get_reference_state()
             INF = equations.get_farfield_state()
 
-            Tinf = INF.temperature
-            T0 = self.measurement_temperature/REF.temperature
+            T0 = self.measurement_temperature/REF.T
 
-            return (T/Tinf)**(3/2) * (Tinf + T0)/(T + T0)
+            return (T/INF.T)**(3/2) * (INF.T + T0)/(T + T0)
 
     def format(self):
         formatter = self.formatter.new()

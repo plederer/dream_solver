@@ -9,8 +9,8 @@ import dream.config as cfg
 class State_(cfg.State):
 
     dummy = cfg.descriptor()
-    rho = cfg.variable(lambda x: 2*x)
-    p = cfg.variable(lambda x: 5*x)
+    rho = cfg.variable(lambda x: 2*x, 'density')
+    p = cfg.variable(lambda x: 5*x, 'pressure')
 
 
 class DescriptorConfiguration_(cfg.DescriptorConfiguration, is_interface=True):
@@ -63,7 +63,7 @@ class TestDescriptor(unittest.TestCase):
         self.obj = State_
 
     def test_descriptor_name(self):
-        self.assertEqual(self.obj.dummy.label, "dummy")
+        self.assertEqual(self.obj.dummy.name, "dummy")
 
 
 class TestVariable(unittest.TestCase):
@@ -76,7 +76,7 @@ class TestVariable(unittest.TestCase):
 
     def test_label(self):
         self.obj.p = 10
-        self.assertIn("p", self.obj)
+        self.assertIn("pressure", self.obj)
 
     def test_getter(self):
         self.assertEqual(self.obj.p, None)
@@ -100,8 +100,8 @@ class TestState(unittest.TestCase):
     def setUpClass(self):
 
         class Test(cfg.DescriptorDict):
-            double = cfg.variable(lambda x: 2*x)
-            join = cfg.variable(lambda x: "".join(x))
+            double = cfg.variable(lambda x: 2*x, 'double')
+            join = cfg.variable(lambda x: "".join(x), 'join')
 
         self.class_ = Test
 
@@ -114,12 +114,12 @@ class TestState(unittest.TestCase):
     def test_update(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
 
-        self.assertDictEqual(self.obj.data, {"rho": 4, "p": 25})
+        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25})
         self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data, "u": 5})
 
     def test_keys(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.keys()), ("rho", "p"))
+        self.assertTupleEqual(tuple(self.obj.keys()), ("density", "pressure"))
 
     def test_values(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
@@ -127,14 +127,14 @@ class TestState(unittest.TestCase):
 
     def test_items(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.items()), (('rho', 4), ('p', 25)))
+        self.assertTupleEqual(tuple(self.obj.items()), (('density', 4), ('pressure', 25)))
 
     def test_set_item(self):
         self.obj["rho"] = 2
         self.obj["p"] = 5
         self.obj["u"] = 5
 
-        self.assertDictEqual(self.obj.data, {"rho": 4, "p": 25})
+        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25})
         self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data, "u": 5})
 
     def test_get_item(self):
@@ -145,7 +145,7 @@ class TestState(unittest.TestCase):
 
     def test_iterator(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj), ("rho", "p"))
+        self.assertTupleEqual(tuple(self.obj), ("density", "pressure"))
 
     def test_length(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
