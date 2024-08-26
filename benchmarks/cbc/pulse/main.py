@@ -20,7 +20,7 @@ LOGGER.log_to_terminal = False
 
 saver = Saver(tree)
 
-name = ""
+name = "circle"
 maxh = 0.07
 R = 0.1
 H = 8*R
@@ -43,7 +43,6 @@ cfg.time.scheme = "BDF2"
 cfg.time.step = 2e-3
 save_step = 5
 cfg.time.interval = (0, 15)
-cfg.time.interval = (0, 0.01)
 cfg.save_state = True
 
 cfg.linear_solver = "pardiso"
@@ -55,6 +54,8 @@ cfg.compile_flag = True
 cfg.static_condensation = True
 
 face = WorkPlane().RectangleC(H, H).Face()
+if name == "circle":
+    face = WorkPlane().Circle(0, 0, H).Face()
 
 for bc, edge in zip(['bottom', 'right', 'top', 'left'], face.edges):
     edge.name = bc
