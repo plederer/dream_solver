@@ -1,12 +1,16 @@
 from __future__ import annotations
 import logging
 import ngsolve as ngs
+import typing
 
-from dream.config import InterfaceConfiguration
+from dream.config import InterfaceConfiguration, interface_configuration
 from dream.mesh import DreamMesh
 from dream.formulation import Space, Formulation
 
 logger = logging.getLogger(__name__)
+
+if typing.TYPE_CHECKING:
+    from dream.solver import SolverConfiguration
 
 # ------- Formulations ------- #
 
@@ -44,10 +48,19 @@ class Gradient(MixedMethod):
 
     name: str = "gradient"
 
-    def get_mixed_space(self, cfg: SolverConfiguration, dmesh: DreamMesh) -> GradientSpace:
+    def get_mixed_space(self, cfg: SolverConfiguration, dmesh: DreamMesh) -> ngs.ProductSpace:
 
         if cfg.pde.dynamic_viscosity.is_inviscid:
             raise TypeError(f"Inviscid configuration does not require mixed method!")
+        
+        dim = 4 * dmesh.dim - 3
+        order = cfg.fem.order
+        mesh = self.dmesh.ngsmesh
+
+        Q = ngs.L2(mesh, order=order)
+        Q = self.dmesh._reduce_psponge_layers_order_elementwise(Q)
+
+        return Q**dim
 
         return GradientSpace(cfg, dmesh)
 
@@ -203,6 +216,10 @@ class Conservative(CompressibleFormulation):
 
     label: str = "conservative"
 
+    @interface_configuration(default=Inactive)
+    def mixed_method(self, mixed_method):
+        return mixed_method
+    
     @property
     def U(self) -> PrimalElement:
         return self.spaces["U"]

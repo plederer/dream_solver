@@ -3,7 +3,6 @@ import logging
 import typing
 import textwrap
 import collections
-import abc
 import functools
 
 import ngsolve as ngs
@@ -123,7 +122,7 @@ class descriptor:
 
     __slots__ = ("name", )
 
-    def __set_name__(self, owner: DescriptorDict, name: str):
+    def __set_name__(self, owner, name: str):
         self.name = name
 
 
@@ -228,7 +227,16 @@ class descriptor_configuration(configuration):
             cfg.data[self.name].update(**value)
 
         else:
-            raise TypeError(f"Only string or dict supported!")
+            msg = f""" Can not set variable of type {type(value)}!
+
+            To set '{self.name}' pass either:
+            1. An instance of type {self.default.leafs.root}.
+            2. A keyword from available options: {list(self.default.leafs)}.
+
+            To update the current instance pass a dictionary with following keywords:
+            {list(cfg.data[self.name].data.keys())}            
+            """
+            raise TypeError(msg)
 
     def reset(self, cfg: DescriptorConfiguration):
         self.__set__(cfg, self.default())
@@ -238,52 +246,33 @@ class interface_configuration(configuration):
 
     default: InterfaceConfiguration
 
-    def __set__(self, cfg: InterfaceConfiguration, value: str | DescriptorConfiguration) -> None:
+    def __set__(self, cfg: DescriptorConfiguration, value: str | DescriptorConfiguration) -> None:
 
-        if isinstance(value, self.default):
+        if isinstance(value, self.default.leafs.root):
             cfg.data[self.name] = value
-            return
 
         elif isinstance(value, str):
-
             cfg_ = self.default.leafs[value]
             if not isinstance(cfg.data[self.name], cfg_):
                 cfg.data[self.name] = cfg_()
 
-        elif isinstance(value, dict):
-
             if self.fset_ is not None:
-                value = self.fset_(cfg, value)
-
-            cfg.data[self.name].update(**value)
+                value = self.fset_(cfg, cfg.data[self.name])
 
         else:
-            raise TypeError(f"Only string our dict supported!")
+            msg = f""" Can not set variable of type {type(value)}!
+
+            To set '{self.name}' pass either:
+            1. An instance of type {self.default.leafs.root}.
+            2. A keyword from available options: {list(self.default.leafs)}.         
+            """
+            raise TypeError(msg)
 
     def reset(self, cfg: DescriptorConfiguration):
-        self.__set__(cfg, self.default)
+        self.__set__(cfg, self.default())
 
 
 # ------- Abstract Classes ------- #
-
-
-class DescriptorDict(collections.UserDict):
-
-    def __setitem__(self, key: str, value):
-        setattr(self, key, value)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __delitem__(self, key) -> None:
-        delattr(self, key)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return f"{str(self)}{self.data}"
-
 
 class InheritanceTree(collections.UserDict):
 
@@ -332,7 +321,7 @@ class InterfaceConfiguration:
                 cls.leafs[name] = cls
 
 
-class DescriptorConfiguration(DescriptorDict):
+class DescriptorConfiguration(collections.UserDict):
 
     name: str
     leafs: InheritanceTree
@@ -346,8 +335,8 @@ class DescriptorConfiguration(DescriptorDict):
         if is_unique:
 
             cls.leafs = InheritanceTree(cls)
-            cls.name = "-"
-            cls.leafs["-"] = cls
+            cls.name = cls.__name__
+            cls.leafs[cls.name] = cls
             cls.aliases = ()
             cls.cfgs = cfgs
 
@@ -367,9 +356,9 @@ class DescriptorConfiguration(DescriptorDict):
 
             cls.cfgs = cfgs + cls.cfgs
 
-    def __init__(self, **kwargs):
+    def __init__(self, dict=None, /, **kwargs):
         self.clear()
-        self.update(**kwargs)
+        self.update(dict, **kwargs)
 
     def update(self, dict=None, **kwargs):
 
@@ -420,6 +409,15 @@ class DescriptorConfiguration(DescriptorDict):
         self.data = {}
         for value in self.cfgs:
             value.reset(self)
+
+    def __setitem__(self, key: str, value):
+        setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __delitem__(self, key) -> None:
+        delattr(self, key)
 
     def __repr__(self) -> str:
         return str(self.export())

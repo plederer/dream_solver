@@ -1,14 +1,13 @@
 from __future__ import annotations
 import typing
 import logging
-import abc
 from collections import UserDict
 
 import ngsolve as ngs
 
 from dream import bla
 from dream.mesh import DreamMesh, BoundaryConditions, DomainConditions
-from dream.config import State, InterfaceConfiguration, DescriptorConfiguration
+from dream.config import State, DescriptorConfiguration
 from dream.time_schemes import TransientGridfunction
 
 logger = logging.getLogger(__name__)
@@ -191,9 +190,13 @@ class Spaces(UserDict):
         return space
 
 
-class Formulation(InterfaceConfiguration, is_interface=True):
+class Formulation(DescriptorConfiguration, is_interface=True):
 
     def initialize(self, cfg: SolverConfiguration, mesh: ngs.Mesh | DreamMesh) -> None:
+
+        self.n = ngs.specialcf.normal(mesh.dim)
+        self.t = ngs.specialcf.tangential(mesh.dim)
+        self.h = ngs.specialcf.mesh_size
 
         if isinstance(mesh, ngs.Mesh):
             mesh = DreamMesh(mesh)
@@ -201,14 +204,6 @@ class Formulation(InterfaceConfiguration, is_interface=True):
         self._cfg = cfg
         self._mesh = mesh
         self._spaces = None
-
-    # def initialize(self):
-    #     self._spaces = self.get_space()
-    #     self.spaces.initialize()
-
-    #     self.normal = ngs.specialcf.normal(mesh.dim)
-    #     self.tangential = ngs.specialcf.tangential(mesh.dim)
-    #     self.mesh_size = ngs.specialcf.mesh_size
 
     @property
     def dmesh(self) -> DreamMesh:
@@ -242,5 +237,5 @@ class PDEConfiguration(DescriptorConfiguration, is_interface=True):
     dcs: DomainConditions
 
     @property
-    def formulation(self):
+    def formulation(self) -> Formulation:
         raise NotImplementedError('Override formulation')

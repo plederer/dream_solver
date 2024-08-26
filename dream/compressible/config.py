@@ -12,7 +12,7 @@ from dream.compressible.viscosity import Inviscid, Constant, Sutherland
 from dream.compressible.scaling import Aerodynamic, Aeroacoustic, Acoustic
 from dream.compressible.riemann_solver import LaxFriedrich, Roe, HLL, HLLEM
 from dream.compressible.conditions import CompressibleBC, CompressibleDC
-from dream.compressible.formulations import Conservative, CompressibleFormulation, MixedMethod, Inactive, StrainHeat, Gradient
+from dream.compressible.formulations import Conservative, CompressibleFormulation
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         super().__init__(**kwargs)
         self.equations = CompressibleEquations(self)
 
-    @any(Conservative)
+    @descriptor_configuration(Conservative)
     def formulation(self, formulation) -> CompressibleFormulation:
         return formulation
 
@@ -72,10 +72,6 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         self.riemann_solver._cfg = self
         return riemann_solver
 
-    @descriptor_configuration(default=Inactive)
-    def mixed_method(self, mixed_method):
-        return mixed_method
-
     @reynolds_number.getter_check
     def reynolds_number(self):
         if self.dynamic_viscosity.is_inviscid:
@@ -100,7 +96,6 @@ class CompressibleFlowConfiguration(PDEConfiguration):
     dynamic_viscosity: Constant | Inviscid | Sutherland
     scaling: Aerodynamic | Acoustic | Aeroacoustic
     riemann_solver: LaxFriedrich | Roe | HLL | HLLEM
-    mixed_method: Inactive | StrainHeat | Gradient
 
 
 class CompressibleEquations:

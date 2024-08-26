@@ -6,18 +6,18 @@ import dream.config as cfg
 # ------- Setup ------- #
 
 
-class State_(cfg.State):
+class DummyState(cfg.State):
 
     dummy = cfg.descriptor()
     rho = cfg.variable(lambda x: 2*x, 'density')
     p = cfg.variable(lambda x: 5*x, 'pressure')
 
 
-class DescriptorConfiguration_(cfg.DescriptorConfiguration, is_interface=True):
+class DummyDescriptorConfiguration(cfg.DescriptorConfiguration, is_interface=True):
     ...
 
 
-class DescriptorChildA_(DescriptorConfiguration_):
+class DescriptorChildA_(DummyDescriptorConfiguration):
     name = "childA"
     aliases = ("A", )
 
@@ -37,7 +37,7 @@ class DescriptorChildA_(DescriptorConfiguration_):
             ValueError("x is too large!")
 
 
-class DescriptorChildB_(DescriptorConfiguration_):
+class DescriptorChildB_(DummyDescriptorConfiguration):
     name = "childB"
 
     @cfg.any(default="abc")
@@ -60,7 +60,7 @@ class UniqueConfiguration_(cfg.DescriptorConfiguration, is_unique=True):
 class TestDescriptor(unittest.TestCase):
 
     def setUp(self):
-        self.obj = State_
+        self.obj = DummyState
 
     def test_descriptor_name(self):
         self.assertEqual(self.obj.dummy.name, "dummy")
@@ -69,7 +69,7 @@ class TestDescriptor(unittest.TestCase):
 class TestVariable(unittest.TestCase):
 
     def setUp(self):
-        self.obj = State_()
+        self.obj = DummyState()
 
     def tearDown(self) -> None:
         self.obj.clear()
@@ -96,17 +96,8 @@ class TestVariable(unittest.TestCase):
 
 class TestState(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(self):
-
-        class Test(cfg.DescriptorDict):
-            double = cfg.variable(lambda x: 2*x, 'double')
-            join = cfg.variable(lambda x: "".join(x), 'join')
-
-        self.class_ = Test
-
     def setUp(self) -> None:
-        self.obj = State_()
+        self.obj = DummyState()
 
     def tearDown(self) -> None:
         self.obj.clear()

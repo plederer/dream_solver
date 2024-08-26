@@ -6,130 +6,135 @@ from typing import Optional, NamedTuple, Any
 from math import isnan
 
 from .sensor import Sensor
-from .formulations import PDEConfiguration, CompressibleFlowConfiguration
-from .config import UniqueConfiguration, FiniteElementConfig
+
+from .compressible import CompressibleFlowConfiguration
+
+from .config import DescriptorConfiguration, FiniteElementConfig, descriptor_configuration
 from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, SimulationConfig
 from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
 
 logger = logging.getLogger(__name__)
 
 
-class SolverConfiguration(UniqueConfiguration):
+class SolverConfiguration(DescriptorConfiguration, is_unique=True):
 
-    def __init__(self) -> None:
+    # def __init__(self) -> None:
 
-        # Flow Configuration
-        self.pde = "compressible_flow"
 
-        # Time Configuration
-        self.simulation = "transient"
-        self._fem = FiniteElementConfig()
+        
+    #     # self.pde = "compressible_flow"
 
-        # Solution routine Configuration
-        self.compile_flag = True
-        self.max_iterations = 10
-        self.convergence_criterion = 1e-8
-        self.damping_factor = 1
-        self.linear_solver = "pardiso"
+    #     # Time Configuration
+    #     self.simulation = "transient"
+    #     self._fem = FiniteElementConfig()
 
-        # Output Configuration
-        self._io = IOConfig()
+    #     # Solution routine Configuration
+    #     self.compile_flag = True
+    #     self.max_iterations = 10
+    #     self.convergence_criterion = 1e-8
+    #     self.damping_factor = 1
+    #     self.linear_solver = "pardiso"
 
-    @property
-    def pde(self) -> CompressibleFlowConfiguration:
-        return self._flow
+    #     # Output Configuration
+    #     self._io = IOConfig()
 
-    @pde.setter
-    def pde(self, flow):
-        self._flow = self._get_type(flow, PDEConfiguration)
+    @descriptor_configuration(default=CompressibleFlowConfiguration)
+    def pde(self, pde):
+        return pde
+    
+    @descriptor_configuration(default=FiniteElementConfig)
+    def fem(self, fem):
+        return fem
+    
+    @descriptor_configuration(default=StationaryConfig)
+    def time(self, time):
+        return time
+    
+    pde: CompressibleFlowConfiguration
+    fem: FiniteElementConfig
+    time: StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
+    
 
-    @property
-    def simulation(self) -> StationaryConfig | TransientConfig | PseudoTimeSteppingConfig:
-        return self._simulation
+        
+    # @property
+    # def simulation(self) -> StationaryConfig | TransientConfig | PseudoTimeSteppingConfig:
+    #     return self._simulation
 
-    @simulation.setter
-    def simulation(self, simulation: str) -> None:
-        self._simulation = self._get_type(simulation, SimulationConfig)
+    # @simulation.setter
+    # def simulation(self, simulation: str) -> None:
+    #     self._simulation = self._get_type(simulation, SimulationConfig)
 
-    @property
-    def fem(self) -> FiniteElementConfig:
-        return self._fem
+    # @property
+    # def compile_flag(self) -> bool:
+    #     return self._compile_flag
 
-    @fem.setter
-    def fem(self, fem: dict[str, Any]) -> None:
-        self._fem.update(fem)
+    # @compile_flag.setter
+    # def compile_flag(self, compile_flag: bool):
+    #     self._compile_flag = bool(compile_flag)
 
-    @property
-    def compile_flag(self) -> bool:
-        return self._compile_flag
+    # @property
+    # def max_iterations(self) -> int:
+    #     return self._max_iterations
 
-    @compile_flag.setter
-    def compile_flag(self, compile_flag: bool):
-        self._compile_flag = bool(compile_flag)
+    # @max_iterations.setter
+    # def max_iterations(self, max_iterations: int):
+    #     self._max_iterations = int(max_iterations)
 
-    @property
-    def max_iterations(self) -> int:
-        return self._max_iterations
+    # @property
+    # def convergence_criterion(self) -> float:
+    #     return self._convergence_criterion
 
-    @max_iterations.setter
-    def max_iterations(self, max_iterations: int):
-        self._max_iterations = int(max_iterations)
+    # @convergence_criterion.setter
+    # def convergence_criterion(self, convergence_criterion: float):
+    #     convergence_criterion = float(convergence_criterion)
+    #     if convergence_criterion <= 0:
+    #         raise ValueError("Convergence Criterion must be greater zero!")
+    #     self._convergence_criterion = convergence_criterion
 
-    @property
-    def convergence_criterion(self) -> float:
-        return self._convergence_criterion
+    # @property
+    # def damping_factor(self) -> float:
+    #     return self._damping_factor
 
-    @convergence_criterion.setter
-    def convergence_criterion(self, convergence_criterion: float):
-        convergence_criterion = float(convergence_criterion)
-        if convergence_criterion <= 0:
-            raise ValueError("Convergence Criterion must be greater zero!")
-        self._convergence_criterion = convergence_criterion
+    # @damping_factor.setter
+    # def damping_factor(self, damping_factor: float):
+    #     self._damping_factor = float(damping_factor)
 
-    @property
-    def damping_factor(self) -> float:
-        return self._damping_factor
+    # @property
+    # def linear_solver(self) -> str:
+    #     return self._linear_solver
 
-    @damping_factor.setter
-    def damping_factor(self, damping_factor: float):
-        self._damping_factor = float(damping_factor)
+    # @linear_solver.setter
+    # def linear_solver(self, linear_solver: str):
+    #     self._linear_solver = str(linear_solver).lower()
 
-    @property
-    def linear_solver(self) -> str:
-        return self._linear_solver
+    # @property
+    # def io(self) -> IOConfig:
+    #     return self._io
 
-    @linear_solver.setter
-    def linear_solver(self, linear_solver: str):
-        self._linear_solver = str(linear_solver).lower()
+    # @io.setter
+    # def io(self, io: IOConfig):
+    #     self._io.update(io)
 
-    @property
-    def io(self) -> IOConfig:
-        return self._io
+    # def __repr__(self) -> str:
 
-    @io.setter
-    def io(self, io: IOConfig):
-        self._io.update(io)
+    #     formatter = self.formatter.new()
+    #     formatter.header('Solver Configuration').newline()
 
-    def __repr__(self) -> str:
+    #     formatter.add_config(self.pde).newline()
+    #     formatter.add_config(self.time).newline()
+    #     formatter.add_config(self.fem).newline()
 
-        formatter = self.formatter.new()
-        formatter.header('Solver Configuration').newline()
+    #     formatter.subheader('Solution Routine Configuration').newline()
+    #     formatter.entry('Compile Flag', str(self._compile_flag))
+    #     formatter.entry('Linear Solver', self._linear_solver)
+    #     formatter.entry('Damping Factor', self._damping_factor)
+    #     formatter.entry('Convergence Criterion', self._convergence_criterion)
+    #     formatter.entry('Maximal Iterations', self._max_iterations)
+    #     formatter.newline()
 
-        formatter.add_config(self.pde).newline()
-        formatter.add_config(self.time).newline()
-        formatter.add_config(self.fem).newline()
+    #     formatter.add_config(self.io).newline()
 
-        formatter.subheader('Solution Routine Configuration').newline()
-        formatter.entry('Compile Flag', str(self._compile_flag))
-        formatter.entry('Linear Solver', self._linear_solver)
-        formatter.entry('Damping Factor', self._damping_factor)
-        formatter.entry('Convergence Criterion', self._convergence_criterion)
-        formatter.entry('Maximal Iterations', self._max_iterations)
-        formatter.newline()
-
-        formatter.add_config(self.io).newline()
-
-        return formatter.output
+    #     return formatter.output
 
 
 class IterationError(NamedTuple):

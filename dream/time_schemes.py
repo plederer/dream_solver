@@ -1,9 +1,11 @@
+# %%
+
 from __future__ import annotations
 import numpy as np
 import ngsolve as ngs
 import logging
 
-from dream.config import DescriptorConfiguration, parameter, any
+from dream.config import DescriptorConfiguration, parameter, any, descriptor_configuration
 from collections import UserDict
 
 
@@ -12,17 +14,20 @@ logger = logging.getLogger(__name__)
 
 class Timer(DescriptorConfiguration, is_unique=True):
 
-    @any(default=0.0)
-    def start(self, start):
-        return start
+    @any(default=(0.0, 1.0))
+    def interval(self, interval):
+        start, end = interval
 
-    @any(default=1.0)
-    def end(self, end):
-        return end
+        if start < 0 or end < 0:
+            raise ValueError(f"Start and end time must be positive!")
+
+        if start >= end:
+            raise ValueError(f"Start time must be smaller than end time!")
+
+        return (float(start), float(end))
 
     @parameter(default=1e-4)
     def step(self, step):
-        step = float(step)
         self._set_time_step_digit(step)
         return step
 
@@ -30,32 +35,101 @@ class Timer(DescriptorConfiguration, is_unique=True):
     def t(self, t):
         return t
 
-    def __call__(self, **kwargs):
-        self.update(**kwargs)
-        for t in self.to_iterator(step=1):
+    def start(self, include_start: bool = False, stride: int = 1):
+
+        start, end = self.interval
+        step = self.step.Get()
+
+        N = round((end - start)/(stride*step)) + 1
+
+        for i in range(1 - include_start, N):
+            t = round(start + stride*i*step, self._step_digit)
             self.t = t
             yield t
-        
-    def to_iterator(self, step: int = 1):
-        for t in self.to_array()[::step]:
+
+    def to_array(self, include_start: bool = False, stride: int = 1) -> np.ndarray:
+        return np.array(list(self.start(include_start, stride)))
+
+    def __call__(self, **kwargs):
+        self.update(**kwargs)
+        for t in self.start(stride=1):
             yield t
 
-    def to_array(self, include_start: bool = False) -> np.ndarray:
-        num = round((self.end - self.start)/self.step.Get()) + 1
-
-        interval = np.linspace(self.start, self.end, num)
-        if not include_start:
-            interval = interval[1:]
-
-        return interval.round(self._step_digit)
-
     def _set_time_step_digit(self, step: float):
-
-        if isinstance(step, ngs.Parameter):
-            step = step.Get()
-
         digit = f"{step:.16f}".split(".")[1]
         self._step_digit = len(digit.rstrip("0"))
+
+    interval: tuple[float, float]
+    step: ngs.Parameter
+    t: ngs.Parameter
+
+
+class TimeSchemes(DescriptorConfiguration, is_interface=True):
+
+    time_levels: tuple[str]
+
+    @property
+    def implicit_term_factor(self) -> float:
+        return NotImplementedError()
+
+    def initialize_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
+        gfus = [gfu] + [ngs.GridFunction(gfu.space, name=f"{gfu.name}_{label}") for label in self.time_levels[1:]]
+        return {level: gfu for level, gfu in zip(self.time_levels, gfus)}
+
+    def update_gridfunctions_after_time_step(self, gfus: dict[str, ngs.GridFunction]):
+        gfus = list(gfus.values()).reverse()
+        for new, old in zip(gfus[1:], gfus[:-1]):
+            old.vec.data = new.vec
+
+    def update_gridfunctions_after_initial_solution(self, gfus: dict[str, ngs.GridFunction]):
+        gfus = list(gfus.values())
+        for old in gfus[1:]:
+            old.vec.data = gfus[0].vec
+
+    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction], dt: ngs.Parameter) -> ngs.CF:
+        return (self.get_implicit_terms(gfus) - self.get_explicit_terms(gfus))/dt
+
+    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.LinearForm:
+        raise NotImplementedError()
+
+    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.LinearForm:
+        raise NotImplementedError()
+
+
+class ImplicitEuler(TimeSchemes):
+
+    name: str = "implicit_euler"
+    aliases = ("IE", )
+
+    time_levels = ('n+1', 'n')
+
+    @property
+    def implicit_term_factor(self) -> float:
+        return 1.0
+
+    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return gfus['n']
+
+    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return gfus['n+1']
+    
+
+
+class BDF2(TimeSchemes):
+
+    name: str = "BDF2"
+
+    time_levels = ('n+1', 'n', 'n-1')
+
+    @property
+    def implicit_term_factor(self) -> float:
+        return 1.5
+
+    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return 2 * gfus['n'] - 0.5 * gfus['n-1']
+
+    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return self.implicit_term_factor * gfus['n+1']
 
 
 class SimulationConfig(DescriptorConfiguration, is_interface=True):
@@ -69,142 +143,28 @@ class StationaryConfig(SimulationConfig):
 
     name: str = "stationary"
 
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.subheader('Stationary Configuration').newline()
-        return formatter.output
-
 
 class TransientConfig(SimulationConfig):
 
     name: str = "transient"
 
-    def __init__(self):
-        self._scheme = "IE"
-        self._timer = Timer()
+    @descriptor_configuration(default=ImplicitEuler)
+    def scheme(self, scheme):
+        return scheme
 
-    @property
-    def timer(self) -> Timer:
-        return self._timer
+    @descriptor_configuration(default=Timer)
+    def timer(self, timer):
+        return timer
 
-    @timer.setter
-    def timer(self, timer: Timer):
-        self._timer.set(timer.start, timer.end, timer.step)
-
-    @property
-    def scheme(self) -> TimeSchemes:
-        return self._scheme
-
-    @scheme.setter
-    def scheme(self, scheme: str):
-        self._scheme = self._get_type(scheme, TimeSchemes, self)
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.subheader('Transient Configuration').newline()
-        formatter.entry('Time Scheme', self.scheme)
-        formatter.entry('Timer', repr(self.timer))
-        return formatter.output
+    scheme: ImplicitEuler | BDF2
+    timer: Timer
 
 
 class PseudoTimeSteppingConfig(TransientConfig):
 
-    name: str = "pseudo"
+    name: str = "pseudo_time_stepping"
+    aliases = ("pseudo", )
 
-    def __init__(self):
-        super().__init__()
-        self.max_step = 1
-
-    @property
-    def max_step(self) -> float:
-        return self._max_step
-
-    @max_step.setter
-    def max_step(self, max_step: float):
-        self._max_step = float(max_step)
-
-    def format(self) -> str:
-        formatter = self.formatter.new()
-        formatter.subheader('Pseudo Time Stepping Configuration').newline()
-        formatter.entry('Time Scheme', self.scheme)
-        formatter.entry('Timer', repr(self.timer))
-        formatter.entry('Max Time Step', self.max_step)
-        return formatter.output
-
-
-class TransientGridfunction(UserDict):
-
-    def swap_level(self, gfu: ngs.GridFunction, level='n+1') -> TransientGridfunction:
-        swap = self.copy()
-        swap[level] = gfu
-        return swap
-
-    def update_time_step(self):
-        gfus = list(self.values()).reverse()
-        for new, old in zip(gfus[1:], gfus[:-1]):
-            old.vec.data = new.vec
-
-    def update_initial(self):
-        gfus = list(self.values())
-        new = gfus[0]
-        for old in gfus[1:]:
-            old.vec.data = new.vec
-
-
-class TimeSchemes:
-
-    types: dict[str, TimeSchemes] = {}
-    time_levels: tuple[str]
-    is_implicit: bool
-
-    @classmethod
-    def get_transient_gridfunction(cls, gfu: ngs.GridFunction) -> TransientGridfunction:
-        gfus = [gfu] + [ngs.GridFunction(gfu.space, name=f"{gfu.name}_{label}") for label in cls.time_levels[1:]]
-        return TransientGridfunction({level: gfu for level, gfu in zip(cls.time_levels, gfus)})
-
-    def __init_subclass__(cls, labels: str) -> None:
-        if isinstance(labels, str):
-            labels = [labels]
-
-        for label in labels:
-            cls.types[label] = cls
-
-    def __init__(self, cfg: TransientConfig = None) -> None:
-        if cfg is None:
-            cfg = TransientConfig()
-        self.cfg = cfg
-
-    def scheme(self, gfu: TransientGridfunction) -> ngs.CF:
-        return self.nominator(gfu)/self.denominator()
-
-    def nominator(self, gfu: TransientGridfunction) -> ngs.CF:
-        raise NotImplementedError()
-
-    def denominator(self):
-        raise NotImplementedError()
-
-
-class ImplicitEuler(TimeSchemes, labels=["IE", "implicit_euler"]):
-
-    time_levels = ('n+1', 'n')
-    is_implicit = True
-
-    def nominator(self, gfu: TransientGridfunction) -> ngs.CF:
-        return gfu['n+1'] - gfu['n']
-
-    def denominator(self) -> ngs.CF:
-        return self.cfg.timer.step
-
-
-class BDF2(TimeSchemes, labels=["BDF2"]):
-
-    time_levels = ('n+1', 'n', 'n-1')
-    is_implicit = True
-
-    def nominator(self, gfu: TransientGridfunction) -> ngs.CF:
-        return 3*gfu['n+1'] - 4 * gfu['n'] + gfu['n-1']
-
-    def denominator(self) -> ngs.CF:
-        return 2*self.cfg.timer.step
-
-# %%
+    @any(default=1.0)
+    def max_time_step(self, max_time_step):
+        return max_time_step
