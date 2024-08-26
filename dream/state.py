@@ -59,7 +59,7 @@ class Calculator:
         else:
             raise NotImplementedError(f"Can not determine missing values!")
 
-        return State(velocity, density, pressure, temperature, energy)
+        return State(CF(velocity), density, pressure, temperature, energy)
 
     def velocity_dm(self, density, momentum):
         if isinstance(momentum, CF):

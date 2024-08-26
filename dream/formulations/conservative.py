@@ -902,25 +902,24 @@ class ConservativeFormulation2D(ConservativeFormulation):
     def _add_gfarfield_bilinearform(self, blf, boundary: Region, bc: bcs.GFarField):
         compile_flag = self.cfg.compile_flag
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
+        gamma = self.cfg.heat_capacity_ratio
 
         U, _ = self.TnT.PRIMAL
         Uhat, Vhat = self.TnT.PRIMAL_FACET
 
         state = self.calc.determine_missing(bc.state)
-        U_bc = CF((state.density, state.momentum, state.energy))
         if bc.relaxation == "farfield":
-            ...
+            U_bc = CF((state.density, state.momentum, state.energy))
         elif bc.relaxation == "outflow":
             U_bc = CF((self.density(U),
                        self.momentum(U),
-                       state.pressure / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U)))
+                       state.pressure / (gamma - 1) + self.kinetic_energy(U)))
         elif bc.relaxation == "inflow":
             U_bc = CF((state.density,
                        state.momentum,
                        self.pressure(U) / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U_bc)))
         else:
             raise ValueError('Relaxation unknown!')
-
 
         if bc.type == "gfarfield":
             Sigma = CF((
@@ -991,7 +990,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
         if bc.glue:
             self.glue(blf, boundary)
-        
+
     def glue(self, blf, boundary, scaling=1):
 
         Uhat, Vhat = self.TnT.PRIMAL_FACET
