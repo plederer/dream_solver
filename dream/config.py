@@ -9,6 +9,8 @@ import ngsolve as ngs
 
 logger = logging.getLogger(__name__)
 
+if typing.TYPE_CHECKING:
+    from dream.mesh import BoundaryConditions, DomainConditions
 
 # ------- State ------- #
 
@@ -475,6 +477,15 @@ class FiniteElementConfig(DescriptorConfiguration, is_unique=True):
     static_condensation: bool
     bonus_int_order: BonusIntegrationOrder
 
+
+class PDEConfiguration(DescriptorConfiguration, is_interface=True):
+
+    bcs: BoundaryConditions
+    dcs: DomainConditions
+
+    @property
+    def formulation(self):
+        raise NotImplementedError('Override formulation')
 
 # ------ Formatter ------- #
 

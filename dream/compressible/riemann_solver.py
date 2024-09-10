@@ -7,7 +7,7 @@ from dream.config import DescriptorConfiguration, any
 from dream.compressible.state import CompressibleState
 
 if typing.TYPE_CHECKING:
-    from dream.compressible.config import CompressibleFlowConfiguration
+    from dream.compressible import CompressibleFlowConfiguration
 
 
 

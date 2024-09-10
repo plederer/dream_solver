@@ -104,3 +104,37 @@ class BasicLinearAlgebra(unittest.TestCase):
         result = bla.fixpoint_iteration(0.25, lambda x: ngs.sqrt(2-x))
         expected = 1
         self.assertAlmostEqual(result, expected)
+
+    def test_symmetric_matrix_from_vector(self):
+
+        a = [i for i in range(1,4)]
+        result = bla.symmetric_matrix_from_vector(a)(self.mip)
+        expected = (1.0, 2.0, 2.0, 3.0)
+        nptest.assert_almost_equal(result, expected)
+    
+        a = [i for i in range(1,7)]
+        result = bla.symmetric_matrix_from_vector(a)(self.mip)
+        expected = (1.0, 2.0, 3.0, 2.0, 4.0, 5.0, 3.0, 5.0, 6.0)
+        nptest.assert_almost_equal(result, expected)
+
+
+        with self.assertRaises(ValueError):
+            a = [i for i in range(1,8)]
+            result = bla.symmetric_matrix_from_vector(a)(self.mip)
+
+    def test_skewsymmetric_matrix_from_vector(self):
+
+        a = 1
+        result = bla.skewsymmetric_matrix_from_vector(a)(self.mip)
+        expected = (0.0, -1.0, 1.0, 0.0)
+        nptest.assert_almost_equal(result, expected)
+    
+        a = [i for i in range(1,4)]
+        result = bla.skewsymmetric_matrix_from_vector(a)(self.mip)
+        expected = (0, -1.0, 2.0, 1.0, 0.0, -3.0, -2.0, 3.0, 0.0)
+        nptest.assert_almost_equal(result, expected)
+
+
+        with self.assertRaises(ValueError):
+            a = [i for i in range(1,8)]
+            result = bla.skewsymmetric_matrix_from_vector(a)(self.mip)

@@ -30,6 +30,10 @@ class DreamMesh:
         self._dcs = DCContainer(mesh.GetMaterials())
         self._is_periodic = bool(mesh.GetPeriodicNodePairs(ngs.VERTEX))
 
+        self.normal = ngs.specialcf.normal(mesh.dim)
+        self.tangential = ngs.specialcf.tangential(mesh.dim)
+        self.h = ngs.specialcf.mesh_size
+
     @property
     def ngsmesh(self) -> ngs.Mesh:
         return self._mesh

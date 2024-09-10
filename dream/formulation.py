@@ -8,7 +8,7 @@ import ngsolve as ngs
 from dream import bla
 from dream.mesh import DreamMesh, BoundaryConditions, DomainConditions
 from dream.config import State, DescriptorConfiguration
-from dream.time_schemes import TransientGridfunction
+# from dream.time_schemes import TransientGridfunction
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +203,6 @@ class Formulation(DescriptorConfiguration, is_interface=True):
 
         self._cfg = cfg
         self._mesh = mesh
-        self._spaces = None
 
     @property
     def dmesh(self) -> DreamMesh:
@@ -221,21 +220,29 @@ class Formulation(DescriptorConfiguration, is_interface=True):
     def spaces(self) -> Spaces | Space:
         return self._spaces
 
-    def get_space(self) -> Spaces | Space:
-        raise NotImplementedError()
+    def initialize_finite_element_space(self, spaces: dict[str, ngs.FESpace]) -> None:
+
+        if not spaces:
+            raise ValueError("Spaces container is empty!")
+        
+        fes = list(spaces.values())
+
+        for space in fes[1:]:
+            fes[0] *= space
+
+        self.fes = fes[0]
+        self.spaces = spaces
+    
+    def initialize_test_and_trial_function(self) -> None:
+        self.TnT = {key: space.TnT() for key, space in self.spaces.items()}
+    
+    def initialize_gridfunction(self) -> None:
+        self.gfu = ngs.GridFunction(self.fes)
 
     def get_system(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
         raise NotImplementedError()
 
 
-# ------- Configuration ------- #
+class CompressibleFormulation(Formulation, is_interface=True):
+    ...
 
-
-class PDEConfiguration(DescriptorConfiguration, is_interface=True):
-
-    bcs: BoundaryConditions
-    dcs: DomainConditions
-
-    @property
-    def formulation(self) -> Formulation:
-        raise NotImplementedError('Override formulation')

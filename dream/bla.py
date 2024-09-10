@@ -173,3 +173,28 @@ def fixpoint_iteration(x0: float, func, it: int = 100, tol: float = 1e-16):
             break
 
     return x0
+
+
+def symmetric_matrix_from_vector(x: ngs.CF, factor: float = 1):
+
+    x = as_vector(x)
+
+    if x.dim == 3:
+        return factor * ngs.CF((x[0], x[1], x[1], x[2]), dims=(2, 2))
+    elif x.dim == 6:
+        return factor * ngs.CF((x[0], x[1], x[2], x[1], x[3], x[4], x[2], x[4], x[5]), dims=(3, 3))
+    else:
+        raise ValueError(f"Can not create symmetric matrix with component vector of length {x.dim}!")
+
+
+def skewsymmetric_matrix_from_vector(x: ngs.CF, factor: float = 1):
+
+    if is_scalar(x):
+        return factor * ngs.CF((0, -x, x, 0), dims=(2, 2))
+
+    x = as_vector(x)
+
+    if x.dim == 3:
+        return factor * ngs.CF((0, -x[0], x[1], x[0], 0, -x[2], -x[1], x[2], 0), dims=(3, 3))
+    else:
+        raise ValueError(f"Can not create symmetric matrix with component vector of length {x.dim}!")

@@ -6,8 +6,6 @@ import ngsolve as ngs
 import logging
 
 from dream.config import DescriptorConfiguration, parameter, any, descriptor_configuration
-from collections import UserDict
-
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ class Timer(DescriptorConfiguration, is_unique=True):
 
     @parameter(default=1e-4)
     def step(self, step):
-        self._set_time_step_digit(step)
+        self._set_digit(step)
         return step
 
     @parameter(default=0.0)
@@ -43,9 +41,8 @@ class Timer(DescriptorConfiguration, is_unique=True):
         N = round((end - start)/(stride*step)) + 1
 
         for i in range(1 - include_start, N):
-            t = round(start + stride*i*step, self._step_digit)
-            self.t = t
-            yield t
+            self.t = start + stride*i*step
+            yield self.t.Get()
 
     def to_array(self, include_start: bool = False, stride: int = 1) -> np.ndarray:
         return np.array(list(self.start(include_start, stride)))
@@ -55,9 +52,9 @@ class Timer(DescriptorConfiguration, is_unique=True):
         for t in self.start(stride=1):
             yield t
 
-    def _set_time_step_digit(self, step: float):
+    def _set_digit(self, step: float):
         digit = f"{step:.16f}".split(".")[1]
-        self._step_digit = len(digit.rstrip("0"))
+        self.digit = len(digit.rstrip("0"))
 
     interval: tuple[float, float]
     step: ngs.Parameter

@@ -5,7 +5,7 @@ from dream.config import DescriptorConfiguration, any
 from dream.compressible.state import CompressibleState
 
 if typing.TYPE_CHECKING:
-    from dream.compressible.config import CompressibleEquations
+    from dream.compressible import CompressibleEquations
 
 
 class DynamicViscosity(DescriptorConfiguration, is_interface=True):
