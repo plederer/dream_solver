@@ -239,6 +239,8 @@ class descriptor_configuration(configuration):
             {list(cfg.data[self.name].data.keys())}            
             """
             raise TypeError(msg)
+        
+        cfg.data[self.name].parent = cfg
 
     def reset(self, cfg: DescriptorConfiguration):
         self.__set__(cfg, self.default())
@@ -478,14 +480,8 @@ class FiniteElementConfig(DescriptorConfiguration, is_unique=True):
     bonus_int_order: BonusIntegrationOrder
 
 
-class PDEConfiguration(DescriptorConfiguration, is_interface=True):
 
-    bcs: BoundaryConditions
-    dcs: DomainConditions
 
-    @property
-    def formulation(self):
-        raise NotImplementedError('Override formulation')
 
 # ------ Formatter ------- #
 

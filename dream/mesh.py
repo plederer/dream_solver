@@ -19,7 +19,7 @@ def pattern_from_sequence(sequence: Sequence) -> str:
 
 def pattern_from_dictionary(dictionary: dict[str, Any]) -> dict[str, Any]:
     values = set(dictionary.values())
-    return {pattern_from_sequence([key for key, value in dictionary.items() if value == a]): a for a in values}
+    return {pattern_from_sequence([key for key, value in dictionary.items() if value == condition]): condition for condition in values if condition is not None}
 
 
 class DreamMesh:
@@ -73,19 +73,19 @@ class DreamMesh:
     def get_grid_deformation(self, grid_deformation: dict[str, GridDeformation] = None):
         if grid_deformation is None:
             grid_deformation = self.dcs.get(GridDeformation, as_pattern=True)
-        return self._buffer_function_(grid_deformation, GridDeformation)
+        return self._get_buffer_function_(grid_deformation, GridDeformation)
 
     def get_sponge_function(self, sponge_layers: dict[str, SpongeLayer] = None):
         if sponge_layers is None:
             sponge_layers = self.dcs.get(SpongeLayer, as_pattern=True)
-        return self._buffer_function_(sponge_layers, SpongeLayer)
+        return self._get_buffer_function_(sponge_layers, SpongeLayer)
 
     def get_psponge_function(self, psponge_layers:  dict[str, PSpongeLayer] = None):
         if psponge_layers is None:
             psponge_layers = self.dcs.get(PSpongeLayer, as_pattern=True)
-        return self._buffer_function_(psponge_layers, PSpongeLayer)
+        return self._get_buffer_function_(psponge_layers, PSpongeLayer)
 
-    def _buffer_function_(self, domains: dict[str, Buffer] = None, buffer_type: Buffer = None) -> ngs.GridFunction:
+    def _get_buffer_function_(self, domains: dict[str, Buffer] = None, buffer_type: Buffer = None) -> ngs.GridFunction:
 
         if not domains:
             logger.warning(f"{buffer_type} has not been set in domain conditions!")
@@ -419,6 +419,9 @@ class ConditionContainer(UserDict):
     def get(self, condition: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
         return {}
 
+    def as_pattern(self) -> dict[str, CTYPE]:
+        return pattern_from_dictionary(self)
+
     def _filter_region(self, region) -> tuple[str]:
 
         if isinstance(region, str):
@@ -623,14 +626,16 @@ class BCContainer(ConditionContainer):
     def set(self, condition: Boundary, boundaries: str):
         super().set(condition, boundaries)
 
-    def get(self, condition: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
-        if not isinstance(condition, type):
-            condition = type(condition)
+    def get(self, *conditions: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
 
-        if not issubclass(condition, Boundary):
-            raise TypeError(f"Condition not of type '{Boundary}'")
+        conditions = tuple(condition if isinstance(condition, type) else type(condition) for condition in conditions)
 
-        conditions = {key: value for key, value in self.items() if isinstance(value, condition)}
+        for condition in conditions:
+
+            if not issubclass(condition, Boundary):
+                raise TypeError(f"Condition not of type '{Boundary}'")
+
+        conditions = {key: value for key, value in self.items() if isinstance(value, conditions)}
         if as_pattern:
             conditions = pattern_from_dictionary(conditions)
 

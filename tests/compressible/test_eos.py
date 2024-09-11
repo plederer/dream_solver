@@ -5,7 +5,7 @@ import numpy.testing as nptest
 
 from tests import simplex
 from dream.compressible.eos import IdealGas
-from dream.compressible.state import CompressibleState, CompressibleStateGradient
+from dream.compressible.config import CompressibleState, CompressibleStateGradient
 
 
 class TestIdealGas(unittest.TestCase):

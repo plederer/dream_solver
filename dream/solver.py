@@ -10,7 +10,7 @@ from .sensor import Sensor
 from .compressible import CompressibleFlowConfiguration
 
 from .config import DescriptorConfiguration, FiniteElementConfig, descriptor_configuration
-from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, SimulationConfig
+from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, TimeConfig
 from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
 
 logger = logging.getLogger(__name__)

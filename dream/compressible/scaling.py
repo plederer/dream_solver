@@ -3,7 +3,7 @@ from __future__ import annotations
 import ngsolve as ngs
 from dream import bla
 from dream.config import DescriptorConfiguration, any
-from dream.compressible.state import ReferenceState
+from dream.compressible.config import ReferenceState
 
 
 class Scaling(DescriptorConfiguration, is_interface=True):

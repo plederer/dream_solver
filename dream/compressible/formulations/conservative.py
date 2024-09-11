@@ -6,9 +6,12 @@ import typing
 import dream.bla as bla
 
 from dream.config import DescriptorConfiguration, descriptor_configuration
-from dream.mesh import DreamMesh
-from dream.formulation import Space, CompressibleFormulation
-from dream.compressible.state import CompressibleState, CompressibleStateGradient
+from dream.time_schemes import ImplicitEuler, BDF2
+
+from dream.compressible.config import (
+    CompressibleState, CompressibleStateGradient, CompressibleFormulation, DreamMesh, CharacteristicRelaxationInflow,
+    CharacteristicRelaxationOutflow, FarField, Outflow, InviscidWall, Symmetry, IsothermalWall, BoundaryConditions,
+    DomainConditions)
 
 
 logger = logging.getLogger(__name__)
@@ -21,14 +24,19 @@ if typing.TYPE_CHECKING:
 
 class MixedMethod(DescriptorConfiguration, is_interface=True):
 
-    def initialize(self, cfg: SolverConfiguration, dmesh: DreamMesh):
+    @property
+    def Q(self) -> ngs.CF:
+        return self.cfg.pde.formulation.TnT['Q'][0]
+
+    @property
+    def P(self) -> ngs.CF:
+        return self.cfg.pde.formulation.TnT['Q'][1]
+
+    def set_configuration_and_mesh(self, cfg: SolverConfiguration, dmesh: DreamMesh):
         self.cfg = cfg
         self.dmesh = dmesh
 
-    def set_test_and_trial_function(self, TnT: dict[str, tuple[ngs.CF, ...]]):
-        ...
-
-    def get_mixed_spaces(self) -> dict[str, ngs.ProductSpace]:
+    def get_mixed_finite_element_spaces(self) -> dict[str, ngs.ProductSpace]:
         ...
 
 
@@ -36,7 +44,7 @@ class Inactive(MixedMethod):
 
     name: str = "inactive"
 
-    def get_mixed_spaces(self) -> dict:
+    def get_mixed_finite_element_spaces(self) -> dict:
 
         if not self.cfg.pde.dynamic_viscosity.is_inviscid:
             raise TypeError(f"Viscous configuration requires mixed method!")
@@ -48,7 +56,7 @@ class StrainHeat(MixedMethod):
 
     name: str = "strain_heat"
 
-    def get_mixed_spaces(self) -> dict[str, ngs.ProductSpace]:
+    def get_mixed_finite_element_spaces(self) -> dict[str, ngs.ProductSpace]:
 
         if self.cfg.pde.dynamic_viscosity.is_inviscid:
             raise TypeError(f"Inviscid configuration does not require mixed method!")
@@ -61,9 +69,6 @@ class StrainHeat(MixedMethod):
         Q = self.dmesh._reduce_psponge_layers_order_elementwise(Q)
 
         return {'Q': Q**dim}
-
-    def set_test_and_trial_function(self, TnT: dict[str, tuple[ngs.CF, ...]]):
-        self.Q, self.P = TnT.pop('Q')
 
     def get_mixed_state(self, Q: ngs.CoefficientFunction):
 
@@ -83,7 +88,7 @@ class Gradient(MixedMethod):
 
     name: str = "gradient"
 
-    def get_mixed_spaces(self) -> dict[str, ngs.ProductSpace]:
+    def get_mixed_finite_element_spaces(self) -> dict[str, ngs.ProductSpace]:
 
         if self.cfg.pde.dynamic_viscosity.is_inviscid:
             raise TypeError(f"Inviscid configuration does not require mixed method!")
@@ -96,9 +101,6 @@ class Gradient(MixedMethod):
         Q = self.dmesh._reduce_psponge_layers_order_elementwise(Q)
 
         return {'Q': Q**dim}
-
-    def set_test_and_trial_function(self, TnT: dict[str, tuple[ngs.CF, ...]]):
-        self.Q, self.P = TnT.pop('Q')
 
     def get_mixed_state(self, Q: ngs.CoefficientFunction):
 
@@ -113,107 +115,42 @@ class Gradient(MixedMethod):
         return Q_
 
 
-class Primal(Space):
-
-    def get_state_from_variable(self, gfu: ngs.GridFunction = None) -> CompressibleState:
-        if gfu is None:
-            gfu = self.gfu
-
-        state = CompressibleState()
-        state.density = gfu[0]
-        state.momentum = gfu[slice(1, self.dmesh.dim + 1)]
-        state.energy = gfu[self.dmesh.dim + 1]
-
-        return state
-
-    def get_variable_from_state(self, state: State) -> ngs.CF:
-        state = CompressibleState(**state)
-        eq = self.cfg.pde.equations
-
-        density = eq.density(state)
-        momentum = eq.momentum(state)
-        energy = eq.energy(state)
-        return ngs.CF((density, momentum, energy))
-
-
-class PrimalElement(Primal):
-
-    def get_space(self) -> ngs.L2:
-        dim = self.dmesh.dim + 2
-        order = self.cfg.fem.order
-        mesh = self.dmesh.ngsmesh
-
-        V = ngs.L2(mesh, order=order)
-        V = self.dmesh._reduce_psponge_layers_order_elementwise(V)
-
-        return V**dim
-
-    def set_configuration_flags(self):
-
-        self.has_time_derivative = False
-        if not self.cfg.simulation.is_stationary:
-            self.has_time_derivative = True
-
-    def get_transient_gridfunction(self) -> TransientGridfunction:
-        if not self.cfg.simulation.is_stationary:
-            return self.cfg.simulation.scheme.get_transient_gridfunction(self.gfu)
-
-
-class PrimalFacet(Primal):
-
-    @property
-    def mask(self) -> ngs.GridFunction:
-        """ Mask is a indicator Gridfunction, which vanishes on the domain boundaries.
-
-            This is required to implement different boundary conditions on the the domain boundaries,
-            while using a Riemann-Solver in the interior!
-        """
-
-        return getattr(self, "_mask", None)
-
-    def get_space(self) -> ngs.FacetFESpace:
-        dim = self.dmesh.dim + 2
-        order = self.cfg.fem.order
-        mesh = self.dmesh.ngsmesh
-
-        VHAT = ngs.FacetFESpace(mesh, order=order)
-        VHAT = self.dmesh._reduce_psponge_layers_order_facetwise(VHAT)
-
-        if self.dmesh.is_periodic:
-            VHAT = ngs.Periodic(VHAT)
-
-        return VHAT**dim
-
-    def get_transient_gridfunction(self) -> TransientGridfunction:
-        if not self.cfg.simulation.is_stationary and self.dmesh.bcs.get(NSCBC):
-            return self.cfg.simulation.scheme.get_transient_gridfunction(self.gfu)
-
-    def add_mass_bilinearform(self, blf: ngs.BilinearForm, dx=ngs.dx, **dx_kwargs):
-        return super().add_mass_bilinearform(blf, dx=ngs.dx, element_boundary=True, **dx_kwargs)
-
-    def add_mass_linearform(self, state: CompressibleState, lf: ngs.LinearForm, dx=ngs.dx, **dx_kwargs):
-        return super().add_mass_linearform(state, lf, dx=ngs.dx, element_boundary=True, **dx_kwargs)
-
-    def set_mask(self):
-        """ Unsets the correct degrees of freedom on the domain boundaries
-
-        """
-
-        mask = self.mask
-        if mask is None:
-            fes = ngs.FacetFESpace(self.dmesh.ngsmesh, order=0)
-            mask = ngs.GridFunction(fes, name="mask")
-            self._mask = mask
-
-        mask.vec[:] = 0
-        mask.vec[~fes.GetDofs(self.dmesh.bcs.get_domain_boundaries(True))] = 1
-
-
 class ConservativeMethod(DescriptorConfiguration, is_interface=True):
 
-    def initialize(self, cfg: SolverConfiguration, dmesh: DreamMesh):
+    @property
+    def U_TnT(self) -> tuple[ngs.comp.ProxyFunction, ...]:
+        return self.cfg.pde.formulation.TnT['U']
+
+    @property
+    def U_gfu(self) -> ngs.GridFunction:
+        return self.cfg.pde.formulation.gfus['U']
+
+    @property
+    def U_gfu_transient(self) -> dict[str, ngs.GridFunction]:
+        return self.cfg.pde.formulation.gfus_transient['U']
+
+    def set_configuration_and_mesh(self, cfg: SolverConfiguration, dmesh: DreamMesh):
         self.cfg = cfg
         self.dmesh = dmesh
+
+    def get_transient_gridfunctions(self):
+        return {'U': self.cfg.time.scheme.allocate_transient_gridfunctions(self.U_gfu)}
+
+    def add_mass(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
+        U, V = self.U_TnT
+        blf += bla.inner(U, V) * ngs.dx
+
+    def add_time_derivative(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
+
+        U, V = self.U_TnT
+        dt = self.cfg.time.timer.step
+
+        U_dt = self.U_gfu_transient.copy()
+        U_dt['n+1'] = U
+
+        U_dt = self.cfg.time.scheme.get_discrete_time_derivative(self.U_gfu, dt)
+
+        blf += bla.inner(U_dt, V) * ngs.dx
 
     def get_conservative_state(self, U: ngs.CoefficientFunction):
 
@@ -239,16 +176,24 @@ class ConservativeMethod(DescriptorConfiguration, is_interface=True):
 
         return U_
 
-    def get_spaces(self):
-        ...
-
 
 class HDG(ConservativeMethod):
 
     name: str = "hdg"
 
-    def get_spaces(self):
+    @property
+    def Uhat_TnT(self) -> tuple[ngs.comp.ProxyFunction, ...]:
+        return self.cfg.pde.formulation.TnT['Uhat']
 
+    @property
+    def Uhat_gfu(self) -> ngs.GridFunction:
+        return self.cfg.pde.formulation.gfus['Uhat']
+
+    @property
+    def Uhat_gfu_transient(self) -> dict[str, ngs.GridFunction]:
+        return self.cfg.pde.formulation.gfus_transient['Uhat']
+
+    def get_finite_element_spaces(self):
         mesh = self.dmesh.ngsmesh
         dim = self.dmesh.dim + 2
 
@@ -260,30 +205,33 @@ class HDG(ConservativeMethod):
 
         return {'U': U**dim, 'Uhat': Uhat**dim}
 
-    def set_test_and_trial_function(self, TnT: dict[str, tuple[ngs.CF, ...]]):
-        self.U, self.V = TnT.pop('U')
-        self.Uhat, self.Vhat = TnT.pop('Uhat')
+    def get_transient_gridfunctions(self):
+        gfus = super().get_transient_gridfunctions()
 
-    def add_convection_bilinearform(self, blf: list[ngs.comp.SumOfIntegrals]):
+        if self.dmesh.bcs.get(CharacteristicRelaxationInflow, CharacteristicRelaxationOutflow):
+            gfus['Uhat'] = self.cfg.time.scheme.allocate_transient_gridfunctions(self.Uhat_gfu)
 
+        return gfus
+
+    def get_convective_numerical_flux(self, U, Uhat, unit_vector: bla.VECTOR):
+        """
+        Convective numerical flux
+
+        Equation 34, page 16
+
+        Literature:
+        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
+              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
+              Arch Computat Methods Eng 28, 753–784 (2021).
+              https://doi.org/10.1007/s11831-020-09508-z
+        """
+        unit_vector = bla.as_vector(unit_vector)
         eq = self.cfg.pde.equations
-        n = self.dmesh.normal
-        bonus_vol = self.cfg.fem.bonus_int_order.vol
-        bonus_bnd = self.cfg.fem.bonus_int_order.bnd
 
-        mask = self.get_domain_boundary_mask()
+        Uhat_ = self.get_conservative_state(Uhat)
+        tau = self.cfg.pde.riemann_solver.convective_stabilisation_matrix(Uhat_, unit_vector)
 
-        U = self.get_conservative_state(self.U)
-        Uhat = self.get_conservative_state(self.Uhat)
-
-        tau = self.cfg.pde.riemann_solver.convective_stabilisation_matrix(Uhat, n)
-
-        F = eq.convective_flux(U)
-        Fn = eq.convective_flux(Uhat) + tau * (self.U - self.Uhat)
-
-        blf += -bla.inner(F, ngs.grad(self.V)) * ngs.dx(bonus_intorder=bonus_vol)
-        blf += bla.inner(Fn, self.V) * ngs.dx(element_boundary=True, bonus_intorder=bonus_bnd)
-        blf += -mask * bla.inner(Fn, self.Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus_bnd)
+        return eq.convective_flux(Uhat_) * unit_vector + tau * (U - Uhat)
 
     def get_domain_boundary_mask(self):
         """ 
@@ -296,6 +244,34 @@ class HDG(ConservativeMethod):
         mask.vec[~fes.GetDofs(self.dmesh.bcs.get_domain_boundaries(True))] = 1
 
         return mask
+
+    def add_convection(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
+
+        eq = self.cfg.pde.equations
+        normal = self.dmesh.normal
+        vol = self.cfg.fem.bonus_int_order.vol
+        bnd = self.cfg.fem.bonus_int_order.bnd
+        mask = self.get_domain_boundary_mask()
+
+        U, V = self.U_TnT
+        Uhat, Vhat = self.Uhat_TnT
+
+        U_ = self.get_conservative_state(U)
+
+        F = eq.convective_flux(U_)
+        Fn = self.get_convective_numerical_flux(U, Uhat, normal)
+
+        blf += -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=vol)
+        blf += bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bnd)
+        blf += -mask * bla.inner(Fn, Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bnd)
+
+    # def add_domain_conditions(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
+
+    #     for dom, bc in self.dmesh.dcs.as_pattern().items():
+
+    #         match bc:
+
+    #             case
 
 
 class ConservativeFormulation(CompressibleFormulation):
@@ -310,76 +286,27 @@ class ConservativeFormulation(CompressibleFormulation):
     def mixed_method(self, mixed_method):
         return mixed_method
 
-    def initialize_finite_element_space(self, spaces: dict[str, ngs.FESpace] = None) -> None:
+    def set_finite_element_spaces(self, spaces: dict[str, ngs.FESpace] | None = None) -> None:
 
         if spaces is None:
             spaces = {}
 
-        self.method.initialize(self.cfg, self.dmesh)
-        self.mixed_method.initialize(self.cfg, self.dmesh)
+        self.method.set_configuration_and_mesh(self.cfg, self.dmesh)
+        self.mixed_method.set_configuration_and_mesh(self.cfg, self.dmesh)
 
-        spaces.update(self.method.get_spaces(self.cfg, self.dmesh))
-        spaces.update(self.mixed_method.get_mixed_spaces(self.cfg, self.dmesh))
+        spaces.update(self.method.get_finite_element_spaces())
+        spaces.update(self.mixed_method.get_mixed_finite_element_spaces())
 
-        super().initialize_finite_element_space(spaces)
+        super().set_finite_element_spaces(spaces)
 
-    def initialize_test_and_trial_function(self) -> None:
-        super().initialize_test_and_trial_function()
+    def set_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]] | None = None) -> None:
 
-        TnT = self.TnT.copy()
+        if gfus is None:
+            gfus = {}
 
-        self.method.set_test_and_trial_function(TnT)
-        self.mixed_method.set_test_and_trial_function(TnT)
+        gfus.update(self.method.get_transient_gridfunctions())
 
-    def pre_assemble(self):
-
-        self.U.get_trial_as_state()
-
-        self.Uhat.set_mask()
-        self.Uhat.get_trial_as_state()
-
-    def get_system(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
-        self.pre_assemble()
-
-        if self.U.dt:
-            self.add_time_derivative(blf, lf)
-
-        self.add_convection(blf, lf)
-
-    def add_time_derivative(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
-        scheme = self.cfg.simulation.scheme
-        U = self.U
-
-        dt = U.dt.swap_level(U.trial)
-
-        blf += bla.inner(scheme.scheme(dt), U.test) * ngs.dx
-
-    def add_convection(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
-
-        eq = self.cfg.pde.equations
-        bonus_vol = self.cfg.fem.bonus_int_order.vol
-        bonus_bnd = self.cfg.fem.bonus_int_order.bnd
-
-        U, U_ = self.U, self.U.trial_state
-        Uhat, Uhat_ = self.Uhat, self.Uhat.trial_state
-
-        F = eq.convective_flux(U_)
-        Fhat = self.convective_numerical_flux(self.normal)
-
-        blf += -bla.inner(F, ngs.grad(U.test)) * ngs.dx(bonus_intorder=bonus_vol)
-        blf += bla.inner(Fhat, U.test) * ngs.dx(element_boundary=True, bonus_intorder=bonus_bnd)
-        blf += -Uhat.mask * bla.inner(Fhat, Uhat.test) * ngs.dx(element_boundary=True, bonus_intorder=bonus_bnd)
-
-    def convective_numerical_flux(self, unit_vector: bla.VECTOR):
-        eq = self.cfg.pde.equations
-        U, Uhat = self.U, self.Uhat
-
-        unit_vector = bla.as_vector(unit_vector)
-        tau_c = self.cfg.pde.riemann_solver.convective_stabilisation_matrix(Uhat.trial_state, unit_vector)
-
-        F = eq.convective_flux(Uhat.trial_state)
-
-        return F * unit_vector + tau_c * (U.trial - Uhat.trial)
+        super().set_transient_gridfunctions(gfus)
 
     method: HDG
     mixed_method: Inactive

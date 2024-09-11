@@ -4,7 +4,7 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import DescriptorConfiguration, any
-from dream.compressible.state import CompressibleState
+from dream.compressible.config import CompressibleState
 
 if typing.TYPE_CHECKING:
     from dream.compressible import CompressibleFlowConfiguration

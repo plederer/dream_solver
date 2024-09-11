@@ -63,25 +63,25 @@ class Timer(DescriptorConfiguration, is_unique=True):
 
 class TimeSchemes(DescriptorConfiguration, is_interface=True):
 
-    time_levels: tuple[str]
+    time_levels: tuple[str, ...]
 
-    @property
-    def implicit_term_factor(self) -> float:
-        return NotImplementedError()
-
-    def initialize_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
-        gfus = [gfu] + [ngs.GridFunction(gfu.space, name=f"{gfu.name}_{label}") for label in self.time_levels[1:]]
+    def allocate_transient_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
+        gfus = [ngs.GridFunction(gfu.space) for _ in self.time_levels[:-1]] + [gfu]
         return {level: gfu for level, gfu in zip(self.time_levels, gfus)}
 
-    def update_gridfunctions_after_time_step(self, gfus: dict[str, ngs.GridFunction]):
-        gfus = list(gfus.values()).reverse()
-        for new, old in zip(gfus[1:], gfus[:-1]):
-            old.vec.data = new.vec
+    def update_gridfunctions_after_time_step(self, *gfus: dict[str, ngs.GridFunction]):
 
-    def update_gridfunctions_after_initial_solution(self, gfus: dict[str, ngs.GridFunction]):
-        gfus = list(gfus.values())
-        for old in gfus[1:]:
-            old.vec.data = gfus[0].vec
+        for gfu in gfus:
+
+            for old, new in zip(self.time_levels[:-1], self.time_levels[1:]):
+                gfu[old].vec.data = gfu[new].vec
+
+    def update_gridfunctions_after_initial_solution(self, *gfus: dict[str, ngs.GridFunction]):
+
+        for gfu in gfus:
+
+            for old in list(gfu.values())[1:]:
+                old.vec.data = gfu['n+1'].vec
 
     def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction], dt: ngs.Parameter) -> ngs.CF:
         return (self.get_implicit_terms(gfus) - self.get_explicit_terms(gfus))/dt
@@ -98,50 +98,41 @@ class ImplicitEuler(TimeSchemes):
     name: str = "implicit_euler"
     aliases = ("IE", )
 
-    time_levels = ('n+1', 'n')
-
-    @property
-    def implicit_term_factor(self) -> float:
-        return 1.0
+    time_levels = ('n', 'n+1')
 
     def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return gfus['n']
 
     def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return gfus['n+1']
-    
 
 
 class BDF2(TimeSchemes):
 
     name: str = "BDF2"
 
-    time_levels = ('n+1', 'n', 'n-1')
-
-    @property
-    def implicit_term_factor(self) -> float:
-        return 1.5
+    time_levels = ('n-1', 'n', 'n+1')
 
     def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return 2 * gfus['n'] - 0.5 * gfus['n-1']
 
     def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return self.implicit_term_factor * gfus['n+1']
+        return 1.5 * gfus['n+1']
 
 
-class SimulationConfig(DescriptorConfiguration, is_interface=True):
+class TimeConfig(DescriptorConfiguration, is_interface=True):
 
     @property
     def is_stationary(self) -> bool:
         return isinstance(self, StationaryConfig)
 
 
-class StationaryConfig(SimulationConfig):
+class StationaryConfig(TimeConfig):
 
     name: str = "stationary"
 
 
-class TransientConfig(SimulationConfig):
+class TransientConfig(TimeConfig):
 
     name: str = "transient"
 

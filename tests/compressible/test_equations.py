@@ -5,7 +5,7 @@ from tests import simplex
 import ngsolve as ngs
 
 from dream.compressible import CompressibleEquations
-from dream.compressible.state import CompressibleState, CompressibleStateGradient
+from dream.compressible.config import CompressibleState, CompressibleStateGradient
 
 def test_equation(throws: bool = False, is_vector: bool = False):
 

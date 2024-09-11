@@ -4,13 +4,14 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import parameter, descriptor_configuration, equation, PDEConfiguration
-from dream.compressible.state import CompressibleState, CompressibleStateGradient, ReferenceState
+from dream.config import parameter, descriptor_configuration, equation
+from dream.pde import PDEConfiguration
+from dream.compressible.config import CompressibleState, CompressibleStateGradient, ReferenceState
 from dream.compressible.eos import IdealGas
 from dream.compressible.viscosity import Inviscid, Constant, Sutherland
 from dream.compressible.scaling import Aerodynamic, Aeroacoustic, Acoustic
 from dream.compressible.riemann_solver import LaxFriedrich, Roe, HLL, HLLEM
-from dream.compressible.conditions import CompressibleBC, CompressibleDC
+from dream.compressible.config import CompressibleBC, CompressibleDC
 from dream.compressible.formulations import ConservativeFormulation
 
 logger = logging.getLogger(__name__)
@@ -23,8 +24,8 @@ class CompressibleFlowConfiguration(PDEConfiguration):
     bcs = CompressibleBC
     dcs = CompressibleDC
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, dict=None, /, **kwargs):
+        super().__init__(dict, **kwargs)
         self.equations = CompressibleEquations(self)
 
     @descriptor_configuration(ConservativeFormulation)

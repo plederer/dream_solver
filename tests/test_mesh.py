@@ -130,7 +130,7 @@ class BoundaryConditions(unittest.TestCase):
         self.bcs.set(a, "a|b")
         self.bcs.set(b, "c")
         self.assertDictEqual(self.bcs.get(a), {'a': a, 'b': a, 'c': b})
-        self.assertDictEqual(self.bcs.get(a, True), {'a|b': a, 'c': b})
+        self.assertDictEqual(self.bcs.get(a, as_pattern=True), {'a|b': a, 'c': b})
         self.bcs.clear()
 
         with self.assertRaises(TypeError):

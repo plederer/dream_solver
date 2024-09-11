@@ -4,13 +4,13 @@ import builtins as math
 import logging
 
 from numbers import Number
-from typing import Sequence, Generator
+from typing import Sequence, Generator, TypeAlias
 
 logger = logging.getLogger(__name__)
 
-SCALAR = ngs.CF | Number
-VECTOR = ngs.CF
-MATRIX = ngs.CF
+SCALAR: TypeAlias = ngs.CF | Number
+VECTOR: TypeAlias = ngs.CF
+MATRIX: TypeAlias = ngs.CF
 
 
 def abs(x: SCALAR) -> SCALAR:
@@ -113,7 +113,7 @@ def is_vector(x: VECTOR) -> bool:
     return False
 
 
-def as_matrix(x: ngs.CF | Sequence | Generator, dims: tuple[int, ...] = None) -> MATRIX:
+def as_matrix(x: ngs.CF | Sequence | Generator, dims: tuple[int, ...] | None = None) -> MATRIX:
 
     if isinstance(x, ngs.CF):
         return x

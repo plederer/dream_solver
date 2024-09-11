@@ -5,7 +5,7 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import DescriptorConfiguration, parameter
-from dream.compressible.state import CompressibleState, CompressibleStateGradient
+from dream.compressible.config import CompressibleState, CompressibleStateGradient
 
 logger = logging.getLogger(__name__)
 
