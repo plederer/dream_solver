@@ -126,12 +126,11 @@ solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), "top|bottom|l
 # solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), "top|bottom")
 sigma = State(pressure=0.01, velocity=1, temperature=1)
 
-solver.boundary_conditions.set(bcs.NSCBC(farfield, "yoo", sigma, tangential_flux=True, glue=False), "right")
 # solver.boundary_conditions.set(bcs.GFarField(farfield, convective_tangential_flux=False, glue=False, sigma=State(pressure=0.01)), "top|bottom")
-solver.boundary_conditions.set(bcs.GFarField(farfield, type="gfarfield", relaxation="farfield", convective_tangential_flux=False, viscous_fluxes=False,  glue=False, sigma=State(velocity=1, pressure=1)), "left|top|bottom")
-solver.boundary_conditions.set(bcs.GFarField(farfield, type="gfarfield", relaxation="farfield", convective_tangential_flux=False, viscous_fluxes=False, glue=False, sigma=State(velocity=0.1, pressure=0.1)), "top|bottom")
+solver.boundary_conditions.set(bcs.CBC(farfield, type="grcbc", relaxation="farfield", convective_tangential_flux=False, viscous_fluxes=False,  glue=False, sigma=State(velocity=1, pressure=1)), "left|top|bottom")
+solver.boundary_conditions.set(bcs.CBC(farfield, type="grcbc", relaxation="farfield", convective_tangential_flux=False, viscous_fluxes=False, glue=False, sigma=State(velocity=0.1, pressure=0.1)), "top|bottom")
 # solver.boundary_conditions.set(bcs.GFarField(farfield, relaxation="outflow", convective_tangential_flux=True, glue=True, sigma=State(1, 1, 0.5, 1, 1)), "right")
-solver.boundary_conditions.set(bcs.GFarField(farfield, type="gfarfield", relaxation="farfield", convective_tangential_flux=True, viscous_fluxes=True, glue=False, sigma=State(velocity=0.1, pressure=0.1)), "right")
+solver.boundary_conditions.set(bcs.CBC(farfield, type="grcbc", relaxation="farfield", convective_tangential_flux=True, viscous_fluxes=True, glue=False, sigma=State(velocity=0.1, pressure=0.1)), "right")
 
 if periodic:
     solver.boundary_conditions.set(bcs.Periodic(), "top|bottom")

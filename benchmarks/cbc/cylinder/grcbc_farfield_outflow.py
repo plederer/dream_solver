@@ -4,4 +4,4 @@ from main import *
 
 
 if __name__ == '__main__':
-    gfarfield_boundary_farfield_outflow()
+    grcbc_farfield_outflow()

@@ -145,24 +145,24 @@ def farfield_boundary():
     return solver
 
 @test(name)
-def gfarfield_boundary_farfield_outflow():
+def grcbc_farfield_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'left|top|bottom')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, relaxation="farfield", convective_tangential_flux=True, sigma=State(velocity=0.01, pressure=0.01)), 'right')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'left|top|bottom')
+    solver.boundary_conditions.set(bcs.CBC(farfield, relaxation="farfield", convective_tangential_flux=True, sigma=State(velocity=0.01, pressure=0.01)), 'right')
     return solver
 
 @test(name)
-def gfarfield_boundary_pressure_outflow():
+def grcbc_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'left|top|bottom')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, relaxation="outflow", convective_tangential_flux=True, sigma=State(velocity=0.01, pressure=0.01)), 'right')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'left|top|bottom')
+    solver.boundary_conditions.set(bcs.CBC(farfield, relaxation="outflow", convective_tangential_flux=True, sigma=State(velocity=0.01, pressure=0.01)), 'right')
     return solver
 
 @test(name)
-def yoo():
+def nscbc_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo'), 'left|top|bottom')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo', relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True), 'right')
+    solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc"), 'left|top|bottom')
+    solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc", relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True), 'right')
     return solver
 
 @test(name)
@@ -174,8 +174,8 @@ def outflow_boundary():
 
 
 if __name__ == '__main__':
-    gfarfield_boundary_pressure_outflow()
-    gfarfield_boundary_farfield_outflow()
+    grcbc_pressure_outflow()
+    grcbc_farfield_outflow()
+    nscbc_pressure_outflow()
     farfield_boundary()
-    yoo()
     outflow_boundary()

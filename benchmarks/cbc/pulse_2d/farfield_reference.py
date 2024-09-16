@@ -20,11 +20,11 @@ mesh = Mesh(OCCGeometry(Glue([face, outer, sponge]), dim=2).GenerateMesh(grading
 mesh.Curve(cfg.order)
 
 @test(name)
-def exact():
+def farfield_reference():
     """ Exact solution for pressure pulse! """
 
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(pressure=0.01, velocity=0.01)), "outer")
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(pressure=0.01, velocity=0.01)), "outer")
     
     r_ = BufferCoordinate.polar(3, 8)
     sponge = SpongeFunction.penta_smooth(r_)
@@ -39,4 +39,4 @@ def exact():
 
 if __name__ == '__main__':
 
-    exact()
+    farfield_reference()

@@ -896,23 +896,19 @@ class BoundaryConditions(UserDict):
         keys = [key for key, bc in self.items() if isinstance(bc, self._Boundary) and not isinstance(bc, self.Periodic)]
         return "|".join(keys)
 
-    @property
-    def nscbc(self) -> dict[str, NSCBC]:
-        return {name: bc for name, bc in self.items() if isinstance(bc, self.NSCBC)}
-
     class _Boundary(Condition):
         glue: bool = False
 
-    class GFarField(_Boundary):
+    class CBC(_Boundary):
         def __init__(
-                self, state: State, 
-                type: str = 'gfarfield', 
-                relaxation: str = 'farfield', 
+                self, state: State,
+                type: str = 'grcbc',
+                relaxation: str = 'farfield',
                 convective_tangential_flux: bool = False,
                 viscous_fluxes: bool = False,
                 sigma: State = State(1, 1, 1, 1, 1),
                 glue: bool = False):
-        
+
             self._check_value(state.density, "density")
             self._check_value(state.velocity, "velocity")
             if state.all_thermodynamic_none:
@@ -942,28 +938,6 @@ class BoundaryConditions(UserDict):
             state = State(pressure=pressure)
             self._check_value(state.pressure, "pressure")
             super().__init__(state)
-
-    class NSCBC(_Boundary):
-
-        def __init__(self,
-                     state: State,
-                     type: str = "poinsot",
-                     sigmas: State = State(pressure=0.278, velocity=0.278, temperature=0.278),
-                     reference_length: float = 1,
-                     tangential_flux: bool = True,
-                     glue: bool = False) -> None:
-
-            self._check_value(state.density, "density")
-            self._check_value(state.velocity, "velocity")
-            if state.all_thermodynamic_none:
-                raise ValueError("A Thermodynamic quantity is required!")
-            super().__init__(state)
-
-            self.type = type
-            self.sigmas = sigmas
-            self.reference_length = reference_length
-            self.tangential_flux = tangential_flux
-            self.glue = glue
 
     class InviscidWall(_Boundary):
         def __init__(self) -> None:

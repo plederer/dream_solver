@@ -9,7 +9,7 @@ SetNumThreads(8)
 
 circle = False
 structured = False
-periodic = False
+periodic = True
 maxh = 0.1
 
 cfg = SolverConfiguration()
@@ -20,11 +20,11 @@ cfg.fem = "hdg"
 # cfg.dynamic_viscosity = None
 # cfg.mixed_method = "strain_heat"
 # cfg.mixed_method = None
-cfg.riemann_solver = 'lax_friedrich'
 cfg.riemann_solver = 'hllem'
+cfg.riemann_solver = 'lax_friedrich'
 
 cfg.Reynolds_number = 166
-cfg.Mach_number = 0.0
+cfg.Mach_number = 0.1
 cfg.Prandtl_number = 0.72
 cfg.heat_capacity_ratio = 1.4
 
@@ -80,7 +80,7 @@ p_inf = farfield.pressure
 # # Pressure Pulse
 Gamma = 0.1
 Rv = 0.1
-r = sqrt(x**2 + y**2)
+r = sqrt(x**2)
 p_0 = p_inf * (1 + Gamma * exp(-r**2/Rv**2))
 rho_0 = rho_inf * (1 + Gamma * exp(-r**2/Rv**2))**gamma
 initial = State(u_inf, rho_0, p_0)
@@ -88,9 +88,9 @@ initial = State(u_inf, rho_0, p_0)
 
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set(bcs.FarField(farfield), 'left')
-solver.boundary_conditions.set(bcs.NSCBC(farfield, 0.2, 1, True), 'left|right|bottom|top')
 solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), 'left|right|bottom|top')
-solver.boundary_conditions.set(bcs.GFarField(farfield, 0.01, False, True, False), 'left|right|bottom|top')
+solver.boundary_conditions.set(bcs.CBC(farfield, "grcbc", relaxation='farfield', sigma=State(pressure=0.1, velocity=0.1)), 'left|right|bottom|top')
+# solver.boundary_conditions.set(bcs.CBC(farfield, "grcbc", relaxation='mass_inflow', sigma=State(pressure=0.1, velocity=0.1)), 'left')
 # solver.boundary_conditions.set(bcs.GFarField(farfield, 0.01, True, True, False), 'right')
 if periodic:
     solver.boundary_conditions.set(bcs.Periodic(), 'top|bottom')
@@ -102,5 +102,6 @@ with TaskManager():
     solver.drawer.draw(energy=True)
     solver.drawer.draw_particle_velocity(u_inf)
     solver.drawer.draw_acoustic_pressure(p_inf)
-
+    Draw(solver.formulation.density() - 1, mesh, "rho'")
+    Draw(solver.formulation.temperature() - farfield.temperature, mesh, "T'")
     solver.solve_transient()

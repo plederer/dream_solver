@@ -152,27 +152,27 @@ def test(name: str = ""):
     return wraps
 
 @test(name)
-def gfarfield_boundary_farfield_outflow():
+def grcbc_farfield_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, relaxation="farfield", convective_tangential_flux=True, viscous_fluxes=True, sigma=State(velocity=0.01, pressure=0.01)), 'outflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
+    solver.boundary_conditions.set(bcs.CBC(farfield, relaxation="farfield", convective_tangential_flux=True, viscous_fluxes=True, sigma=State(velocity=0.01, pressure=0.01)), 'outflow')
     return solver
 
 @test(name)
-def gfarfield_boundary_pressure_outflow():
+def grcbc_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True, sigma=State(velocity=1, pressure=0.01)), 'outflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
+    solver.boundary_conditions.set(bcs.CBC(farfield, relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True, sigma=State(velocity=1, pressure=0.01)), 'outflow')
     return solver
 
 @test(name)
-def yoo():
+def nscbc_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo'), 'inflow')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo'), 'planar')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo', relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True), 'outflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc"), 'inflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc"), 'planar')
+    solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc", relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True), 'outflow')
     return solver
 
 @test(name)
@@ -189,8 +189,8 @@ def outflow_boundary():
     return solver
 
 if __name__ == "__main__":
-    gfarfield_boundary_farfield_outflow()
-    gfarfield_boundary_pressure_outflow()
+    grcbc_farfield_outflow()
+    grcbc_pressure_outflow()
+    nscbc_pressure_outflow()
     farfield_boundary()
     outflow_boundary()
-    yoo()

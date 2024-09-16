@@ -802,104 +802,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         cf = weight_function * U_high * V * dx(definedon=domain, bonus_intorder=bonus_int_order)
         blf += cf.Compile(compile_flag)
 
-    def _get_incoming_charachteristic_pde(self, bc: bcs.NSCBC):
-
-        mixed_method = self.cfg.mixed_method
-        M = self.cfg.Mach_number
-        gamma = self.cfg.heat_capacity_ratio
-        R = (gamma - 1)/gamma
-
-        U, _ = self.TnT.PRIMAL
-        Uhat, _ = self.TnT.PRIMAL_FACET
-        Q, _ = self.TnT.MIXED
-
-        state = self.calc.determine_missing(bc.state)
-        U_ = CF((state.density, state.momentum, state.energy))
-
-        rho = self.density(Uhat)
-        un = self.velocity(Uhat) * self.normal
-        c = self.speed_of_sound(Uhat)
-
-        P = self.DME_from_CHAR(Uhat, self.normal)
-
-        un_approx = (self.velocity(U_) - self.velocity(Uhat)) * self.normal/bc.reference_length
-        ut_approx = (self.velocity(U_) - self.velocity(Uhat)) * self.tangential/bc.reference_length
-        rho_approx = (self.density(U_) - self.density(Uhat))/bc.reference_length
-        p_approx = (self.pressure(U_) - self.pressure(Uhat))/bc.reference_length
-        T_approx = (self.temperature(U_) - self.temperature(Uhat))/bc.reference_length
-
-        if bc.type == "poinsot":
-            out_p = bc.sigmas.pressure * (un - c) * p_approx
-
-            in_un = -bc.sigmas.velocity * (un - c) * rho * c * un_approx
-            in_T = -bc.sigmas.temperature * un * rho * R * T_approx
-            in_ut = -bc.sigmas.velocity * un * ut_approx
-
-            outflow = CF((out_p, 0, 0, 0))
-            inflow = CF((in_un, in_T, in_ut, 0))
-
-            L = P * IfPos(-un, inflow, outflow)
-
-        elif bc.type == "yoo":
-            out_p = -0.278 * c * (1 - M**2) * p_approx
-
-            in_un = 4 * rho * c**2 * (1 - M**2) * un_approx
-            in_T = 4 * c * rho * R * T_approx
-            in_ut = 4 * c * ut_approx
-
-            outflow = CF((out_p, 0, 0, 0))
-            inflow = CF((in_un, in_T, in_ut, 0))
-
-            L = P * IfPos(-un, inflow, outflow)
-
-        if bc.tangential_flux:
-            ut = self.velocity(Uhat) * self.tangential
-            grad_p_t = self.pressure_gradient(Uhat, Q, Uhat) * self.tangential
-            grad_u_tn = (self.velocity_gradient(Uhat, Q, Uhat) * self.tangential) * self.normal
-            grad_u_tt = (self.velocity_gradient(Uhat, Q, Uhat) * self.tangential) * self.tangential
-            L_tang = rho * c**2 * grad_u_tt + ut * (grad_p_t - rho * c * grad_u_tn)
-            L_tang *= self.cfg.Mach_number * IfPos(self.normal[0], self.normal[0], -self.normal[0])
-
-            L += IfPos(-un, CF((0, 0, 0, 0)), P * CF((L_tang, 0, 0, 0)))
-
-        if mixed_method is not MixedMethods.NONE:
-            L -= IfPos(-un, CF((0, 0, 0, 0)), self.conservative_diffusive_jacobian(U,
-                       Q, self.tangential)*(grad(U)*self.tangential))
-            L -= IfPos(-un, CF((0, 0, 0, 0)), self.conservative_diffusive_jacobian(U,
-                       Q, self.normal) * (grad(U) * self.normal))
-            L -= IfPos(-un, CF((0, 0, 0, 0)), self.mixed_diffusive_jacobian(U, self.normal) * (grad(Q) * self.normal))
-            L -= IfPos(-un, CF((0, 0, 0, 0)), self.mixed_diffusive_jacobian(U,
-                       self.tangential) * (grad(Q) * self.tangential))
-
-        time = self._gfus.get_component(1)
-        time['n+1'] = Uhat
-
-        dt = self.cfg.time.step
-        return dt * (self.time_scheme.apply(time) + L)
-
-    def _add_nonreflecting_outflow_bilinearform(self, blf, boundary: Region, bc: bcs.NSCBC):
-
-        bonus_order_bnd = self.cfg.bonus_int_order_bnd
-        compile_flag = self.cfg.compile_flag
-
-        U, _ = self.TnT.PRIMAL
-        Uhat, Vhat = self.TnT.PRIMAL_FACET
-
-        An_in = self.DME_convective_jacobian_incoming(Uhat, self.normal, theta_0=1e-8)
-        An_out = self.DME_convective_jacobian_outgoing(Uhat, self.normal, theta_0=1e-8)
-
-        nscbc = self._get_incoming_charachteristic_pde(bc)
-
-        cf = InnerProduct(An_out*(Uhat - U), Vhat)
-        cf -= An_in * nscbc * Vhat
-
-        cf = cf * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
-        blf += cf.Compile(compile_flag)
-
-        if bc.glue:
-            self.glue(blf, boundary)
-
-    def _add_gfarfield_bilinearform(self, blf, boundary: Region, bc: bcs.GFarField):
+    def _add_cbc_bilinearform(self, blf, boundary: Region, bc: bcs.CBC):
         compile_flag = self.cfg.compile_flag
         bonus_order_bnd = self.cfg.bonus_int_order_bnd
         gamma = self.cfg.heat_capacity_ratio
@@ -910,15 +813,16 @@ class ConservativeFormulation2D(ConservativeFormulation):
         state = self.calc.determine_missing(bc.state)
         if bc.relaxation == "farfield":
             U_bc = CF((state.density, state.momentum, state.energy))
-    
+
         elif bc.relaxation == "outflow":
             U_bc = CF((self.density(U),
                        self.momentum(U),
                        state.pressure / (gamma - 1) + self.kinetic_energy(U)))
-    
+
         elif bc.relaxation == "mass_inflow":
-            U_bc = CF((state.density, state.momentum, self.pressure(U) / (gamma - 1) + state.density * InnerProduct(state.velocity, state.velocity) / 2))
-    
+            U_bc = CF((state.density, state.momentum, self.pressure(U) / (gamma - 1) + state.density *
+                       InnerProduct(state.velocity, state.velocity) / 2))
+
         elif bc.relaxation == "temperature_inflow":
             rho_ = gamma/(gamma - 1) * self.pressure(U)/state.temperature
             U_bc = rho_ * CF((1, state.velocity, state.temperature / gamma + 0.5 *
@@ -927,7 +831,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
         else:
             raise ValueError('Relaxation unknown!')
 
-        if bc.type == "gfarfield":
+        if bc.type == "grcbc":
             Sigma = CF((
                 bc.sigma.pressure, 0, 0, 0,
                 0, bc.sigma.velocity, 0, 0,
@@ -937,9 +841,8 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
             Sigma /= self.cfg.time.step
 
-        elif bc.type == "yoo":
+        elif bc.type == "nscbc":
 
-            rho = self.density(Uhat)
             M = self.cfg.Mach_number
             c = self.speed_of_sound(Uhat)
             un = self.velocity(Uhat) * self.normal
@@ -952,7 +855,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
                     0, 0, 0, -un - c,
                 ), dims=(4, 4))
 
-            elif bc.relaxation == "inflow":
+            elif bc.relaxation == "mass_inflow" or bc.relaxation == "temperature_inflow":
                 Sigma = CF((
                     4 * c * (1 - M**2), 0, 0, 0,
                     0, 4 * c, 0, 0,

@@ -51,7 +51,6 @@ u_inf = INF.velocity((1,0), cfg)
 solver = CompressibleHDGSolver(mesh, cfg)
 solver.boundary_conditions.set(bcs.FarField(farfield), 'inflow')
 solver.boundary_conditions.set(bcs.Outflow(p_inf), 'outflow')
-solver.boundary_conditions.set(bcs.NSCBC(p_inf), 'outflow')
 solver.boundary_conditions.set(bcs.AdiabaticWall(), 'cylinder')
 solver.domain_conditions.set(dcs.Initial(farfield))
 

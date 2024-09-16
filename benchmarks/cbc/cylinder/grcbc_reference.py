@@ -32,11 +32,11 @@ mesh = Mesh(geo.GenerateMesh(maxh=200, grading=0.23))
 mesh.Curve(order=cfg.order)
 
 @test(name)
-def gfarfield_reference():
+def grcbc_reference():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
-    solver.boundary_conditions.set(bcs.GFarField(farfield, relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True, sigma=State(velocity=1, pressure=0.01)), 'outflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
+    solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
+    solver.boundary_conditions.set(bcs.CBC(farfield, relaxation="outflow", convective_tangential_flux=True, viscous_fluxes=True, sigma=State(velocity=1, pressure=0.01)), 'outflow')
 
     solver.get_saver(tree).save_mesh('mesh_gfarfield_reference')
 
@@ -44,4 +44,4 @@ def gfarfield_reference():
 
 
 if __name__ == "__main__":
-    gfarfield_reference()
+    grcbc_reference()

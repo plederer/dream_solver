@@ -20,7 +20,7 @@ LOGGER.log_to_terminal = False
 
 saver = Saver(tree)
 
-name = "circle"
+name = ""
 maxh = 0.07
 R = 0.1
 H = 8*R
@@ -42,7 +42,8 @@ cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
 cfg.time.step = 2e-3
 save_step = 5
-cfg.time.interval = (0, 15)
+cfg.time.interval = (0, 1e-3)
+# cfg.time.interval = (0, 15)
 cfg.save_state = True
 
 cfg.linear_solver = "pardiso"
@@ -138,27 +139,27 @@ def farfield_boundary():
 
 
 @test(name)
-def gfarfield_boundary_farfield_outflow():
+def grcbc_farfield_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(
-        bcs.GFarField(farfield, sigma=State(velocity=0.01, pressure=0.01)),
+        bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)),
         'left|top|bottom|right')
     return solver
 
 
 @test(name)
-def gfarfield_boundary_pressure_outflow():
+def grcbc_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(
-        bcs.GFarField(farfield, relaxation='outflow', sigma=State(velocity=0.01, pressure=0.01)),
+        bcs.CBC(farfield, relaxation='outflow', sigma=State(velocity=0.01, pressure=0.01)),
         'left|top|bottom|right')
     return solver
 
 
 @test(name)
-def yoo():
+def nscbc_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.GFarField(farfield, 'yoo', relaxation="outflow"), 'left|top|bottom|right')
+    solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc", relaxation="outflow"), 'left|top|bottom|right')
     return solver
 
 
@@ -170,8 +171,8 @@ def outflow_boundary():
 
 
 if __name__ == '__main__':
-    gfarfield_boundary_pressure_outflow()
-    gfarfield_boundary_farfield_outflow()
+    grcbc_pressure_outflow()
+    grcbc_farfield_outflow()
     farfield_boundary()
-    yoo()
+    nscbc_pressure_outflow()
     outflow_boundary()

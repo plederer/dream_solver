@@ -33,7 +33,7 @@ mesh = Mesh(geo.GenerateMesh(maxh=200, grading=0.23))
 mesh.Curve(order=cfg.order)
 
 @test(name)
-def reference():
+def farfield_reference():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), 'farfield')
 
@@ -46,5 +46,5 @@ def reference():
     return solver
 #%%
 if __name__ == "__main__":
-    reference()
+    farfield_reference()
 

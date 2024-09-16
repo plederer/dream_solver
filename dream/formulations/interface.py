@@ -208,7 +208,7 @@ class Formulation(abc.ABC):
     def deviatoric_strain_tensor(self, U: Optional[CF] = None, Q: Optional[CF] = None):
         raise NotImplementedError()
 
-    def _add_gfarfield_bilinearform(self, blf, boundary, condition):
+    def _add_cbc_bilinearform(self, blf, boundary, condition):
         raise NotImplementedError()
 
     def _add_farfield_bilinearform(self, blf, boundary, condition):
@@ -330,17 +330,14 @@ class _Formulation(Formulation):
         for name, condition in bcs.items():
             boundary = self.dmesh.boundary(name)
 
-            if isinstance(condition, bcs.GFarField):
-                self._add_gfarfield_bilinearform(blf, boundary, condition)
+            if isinstance(condition, bcs.CBC):
+                self._add_cbc_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, bcs.FarField):
                 self._add_farfield_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, bcs.Outflow):
                 self._add_outflow_bilinearform(blf, boundary, condition)
-
-            elif isinstance(condition, bcs.NSCBC):
-                self._add_nonreflecting_outflow_bilinearform(blf, boundary, condition)
 
             elif isinstance(condition, (bcs.InviscidWall, bcs.Symmetry)):
                 self._add_inviscid_wall_bilinearform(blf, boundary, condition)

@@ -92,7 +92,7 @@ mesh.Curve(cfg.order)
 
 solver = CompressibleHDGSolver(mesh, cfg, tree)
 solver.boundary_conditions.set(bcs.FarField(farfield), 'farfield|vortex')
-solver.boundary_conditions.set(bcs.NSCBC(farfield, 0.1, 1), 'vortex')
+solver.boundary_conditions.set(bcs.CBC(farfield, 'nscbc', 'outflow', True, True, State(pressure=0.1, velocity=0.1)), 'vortex')
 solver.boundary_conditions.set(bcs.AdiabaticWall(), 'cyl')
 if not load_stationary:
     solver.domain_conditions.set(dcs.Initial(farfield))

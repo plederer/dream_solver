@@ -4,4 +4,4 @@ from main import *
 
 
 if __name__ == '__main__':
-    yoo()
+    nscbc_pressure_outflow()
