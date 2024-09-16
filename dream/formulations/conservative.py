@@ -910,14 +910,20 @@ class ConservativeFormulation2D(ConservativeFormulation):
         state = self.calc.determine_missing(bc.state)
         if bc.relaxation == "farfield":
             U_bc = CF((state.density, state.momentum, state.energy))
+    
         elif bc.relaxation == "outflow":
             U_bc = CF((self.density(U),
                        self.momentum(U),
                        state.pressure / (gamma - 1) + self.kinetic_energy(U)))
-        elif bc.relaxation == "inflow":
-            U_bc = CF((state.density,
-                       state.momentum,
-                       self.pressure(U) / (self.cfg.heat_capacity_ratio - 1) + self.kinetic_energy(U_bc)))
+    
+        elif bc.relaxation == "mass_inflow":
+            U_bc = CF((state.density, state.momentum, self.pressure(U) / (gamma - 1) + state.density * InnerProduct(state.velocity, state.velocity) / 2))
+    
+        elif bc.relaxation == "temperature_inflow":
+            rho_ = gamma/(gamma - 1) * self.pressure(U)/state.temperature
+            U_bc = rho_ * CF((1, state.velocity, state.temperature / gamma + 0.5 *
+                              InnerProduct(state.velocity, state.velocity)))
+
         else:
             raise ValueError('Relaxation unknown!')
 
@@ -941,9 +947,9 @@ class ConservativeFormulation2D(ConservativeFormulation):
             if bc.relaxation == "outflow":
                 Sigma = CF((
                     0.278 * c * (1 - M**2), 0, 0, 0,
-                    0, un, 0, 0,
-                    0, 0, un, 0,
-                    0, 0, 0, un + c,
+                    0, -un, 0, 0,
+                    0, 0, -un, 0,
+                    0, 0, 0, -un - c,
                 ), dims=(4, 4))
 
             elif bc.relaxation == "inflow":
@@ -951,7 +957,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
                     4 * c * (1 - M**2), 0, 0, 0,
                     0, 4 * c, 0, 0,
                     0, 0, 4 * c, 0,
-                    0, 0, 0, un + c,
+                    0, 0, 0, -un - c,
                 ), dims=(4, 4))
 
             elif bc.relaxation == "farfield":
@@ -983,7 +989,23 @@ class ConservativeFormulation2D(ConservativeFormulation):
             cf -= Qin * self.conservative_diffusive_jacobian(U, Q, self.normal) * (grad(U) * self.normal) * dt
 
             cf -= Qin * self.mixed_diffusive_jacobian(U, self.tangential) * (grad(Q) * self.tangential) * dt
-            cf -= Qin * self.mixed_diffusive_jacobian(U, self.normal) * (grad(Q) * self.normal) * dt
+
+            R = CF((self.normal, self.tangential), dims=(2, 2)).trans
+
+            grad_Q = grad(Q) * self.normal
+            grad_EPS = R.trans * CF((grad_Q[0], grad_Q[1], grad_Q[1], grad_Q[2]), dims=(2, 2)) * R
+            grad_q = CF((grad_Q[3], grad_Q[4]))
+
+            if bc.relaxation == "outflow":
+                grad_q = R.trans * CF((grad_Q[3], grad_Q[4]))
+                grad_EPS = R * CF((grad_EPS[0], 0, 0, grad_EPS[2]), dims=(2, 2)) * R.trans
+                grad_q = R * CF((0, grad_q[1]))
+            else:
+                grad_EPS = R * CF((0, grad_EPS[1], grad_EPS[1], grad_EPS[2]), dims=(2, 2)) * R.trans
+
+            grad_Q = CF((grad_EPS[0], grad_EPS[1], grad_EPS[2], grad_q[0], grad_q[1]))
+
+            cf -= Qin * self.mixed_diffusive_jacobian(U, self.normal) * grad_Q * dt
 
         cf = cf * Vhat * ds(skeleton=True, definedon=boundary, bonus_intorder=bonus_order_bnd)
         blf += cf.Compile(compile_flag)
