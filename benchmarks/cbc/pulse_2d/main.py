@@ -42,8 +42,7 @@ cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
 cfg.time.step = 2e-3
 save_step = 5
-cfg.time.interval = (0, 1e-3)
-# cfg.time.interval = (0, 15)
+cfg.time.interval = (0, 15)
 cfg.save_state = True
 
 cfg.linear_solver = "pardiso"
