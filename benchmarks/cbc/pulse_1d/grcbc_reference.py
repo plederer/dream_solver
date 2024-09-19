@@ -6,7 +6,7 @@ from main import *
 
 
 wp = WorkPlane()
-buffer = wp.RectangleC(7*W, 4*maxh).Face()
+buffer = wp.RectangleC(14*W, 4*maxh).Face()
 for edge, bc in zip(buffer.edges, ['bottom', 'outflow', 'top', 'inflow']):
     edge.name = bc
 
