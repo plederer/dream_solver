@@ -1,23 +1,25 @@
 import sys
 sys.path.append('.')
-from main import *
-from ngsolve import *
 from netgen.occ import *
+from ngsolve import *
+from main import *
+
 
 wp = WorkPlane()
-right = wp.MoveTo(W/2, -2*maxh).Rectangle(3.5*W, 4*maxh).Face()
-for bc, edge in zip(['bottom', 'outflow', 'top', 'default'], right.edges):
+buffer = wp.RectangleC(7*W, 4*maxh).Face()
+for edge, bc in zip(buffer.edges, ['bottom', 'outflow', 'top', 'inflow']):
     edge.name = bc
-right_edge = right.edges[0]
-right_edge.Identify(right.edges[2], "periodic_right", IdentificationType.PERIODIC)
 
-left = wp.MoveTo(-W/2-3.5*W, -2*maxh).Rectangle(3.5*W, 4*maxh).Face()
-for bc, edge in zip(['bottom', 'default', 'top', 'inflow'], left.edges):
+for edge, bc in zip(face.edges, ['bottom', 'default', 'top', 'default']):
     edge.name = bc
-left_edge = left.edges[0]
-left_edge.Identify(left.edges[2], "periodic_right", IdentificationType.PERIODIC)
 
-mesh = Mesh(OCCGeometry(Glue([face, left, right]), dim=2).GenerateMesh(maxh=maxh))
+geo = Glue([buffer, face])
+
+for i, k in zip([1, 6, 9], [3, 4, 11]):
+    geo.edges[i].Identify(geo.edges[k], f"periodic{i}_{k}", IdentificationType.PERIODIC)
+
+mesh = Mesh(OCCGeometry(geo, dim=2).GenerateMesh(maxh=maxh))
+
 
 @test(name)
 def grcbc_farfield_reference():
@@ -32,5 +34,4 @@ def grcbc_farfield_reference():
 
 
 if __name__ == '__main__':
-
     grcbc_farfield_reference()
