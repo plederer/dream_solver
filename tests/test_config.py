@@ -1,3 +1,4 @@
+#%%
 from __future__ import annotations
 import unittest
 
@@ -13,12 +14,12 @@ class DummyState(cfg.State):
     p = cfg.variable(lambda x: 5*x, 'pressure')
 
 
-class DummyDescriptorConfiguration(cfg.DescriptorConfiguration, is_interface=True):
+class MultipleConfiguration(cfg.MultipleConfiguration, is_interface=True):
     ...
 
 
-class DescriptorChildA_(DummyDescriptorConfiguration):
-    name = "childA"
+class MultipleA(MultipleConfiguration):
+    name = "child_A"
     aliases = ("A", )
 
     @cfg.any(default=0.0)
@@ -37,8 +38,8 @@ class DescriptorChildA_(DummyDescriptorConfiguration):
             ValueError("x is too large!")
 
 
-class DescriptorChildB_(DummyDescriptorConfiguration):
-    name = "childB"
+class MultipleB(MultipleConfiguration):
+    name = "child_B"
 
     @cfg.any(default="abc")
     def alphabet(self, abc: str):
@@ -49,12 +50,13 @@ class DescriptorChildB_(DummyDescriptorConfiguration):
         return number
 
 
-class UniqueConfiguration_(cfg.DescriptorConfiguration, is_unique=True):
+class UniqueConfiguration_(cfg.UniqueConfiguration):
 
-    other = cfg.descriptor_configuration(default=DescriptorChildA_)
+    other = cfg.multiple(default=MultipleA)
     param = cfg.parameter(default=2.0)
 
 # ------- Tests ------- #
+
 
 
 class TestDescriptor(unittest.TestCase):
@@ -146,14 +148,13 @@ class TestState(unittest.TestCase):
 class TestDescriptorConfigurationChild(unittest.TestCase):
 
     def setUp(self):
-        self.obj = DescriptorChildA_()
+        self.obj = MultipleA()
 
     def tearDown(self) -> None:
         self.obj.clear()
 
     def test_inheritance_tree(self):
-        self.assertDictEqual(self.obj.leafs.data, {'childA': DescriptorChildA_,
-                             'A': DescriptorChildA_,  'childB': DescriptorChildB_})
+        self.assertDictEqual(self.obj.leafs.data, {'child_a': MultipleA, 'a': MultipleA,  'child_b': MultipleB})
 
     def test_configurations_id_after_clear(self):
         old = [self.obj.x, self.obj.y]
@@ -181,13 +182,13 @@ class TestDescriptorConfigurationChild(unittest.TestCase):
         self.assertDictEqual(self.obj.__dict__, {'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
 
     def test_export_default(self):
-        self.assertDictEqual(self.obj.export(), {'x': 0.0, 'y': 0.0})
+        self.assertDictEqual(self.obj.to_flat_dict(), {'x': 0.0, 'y': 0.0})
 
     def test_export_parent_argument(self):
-        self.assertDictEqual(self.obj.export("parent"), {'parent.x': 0.0, 'parent.y': 0.0})
+        self.assertDictEqual(self.obj.to_flat_dict(root="parent"), {'parent.x': 0.0, 'parent.y': 0.0})
 
     def test_export_data_argument(self):
-        self.assertDictEqual(self.obj.export(data={'z': 2}), {'x': 0.0, 'y': 0.0, 'z': 2})
+        self.assertDictEqual(self.obj.to_flat_dict(data={'z': 2}), {'x': 0.0, 'y': 0.0, 'z': 2})
 
 
 class TestUniqueConfiguration(unittest.TestCase):
@@ -199,49 +200,49 @@ class TestUniqueConfiguration(unittest.TestCase):
         self.obj.clear()
 
     def test_export_default(self):
-        self.assertDictEqual(self.obj.export(), {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0})
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
-            self.obj.export('unique'),
+            self.obj.to_flat_dict(root='unique'),
             {'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
-        self.assertDictEqual(self.obj.export(data={'z': 2}), {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
+        self.assertDictEqual(self.obj.to_flat_dict(data={'z': 2}), {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_update_subconfiguration(self):
         self.obj.update({'other.x': 3.0, 'other.y': 5.0, 'param': 5})
-        self.assertDictEqual(self.obj.export(), {'other.x': 3.0, 'other.y': 5.0, 'param': 5.0})
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a', 'other.x': 3.0, 'other.y': 5.0, 'param': 5.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
-            self.obj.export('unique'),
-            {'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
+            self.obj.to_flat_dict(root='unique'),
+            {'unique.other': 'child_a','unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
-        self.assertDictEqual(self.obj.export(data={'z': 2}), {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
+        self.assertDictEqual(self.obj.to_flat_dict(data={'z': 2}), {'other': 'child_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_set_subconfiguration_by_string(self):
-        self.obj.other = "childB"
-        self.assertDictEqual(self.obj.export(), {'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
+        self.obj.other = "child_b"
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_b','other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_instance(self):
-        self.obj.other = DescriptorChildB_()
-        self.assertDictEqual(self.obj.export(), {'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
+        self.obj.other = MultipleB()
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_dict(self):
         self.obj.other = {'x': 2.0, 'y': 3.0, 'z': 5}
-        self.assertDictEqual(self.obj.export(), {'other.x': 2.0, 'other.y': 3.0, 'param': 2.0})
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a', 'other.x': 2.0, 'other.y': 3.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_string_id(self):
         old = id(self.obj.other)
-        self.obj.other = "childA"
+        self.obj.other = "child_a"
         new = id(self.obj.other)
         self.assertEqual(old, new)
 
     def test_set_subconfiguration_by_instance(self):
         old = id(self.obj.other)
-        self.obj.other = DescriptorChildA_()
+        self.obj.other = MultipleA()
         new = id(self.obj.other)
         self.assertNotEqual(old, new)
 
@@ -250,3 +251,6 @@ class TestUniqueConfiguration(unittest.TestCase):
         self.obj.other = {'x': 2.0, 'y': 3.0, 'z': 5}
         new = id(self.obj.other)
         self.assertEqual(old, new)
+
+
+# %%

@@ -5,12 +5,12 @@ import numpy as np
 import ngsolve as ngs
 import logging
 
-from dream.config import DescriptorConfiguration, parameter, any, descriptor_configuration
+from dream.config import UniqueConfiguration, MultipleConfiguration, parameter, any, multiple
 
 logger = logging.getLogger(__name__)
 
 
-class Timer(DescriptorConfiguration, is_unique=True):
+class Timer(UniqueConfiguration):
 
     @any(default=(0.0, 1.0))
     def interval(self, interval):
@@ -61,7 +61,7 @@ class Timer(DescriptorConfiguration, is_unique=True):
     t: ngs.Parameter
 
 
-class TimeSchemes(DescriptorConfiguration, is_interface=True):
+class TimeSchemes(MultipleConfiguration, is_interface=True):
 
     time_levels: tuple[str, ...]
 
@@ -120,7 +120,7 @@ class BDF2(TimeSchemes):
         return 1.5 * gfus['n+1']
 
 
-class TimeConfig(DescriptorConfiguration, is_interface=True):
+class TimeConfig(MultipleConfiguration, is_interface=True):
 
     @property
     def is_stationary(self) -> bool:
@@ -136,11 +136,11 @@ class TransientConfig(TimeConfig):
 
     name: str = "transient"
 
-    @descriptor_configuration(default=ImplicitEuler)
+    @multiple(default=ImplicitEuler)
     def scheme(self, scheme):
         return scheme
 
-    @descriptor_configuration(default=Timer)
+    @multiple(default=Timer)
     def timer(self, timer):
         return timer
 

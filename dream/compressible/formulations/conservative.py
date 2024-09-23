@@ -5,7 +5,7 @@ import typing
 
 import dream.bla as bla
 
-from dream.config import DescriptorConfiguration, descriptor_configuration
+from dream.config import MultipleConfiguration, multiple
 from dream.time_schemes import ImplicitEuler, BDF2
 
 from dream.compressible.config import (
@@ -22,7 +22,7 @@ if typing.TYPE_CHECKING:
 
 # --- Conservative --- #
 
-class MixedMethod(DescriptorConfiguration, is_interface=True):
+class MixedMethod(MultipleConfiguration, is_interface=True):
 
     @property
     def Q(self) -> ngs.CF:
@@ -115,7 +115,7 @@ class Gradient(MixedMethod):
         return Q_
 
 
-class ConservativeMethod(DescriptorConfiguration, is_interface=True):
+class ConservativeMethod(MultipleConfiguration, is_interface=True):
 
     @property
     def U_TnT(self) -> tuple[ngs.comp.ProxyFunction, ...]:
@@ -278,11 +278,11 @@ class ConservativeFormulation(CompressibleFormulation):
 
     name: str = "conservative"
 
-    @descriptor_configuration(default=HDG)
+    @multiple(default=HDG)
     def method(self, method):
         return method
 
-    @descriptor_configuration(default=Inactive)
+    @multiple(default=Inactive)
     def mixed_method(self, mixed_method):
         return mixed_method
 

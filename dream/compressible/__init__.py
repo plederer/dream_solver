@@ -4,7 +4,7 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import parameter, descriptor_configuration, equation
+from dream.config import parameter, multiple, equation
 from dream.pde import PDEConfiguration
 from dream.compressible.config import CompressibleState, CompressibleStateGradient, ReferenceState
 from dream.compressible.eos import IdealGas
@@ -28,7 +28,7 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         super().__init__(dict, **kwargs)
         self.equations = CompressibleEquations(self)
 
-    @descriptor_configuration(ConservativeFormulation)
+    @multiple(ConservativeFormulation)
     def formulation(self, formulation):
         return formulation
 
@@ -55,19 +55,19 @@ class CompressibleFlowConfiguration(PDEConfiguration):
 
         return prandtl_number
 
-    @descriptor_configuration(default=IdealGas)
+    @multiple(default=IdealGas)
     def equation_of_state(self, equation_of_state):
         return equation_of_state
 
-    @descriptor_configuration(default=Inviscid)
+    @multiple(default=Inviscid)
     def dynamic_viscosity(self, dynamic_viscosity):
         return dynamic_viscosity
 
-    @descriptor_configuration(default=Aerodynamic)
+    @multiple(default=Aerodynamic)
     def scaling(self, scaling):
         return scaling
 
-    @descriptor_configuration(default=LaxFriedrich)
+    @multiple(default=LaxFriedrich)
     def riemann_solver(self, riemann_solver: LaxFriedrich):
         self.riemann_solver._cfg = self
         return riemann_solver

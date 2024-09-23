@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import ngsolve as ngs
 from dream import bla
-from dream.config import DescriptorConfiguration, any
+from dream.config import MultipleConfiguration, any
 from dream.compressible.config import ReferenceState
 
 
-class Scaling(DescriptorConfiguration, is_interface=True):
+class Scaling(MultipleConfiguration, is_interface=True):
 
     @any(default={'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325})
     def reference_values(self, state: ReferenceState):

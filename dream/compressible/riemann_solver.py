@@ -3,7 +3,7 @@ import typing
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import DescriptorConfiguration, any
+from dream.config import MultipleConfiguration, any
 from dream.compressible.config import CompressibleState
 
 if typing.TYPE_CHECKING:
@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
 
 
 
-class RiemannSolver(DescriptorConfiguration, is_interface=True):
+class RiemannSolver(MultipleConfiguration, is_interface=True):
 
     @property
     def cfg(self) -> CompressibleFlowConfiguration:

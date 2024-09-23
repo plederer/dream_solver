@@ -9,8 +9,6 @@ import ngsolve as ngs
 
 logger = logging.getLogger(__name__)
 
-if typing.TYPE_CHECKING:
-    from dream.mesh import BoundaryConditions, DomainConditions
 
 # ------- State ------- #
 
@@ -45,7 +43,18 @@ def equation(func):
     return state
 
 
-class variable:
+# ------- Descriptors ------- #
+
+
+class descriptor:
+
+    __slots__ = ("name", )
+
+    def __set_name__(self, owner, name: str):
+        self.name = name
+
+
+class variable(descriptor):
     """
     Variable is a descriptor that mimics a physical quantity.
 
@@ -72,25 +81,206 @@ class variable:
         del state.data[self.label]
 
 
+class configuration(descriptor):
+
+    __slots__ = ('_default', 'fset_', 'fget_', '__doc__')
+
+    def __init__(self, default, fset_=None, fget_=None, doc: str = None):
+        self.default = default
+        self.fset_ = fset_
+        self.fget_ = fget_
+        self.__doc__ = doc
+
+        if doc is None and fset_ is not None:
+            doc = fset_.__doc__
+
+        self.__doc__ = doc
+
+    @typing.overload
+    def __get__(self, instance: None, owner: type[object]) -> configuration:
+        """ Called when an attribute is accessed via class not an instance """
+
+    @typing.overload
+    def __get__(self, instance: MultipleConfiguration, owner: type[object]) -> typing.Any:
+        """ Called when an attribute is accessed on an instance variable """
+
+    def __get__(self, cfg: MultipleConfiguration, owner: type[MultipleConfiguration]):
+        if cfg is None:
+            return self
+
+        if self.fget_ is not None:
+            self.fget_(cfg)
+
+        return cfg.data[self.name]
+
+    def __delete__(self, cfg: MultipleConfiguration):
+        del cfg.data[self.name]
+
+    def getter_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
+        prop = type(self)(self.default, self.fset_, fget_, self.__doc__)
+        return prop
+
+    def setter_check(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
+        prop = type(self)(self.default, fset_, self.fget_, self.__doc__)
+        return prop
+
+    def __call__(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
+        return self.setter_check(fset_)
+
+
+class any(configuration):
+
+    def __set__(self, cfg: MultipleConfiguration, value):
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        cfg.data[self.name] = value
+
+    def reset(self, cfg: MultipleConfiguration):
+        self.__set__(cfg, self.default)
+
+
+class parameter(configuration):
+
+    def __set__(self, cfg: MultipleConfiguration, value: float) -> None:
+
+        if isinstance(value, ngs.Parameter):
+            value = value.Get()
+
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        cfg.data[self.name].Set(value)
+
+    def reset(self, cfg: MultipleConfiguration):
+
+        value = self.default
+        if self.fset_ is not None:
+            value = self.fset_(cfg, value)
+
+        cfg.data[self.name] = ngs.Parameter(value)
+
+
+class unique(configuration):
+
+    default: UniqueConfiguration
+
+    def __set__(self, cfg: MultipleConfiguration, value: str | MultipleConfiguration) -> None:
+
+        if isinstance(value, self.default):
+            cfg.data[self.name] = value
+
+        elif isinstance(value, str):
+
+            if value == self.name:
+                cfg.data[self.name] = self.default()
+
+            if self.fset_ is not None:
+                value = self.fset_(cfg, cfg.data[self.name])
+
+        elif isinstance(value, dict):
+            cfg.data[self.name].update(**value)
+
+        else:
+            msg = f""" Can not set variable of type {type(value)}!
+
+            To set '{self.name}' pass either:
+            1. An instance of type {self.default.leafs.root}.
+            2. A keyword from available options: {list(self.default.leafs)}.
+
+            To update the current instance pass a dictionary with following keywords:
+            {list(cfg.data[self.name].data.keys())}
+            """
+            raise TypeError(msg)
+
+        cfg.data[self.name].parent = cfg
+
+    def reset(self, cfg: MultipleConfiguration):
+        self.__set__(cfg, self.default())
+
+
+class multiple(unique):
+
+    default: MultipleConfiguration
+
+    def __set__(self, cfg: MultipleConfiguration, value: str | MultipleConfiguration) -> None:
+
+        if isinstance(value, self.default.leafs.root):
+            cfg.data[self.name] = value
+
+        elif isinstance(value, str):
+            cfg_ = self.default.leafs[value]
+            if not isinstance(cfg.data[self.name], cfg_):
+                cfg.data[self.name] = cfg_()
+
+            if self.fset_ is not None:
+                value = self.fset_(cfg, cfg.data[self.name])
+
+        elif isinstance(value, dict):
+            cfg.data[self.name].update(**value)
+
+        else:
+            msg = f""" Can not set variable of type {type(value)}!
+
+            To set '{self.name}' pass either:
+            1. An instance of type {self.default.leafs.root}.
+            2. A keyword from available options: {list(self.default.leafs)}.
+
+            To update the current instance pass a dictionary with following keywords:
+            {list(cfg.data[self.name].data.keys())}
+            """
+            raise TypeError(msg)
+
+        cfg.data[self.name].parent = cfg
+
+
+# ------- Abstract Classes ------- #
+
+class InheritanceTree(collections.UserDict):
+
+    def __init__(self, root: UniqueConfiguration):
+        self.root = root
+        super().__init__()
+
+    def __getitem__(self, alias) -> UniqueConfiguration | MultipleConfiguration:
+        if isinstance(alias, self.root):
+            return type(alias)
+        elif isinstance(alias, type) and issubclass(alias, self.root):
+            return alias
+        elif alias in self:
+            return super().__getitem__(alias)
+        else:
+            msg = f"Invalid type '{alias}' for class '{self.root}'.\n"
+            msg += f"Allowed options: {list(self)}!"
+            raise TypeError(msg)
+
+    def __contains__(self, key: object) -> bool:
+        if isinstance(key, self.root):
+            return True
+        elif isinstance(key, type) and issubclass(key, self.root):
+            return True
+        return super().__contains__(key)
+
+
 class State(collections.UserDict):
 
     def __init_subclass__(cls) -> None:
-        cls._alias_map = {value.label: var for var, value in vars(cls).items() if isinstance(value, variable)}
+        cls.alias_map = {value.label: var for var, value in vars(cls).items() if isinstance(value, variable)}
         return super().__init_subclass__()
 
     def __setitem__(self, key: str, value):
-        if key in self._alias_map:
-            key = self._alias_map[key]
+        if key in self.alias_map:
+            key = self.alias_map[key]
         setattr(self, key, value)
 
     def __getitem__(self, key):
-        if key in self._alias_map:
-            key = self._alias_map[key]
+        if key in self.alias_map:
+            key = self.alias_map[key]
         return getattr(self, key)
 
     def __delitem__(self, key) -> None:
-        if key in self._alias_map:
-            key = self._alias_map[key]
+        if key in self.alias_map:
+            key = self.alias_map[key]
         delattr(self, key)
 
     def __str__(self):
@@ -117,248 +307,22 @@ class State(collections.UserDict):
         return self.__class__.__name__
 
 
-# ------- Descriptors ------- #
-
-
-class descriptor:
-
-    __slots__ = ("name", )
-
-    def __set_name__(self, owner, name: str):
-        self.name = name
-
-
-class configuration(descriptor):
-
-    __slots__ = ('_default', 'fset_', 'fget_', '__doc__')
-
-    def __init__(self, default, fset_=None, fget_=None, doc: str = None):
-        self.default = default
-        self.fset_ = fset_
-        self.fget_ = fget_
-        self.__doc__ = doc
-
-        if doc is None and fset_ is not None:
-            doc = fset_.__doc__
-
-        self.__doc__ = doc
-
-    @typing.overload
-    def __get__(self, instance: None, owner: type[object]) -> configuration:
-        """ Called when an attribute is accessed via class not an instance """
-
-    @typing.overload
-    def __get__(self, instance: DescriptorConfiguration, owner: type[object]) -> typing.Any:
-        """ Called when an attribute is accessed on an instance variable """
-
-    def __get__(self, cfg: DescriptorConfiguration, owner: type[DescriptorConfiguration]):
-        if cfg is None:
-            return self
-
-        if self.fget_ is not None:
-            self.fget_(cfg)
-
-        return cfg.data[self.name]
-
-    def __delete__(self, cfg: DescriptorConfiguration):
-        del cfg.data[self.name]
-
-    def getter_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        prop = type(self)(self.default, self.fset_, fget_, self.__doc__)
-        return prop
-
-    def setter_check(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        prop = type(self)(self.default, fset_, self.fget_, self.__doc__)
-        return prop
-
-    def __call__(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        return self.setter_check(fset_)
-
-
-class any(configuration):
-
-    def __set__(self, cfg: DescriptorConfiguration, value):
-        if self.fset_ is not None:
-            value = self.fset_(cfg, value)
-
-        cfg.data[self.name] = value
-
-    def reset(self, cfg: DescriptorConfiguration):
-        self.__set__(cfg, self.default)
-
-
-class parameter(configuration):
-
-    def __set__(self, cfg: DescriptorConfiguration, value: float) -> None:
-
-        if isinstance(value, ngs.Parameter):
-            value = value.Get()
-
-        if self.fset_ is not None:
-            value = self.fset_(cfg, value)
-
-        cfg.data[self.name].Set(value)
-
-    def reset(self, cfg: DescriptorConfiguration):
-
-        value = self.default
-        if self.fset_ is not None:
-            value = self.fset_(cfg, value)
-
-        cfg.data[self.name] = ngs.Parameter(value)
-
-
-class descriptor_configuration(configuration):
-
-    default: DescriptorConfiguration
-
-    def __set__(self, cfg: DescriptorConfiguration, value: str | DescriptorConfiguration) -> None:
-
-        if isinstance(value, self.default.leafs.root):
-            cfg.data[self.name] = value
-
-        elif isinstance(value, str):
-            cfg_ = self.default.leafs[value]
-            if not isinstance(cfg.data[self.name], cfg_):
-                cfg.data[self.name] = cfg_()
-
-            if self.fset_ is not None:
-                value = self.fset_(cfg, cfg.data[self.name])
-
-        elif isinstance(value, dict):
-            cfg.data[self.name].update(**value)
-
-        else:
-            msg = f""" Can not set variable of type {type(value)}!
-
-            To set '{self.name}' pass either:
-            1. An instance of type {self.default.leafs.root}.
-            2. A keyword from available options: {list(self.default.leafs)}.
-
-            To update the current instance pass a dictionary with following keywords:
-            {list(cfg.data[self.name].data.keys())}            
-            """
-            raise TypeError(msg)
-        
-        cfg.data[self.name].parent = cfg
-
-    def reset(self, cfg: DescriptorConfiguration):
-        self.__set__(cfg, self.default())
-
-
-class interface_configuration(configuration):
-
-    default: InterfaceConfiguration
-
-    def __set__(self, cfg: DescriptorConfiguration, value: str | DescriptorConfiguration) -> None:
-
-        if isinstance(value, self.default.leafs.root):
-            cfg.data[self.name] = value
-
-        elif isinstance(value, str):
-            cfg_ = self.default.leafs[value]
-            if not isinstance(cfg.data[self.name], cfg_):
-                cfg.data[self.name] = cfg_()
-
-            if self.fset_ is not None:
-                value = self.fset_(cfg, cfg.data[self.name])
-
-        else:
-            msg = f""" Can not set variable of type {type(value)}!
-
-            To set '{self.name}' pass either:
-            1. An instance of type {self.default.leafs.root}.
-            2. A keyword from available options: {list(self.default.leafs)}.         
-            """
-            raise TypeError(msg)
-
-    def reset(self, cfg: DescriptorConfiguration):
-        self.__set__(cfg, self.default())
-
-
-# ------- Abstract Classes ------- #
-
-class InheritanceTree(collections.UserDict):
-
-    def __init__(self, root: InterfaceConfiguration):
-        self.root = root
-        super().__init__()
-
-    def __getitem__(self, alias) -> InterfaceConfiguration | DescriptorConfiguration:
-        if isinstance(alias, self.root):
-            return type(alias)
-        elif isinstance(alias, type) and issubclass(alias, self.root):
-            return alias
-        elif alias in self:
-            return super().__getitem__(alias)
-        else:
-            msg = f"Invalid type '{alias}' for class '{self.root}'.\n"
-            msg += f"Allowed options: {list(self)}!"
-            raise TypeError(msg)
-
-    def __contains__(self, key: object) -> bool:
-        if isinstance(key, self.root):
-            return True
-        elif isinstance(key, type) and issubclass(key, self.root):
-            return True
-        return super().__contains__(key)
-
-
-class InterfaceConfiguration:
+class UniqueConfiguration(collections.UserDict):
 
     name: str
-    leafs: InheritanceTree
-    aliases: tuple[str] = ()
-
-    def __init_subclass__(cls, is_interface: bool = False) -> None:
-
-        if is_interface:
-            cls.leafs = InheritanceTree(cls)
-            cls.name = cls.__name__
-            cls.aliases = ()
-
-        else:
-
-            for name in [cls.name, *cls.aliases]:
-                if name in cls.leafs:
-                    raise ValueError(f"Concrete Class of type {cls.leafs.root} with name {cls.name} already included!")
-                cls.leafs[name] = cls
-
-
-class DescriptorConfiguration(collections.UserDict):
-
-    name: str
-    leafs: InheritanceTree
     cfgs: list[configuration]
-    aliases: tuple[str] = ()
 
-    def __init_subclass__(cls, is_interface: bool = False, is_unique: bool = False) -> None:
+    def __init_subclass__(cls) -> None:
 
-        cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, descriptor)]
+        if not hasattr(cls, "cfgs"):
+            cls.cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, configuration)]
 
-        if is_unique:
-
-            cls.leafs = InheritanceTree(cls)
+        if not hasattr(cls, "name"):
             cls.name = cls.__name__
-            cls.leafs[cls.name] = cls
-            cls.aliases = ()
-            cls.cfgs = cfgs
 
-        elif is_interface:
+        cls.name = cls.name.lower()
 
-            cls.leafs = InheritanceTree(cls)
-            cls.name = cls.__name__
-            cls.aliases = ()
-            cls.cfgs = cfgs
-
-        else:
-
-            for name in [cls.name, *cls.aliases]:
-                if name in cls.leafs:
-                    raise ValueError(f"Concrete Class of type {cls.leafs.root} with name {cls.name} already included!")
-                cls.leafs[name] = cls
-
-            cls.cfgs = cfgs + cls.cfgs
+        super().__init_subclass__()
 
     def __init__(self, dict=None, /, **kwargs):
         self.clear()
@@ -388,20 +352,21 @@ class DescriptorConfiguration(collections.UserDict):
         for key, value in kwargs.items():
             self[key].update(value)
 
-    def export(self, parent: str = "", data: dict = None) -> dict[str, typing.Any]:
+    def to_flat_dict(self, data: dict = None, root: str = "") -> dict[str, typing.Any]:
 
         if data is None:
             data = {}
 
         for key, value in self.items():
 
-            if parent:
-                key = f"{parent}.{key}"
+            if root:
+                key = f"{root}.{key}"
 
             match value:
 
-                case DescriptorConfiguration():
-                    value.export(key, data)
+                case UniqueConfiguration():
+                    data[key] = value.name
+                    value.to_flat_dict(data, key)
                 case ngs.Parameter():
                     data[key] = value.Get()
                 case _:
@@ -424,12 +389,38 @@ class DescriptorConfiguration(collections.UserDict):
         delattr(self, key)
 
     def __repr__(self) -> str:
-        return str(self.export())
+        return str(self.to_flat_dict())
+
+
+class MultipleConfiguration(UniqueConfiguration):
+
+    name: str
+    leafs: InheritanceTree
+    cfgs: list[configuration]
+    aliases: tuple[str]
+
+    def __init_subclass__(cls, is_interface: bool = False) -> None:
+
+        if is_interface:
+            cls.leafs = InheritanceTree(cls)
+            cls.aliases = ()
+            cls.cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)] 
+
+        else:
+            for name in [cls.name, *cls.aliases]:
+                name = name.lower()
+                if name in cls.leafs:
+                    raise ValueError(f"Concrete Class of type {cls.leafs.root} with name {name} already included!")
+                cls.leafs[name] = cls
+
+            cls.cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)] + cls.cfgs
+
+        super().__init_subclass__()
 
 
 # ------- Concrete Classes ------- #
 
-class BonusIntegrationOrder(DescriptorConfiguration, is_unique=True):
+class BonusIntegrationOrder(UniqueConfiguration):
 
     @any(default=0)
     def vol(self, vol):
@@ -453,7 +444,7 @@ class BonusIntegrationOrder(DescriptorConfiguration, is_unique=True):
     bbbnd: int
 
 
-class FiniteElementConfig(DescriptorConfiguration, is_unique=True):
+class FiniteElementConfig(UniqueConfiguration):
 
     @any(default=2)
     def order(self, order):
@@ -463,7 +454,7 @@ class FiniteElementConfig(DescriptorConfiguration, is_unique=True):
     def static_condensation(self, static_condensation):
         return bool(static_condensation)
 
-    @descriptor_configuration(default=BonusIntegrationOrder)
+    @unique(default=BonusIntegrationOrder)
     def bonus_int_order(self, dict_):
         return dict_
 
@@ -478,9 +469,6 @@ class FiniteElementConfig(DescriptorConfiguration, is_unique=True):
     order: int
     static_condensation: bool
     bonus_int_order: BonusIntegrationOrder
-
-
-
 
 
 # ------ Formatter ------- #

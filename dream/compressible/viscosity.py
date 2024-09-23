@@ -1,14 +1,14 @@
 from __future__ import annotations
 import typing
 
-from dream.config import DescriptorConfiguration, any
+from dream.config import MultipleConfiguration, any
 from dream.compressible.config import CompressibleState
 
 if typing.TYPE_CHECKING:
     from dream.compressible import CompressibleEquations
 
 
-class DynamicViscosity(DescriptorConfiguration, is_interface=True):
+class DynamicViscosity(MultipleConfiguration, is_interface=True):
 
     @property
     def is_inviscid(self) -> bool:

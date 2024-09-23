@@ -4,13 +4,13 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import DescriptorConfiguration, parameter
+from dream.config import MultipleConfiguration, parameter
 from dream.compressible.config import CompressibleState, CompressibleStateGradient
 
 logger = logging.getLogger(__name__)
 
 
-class EquationOfState(DescriptorConfiguration, is_interface=True):
+class EquationOfState(MultipleConfiguration, is_interface=True):
 
     def density(self, U: CompressibleState) -> ngs.CF:
         raise NotImplementedError()

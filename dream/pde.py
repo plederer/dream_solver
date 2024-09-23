@@ -5,7 +5,7 @@ import logging
 import ngsolve as ngs
 
 from dream.mesh import DreamMesh
-from dream.config import DescriptorConfiguration
+from dream.config import MultipleConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
 
 
-class Formulation(DescriptorConfiguration, is_interface=True):
+class Formulation(MultipleConfiguration, is_interface=True):
 
     def set_configuration_and_mesh(self, cfg: SolverConfiguration, mesh: ngs.Mesh | DreamMesh) -> None:
 
@@ -75,10 +75,7 @@ class Formulation(DescriptorConfiguration, is_interface=True):
         raise NotImplementedError()
 
 
-class PDEConfiguration(DescriptorConfiguration, is_interface=True):
-
-    bcs: BoundaryConditions
-    dcs: DomainConditions
+class PDEConfiguration(MultipleConfiguration, is_interface=True):
 
     def __init__(self, mesh, **kwargs):
         self.mesh = mesh

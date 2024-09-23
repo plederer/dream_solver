@@ -9,14 +9,14 @@ from .sensor import Sensor
 
 from .compressible import CompressibleFlowConfiguration
 
-from .config import DescriptorConfiguration, FiniteElementConfig, descriptor_configuration
+from .config import MultipleConfiguration, FiniteElementConfig, multiple
 from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, TimeConfig
 from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
 
 logger = logging.getLogger(__name__)
 
 
-class SolverConfiguration(DescriptorConfiguration, is_unique=True):
+class SolverConfiguration(MultipleConfiguration, is_unique=True):
 
     # def __init__(self) -> None:
 
@@ -38,15 +38,15 @@ class SolverConfiguration(DescriptorConfiguration, is_unique=True):
     #     # Output Configuration
     #     self._io = IOConfig()
 
-    @descriptor_configuration(default=CompressibleFlowConfiguration)
+    @multiple(default=CompressibleFlowConfiguration)
     def pde(self, pde):
         return pde
     
-    @descriptor_configuration(default=FiniteElementConfig)
+    @multiple(default=FiniteElementConfig)
     def fem(self, fem):
         return fem
     
-    @descriptor_configuration(default=StationaryConfig)
+    @multiple(default=StationaryConfig)
     def time(self, time):
         return time
     
