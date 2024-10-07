@@ -5,31 +5,22 @@ from ngsolve import *
 from netgen.occ import *
 
 wp = WorkPlane()
-outer = WorkPlane().Circle(0, 0, 3).Face()
-outer.edges.maxh = 0.3
+outer = WorkPlane().Circle(0, 0, 4*H).Face()
+outer.edges.maxh = 0.5
+outer.edges[0].name = "outer"
 outer.name = "outer"
-outer.maxh = 0.3
+outer.maxh = 0.5
 
-sponge = WorkPlane().Circle(0, 0, 8).Face()
-sponge.edges[0].name = "outer"
-sponge.edges.maxh = 1
-sponge.name = "sponge"
-sponge.maxh = 1
-
-mesh = Mesh(OCCGeometry(Glue([face, outer, sponge]), dim=2).GenerateMesh(grading=0.15))
+mesh = Mesh(OCCGeometry(Glue([face, outer]), dim=2).GenerateMesh(grading=0.15))
 mesh.Curve(cfg.order)
 
 @test(name)
-def farfield_reference():
+def grcbc_reference():
     """ Exact solution for pressure pulse! """
 
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(pressure=0.01, velocity=0.01)), "outer")
     
-    r_ = BufferCoordinate.polar(3, 8)
-    sponge = SpongeFunction.penta_smooth(r_)
-    solver.domain_conditions.set(dcs.SpongeLayer(farfield, sponge), 'sponge')
-
     tree.directory_name = f"Ma{cfg.Mach_number.Get()}/alpha{alpha}"
 
     solver.get_saver(tree).save_mesh('mesh_exact')
@@ -39,4 +30,4 @@ def farfield_reference():
 
 if __name__ == '__main__':
 
-    farfield_reference()
+    grcbc_reference()

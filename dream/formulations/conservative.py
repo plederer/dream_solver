@@ -849,7 +849,7 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
             if bc.relaxation == "outflow":
                 Sigma = CF((
-                    0.278 * c * (1 - M**2), 0, 0, 0,
+                    bc.sigma.pressure * c * (1 - M**2), 0, 0, 0,
                     0, -un, 0, 0,
                     0, 0, -un, 0,
                     0, 0, 0, -un - c,
@@ -857,18 +857,18 @@ class ConservativeFormulation2D(ConservativeFormulation):
 
             elif bc.relaxation == "mass_inflow" or bc.relaxation == "temperature_inflow":
                 Sigma = CF((
-                    4 * c * (1 - M**2), 0, 0, 0,
-                    0, 4 * c, 0, 0,
-                    0, 0, 4 * c, 0,
+                    bc.sigma.pressure * c * (1 - M**2), 0, 0, 0,
+                    0, bc.sigma.velocity * c, 0, 0,
+                    0, 0, bc.sigma.velocity * c, 0,
                     0, 0, 0, -un - c,
                 ), dims=(4, 4))
 
             elif bc.relaxation == "farfield":
                 Sigma = CF((
-                    4 * c * (1 - M**2), 0, 0, 0,
-                    0, 4 * c, 0, 0,
-                    0, 0, 4 * c, 0,
-                    0, 0, 0, 4 * c * (1 - M**2),
+                    bc.sigma.pressure * c * (1 - M**2), 0, 0, 0,
+                    0, bc.sigma.velocity * c, 0, 0,
+                    0, 0, bc.sigma.velocity * c, 0,
+                    0, 0, 0, bc.sigma.pressure * c * (1 - M**2),
                 ), dims=(4, 4))
 
         Sigma = self.DME_from_CHAR_matrix(Sigma, Uhat, self.normal)

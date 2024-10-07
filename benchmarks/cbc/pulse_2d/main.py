@@ -7,6 +7,8 @@ parser = argparse.ArgumentParser(description='Vortex benchmark')
 parser.add_argument('Alpha', metavar='a', type=float, help='Pulse strength')
 args = vars(parser.parse_args())
 
+# args = {'Alpha': 0.5}
+
 ngsglobals.msg_level = 0
 SetNumThreads(64)
 
@@ -21,9 +23,9 @@ LOGGER.log_to_terminal = False
 saver = Saver(tree)
 
 name = ""
-maxh = 0.07
-R = 0.1
-H = 8*R
+maxh = 0.15
+R = 0.2
+H = 10*R
 alpha = args['Alpha']
 
 cfg = SolverConfiguration()
@@ -42,7 +44,7 @@ cfg.time.simulation = "transient"
 cfg.time.scheme = "BDF2"
 cfg.time.step = 2e-3
 save_step = 5
-cfg.time.interval = (0, 15)
+cfg.time.interval = (0, 4)
 cfg.save_state = True
 
 cfg.linear_solver = "pardiso"
@@ -75,13 +77,10 @@ T_inf = farfield.temperature
 c = INF.speed_of_sound(cfg)
 
 
-# Vortex Pirozzoli
-
 r = sqrt(x**2 + y**2)
-
 u_0 = u_inf
-p_0 = p_inf * (1 - (gamma - 1)/2 * alpha**2 * exp(1 - (r/R)**2))**(gamma/(gamma - 1))
-rho_0 = rho_inf * (1 - (gamma - 1)/2 * alpha**2 * exp(1 - (r/R)**2))**(1/(gamma - 1))
+p_0 = p_inf * (1 + alpha * exp(-r**2/R**2))
+rho_0 = rho_inf
 initial = State(u_0, rho_0, p_0)
 
 cfg.info["Domain Length"] = H
@@ -131,47 +130,95 @@ def test(name: str = ""):
 
 
 @test(name)
-def farfield_boundary():
+def standard_farfield():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), "left|right|top|bottom")
     return solver
 
 
 @test(name)
-def grcbc_farfield_outflow():
+def grcbc_farfield(C: float = 0.01):
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(
-        bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)),
+        bcs.CBC(farfield, sigma=State(velocity=C, pressure=C)),
         'left|top|bottom|right')
+
+    tree.state_directory_name += f"_C{C}"
+    cfg.info['CFL'] = C
+
     return solver
 
 
 @test(name)
-def grcbc_pressure_outflow():
+def grcbc_outflow(C: float = 0.01):
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(
-        bcs.CBC(farfield, relaxation='outflow', sigma=State(velocity=0.01, pressure=0.01)),
+        bcs.CBC(farfield, relaxation='outflow', sigma=State(velocity=C, pressure=C)),
         'left|top|bottom|right')
+
+    tree.state_directory_name += f"_C{C}"
+    cfg.info['CFL'] = C
+
     return solver
 
 
 @test(name)
-def nscbc_pressure_outflow():
+def grcbc_mass(C: float = 0.01):
     solver = CompressibleHDGSolver(mesh, cfg, tree)
-    solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc", relaxation="outflow"), 'left|top|bottom|right')
+    solver.boundary_conditions.set(
+        bcs.CBC(farfield, relaxation='mass_inflow', sigma=State(velocity=C, pressure=C)),
+        'left|top|bottom|right')
+
+    tree.state_directory_name += f"_C{C}"
+    cfg.info['CFL'] = C
+
     return solver
 
 
 @test(name)
-def outflow_boundary():
+def grcbc_temperature(C: float = 0.01):
+    solver = CompressibleHDGSolver(mesh, cfg, tree)
+    solver.boundary_conditions.set(
+        bcs.CBC(farfield, relaxation='temperature_inflow', sigma=State(velocity=C, pressure=C)),
+        'left|top|bottom|right')
+
+    tree.state_directory_name += f"_C{C}"
+    cfg.info['CFL'] = C
+
+    return solver
+
+
+@test(name)
+def nscbc_pressure_outflow(Sigma: float = 0.01):
+    solver = CompressibleHDGSolver(mesh, cfg, tree)
+    solver.boundary_conditions.set(bcs.CBC(
+        farfield, "nscbc", relaxation="outflow",
+        sigma=State(velocity=Sigma, pressure=Sigma)),
+        'left|top|bottom|right')
+
+    tree.state_directory_name += f"_Sigma{Sigma}"
+    cfg.info['Sigma'] = Sigma
+
+    return solver
+
+
+@test(name)
+def standard_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.Outflow(farfield.pressure), 'left|top|bottom|right')
     return solver
 
 
 if __name__ == '__main__':
-    grcbc_pressure_outflow()
-    grcbc_farfield_outflow()
-    farfield_boundary()
-    nscbc_pressure_outflow()
-    outflow_boundary()
+
+    standard_farfield()
+    standard_outflow()
+
+    for C in [1e-1, 1e-2, 1e-3, 0]:
+        grcbc_farfield(C)
+        grcbc_outflow(C)
+        grcbc_mass(C)
+        grcbc_temperature(C)
+
+    for Sigma in [1, 0.28, 1e-1, 1e-2]:
+        nscbc_pressure_outflow(Sigma)
