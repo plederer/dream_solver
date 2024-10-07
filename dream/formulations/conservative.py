@@ -824,10 +824,10 @@ class ConservativeFormulation2D(ConservativeFormulation):
                        InnerProduct(state.velocity, state.velocity) / 2))
 
         elif bc.relaxation == "temperature_inflow":
-            rho_ = gamma/(gamma - 1) * self.pressure(U)/state.temperature
-            U_bc = rho_ * CF((1, state.velocity, state.temperature / gamma + 0.5 *
-                              InnerProduct(state.velocity, state.velocity)))
 
+            rho_ = state.density * (self.temperature(U)/state.temperature)**(1/(gamma-1))
+            U_bc = rho_ * CF((1, state.velocity, self.temperature(U) / gamma + 0.5 *
+                              InnerProduct(state.velocity, state.velocity)))
         else:
             raise ValueError('Relaxation unknown!')
 
