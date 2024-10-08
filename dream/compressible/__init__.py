@@ -6,23 +6,67 @@ import ngsolve as ngs
 from dream import bla
 from dream.config import parameter, multiple, equation
 from dream.pde import PDEConfiguration
-from dream.compressible.config import CompressibleState, CompressibleStateGradient, ReferenceState
+from dream.mesh import (BoundaryConditions,
+                        DomainConditions,
+                        Periodic,
+                        Initial,
+                        Force,
+                        Perturbation,
+                        SpongeLayer,
+                        PSpongeLayer,
+                        GridDeformation
+                        )
 from dream.compressible.eos import IdealGas
 from dream.compressible.viscosity import Inviscid, Constant, Sutherland
 from dream.compressible.scaling import Aerodynamic, Aeroacoustic, Acoustic
 from dream.compressible.riemann_solver import LaxFriedrich, Roe, HLL, HLLEM
-from dream.compressible.config import CompressibleBC, CompressibleDC
+from dream.compressible.config import (CompressibleState,
+                                       CompressibleStateGradient,
+                                       ReferenceState,
+                                       FarField,
+                                       Outflow,
+                                       InviscidWall,
+                                       IsothermalWall,
+                                       AdiabaticWall,
+                                       Symmetry,
+                                       PML)
+
 from dream.compressible.formulations import ConservativeFormulation
 
 logger = logging.getLogger(__name__)
 
 
+class CompressibleBoundaryConditions(BoundaryConditions):
+    ...
+
+
+class CompressibleDomainConditions(DomainConditions):
+    ...
+
+
+CompressibleBoundaryConditions.register_condition(FarField)
+CompressibleBoundaryConditions.register_condition(Outflow)
+CompressibleBoundaryConditions.register_condition(InviscidWall)
+CompressibleBoundaryConditions.register_condition(IsothermalWall)
+CompressibleBoundaryConditions.register_condition(AdiabaticWall)
+CompressibleBoundaryConditions.register_condition(Symmetry)
+CompressibleBoundaryConditions.register_condition(Periodic)
+
+
+CompressibleDomainConditions.register_condition(PML)
+CompressibleDomainConditions.register_condition(Force)
+CompressibleDomainConditions.register_condition(Perturbation)
+CompressibleDomainConditions.register_condition(Initial)
+CompressibleDomainConditions.register_condition(GridDeformation)
+CompressibleDomainConditions.register_condition(PSpongeLayer)
+CompressibleDomainConditions.register_condition(SpongeLayer)
+
 class CompressibleFlowConfiguration(PDEConfiguration):
 
     name = "compressible"
 
-    bcs = CompressibleBC
-    dcs = CompressibleDC
+    bcs = CompressibleBoundaryConditions
+    dcs = CompressibleDomainConditions
 
     def __init__(self, dict=None, /, **kwargs):
         super().__init__(dict, **kwargs)

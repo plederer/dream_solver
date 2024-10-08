@@ -4,7 +4,6 @@ import logging
 
 import ngsolve as ngs
 
-from dream.mesh import DreamMesh
 from dream.config import MultipleConfiguration
 
 logger = logging.getLogger(__name__)
@@ -15,15 +14,8 @@ if typing.TYPE_CHECKING:
 
 class Formulation(MultipleConfiguration, is_interface=True):
 
-    def set_configuration_and_mesh(self, cfg: SolverConfiguration, mesh: ngs.Mesh | DreamMesh) -> None:
-
-        if isinstance(mesh, ngs.Mesh):
-            mesh = DreamMesh(mesh)
-
+    def set_configuration(self, cfg: SolverConfiguration) -> None:
         self._cfg = cfg
-        self._mesh = mesh
-
-        self._is_linear = True
 
     def set_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]) -> None:
 
@@ -56,20 +48,12 @@ class Formulation(MultipleConfiguration, is_interface=True):
         self.gfus_transient = gfus
 
     @property
-    def dmesh(self) -> DreamMesh:
-        return self._mesh
-
-    @property
     def mesh(self) -> ngs.Mesh:
-        return self.dmesh.ngsmesh
+        return self.cfg.mesh
 
     @property
     def cfg(self) -> SolverConfiguration:
         return self._cfg
-
-    @property
-    def is_linear(self) -> bool:
-        return self._is_linear
 
     def get_system(self, blf: list[ngs.comp.SumOfIntegrals], lf: list[ngs.comp.SumOfIntegrals]):
         raise NotImplementedError()
@@ -77,14 +61,16 @@ class Formulation(MultipleConfiguration, is_interface=True):
 
 class PDEConfiguration(MultipleConfiguration, is_interface=True):
 
-    def __init__(self, mesh, **kwargs):
-        self.mesh = mesh
-        super().__init__(**kwargs)
-
-    def set_mesh(self, mesh: ngs.Mesh):
-        self.mesh = mesh
-        self.bcs = type(self).bcs(mesh.GetBoundaries())
+    @property
+    def mesh(self) -> ngs.Mesh:
+        if self._mesh is None:
+            raise ValueError("Mesh is not set!")
+        return self._mesh
 
     @property
     def formulation(self) -> Formulation:
         raise NotImplementedError("Overload this property in derived class!")
+
+    def __init__(self, mesh: ngs.Mesh = None, **kwargs) -> None:
+        self._mesh = mesh
+        super().__init__(**kwargs)

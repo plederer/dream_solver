@@ -1,20 +1,9 @@
 from __future__ import annotations
 
 from dream import bla
-from dream.config import variable, State
+from dream.config import variable, State, any
 from dream.pde import Formulation
-from dream.mesh import (Boundary,
-                        Domain,
-                        BoundaryConditions,
-                        DomainConditions,
-                        Periodic,
-                        Initial,
-                        Force,
-                        Perturbation,
-                        SpongeLayer,
-                        PSpongeLayer,
-                        GridDeformation,
-                        DreamMesh)
+from dream.mesh import Condition
 
 
 class CompressibleFormulation(Formulation, is_interface=True):
@@ -70,93 +59,121 @@ class ReferenceState(State):
     p = variable(bla.as_scalar, "pressure")
 
 
-class FarField(Boundary):
+class FarField(Condition):
 
-    def __init__(self, state: CompressibleState, theta_0: float = 0):
-        super().__init__(state)
-        self.theta_0 = theta_0
+    name = "farfield"
 
+    @any(default=None)
+    def state(self, state) -> State:
+        if state is not None:
+            state = CompressibleState(**state)
+        return state
 
-class Outflow(Boundary):
+    @state.getter_check
+    def state(self) -> None:
+        if self.data['state'] is None:
+            raise ValueError("Farfield state not set!")
 
-    def __init__(self, pressure: CompressibleState | float):
-        if not isinstance(pressure, CompressibleState):
-            pressure = CompressibleState(pressure=pressure)
-        super().__init__(pressure)
-
-
-class CharacteristicRelaxationOutflow(Boundary):
-
-    def __init__(self,
-                 state: CompressibleState,
-                 sigma: float = 0.25,
-                 reference_length: float = 1,
-                 tangential_convective_fluxes: bool = True) -> None:
-
-        super().__init__(state)
-        self.sigma = sigma
-        self.reference_length = reference_length
-        self.tang_conv_flux = tangential_convective_fluxes
+    @any(default=0)
+    def theta(self, theta: float):
+        return theta
 
 
-class CharacteristicRelaxationInflow(Boundary):
+class Outflow(Condition):
 
-    def __init__(self,
-                 state: CompressibleState,
-                 sigma: float = 0.25,
-                 reference_length: float = 1,
-                 tangential_convective_fluxes: bool = True) -> None:
+    name = "outflow"
 
-        super().__init__(state)
-        self.sigma = sigma
-        self.reference_length = reference_length
-        self.tang_conv_flux = tangential_convective_fluxes
+    @any(default=None)
+    def pressure(self, pressure) -> State:
+        return pressure
 
-
-class InviscidWall(Boundary):
-    ...
+    @pressure.getter_check
+    def pressure(self) -> None:
+        if self.data['pressure'] is None:
+            raise ValueError("Static pressure not set!")
 
 
-class Symmetry(Boundary):
-    ...
+class CBC(Condition, is_interface=True):
+
+    name = "cbc"
+
+    @any(default=None)
+    def state(self, state) -> State:
+        if state is not None:
+            state = CompressibleState(**state)
+        return state
+
+    @state.getter_check
+    def state(self) -> None:
+        if self.data['state'] is None:
+            raise ValueError("Farfield state not set!")
+
+    @any(default=0.28)
+    def relaxation_parameters(self, param: float):
+        parameters = ["acoustic_in", "entropy", "vorticity_0", "vorticity_1", "acoustic_out"]
+        if bla.is_scalar(param):
+            parameters = dict.fromkeys(parameters, param)
+        elif isinstance(param, (list, tuple)):
+            parameters = {key: value for key, value in zip(parameters, param)}
+        elif isinstance(param, dict):
+            parameters = {key: value for key, value in zip(parameters, param.values())}
+        return param
+
+    @any(default=False)
+    def is_tangential_convective_fluxes(self, tangential_convective_fluxes: bool):
+        return bool(tangential_convective_fluxes)
+
+    @any(default=False)
+    def is_viscous_fluxes(self, viscous_fluxes: bool):
+        return bool(viscous_fluxes)
 
 
-class IsothermalWall(Boundary):
+class GRCBC(CBC):
 
-    def __init__(self, temperature: float | CompressibleState) -> None:
-        if not isinstance(temperature, CompressibleState):
-            temperature = CompressibleState(temperature=temperature)
-        super().__init__(temperature)
+    name = "grcbc"
 
 
-class AdiabaticWall(Boundary):
-    ...
+class NSCBC(CBC):
+
+    name = "nscbc"
+
+    @any(default=1)
+    def length(self, length: float):
+        return length
 
 
-class CompressibleBC(BoundaryConditions):
-    farfield = FarField
-    outflow = Outflow
-    characteristic_outflow = CharacteristicRelaxationOutflow
-    characteristic_inflow = CharacteristicRelaxationInflow
-    inviscid_wall = InviscidWall
-    symmetry = Symmetry
-    isothermal_wall = IsothermalWall
-    adiabatic_wall = AdiabaticWall
-    periodic = Periodic
+class InviscidWall(Condition):
+
+    name = "inviscid_wall"
+
+
+class Symmetry(Condition):
+
+    name = "symmetry"
+
+
+class IsothermalWall(Condition):
+
+    name = "isothermal_wall"
+
+    @any(default=None)
+    def temperature(self, temperature) -> State:
+        return temperature
+
+    @temperature.getter_check
+    def temperature(self) -> None:
+        if self.data['temperature'] is None:
+            raise ValueError("Temperature not set!")
+
+
+class AdiabaticWall(Condition):
+
+    name = "adiabatic_wall"
 
 
 # ------- Domain Conditions ------- #
 
 
-class PML(Domain):
-    ...
+class PML(Condition):
 
-
-class CompressibleDC(DomainConditions):
-    initial = Initial
-    force = Force
-    perturbation = Perturbation
-    sponge_layer = SpongeLayer
-    psponge_layer = PSpongeLayer
-    grid_deformation = GridDeformation
-    pml = PML
+    name = "pml"

@@ -9,23 +9,19 @@ from .sensor import Sensor
 
 from .compressible import CompressibleFlowConfiguration
 
-from .config import MultipleConfiguration, FiniteElementConfig, multiple
+from .config import UniqueConfiguration, FiniteElementConfig, multiple
 from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, TimeConfig
 from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
 
 logger = logging.getLogger(__name__)
 
 
-class SolverConfiguration(MultipleConfiguration, is_unique=True):
+class SolverConfiguration(UniqueConfiguration):
 
-    # def __init__(self) -> None:
+    def __init__(self, mesh, **kwargs) -> None:
+        self.mesh = mesh
+        super().__init__(**kwargs)
 
-
-        
-    #     # self.pde = "compressible_flow"
-
-    #     # Time Configuration
-    #     self.simulation = "transient"
     #     self._fem = FiniteElementConfig()
 
     #     # Solution routine Configuration
@@ -40,6 +36,7 @@ class SolverConfiguration(MultipleConfiguration, is_unique=True):
 
     @multiple(default=CompressibleFlowConfiguration)
     def pde(self, pde):
+        self.pde._mesh = self.mesh
         return pde
     
     @multiple(default=FiniteElementConfig)

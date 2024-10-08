@@ -9,9 +9,7 @@ from dream.config import MultipleConfiguration, multiple
 from dream.time_schemes import ImplicitEuler, BDF2
 
 from dream.compressible.config import (
-    CompressibleState, CompressibleStateGradient, CompressibleFormulation, DreamMesh, CharacteristicRelaxationInflow,
-    CharacteristicRelaxationOutflow, FarField, Outflow, InviscidWall, Symmetry, IsothermalWall, BoundaryConditions,
-    DomainConditions)
+    CompressibleState, CompressibleStateGradient, CompressibleFormulation, FarField, Outflow, InviscidWall, Symmetry, IsothermalWall)
 
 
 logger = logging.getLogger(__name__)
@@ -32,9 +30,8 @@ class MixedMethod(MultipleConfiguration, is_interface=True):
     def P(self) -> ngs.CF:
         return self.cfg.pde.formulation.TnT['Q'][1]
 
-    def set_configuration_and_mesh(self, cfg: SolverConfiguration, dmesh: DreamMesh):
+    def set_configuration(self, cfg: SolverConfiguration):
         self.cfg = cfg
-        self.dmesh = dmesh
 
     def get_mixed_finite_element_spaces(self) -> dict[str, ngs.ProductSpace]:
         ...
@@ -292,7 +289,7 @@ class ConservativeFormulation(CompressibleFormulation):
             spaces = {}
 
         self.method.set_configuration_and_mesh(self.cfg, self.dmesh)
-        self.mixed_method.set_configuration_and_mesh(self.cfg, self.dmesh)
+        self.mixed_method.set_configuration(self.cfg, self.dmesh)
 
         spaces.update(self.method.get_finite_element_spaces())
         spaces.update(self.mixed_method.get_mixed_finite_element_spaces())

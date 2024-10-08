@@ -1,3 +1,4 @@
+# %%
 from __future__ import annotations
 import logging
 import ngsolve as ngs
@@ -6,167 +7,34 @@ from collections import UserDict
 from typing import Callable, Sequence, Any, TypeVar
 
 from dream import bla
-from dream.config import State
+from dream.config import State, MultipleConfiguration, any
 
 logger = logging.getLogger(__name__)
 
 
-def pattern_from_sequence(sequence: Sequence) -> str:
+def is_mesh_periodic(mesh: ngs.Mesh) -> bool:
+    return bool(mesh.GetPeriodicNodePairs(ngs.VERTEX))
+
+
+def get_pattern_from_sequence(sequence: Sequence) -> str:
     if isinstance(sequence, str):
         return sequence
     return "|".join(sequence)
 
 
-def pattern_from_dictionary(dictionary: dict[str, Any]) -> dict[str, Any]:
+def get_pattern_dictionary_from_dictionary(dictionary: dict[str, Any]) -> dict[str, Any]:
     values = set(dictionary.values())
-    return {pattern_from_sequence([key for key, value in dictionary.items() if value == condition]): condition for condition in values if condition is not None}
+    return {get_pattern_from_sequence([key for key, value in dictionary.items() if value == condition]): condition for condition in values if condition is not None}
 
 
-class DreamMesh:
+def get_regions_from_pattern(regions, pattern) -> tuple[str]:
 
-    def __init__(self, mesh: ngs.Mesh) -> None:
-        self._mesh = mesh
-        self._bcs = BCContainer(mesh.GetBoundaries())
-        self._dcs = DCContainer(mesh.GetMaterials())
-        self._is_periodic = bool(mesh.GetPeriodicNodePairs(ngs.VERTEX))
+    if isinstance(pattern, str):
+        pattern = pattern.split("|")
 
-        self.normal = ngs.specialcf.normal(mesh.dim)
-        self.tangential = ngs.specialcf.tangential(mesh.dim)
-        self.h = ngs.specialcf.mesh_size
+    regions = tuple(region for region in pattern if region in regions)
 
-    @property
-    def ngsmesh(self) -> ngs.Mesh:
-        return self._mesh
-
-    @property
-    def dim(self) -> int:
-        return self.ngsmesh.dim
-
-    @property
-    def bcs(self) -> BCContainer:
-        return self._bcs
-
-    @property
-    def dcs(self) -> DCContainer:
-        return self._dcs
-
-    @property
-    def boundaries(self) -> tuple[str]:
-        return tuple(self.bcs)
-
-    @property
-    def domains(self) -> tuple[str]:
-        return tuple(self.dcs)
-
-    @property
-    def is_periodic(self) -> bool:
-        return self._is_periodic
-
-    def boundary(self, boundary: Sequence) -> ngs.Region:
-        boundary = pattern_from_sequence(boundary)
-        return self.ngsmesh.Boundaries(boundary)
-
-    def domain(self, domain: Sequence) -> ngs.Region:
-        domain = pattern_from_sequence(domain)
-        return self.ngsmesh.Materials(domain)
-
-    def get_grid_deformation(self, grid_deformation: dict[str, GridDeformation] = None):
-        if grid_deformation is None:
-            grid_deformation = self.dcs.get(GridDeformation, as_pattern=True)
-        return self._get_buffer_function_(grid_deformation, GridDeformation)
-
-    def get_sponge_function(self, sponge_layers: dict[str, SpongeLayer] = None):
-        if sponge_layers is None:
-            sponge_layers = self.dcs.get(SpongeLayer, as_pattern=True)
-        return self._get_buffer_function_(sponge_layers, SpongeLayer)
-
-    def get_psponge_function(self, psponge_layers:  dict[str, PSpongeLayer] = None):
-        if psponge_layers is None:
-            psponge_layers = self.dcs.get(PSpongeLayer, as_pattern=True)
-        return self._get_buffer_function_(psponge_layers, PSpongeLayer)
-
-    def _get_buffer_function_(self, domains: dict[str, Buffer] = None, buffer_type: Buffer = None) -> ngs.GridFunction:
-
-        if not domains:
-            logger.warning(f"{buffer_type} has not been set in domain conditions!")
-            return None
-
-        fes = buffer_type.space(domains, self)
-        u, v = fes.TnT()
-
-        blf = ngs.BilinearForm(fes)
-        blf += u * v * ngs.dx
-
-        lf = ngs.LinearForm(fes)
-        for region, bc in domains.items():
-
-            if not isinstance(bc, buffer_type):
-                raise TypeError(f"Only domains of type '{buffer_type}' allowed!")
-
-            lf += bc.buffer_function * v * ngs.dx(definedon=self.domain(region))
-
-        gfu = ngs.GridFunction(fes, name=str(buffer_type))
-        blf.Assemble()
-        lf.Assemble()
-
-        gfu.vec.data = blf.mat.Inverse(inverse="sparsecholesky") * lf.vec
-
-        return gfu
-
-    def _reduce_psponge_layers_order_elementwise(self, space: ngs.L2 | ngs.VectorL2) -> ngs.L2 | ngs.VectorL2:
-
-        if not isinstance(space, (ngs.L2, ngs.VectorL2)):
-            raise TypeError("Can not reduce element order of non L2-spaces!")
-
-        psponge_layers = self.dcs.get(PSpongeLayer, as_pattern=True)
-
-        if psponge_layers:
-
-            space = type(space)(space.mesh, **space.flags, order_policy=ngs.ORDER_POLICY.VARIABLE)
-
-            for domain, bc in psponge_layers.items():
-
-                bc.check_fem_order(space.globalorder)
-
-                domain = self.domain(domain)
-
-                for el in domain.Elements():
-                    space.SetOrder(ngs.NodeId(ngs.ELEMENT, el.nr), bc.high_order)
-
-            space.UpdateDofTables()
-
-        return space
-
-    def _reduce_psponge_layers_order_facetwise(self, space: ngs.FacetFESpace) -> ngs.FacetFESpace:
-
-        if not isinstance(space, ngs.FacetFESpace):
-            raise TypeError("Can not reduce element order of non FacetFESpace-spaces!")
-
-        psponge_layers = self.dcs.get(PSpongeLayer)
-
-        if psponge_layers:
-
-            space = type(space)(space.mesh, **space.flags, order_policy=ngs.ORDER_POLICY.VARIABLE)
-
-            if self.dim != 2:
-                raise NotImplementedError("3D PSpongeLayer not implemented for the moment!")
-
-            psponge_region = self.domain(pattern_from_sequence(psponge_layers))
-            vhat_dofs = ~space.GetDofs(psponge_region)
-
-            for domain, bc in psponge_layers.items():
-                bc.check_fem_order(space.globalorder)
-
-                domain = self.domain(domain)
-                domain_dofs = space.GetDofs(domain)
-                for i in range(bc.high_order + 1, space.globalorder + 1, 1):
-                    domain_dofs[i::space.globalorder + 1] = 0
-
-                vhat_dofs |= domain_dofs
-
-            space = ngs.Compress(space, vhat_dofs)
-
-        return space
+    return regions
 
 
 class BufferCoord(ngs.CF):
@@ -345,10 +213,7 @@ class GridMapping:
 
         return cls(coordinate, map)
 
-    def __init__(self,
-                 x: ngs.CF,
-                 map: Callable[[bla.SCALAR], bla.SCALAR]) -> None:
-
+    def __init__(self, x: ngs.CF, map: Callable[[bla.SCALAR], bla.SCALAR]) -> None:
         self.x = x
         self.map = map
 
@@ -384,92 +249,115 @@ class GridMapping:
         return self.map(x_)
 
 
-class Condition:
-
-    @property
-    def label(self):
-        return self.__class__.__name__
-
-    def __init__(self, state: State = None) -> None:
-        self.state = state
-
-    def __str__(self) -> str:
-        return self.__class__.__name__
+class Condition(MultipleConfiguration, is_interface=True):
 
     def __hash__(self) -> int:
         return id(self)
 
 
-CTYPE = TypeVar("CTYPE", bound=Condition)
+class Initial(Condition):
+
+    name = "initial"
+
+    @any(default=None)
+    def state(self, state) -> State:
+        return state
+
+    @state.getter_check
+    def state(self) -> None:
+        if self.data['state'] is None:
+            raise ValueError("Initial State not set!")
+
+    state: State
 
 
-class ConditionContainer(UserDict):
+class Perturbation(Condition):
 
-    def __init__(self, regions) -> None:
-        self.data = dict.fromkeys(regions, None)
-        self.clear()
+    name = "perturbation"
 
-    def set(self, condition: Condition, regions: Sequence[str]):
-        self[regions] = condition
 
-    def set_from_dict(self, other: dict[str, Condition]):
-        for key, bc in other.items():
-            self[key] = bc
+class Force(Condition):
 
-    def get(self, condition: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
-        return {}
+    name = "force"
 
-    def as_pattern(self) -> dict[str, CTYPE]:
-        return pattern_from_dictionary(self)
 
-    def _filter_region(self, region) -> tuple[str]:
+class Buffer(Condition, is_interface=True):
 
-        if isinstance(region, str):
-            region = region.split("|")
+    @any(default=None)
+    def function(self, buffer_function) -> ngs.CF:
+        return buffer_function
 
-        regions = tuple(r for r in region if r in self)
+    @function.getter_check
+    def function(self) -> ngs.CF:
+        if self.data['function'] is None:
+            raise ValueError("Buffer function not set!")
 
-        for miss in set(region).difference(regions):
-            logger.warning(f"{miss} does not exist! Condition can not be set!")
+    @any(default=0)
+    def order(self, order) -> int:
+        return int(order)
 
-        return regions
-
-    def clear(self) -> None:
+    @classmethod
+    def get_space(cls, buffers: dict[str, Buffer], mesh: ngs.Mesh) -> ngs.FESpace:
         raise NotImplementedError()
 
-
-class Domain(Condition):
-    ...
-
-
-class Initial(Domain):
-    ...
-
-
-class Perturbation(Domain):
-    ...
-
-
-class Force(Domain):
-    ...
-
-
-class Buffer(Domain):
-
-    def __init__(self, buffer_function: ngs.CF, state: State = None, order: int = 0) -> None:
-        self.buffer_function = buffer_function
-        self.order = int(order)
-        super().__init__(state)
-
-    @staticmethod
-    def space(domains: dict[str, Buffer], dmesh: DreamMesh) -> ngs.FESpace:
-        raise NotImplementedError()
+    function: ngs.CF
+    order: int
 
 
 class GridDeformation(Buffer):
 
+    name = "grid_deformation"
+
+    @any(default=2)
+    def dim(self, dim) -> int:
+        return int(dim)
+
+    @any(default=None)
+    def x(self, x) -> GridMapping:
+        map = self.check_mapping(x, ngs.x)
+        self.set_function(x=x)
+        return map
+
+    @any(default=None)
+    def y(self, y) -> GridMapping:
+        map = self.check_mapping(y, ngs.y)
+        self.set_function(y=y)
+        return map
+
+    @any(default=None)
+    def z(self, z) -> GridMapping:
+        map = self.check_mapping(z, ngs.z)
+        self.set_function(z=z)
+        return map
+
+    def set_function(self, x: GridMapping = None, y: GridMapping = None, z: GridMapping = None) -> None:
+
+        if x is None:
+            x = self.data.get("x", GridMapping.none(ngs.x))
+
+        if y is None:
+            y = self.data.get("y", GridMapping.none(ngs.y))
+
+        if z is None:
+            z = self.data.get("z", GridMapping.none(ngs.z))
+
+        self.function = ngs.CF(tuple(map.deformation for map in (x, y, z)[:self.dim]))
+
+    @classmethod
+    def get_space(cls, grid_deformations: dict[str, GridDeformation], mesh: ngs.Mesh) -> ngs.VectorH1:
+        orders = [grid_deformation.order for grid_deformation in grid_deformations.values()]
+
+        grid_deformation_pattern = get_pattern_from_sequence(grid_deformations)
+        fes = ngs.VectorH1(mesh, order=max(orders))
+        fes = ngs.Compress(fes, active_dofs=fes.GetDofs(mesh.Materials(grid_deformation_pattern)))
+
+        if hasattr(mesh, "is_periodic") and mesh.is_periodic or is_mesh_periodic(mesh):
+            fes = ngs.Periodic(fes)
+
+        return fes
+
     @staticmethod
-    def _check_mapping(map: GridMapping, coordinate: ngs.CF) -> GridMapping:
+    def check_mapping(map: GridMapping, coordinate: ngs.CF) -> GridMapping:
         if map is None:
             map = GridMapping.none(coordinate)
 
@@ -478,193 +366,271 @@ class GridDeformation(Buffer):
 
         return map
 
-    @staticmethod
-    def space(domains: dict[str, GridDeformation], dmesh: DreamMesh) -> ngs.VectorH1:
-        orders = [dc.order for dc in domains.values()]
-
-        fes = ngs.VectorH1(dmesh.ngsmesh, order=max(orders))
-        fes = ngs.Compress(fes, active_dofs=fes.GetDofs(dmesh.domain(domains)))
-
-        if dmesh.is_periodic:
-            fes = ngs.Periodic(fes)
-
-        return fes
-
-    def __init__(self, x: GridMapping = None, y: GridMapping = None, z: GridMapping = None, dim: int = 2, order: int = 2) -> None:
-        x = self._check_mapping(x, ngs.x)
-        y = self._check_mapping(y, ngs.y)
-        z = self._check_mapping(z, ngs.z)
-
-        deformation = ngs.CF(tuple(map.deformation for map in (x, y, z)[:dim]))
-        super().__init__(deformation, order=order)
+    dim: int
+    x: GridMapping
+    y: GridMapping
+    z: GridMapping
 
 
 class SpongeLayer(Buffer):
 
-    @staticmethod
-    def space(domains: dict[str, SpongeLayer], dmesh: DreamMesh) -> ngs.L2:
+    name = "sponge_layer"
 
-        orders = [dc.order for dc in domains.values()]
+    @any(default=None)
+    def target_state(self, target_state) -> State:
+        return target_state
+
+    @target_state.getter_check
+    def target_state(self) -> None:
+        if self.data['target_state'] is None:
+            raise ValueError("Target State not set!")
+
+    @classmethod
+    def get_space(cls, sponge_layers: dict[str, SpongeLayer], mesh: ngs.Mesh):
+
+        orders = [sponge_layer.order for sponge_layer in sponge_layers.values()]
         is_constant_order = all([order == orders[0] for order in orders])
 
         order_policy = ngs.ORDER_POLICY.CONSTANT
         if not is_constant_order:
             order_policy = ngs.ORDER_POLICY.VARIABLE
 
-        fes = ngs.L2(dmesh.ngsmesh, order=max(orders), order_policy=order_policy)
+        fes = ngs.L2(mesh, order=max(orders), order_policy=order_policy)
 
         if not is_constant_order:
 
-            for region, bc in domains.items():
-                region = dmesh.domain(region)
+            for region, bc in sponge_layers.items():
+                region = mesh.Materials(region)
 
                 for el in region.Elements():
                     fes.SetOrder(ngs.NodeId(ngs.ELEMENT, el.nr), bc.order)
 
+        sponge_layers_pattern = get_pattern_from_sequence(sponge_layers)
+
         fes.UpdateDofTables()
-        fes = ngs.Compress(fes, active_dofs=fes.GetDofs(dmesh.domain(domains)))
+        fes = ngs.Compress(fes, active_dofs=fes.GetDofs(mesh.Materials(sponge_layers_pattern)))
 
         return fes
 
-    def __init__(self, sponge_function: ngs.CF, reference_state: State, order: int = 0) -> None:
-        super().__init__(sponge_function, reference_state, order)
+    target_state: State
 
 
-class PSpongeLayer(Buffer):
+class PSpongeLayer(SpongeLayer):
 
-    @staticmethod
-    def space(domains: dict[str, PSpongeLayer], dmesh: DreamMesh) -> ngs.L2:
-        return SpongeLayer.space(domains, dmesh)
+    name = "psponge_layer"
 
-    @staticmethod
-    def polynomial_order_range(highest, lowest: int = 0, step: int = 1) -> tuple[tuple[int, int]]:
-        orders = [order for order in range(highest, lowest, -step)] + [lowest, lowest]
-        return tuple((high, low) for high, low in zip(orders[:-1], orders[1:]))
+    @any(default=0)
+    def high_order(self, high_order) -> int:
 
-    def __init__(self,
-                 high_order: int,
-                 low_order: int,
-                 sponge_function: ngs.CF,
-                 reference_state: State,
-                 order: int = 0) -> None:
-
-        if high_order < 0 or low_order < 0:
+        if high_order < 0:
             raise ValueError("Negative polynomial order!")
 
+        low_order = self.data.get("low_order", 0)
         if not high_order >= low_order:
             raise ValueError("Low order must be less equal high order")
 
-        self.high_order = int(high_order)
-        self.low_order = int(low_order)
-        super().__init__(sponge_function, reference_state, order)
+        return int(high_order)
+
+    @any(default=0)
+    def low_order(self, low_order) -> int:
+
+        if low_order < 0:
+            raise ValueError("Negative polynomial order!")
+
+        if not self.high_order >= low_order:
+            raise ValueError("Low order must be less equal high order")
+
+        return int(low_order)
 
     @property
     def is_equal_order(self) -> bool:
         return self.high_order == self.low_order
 
-    def check_fem_order(self, order: int):
-        if self.high_order > order:
-            raise ValueError("Polynomial sponge order higher than polynomial discretization order")
+    @classmethod
+    def get_pairs_of_polynomial_orders(cls, highest, lowest: int = 0, step: int = 1) -> tuple[tuple[int, int]]:
+        orders = [order for order in range(highest, lowest, -step)] + [lowest, lowest]
+        return tuple((high, low) for high, low in zip(orders[:-1], orders[1:]))
+
+    high_order: int
+    low_order: int
 
 
-class DCContainer(ConditionContainer):
+class Periodic(Condition):
 
-    def set(self, condition: CTYPE, domains: str = "default"):
-        super().set(condition, domains)
+    name = "periodic"
 
-    def get(self, condition: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
-        if isinstance(condition, type) and issubclass(condition, Domain):
-            label = condition.__name__
-        elif isinstance(condition, Domain):
-            label = condition.label
-        else:
-            raise TypeError(f"Condition not of type '{Domain}'")
 
-        conditions = {key: value[label] for key, value in self.items() if label in value}
+class Conditions(UserDict):
 
-        if as_pattern:
-            conditions = pattern_from_dictionary(conditions)
+    conditions: dict[str, Condition] = {}
 
-        return conditions
+    def __init_subclass__(cls) -> None:
+        cls.conditions = {}
+        return super().__init_subclass__()
+
+    def __init__(self, regions: list[str], mesh: ngs.Mesh) -> None:
+        self.data = {region: [] for region in regions}
+        self.mesh = mesh
+
+        if not hasattr(mesh, "is_periodic"):
+            self.mesh.is_periodic = is_mesh_periodic(mesh)
 
     def clear(self) -> None:
-        for domain in self:
-            self.data[domain] = dict()
-
-    def __setitem__(self, regions: str, condition: CTYPE) -> None:
-        if not isinstance(condition, Domain):
-            raise TypeError(f"Domain condition must be instance of '{Domain}'")
-
-        for region in self._filter_region(regions):
-            self.data[region][condition.label] = condition
-
-
-class Boundary(Condition):
-    ...
-
-
-class Periodic(Boundary):
-    ...
-
-
-class BCContainer(ConditionContainer):
-
-    def get_domain_boundaries(self, as_pattern: bool = False) -> list | str:
-        """ Returns a list or pattern of the domain boundaries!
-
-            The domain boundaries are deduced by the current set boundary conditions,
-            while periodic boundaries are neglected! 
-        """
-
-        bnds = [bnd for bnd, bc in self.items() if not isinstance(bc, Periodic) or bc is None]
-
-        if as_pattern:
-            bnds = pattern_from_sequence(bnds)
-
-        return bnds
-
-    def set(self, condition: Boundary, boundaries: str):
-        super().set(condition, boundaries)
-
-    def get(self, *conditions: type[CTYPE] | CTYPE, as_pattern: bool = False) -> dict[str, CTYPE]:
-
-        conditions = tuple(condition if isinstance(condition, type) else type(condition) for condition in conditions)
-
-        for condition in conditions:
-
-            if not issubclass(condition, Boundary):
-                raise TypeError(f"Condition not of type '{Boundary}'")
-
-        conditions = {key: value for key, value in self.items() if isinstance(value, conditions)}
-        if as_pattern:
-            conditions = pattern_from_dictionary(conditions)
-
-        return conditions
-
-    def clear(self) -> None:
-        for bnd in self:
-            self.data[bnd] = None
-
-    def __setitem__(self, regions: str, condition: CTYPE) -> None:
-        if not isinstance(condition, Boundary):
-            raise TypeError(f"Boundary condition must be instance of '{Boundary}'")
-
-        for region in self._filter_region(regions):
-            self.data[region] = condition
-
-    def __repr__(self):
-        return "".join(f"{key}: {str(val)}\n" for key, val in self.items() if val)
-
-
-class BoundaryConditions:
+        self.data = {region: [] for region in self}
 
     @classmethod
-    def list(cls):
-        return [key for key, bc in vars(cls).items() if isinstance(bc, type) and issubclass(bc, Boundary)]
+    def register_condition(cls, condition: Condition) -> None:
+        cls.conditions[condition.name] = condition
+
+    def __setitem__(self, pattern: str, condition: Condition) -> None:
+
+        if isinstance(condition, str):
+            if condition not in self.conditions:
+                msg = f""" Can not set condition '{condition}'!
+                           Valid alternatives are: {self.conditions}"""
+                raise ValueError(msg)
+            condition = self.conditions[condition]()
+
+        elif not isinstance(condition, Condition):
+            raise TypeError(f"Condition must be instance of '{Condition}'")
+
+        if isinstance(pattern, str):
+            pattern = pattern.split("|")
+
+        regions = get_regions_from_pattern(self, pattern)
+
+        for miss in set(pattern).difference(regions):
+            logger.warning(f"Region '{miss}' does not exist! Condition can not be set!")
+
+        for region in regions:
+            self.data[region].append(condition)
+
+            if len(self.data[region]) > 1:
+                logger.warning(f"Multiple conditions set for region '{region}': {self[region]}!")
 
 
-class DomainConditions:
+class BoundaryConditions(Conditions):
 
-    @classmethod
-    def list(cls):
-        return [key for key, dc in vars(cls).items() if isinstance(dc, type) and issubclass(dc, Domain)]
+    def __init__(self, mesh: ngs.Mesh) -> None:
+        super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh)
+
+
+class DomainConditions(Conditions):
+
+    def __init__(self, mesh: ngs.Mesh) -> None:
+        super().__init__(list(dict.fromkeys(mesh.GetMaterials())), mesh)
+
+    def get_grid_deformation(self, grid_deformations: dict[str, GridDeformation] = None):
+        if grid_deformations is None:
+            grid_deformations = {region: bc for region, bc in self.items() if isinstance(bc, GridDeformation)}
+        return self.get_buffer_function_(grid_deformations, GridDeformation)
+
+    def get_sponge_function(self, sponge_layers: dict[str, SpongeLayer] = None):
+        if sponge_layers is None:
+            sponge_layers = {region: bc for region, bc in self.items() if isinstance(bc, SpongeLayer)
+                             and not isinstance(PSpongeLayer)}
+        return self.get_buffer_function_(sponge_layers, SpongeLayer)
+
+    def get_psponge_function(self, psponge_layers:  dict[str, PSpongeLayer] = None):
+        if psponge_layers is None:
+            psponge_layers = {region: bc for region, bc in self.items() if isinstance(bc, PSpongeLayer)}
+        return self.get_buffer_function_(psponge_layers, PSpongeLayer)
+
+    def get_buffer_function_(self, domains: dict[str, Buffer], buffer_type: Buffer) -> ngs.GridFunction:
+
+        if not isinstance(buffer_type, type):
+            buffer_type = type(buffer_type)
+
+        if not issubclass(buffer_type, Buffer):
+            raise TypeError(f"Buffer type has to be a subclass of '{Buffer}'")
+
+        domains = get_pattern_dictionary_from_dictionary(domains)
+
+        fes = buffer_type.get_space(domains, self.mesh)
+        u, v = fes.TnT()
+
+        blf = ngs.BilinearForm(fes)
+        blf += u * v * ngs.dx
+
+        lf = ngs.LinearForm(fes)
+        for region, bc in domains.items():
+
+            if not isinstance(bc, buffer_type):
+                raise TypeError(f"Only domains of type '{buffer_type}' allowed!")
+
+            lf += bc.function * v * ngs.dx(definedon=self.mesh.Materials(region))
+
+        gfu = ngs.GridFunction(fes, name=str(buffer_type))
+
+        with ngs.TaskManager():
+            blf.Assemble()
+            lf.Assemble()
+
+            gfu.vec.data = blf.mat.Inverse(inverse="sparsecholesky") * lf.vec
+
+        return gfu
+
+    def reduce_psponge_layers_order_elementwise(
+            self, space: ngs.L2 | ngs.VectorL2, psponge_layers: dict[str, PSpongeLayer] = None) -> ngs.L2 | ngs.VectorL2:
+
+        if not isinstance(space, (ngs.L2, ngs.VectorL2)):
+            raise TypeError("Can not reduce element order of non L2-spaces!")
+
+        if psponge_layers is None:
+            psponge_layers = {region: bc for region, bc in self.items() if isinstance(bc, PSpongeLayer)}
+            psponge_layers = get_pattern_dictionary_from_dictionary(psponge_layers)
+
+        if psponge_layers:
+
+            space = type(space)(space.mesh, **space.flags, order_policy=ngs.ORDER_POLICY.VARIABLE)
+
+            for domain, bc in psponge_layers.items():
+
+                if bc.high_order > space.globalorder:
+                    raise ValueError("Polynomial sponge order higher than polynomial discretization order")
+
+                domain = self.mesh.Materials(domain)
+
+                for el in domain.Elements():
+                    space.SetOrder(ngs.NodeId(ngs.ELEMENT, el.nr), bc.high_order)
+
+            space.UpdateDofTables()
+
+        return space
+
+    def reduce_psponge_layers_order_facetwise(
+            self, space: ngs.FacetFESpace, psponge_layers: dict[str, PSpongeLayer] = None) -> ngs.FacetFESpace:
+
+        if not isinstance(space, ngs.FacetFESpace):
+            raise TypeError("Can not reduce element order of non FacetFESpace-spaces!")
+
+        if psponge_layers is None:
+            psponge_layers = {region: bc for region, bc in self.items() if isinstance(bc, PSpongeLayer)}
+            psponge_layers = get_pattern_dictionary_from_dictionary(psponge_layers)
+
+        if psponge_layers:
+
+            space = type(space)(space.mesh, **space.flags, order_policy=ngs.ORDER_POLICY.VARIABLE)
+
+            if self.mesh.dim != 2:
+                raise NotImplementedError("3D PSpongeLayer not implemented for the moment!")
+
+            psponge_region = self.mesh.Materials(get_pattern_from_sequence(psponge_layers))
+            vhat_dofs = ~space.GetDofs(psponge_region)
+
+            for domain, bc in psponge_layers.items():
+
+                if bc.high_order > space.globalorder:
+                    raise ValueError("Polynomial sponge order higher than polynomial discretization order")
+
+                domain = self.mesh.Materials(domain)
+                domain_dofs = space.GetDofs(domain)
+                for i in range(bc.high_order + 1, space.globalorder + 1, 1):
+                    domain_dofs[i::space.globalorder + 1] = 0
+
+                vhat_dofs |= domain_dofs
+
+            space = ngs.Compress(space, vhat_dofs)
+
+        return space
+# %%
