@@ -187,11 +187,6 @@ class EquationOfState(MultipleConfiguration, is_interface=True):
     def characteristic_from_conservative(self, state: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.entry('Equation of CompressibleState', str(self))
-        return formatter.output
-
 
 class IdealGas(EquationOfState):
 
@@ -1932,7 +1927,7 @@ class Conservative(CompressibleFormulation):
         U, Uhat = self.U, self.Uhat
 
         unit_vector = bla.as_vector(unit_vector)
-        tau_c = self.cfg.pde.riemann_solver.convective_stabilisation_matrix(Uhat.trial_state, unit_vector)
+        tau_c = self.cfg.pde.riemann_solver.get_convective_stabilisation_matrix(Uhat.trial_state, unit_vector)
 
         F = eq.convective_flux(Uhat.trial_state)
 

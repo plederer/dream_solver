@@ -179,7 +179,10 @@ class TestDescriptorConfigurationChild(unittest.TestCase):
         self.obj.clear()
 
         self.assertDictEqual(self.obj.data, {'x': 0.0, 'y': 0.0})
-        self.assertDictEqual(self.obj.__dict__, {'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
+        self.assertDictEqual(self.obj.__dict__, {'cfg': {'x': 0.0, 'y': 0.0}, 'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
+
+    def test_root_id(self):
+        self.assertEqual(id(self.obj.cfg), id(self.obj))
 
     def test_export_default(self):
         self.assertDictEqual(self.obj.to_flat_dict(), {'x': 0.0, 'y': 0.0})
@@ -198,6 +201,9 @@ class TestUniqueConfiguration(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.obj.clear()
+
+    def test_root_id(self):
+        self.assertEqual(id(self.obj), id(self.obj.other.cfg))
 
     def test_export_default(self):
         self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0})

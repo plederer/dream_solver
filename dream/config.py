@@ -63,22 +63,22 @@ class variable(descriptor):
     tensor dimensions.
     """
 
-    __slots__ = ("cast", "label")
+    __slots__ = ("cast", "symbol")
 
-    def __init__(self, cast: typing.Callable, label: str) -> None:
+    def __init__(self, cast: typing.Callable, symbol: str) -> None:
         self.cast = cast
-        self.label = label
+        self.symbol = symbol
 
     def __get__(self, state: State, objtype) -> ngs.CF:
-        return state.data.get(self.label, None)
+        return state.data.get(self.symbol, None)
 
     def __set__(self, state: State, value) -> None:
         if value is not None:
             value = self.cast(value)
-            state.data[self.label] = value
+            state.data[self.symbol] = value
 
     def __delete__(self, state: State):
-        del state.data[self.label]
+        del state.data[self.symbol]
 
 
 class configuration(descriptor):
@@ -172,8 +172,13 @@ class unique(configuration):
 
         elif isinstance(value, str):
 
-            if value == self.name:
-                cfg.data[self.name] = self.default()
+            if value == self.default.name:
+                cfg.data[self.name] = self.default(cfg=cfg.cfg)
+            else:
+                msg = f""" Invalid type '{value}'!
+                           Allowed option: '{self.default.name}!'
+                """
+                raise TypeError(msg)
 
             if self.fset_ is not None:
                 value = self.fset_(cfg, cfg.data[self.name])
@@ -185,18 +190,16 @@ class unique(configuration):
             msg = f""" Can not set variable of type {type(value)}!
 
             To set '{self.name}' pass either:
-            1. An instance of type {self.default.leafs.root}.
-            2. A keyword from available options: {list(self.default.leafs)}.
+            1. An instance of type {self.default}.
+            2. A keyword: {list(self.default.name)}.
 
             To update the current instance pass a dictionary with following keywords:
             {list(cfg.data[self.name].data.keys())}
             """
             raise TypeError(msg)
 
-        cfg.data[self.name].parent = cfg
-
     def reset(self, cfg: MultipleConfiguration):
-        self.__set__(cfg, self.default())
+        self.__set__(cfg, self.default(cfg=cfg.cfg))
 
 
 class multiple(unique):
@@ -211,7 +214,7 @@ class multiple(unique):
         elif isinstance(value, str):
             cfg_ = self.default.leafs[value]
             if not isinstance(cfg.data[self.name], cfg_):
-                cfg.data[self.name] = cfg_()
+                cfg.data[self.name] = cfg_(cfg=cfg.cfg)
 
             if self.fset_ is not None:
                 value = self.fset_(cfg, cfg.data[self.name])
@@ -230,8 +233,6 @@ class multiple(unique):
             {list(cfg.data[self.name].data.keys())}
             """
             raise TypeError(msg)
-
-        cfg.data[self.name].parent = cfg
 
 
 # ------- Abstract Classes ------- #
@@ -265,7 +266,7 @@ class InheritanceTree(collections.UserDict):
 class State(collections.UserDict):
 
     def __init_subclass__(cls) -> None:
-        cls.alias_map = {value.label: var for var, value in vars(cls).items() if isinstance(value, variable)}
+        cls.alias_map = {value.symbol: var for var, value in vars(cls).items() if isinstance(value, variable)}
         return super().__init_subclass__()
 
     def __setitem__(self, key: str, value):
@@ -283,12 +284,6 @@ class State(collections.UserDict):
             key = self.alias_map[key]
         delattr(self, key)
 
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __repr__(self) -> str:
-        return f"{str(self)}{self.data}"
-
     @staticmethod
     def is_set(*args) -> bool:
         return all([arg is not None for arg in args])
@@ -299,12 +294,8 @@ class State(collections.UserDict):
         mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
         return {key: value(mesh()) if isinstance(value, ngs.CF) else value for key, value in self.items()}
 
-    def __repr__(self) -> str:
-        data = {key: value for key, value in self.data.items() if value is not None}
-        return f"{str(self)}{data}"
-
-    def __str__(self):
-        return self.__class__.__name__
+    def __repr__(self):
+        return str(self.to_float())
 
 
 class UniqueConfiguration(collections.UserDict):
@@ -324,9 +315,14 @@ class UniqueConfiguration(collections.UserDict):
 
         super().__init_subclass__()
 
-    def __init__(self, dict=None, /, **kwargs):
+    def __init__(self, cfg: UniqueConfiguration = None, **kwargs):
+
+        if cfg is None:
+            cfg = self
+        self.cfg = cfg
+
         self.clear()
-        self.update(dict, **kwargs)
+        self.update(**kwargs)
 
     def update(self, dict=None, **kwargs):
 
@@ -357,7 +353,12 @@ class UniqueConfiguration(collections.UserDict):
         if data is None:
             data = {}
 
-        for key, value in self.items():
+        for key in self:
+
+            try:
+                value = self[key]
+            except Exception:
+                continue
 
             if root:
                 key = f"{root}.{key}"
@@ -389,7 +390,7 @@ class UniqueConfiguration(collections.UserDict):
         delattr(self, key)
 
     def __repr__(self) -> str:
-        return str(self.to_flat_dict())
+        return "\n".join([f"{key}: {value}" for key, value in self.to_flat_dict(root=self.name).items()])
 
 
 class MultipleConfiguration(UniqueConfiguration):
@@ -404,7 +405,7 @@ class MultipleConfiguration(UniqueConfiguration):
         if is_interface:
             cls.leafs = InheritanceTree(cls)
             cls.aliases = ()
-            cls.cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)] 
+            cls.cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
 
         else:
             for name in [cls.name, *cls.aliases]:
@@ -413,120 +414,6 @@ class MultipleConfiguration(UniqueConfiguration):
                     raise ValueError(f"Concrete Class of type {cls.leafs.root} with name {name} already included!")
                 cls.leafs[name] = cls
 
-            cls.cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)] + cls.cfgs
+            cls.cfgs = cls.cfgs + [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
 
         super().__init_subclass__()
-
-
-# ------- Concrete Classes ------- #
-
-class BonusIntegrationOrder(UniqueConfiguration):
-
-    @any(default=0)
-    def vol(self, vol):
-        return int(vol)
-
-    @any(default=0)
-    def bnd(self, bnd):
-        return int(bnd)
-
-    @any(default=0)
-    def bbnd(self, bbnd):
-        return int(bbnd)
-
-    @any(default=0)
-    def bbbnd(self, bbbnd):
-        return int(bbbnd)
-
-    vol: int
-    bnd: int
-    bbnd: int
-    bbbnd: int
-
-
-class FiniteElementConfig(UniqueConfiguration):
-
-    @any(default=2)
-    def order(self, order):
-        return int(order)
-
-    @any(default=True)
-    def static_condensation(self, static_condensation):
-        return bool(static_condensation)
-
-    @unique(default=BonusIntegrationOrder)
-    def bonus_int_order(self, dict_):
-        return dict_
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.subheader('Finite Element Configuration').newline()
-        formatter.entry('Polynomial Order', self._order)
-        formatter.entry('Static Condensation', str(self._static_condensation))
-        formatter.add_config(self.bonus_int_order)
-        return formatter.output
-
-    order: int
-    static_condensation: bool
-    bonus_int_order: BonusIntegrationOrder
-
-
-# ------ Formatter ------- #
-
-class Formatter:
-
-    TERMINAL_WIDTH: int = 80
-    TEXT_INDENT = 5
-    COLUMN_RATIO = (0.5, 0.5)
-
-    @classmethod
-    def new(cls):
-        return cls()
-
-    def __init__(self) -> None:
-        self.reset()
-
-    def header(self, text: str):
-        text = f" {text.upper()} "
-        header = f"{text:─^{self.TERMINAL_WIDTH}}" + "\n"
-        self.output += header
-        return self
-
-    def subheader(self, text: str):
-        text = '─── ' + text.upper() + ' ───'
-        subheader = f"{text:^{self.TERMINAL_WIDTH}}" + "\n"
-        self.output += subheader
-        return self
-
-    def entry(self, text: str, value, equal: str = ":"):
-
-        if isinstance(value, ngs.Parameter):
-            value = value.Get()
-
-        txt_width, value_width = tuple(int(self.TERMINAL_WIDTH * ratio) for ratio in self.COLUMN_RATIO)
-        entry = f"{text + equal:>{txt_width}} {value:<{value_width}}" + "\n"
-        self.output += entry
-        return self
-
-    def text(self, text: str):
-        width = self.TERMINAL_WIDTH - 2*self.TEXT_INDENT
-        indent = self.TEXT_INDENT * ' '
-        for line in text.split('\n'):
-            wrap_line = textwrap.fill(line, width, initial_indent=indent, subsequent_indent=indent,
-                                      replace_whitespace=False, drop_whitespace=False)
-            self.output += wrap_line + "\n"
-        return self
-
-    def newline(self):
-        self.output += "\n"
-        return self
-
-    def reset(self):
-        self.output = ""
-
-    def add_config(self, object):
-        self.output += object.format()
-        return self
-
-    def __repr__(self) -> str:
-        return self.output

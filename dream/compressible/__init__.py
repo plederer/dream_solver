@@ -4,7 +4,7 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import parameter, multiple, equation
+from dream.config import UniqueConfiguration, parameter, multiple, equation
 from dream.pde import PDEConfiguration
 from dream.mesh import (BoundaryConditions,
                         DomainConditions,
@@ -29,9 +29,11 @@ from dream.compressible.config import (CompressibleState,
                                        IsothermalWall,
                                        AdiabaticWall,
                                        Symmetry,
-                                       PML)
+                                       PML,
+                                       GRCBC,
+                                       NSCBC)
 
-from dream.compressible.formulations import ConservativeFormulation
+from dream.compressible.formulations import ConservativeFiniteElement
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,8 @@ CompressibleBoundaryConditions.register_condition(IsothermalWall)
 CompressibleBoundaryConditions.register_condition(AdiabaticWall)
 CompressibleBoundaryConditions.register_condition(Symmetry)
 CompressibleBoundaryConditions.register_condition(Periodic)
+CompressibleBoundaryConditions.register_condition(GRCBC)
+CompressibleBoundaryConditions.register_condition(NSCBC)
 
 
 CompressibleDomainConditions.register_condition(PML)
@@ -61,20 +65,21 @@ CompressibleDomainConditions.register_condition(GridDeformation)
 CompressibleDomainConditions.register_condition(PSpongeLayer)
 CompressibleDomainConditions.register_condition(SpongeLayer)
 
+
 class CompressibleFlowConfiguration(PDEConfiguration):
 
     name = "compressible"
 
-    bcs = CompressibleBoundaryConditions
-    dcs = CompressibleDomainConditions
-
-    def __init__(self, dict=None, /, **kwargs):
-        super().__init__(dict, **kwargs)
+    def __init__(self, cfg: UniqueConfiguration = None, **kwargs):
+        super().__init__(cfg, **kwargs)
         self.equations = CompressibleEquations(self)
 
-    @multiple(ConservativeFormulation)
-    def formulation(self, formulation):
-        return formulation
+        self.bcs = CompressibleBoundaryConditions(self.mesh)
+        self.dcs = CompressibleDomainConditions(self.mesh)
+
+    @multiple(default=ConservativeFiniteElement)
+    def fe(self, fe):
+        return fe
 
     @parameter(default=0.3)
     def mach_number(self, mach_number: float):
@@ -133,7 +138,7 @@ class CompressibleFlowConfiguration(PDEConfiguration):
     def get_farfield_state(self, direction: tuple[float, ...]) -> CompressibleState:
         return self.equations.get_farfield_state(direction)
 
-    formulation: ConservativeFormulation
+    fe: ConservativeFiniteElement
     mach_number: ngs.Parameter
     reynolds_number: ngs.Parameter
     prandtl_number: ngs.Parameter
@@ -174,7 +179,7 @@ class CompressibleEquations:
 
         return INF
 
-    def get_reference_state(self, direction: tuple[float, ...] = None) -> CompressibleState:
+    def get_reference_state(self, direction: tuple[float, ...] = None) -> ReferenceState:
 
         INF = self.get_farfield_state(direction)
         INF_ = self.cfg.scaling.reference_values
@@ -436,15 +441,15 @@ class CompressibleEquations:
 
     @equation
     def velocity_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.MATRIX:
-        if U.is_set(U.rho, U.rho_u, dU.rho, dU.rho_u):
+        if U.is_set(U.rho, U.rho_u, dU.grad_rho, dU.grad_rho_u):
             logger.debug("Returning velocity gradient from density and momentum.")
-            return dU.rho_u/U.rho - bla.outer(U.rho_u, dU.rho)/U.rho**2
+            return dU.grad_rho_u/U.rho - bla.outer(U.rho_u, dU.grad_rho)/U.rho**2
 
     @equation
     def momentum_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.MATRIX:
-        if U.is_set(U.rho, U.u, dU.rho, dU.u):
+        if U.is_set(U.rho, U.u, dU.grad_rho, dU.grad_u):
             logger.debug("Returning momentum gradient from density and momentum.")
-            return U.rho * dU.u + bla.outer(U.u, dU.rho)
+            return U.rho * dU.grad_u + bla.outer(U.u, dU.grad_rho)
 
     @equation
     def pressure_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
@@ -456,70 +461,70 @@ class CompressibleEquations:
 
     @equation
     def energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
-        if U.is_set(dU.rho_Ei, dU.rho_Ek):
+        if U.is_set(dU.grad_rho_Ei, dU.grad_rho_Ek):
             logger.debug("Returning energy gradient from inner energy and kinetic energy.")
-            return dU.rho_Ei + dU.rho_Ek
+            return dU.grad_rho_Ei + dU.grad_rho_Ek
 
     @equation
     def specific_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
-        if U.is_set(dU.Ei, dU.Ek):
+        if U.is_set(dU.grad_Ei, dU.grad_Ek):
             logger.debug(
                 "Returning specific energy gradient from specific inner energy and specific kinetic energy.")
-            return dU.Ei + dU.Ek
+            return dU.grad_Ei + dU.grad_Ek
 
     @equation
     def inner_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
-        if U.is_set(dU.rho_E, dU.rho_Ek):
+        if U.is_set(dU.grad_rho_E, dU.grad_rho_Ek):
             logger.debug("Returning inner energy gradient from energy and kinetic energy.")
-            return dU.rho_E - dU.rho_Ek
+            return dU.grad_rho_E - dU.grad_rho_Ek
 
     @equation
     def specific_inner_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
-        if U.is_set(dU.E, dU.Ek):
+        if U.is_set(dU.grad_E, dU.grad_Ek):
             logger.debug(
                 "Returning specific inner energy gradient from specific energy and specific kinetic energy.")
-            return dU.E - dU.Ek
+            return dU.grad_E - dU.grad_Ek
 
     @equation
     def kinetic_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
-        if U.is_set(dU.rho_E, dU.rho_Ei):
+        if U.is_set(dU.grad_rho_E, dU.grad_rho_Ei):
             logger.debug("Returning kinetic energy gradient from energy and inner energy.")
-            return dU.rho_E - dU.rho_Ei
+            return dU.grad_rho_E - dU.grad_rho_Ei
 
-        elif U.is_set(U.rho, U.u, dU.rho, dU.u):
+        elif U.is_set(U.rho, U.u, dU.grad_rho, dU.grad_u):
             logger.debug("Returning kinetic energy gradient from density and velocity.")
-            return U.rho * (dU.u.trans * U.u) + 0.5 * dU.rho * bla.inner(U.u, U.u)
+            return U.rho * (dU.grad_u.trans * U.u) + 0.5 * dU.grad_rho * bla.inner(U.u, U.u)
 
-        elif U.is_set(U.rho, U.rho_u, dU.rho, dU.rho_u):
+        elif U.is_set(U.rho, U.rho_u, dU.grad_rho, dU.grad_rho_u):
             logger.debug("Returning kinetic energy gradient from density and momentum.")
-            return (dU.rho_u.trans * U.rho_u)/U.rho - 0.5 * dU.rho * bla.inner(U.rho_u, U.rho_u)/U.rho**2
+            return (dU.grad_rho_u.trans * U.rho_u)/U.rho - 0.5 * dU.grad_rho * bla.inner(U.rho_u, U.rho_u)/U.rho**2
 
     @equation
     def specific_kinetic_energy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
-        if U.is_set(dU.E, dU.Ei):
+        if U.is_set(dU.grad_E, dU.grad_Ei):
             logger.debug(
                 "Returning specific kinetic energy gradient from specific energy and specific inner energy.")
-            return dU.E - dU.Ei
+            return dU.grad_E - dU.grad_Ei
 
-        elif U.is_set(U.u, dU.u):
+        elif U.is_set(U.u, dU.grad_u):
             logger.debug("Returning specific kinetic energy gradient from velocity.")
-            return dU.u.trans * U.u
+            return dU.grad_u.trans * U.u
 
-        elif U.is_set(U.rho, U.rho_u, dU.rho, dU.rho_u):
+        elif U.is_set(U.rho, U.rho_u, dU.grad_rho, dU.grad_rho_u):
             logger.debug("Returning specific kinetic energy gradient from density and momentum.")
-            return (dU.rho_u.trans * U.rho_u)/U.rho**2 - dU.rho * bla.inner(U.rho_u, U.rho_u)/U.rho**3
+            return (dU.grad_rho_u.trans * U.rho_u)/U.rho**2 - dU.grad_rho * bla.inner(U.rho_u, U.rho_u)/U.rho**3
 
     @equation
     def enthalpy_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
-        if U.is_set(dU.rho_E, dU.p):
+        if U.is_set(dU.grad_rho_E, dU.grad_p):
             logger.debug("Returning enthalpy gradient from energy and pressure.")
-            return dU.rho_E + dU.p
+            return dU.grad_rho_E + dU.grad_p
 
     @equation
     def strain_rate_tensor(self, dU: CompressibleStateGradient) -> bla.MATRIX:
-        if dU.is_set(dU.u):
+        if dU.is_set(dU.grad_u):
             logger.debug("Returning strain rate tensor from velocity.")
-            return 0.5 * (dU.u + dU.u.trans) - 1/3 * bla.trace(dU.u, id=True)
+            return 0.5 * (dU.grad_u + dU.grad_u.trans) - 1/3 * bla.trace(dU.grad_u, id=True)
 
     @equation
     def deviatoric_stress_tensor(self, U: CompressibleState, dU: CompressibleStateGradient):
@@ -533,16 +538,16 @@ class CompressibleEquations:
 
     @equation
     def viscosity(self, U: CompressibleState) -> bla.SCALAR:
-        return self.cfg.dynamic_viscosity.viscosity(U, self)
+        return self.cfg.dynamic_viscosity.viscosity(U)
 
     @equation
     def heat_flux(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
 
         k = self.viscosity(U)
 
-        if U.is_set(k, dU.T):
+        if U.is_set(k, dU.grad_T):
             logger.debug("Returning heat flux from temperature gradient.")
-            return -k * dU.T
+            return -k * dU.grad_T
 
     @equation
     def characteristic_velocities(self, U: CompressibleState, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:

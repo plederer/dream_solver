@@ -8,9 +8,12 @@ from dream.compressible.config import ReferenceState
 
 class Scaling(MultipleConfiguration, is_interface=True):
 
-    @any(default={'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325})
+    @any(default=None)
     def reference_values(self, state: ReferenceState):
-        return ReferenceState(**state)
+        reference = ReferenceState({'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325})
+        if state is not None:
+            reference.update(state)
+        return reference
 
     def density(self) -> float:
         return 1.0
@@ -24,11 +27,6 @@ class Scaling(MultipleConfiguration, is_interface=True):
     def velocity(self, direction: tuple[float, ...], mach_number: float):
         mag = self.velocity_magnitude(mach_number)
         return mag * bla.unit_vector(direction)
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.entry('Scaling', str(self))
-        return formatter.output
 
     reference_values: ReferenceState
 

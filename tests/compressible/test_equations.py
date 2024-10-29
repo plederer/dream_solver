@@ -4,8 +4,8 @@ import numpy.testing as nptest
 from tests import simplex
 import ngsolve as ngs
 
-from dream.compressible import CompressibleEquations
 from dream.compressible.config import CompressibleState, CompressibleStateGradient
+from tests.compressible.setup import cfg, mip
 
 def test_equation(throws: bool = False, is_vector: bool = False):
 
@@ -24,7 +24,7 @@ def test_equation(throws: bool = False, is_vector: bool = False):
                 value = (1, 0)
 
             U.update({name: value})
-            self.assertAlmostEqual(getattr(self.eq, name)(U)(self.mip), value)
+            self.assertAlmostEqual(getattr(self.eq, name)(U)(mip), value)
 
             func(self)
 
@@ -35,14 +35,11 @@ def test_equation(throws: bool = False, is_vector: bool = False):
 class TestCompressibleEquations(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.eq = CompressibleEquations()
+        self.eq = cfg.pde.equations
 
-        self.mesh = simplex()
-        self.mip = self.mesh(0.25, 0.25)
-
-        self.eq.cfg.reynolds_number = 2
-        self.eq.cfg.prandtl_number = 1
-        self.eq.cfg.dynamic_viscosity = "constant"
+        cfg.pde.reynolds_number = 2
+        cfg.pde.prandtl_number = 1
+        cfg.pde.dynamic_viscosity = "constant"
 
     @test_equation(throws=True)
     def test_density(self):
@@ -51,12 +48,12 @@ class TestCompressibleEquations(unittest.TestCase):
     @test_equation(throws=True, is_vector=True)
     def test_velocity(self):
         U = CompressibleState(density=2, momentum=(2, 2))
-        nptest.assert_almost_equal(self.eq.velocity(U)(self.mip), (1, 1))
+        nptest.assert_almost_equal(self.eq.velocity(U)(mip), (1, 1))
 
     @test_equation(throws=True, is_vector=True)
     def test_momentum(self):
         U = CompressibleState(density=0.5, velocity=(1, 1))
-        nptest.assert_almost_equal(self.eq.momentum(U)(self.mip), (0.5, 0.5))
+        nptest.assert_almost_equal(self.eq.momentum(U)(mip), (0.5, 0.5))
 
     @test_equation(throws=True)
     def test_pressure(self):
@@ -69,72 +66,72 @@ class TestCompressibleEquations(unittest.TestCase):
     @test_equation(throws=True)
     def test_inner_energy(self):
         U = CompressibleState(energy=2, kinetic_energy=1)
-        self.assertAlmostEqual(self.eq.inner_energy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.inner_energy(U)(mip), 1)
 
     @test_equation(throws=True)
     def test_specific_inner_energy(self):
         U = CompressibleState(specific_energy=2, specific_kinetic_energy=1)
-        self.assertAlmostEqual(self.eq.specific_inner_energy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.specific_inner_energy(U)(mip), 1)
 
         U = CompressibleState(inner_energy=2, density=1)
-        self.assertAlmostEqual(self.eq.specific_inner_energy(U)(self.mip), 2)
+        self.assertAlmostEqual(self.eq.specific_inner_energy(U)(mip), 2)
 
     @test_equation(throws=True)
     def test_kinetic_energy(self):
         U = CompressibleState(density=2, velocity=(2, 2))
-        self.assertAlmostEqual(self.eq.kinetic_energy(U)(self.mip), 8)
+        self.assertAlmostEqual(self.eq.kinetic_energy(U)(mip), 8)
 
         U = CompressibleState(density=2, momentum=(2, 2))
-        self.assertAlmostEqual(self.eq.kinetic_energy(U)(self.mip), 2)
+        self.assertAlmostEqual(self.eq.kinetic_energy(U)(mip), 2)
 
         U = CompressibleState(energy=2, inner_energy=1)
-        self.assertAlmostEqual(self.eq.kinetic_energy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.kinetic_energy(U)(mip), 1)
 
         U = CompressibleState(specific_kinetic_energy=2, density=2)
-        self.assertAlmostEqual(self.eq.kinetic_energy(U)(self.mip), 4)
+        self.assertAlmostEqual(self.eq.kinetic_energy(U)(mip), 4)
 
     @test_equation(throws=True)
     def test_specific_kinetic_energy(self):
         U = CompressibleState(velocity=(2, 2))
-        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(self.mip), 4)
+        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(mip), 4)
 
         U = CompressibleState(density=2, momentum=(2, 2))
-        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(mip), 1)
 
         U = CompressibleState(specific_energy=2, specific_inner_energy=1)
-        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(mip), 1)
 
         U = CompressibleState(kinetic_energy=2, density=2)
-        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.specific_kinetic_energy(U)(mip), 1)
 
     @test_equation(throws=True)
     def test_energy(self):
         U = CompressibleState(specific_energy=2, density=2)
-        self.assertAlmostEqual(self.eq.energy(U)(self.mip), 4)
+        self.assertAlmostEqual(self.eq.energy(U)(mip), 4)
 
         U = CompressibleState(kinetic_energy=2, inner_energy=2)
-        self.assertAlmostEqual(self.eq.energy(U)(self.mip), 4)
+        self.assertAlmostEqual(self.eq.energy(U)(mip), 4)
 
     @test_equation(throws=True)
     def test_specific_energy(self):
         U = CompressibleState(energy=2, density=2)
-        self.assertAlmostEqual(self.eq.specific_energy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.specific_energy(U)(mip), 1)
 
         U = CompressibleState(specific_kinetic_energy=2, specific_inner_energy=2)
-        self.assertAlmostEqual(self.eq.specific_energy(U)(self.mip), 4)
+        self.assertAlmostEqual(self.eq.specific_energy(U)(mip), 4)
 
     @test_equation(throws=True)
     def test_enthalpy(self):
         U = CompressibleState(pressure=2, energy=2)
-        self.assertAlmostEqual(self.eq.enthalpy(U)(self.mip), 4)
+        self.assertAlmostEqual(self.eq.enthalpy(U)(mip), 4)
 
         U = CompressibleState(specific_enthalpy=2, density=2)
-        self.assertAlmostEqual(self.eq.enthalpy(U)(self.mip), 4)
+        self.assertAlmostEqual(self.eq.enthalpy(U)(mip), 4)
 
     @test_equation(throws=True)
     def test_specific_enthalpy(self):
         U = CompressibleState(enthalpy=2, density=2)
-        self.assertAlmostEqual(self.eq.specific_enthalpy(U)(self.mip), 1)
+        self.assertAlmostEqual(self.eq.specific_enthalpy(U)(mip), 1)
 
     def test_convective_flux(self):
 
@@ -143,7 +140,7 @@ class TestCompressibleEquations(unittest.TestCase):
             self.eq.convective_flux(U)
 
         U = CompressibleState(density=1, momentum=(1, 0), enthalpy=1, velocity=(1, 0), pressure=2)
-        nptest.assert_almost_equal(self.eq.convective_flux(U)(self.mip), (1, 0, 3, 0, 0, 2, 1, 0))
+        nptest.assert_almost_equal(self.eq.convective_flux(U)(mip), (1, 0, 3, 0, 0, 2, 1, 0))
 
     def test_diffusive_flux(self):
 
@@ -153,8 +150,8 @@ class TestCompressibleEquations(unittest.TestCase):
             self.eq.diffusive_flux(U, dU)
 
         U = CompressibleState(velocity=(1, 0))
-        dU = CompressibleStateGradient(strain_rate_tensor=(0, 0.5, 0.5,0), temperature=(1, 1))
-        nptest.assert_almost_equal(self.eq.diffusive_flux(U, dU)(self.mip), (0, 0, 0, 0.5, 0.5, 0, 0.5, 1.0))
+        dU = CompressibleStateGradient(strain_rate_tensor=(0, 0.5, 0.5,0), grad_T=(1, 1))
+        nptest.assert_almost_equal(self.eq.diffusive_flux(U, dU)(mip), (0, 0, 0, 0.5, 0.5, 0, 0.5, 1.0))
 
     def test_transformation(self):
         U = CompressibleState(density=2, speed_of_sound=2, velocity=(2, 2), specific_energy=11.14285714)
@@ -165,26 +162,26 @@ class TestCompressibleEquations(unittest.TestCase):
         An_1 = A * unit_vector[0] + B * unit_vector[1]
         An_2 = self.eq.get_primitive_convective_jacobian(U, unit_vector)
 
-        nptest.assert_almost_equal(An_1(self.mip), An_2(self.mip))
+        nptest.assert_almost_equal(An_1(mip), An_2(mip))
 
         A = self.eq.conservative_convective_jacobian_x(U)
         B = self.eq.conservative_convective_jacobian_y(U)
         An_1 = A * unit_vector[0] + B * unit_vector[1]
         An_2 = self.eq.get_conservative_convective_jacobian(U, unit_vector)
 
-        nptest.assert_almost_equal(An_1(self.mip), An_2(self.mip))
+        nptest.assert_almost_equal(An_1(mip), An_2(mip))
 
     def test_characteristic_identity(self):
         U = CompressibleState(velocity=(1, 0), speed_of_sound=1.4)
         unit_vector = (1, 0)
 
         with self.assertRaises(ValueError):
-            self.eq.get_characteristic_identity(U, unit_vector)(self.mip)
+            self.eq.get_characteristic_identity(U, unit_vector)(mip)
 
         nptest.assert_almost_equal(self.eq.get_characteristic_identity(U, unit_vector, "incoming")(
-            self.mip), (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            mip), (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
         nptest.assert_almost_equal(self.eq.get_characteristic_identity(U, unit_vector, "outgoing")(
-            self.mip), (0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
+            mip), (0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
 
     def test_farfield_state(self):
 

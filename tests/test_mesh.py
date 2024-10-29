@@ -80,7 +80,7 @@ class TestDomainConditions(unittest.TestCase):
         x = GridMapping.linear(5, x)
 
         dom = {"layer_3": GridDeformation(x=x, order=1)}
-        gfu = self.dcs.get_grid_deformation(dom)
+        gfu = self.dcs.get_grid_deformation_function(dom)
 
         self.assertIsInstance(gfu, ngs.GridFunction)
         self.assertAlmostEqual(ngs.Integrate(ngs.Norm(gfu), self.dcs.mesh, order=1), 0.125)
@@ -93,7 +93,7 @@ class TestDomainConditions(unittest.TestCase):
             sigma = SpongeFunction.polynomial(2, x, order=5)
             dom[f"layer_{i + 1}"] = SpongeLayer(function=sigma, target_state=1, order=5)
 
-        gfu = self.dcs.get_sponge_function(dom)
+        gfu = self.dcs.get_sponge_layer_function(dom)
 
         self.assertIsInstance(gfu, ngs.GridFunction)
         self.assertAlmostEqual(ngs.Integrate(ngs.Norm(gfu), self.dcs.mesh, order=5), 0.25)
@@ -106,7 +106,7 @@ class TestDomainConditions(unittest.TestCase):
         d = GridDeformation(x=x, y=y, order=5)
         dom = {"layer_1": d, "layer_2": d, "layer_3": d}
 
-        gfu = self.pcs.get_grid_deformation(dom)
+        gfu = self.pcs.get_grid_deformation_function(dom)
 
         self.assertIsInstance(gfu, ngs.GridFunction)
         self.assertAlmostEqual(ngs.Integrate(ngs.Norm(gfu), self.pcs.mesh, order=5), 0.6626797003665968)
@@ -119,7 +119,7 @@ class TestDomainConditions(unittest.TestCase):
             sigma = SpongeFunction.polynomial(2, r, order=5)
             dom[f"layer_{i + 1}"] = SpongeLayer(function=sigma, target_state=1, order=5)
 
-        gfu = self.pcs.get_sponge_function(dom)
+        gfu = self.pcs.get_sponge_layer_function(dom)
 
         self.assertIsInstance(gfu, ngs.GridFunction)
         result = 2/3 * ngs.pi * 0.125 * (0.5 + 0.375 + 0.25 - 3/7 * 0.125)

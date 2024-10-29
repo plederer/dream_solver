@@ -4,10 +4,13 @@ from tests import simplex
 
 from dream.compressible import CompressibleFlowConfiguration, CompressibleState
 from dream.compressible.viscosity import Inviscid, Constant, Sutherland
+from tests.compressible.setup import cfg, mip
+
 class TestInviscid(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.mu = Inviscid()
+        cfg.pde.dynamic_viscosity = "inviscid"
+        self.mu = cfg.pde.dynamic_viscosity
 
     def test_is_inviscid(self):
         self.assertTrue(self.mu.is_inviscid)
@@ -20,7 +23,8 @@ class TestInviscid(unittest.TestCase):
 class TestConstant(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.mu = Constant()
+        cfg.pde.dynamic_viscosity = "constant"
+        self.mu = cfg.pde.dynamic_viscosity
 
     def test_is_inviscid(self):
         self.assertFalse(self.mu.is_inviscid)
@@ -33,15 +37,13 @@ class TestConstant(unittest.TestCase):
 class TestSutherland(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.mu = Sutherland()
-        self.mu.measurement_temperature = 1
+        cfg.pde.mach_number = 1
+        cfg.pde.equation_of_state.heat_capacity_ratio = 1.4
 
-        self.cfg = CompressibleFlowConfiguration()
-        self.cfg.mach_number = 1
-        self.cfg.equation_of_state.heat_capacity_ratio = 1.4
+        cfg.pde.dynamic_viscosity = "sutherland"
+        cfg.pde.dynamic_viscosity.measurement_temperature = 1
 
-        self.mesh = simplex()
-        self.mip = self.mesh(0.25, 0.25)
+        self.mu = cfg.pde.dynamic_viscosity
 
     def test_is_inviscid(self):
         self.assertFalse(self.mu.is_inviscid)
@@ -49,19 +51,19 @@ class TestSutherland(unittest.TestCase):
     def test_viscosity(self):
 
         state = CompressibleState()
-        self.assertIs(self.mu.viscosity(state, self.cfg.equations), None)
+        self.assertIs(self.mu.viscosity(state), None)
 
         state = CompressibleState(temperature=1)
 
-        self.cfg.scaling = "aerodynamic"
-        self.cfg.scaling.reference_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(state, self.cfg.equations)(self.mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
+        cfg.pde.scaling = "aerodynamic"
+        cfg.pde.scaling.reference_values.T = 1
+        self.assertAlmostEqual(self.mu.viscosity(state)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
-        self.cfg.scaling = "acoustic"
-        self.cfg.scaling.reference_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(state, self.cfg.equations)(self.mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
+        cfg.pde.scaling = "acoustic"
+        cfg.pde.scaling.reference_values.T = 1
+        self.assertAlmostEqual(self.mu.viscosity(state)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
-        self.cfg.scaling = "aeroacoustic"
-        self.cfg.scaling.reference_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(state, self.cfg.equations)(self.mip), (1.6)**(3/2) * (2/1.6)/(1+1/1.6))
+        cfg.pde.scaling = "aeroacoustic"
+        cfg.pde.scaling.reference_values.T = 1
+        self.assertAlmostEqual(self.mu.viscosity(state)(mip), (1.6)**(3/2) * (2/1.6)/(1+1/1.6))
 

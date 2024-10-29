@@ -1,12 +1,13 @@
 from __future__ import annotations
 import unittest
-from dream.compressible.scaling import Aerodynamic, Aeroacoustic, Acoustic
+from tests.compressible.setup import cfg, mip
 
 
 class TestAerodynamic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.scaling = Aerodynamic()
+        cfg.pde.scaling = "aerodynamic"
+        self.scaling = cfg.pde.scaling
 
     def test_velocity_magnitude(self):
         self.assertAlmostEqual(self.scaling.velocity_magnitude(0.1), 1)
@@ -21,7 +22,9 @@ class TestAerodynamic(unittest.TestCase):
 class TestAcoustic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.scaling = Acoustic()
+        cfg.pde.scaling = "acoustic"
+        self.scaling = cfg.pde.scaling
+
 
     def test_velocity_magnitude(self):
         self.assertAlmostEqual(self.scaling.velocity_magnitude(0.1), 0.1)
@@ -33,7 +36,9 @@ class TestAcoustic(unittest.TestCase):
 class TestAeroacoustic(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.scaling = Aeroacoustic()
+        cfg.pde.scaling = "aeroacoustic"
+        self.scaling = cfg.pde.scaling
+
 
     def test_velocity_magnitude(self):
         self.assertAlmostEqual(self.scaling.velocity_magnitude(0.1), 0.1/(1 + 0.1))

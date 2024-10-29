@@ -27,7 +27,7 @@ class EquationOfState(MultipleConfiguration, is_interface=True):
     def specific_inner_energy(self, U: CompressibleState) -> ngs.CF:
         raise NotImplementedError()
 
-    def speed_of_sound(self, U: CompressibleState, dU: CompressibleStateGradient) -> ngs.CF:
+    def speed_of_sound(self, U: CompressibleState) -> ngs.CF:
         raise NotImplementedError()
 
     def density_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> ngs.CF:
@@ -81,11 +81,6 @@ class EquationOfState(MultipleConfiguration, is_interface=True):
     def characteristic_from_conservative(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.entry('Equation of CompressibleState', str(self))
-        return formatter.output
-
 
 class IdealGas(EquationOfState):
 
@@ -119,6 +114,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning density from inner energy and temperature.")
             return gamma * U.rho_Ei/U.T
 
+        return None
+
     def pressure(self, U: CompressibleState) -> bla.SCALAR:
         r"""Returns the density from a given state
 
@@ -141,6 +138,8 @@ class IdealGas(EquationOfState):
         elif U.is_set(U.rho, U.c):
             logger.debug("Returning pressure from density and speed of sound.")
             return U.rho * U.c**2/gamma
+
+        return None
 
     def temperature(self, U: CompressibleState) -> bla.SCALAR:
         r"""Returns the temperature from a given state
@@ -165,6 +164,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning temperature from speed of sound.")
             return U.c**2/(gamma - 1)
 
+        return None
+
     def inner_energy(self, U: CompressibleState) -> bla.SCALAR:
         r"""Returns the inner energy from a given state
 
@@ -183,6 +184,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning inner energy from density and temperature.")
             return U.rho * U.T/gamma
 
+        return None
+
     def specific_inner_energy(self, U: CompressibleState) -> bla.SCALAR:
         r"""Returns the specific inner energy from a given state
 
@@ -200,6 +203,8 @@ class IdealGas(EquationOfState):
         elif U.is_set(U.rho, U.p):
             logger.debug("Returning specific inner energy from density and pressure.")
             return U.p/(gamma - 1)/U.rho
+
+        return None
 
     def speed_of_sound(self, U: CompressibleState) -> bla.SCALAR:
         r"""Returns the speed of sound from a given state
@@ -223,6 +228,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning speed of sound from specific inner energy.")
             return ngs.sqrt((gamma - 1) * U.Ei/gamma)
 
+        return None
+
     def density_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
         r"""Returns the density gradient from a given state
 
@@ -233,13 +240,13 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.p, U.T, dU.p, dU.T):
+        if U.is_set(U.p, U.T, dU.grad_p, dU.grad_T):
             logger.debug("Returning density gradient from pressure and temperature.")
-            return gamma/(gamma - 1) * (dU.p/U.T - U.p * dU.T/U.T**2)
+            return gamma/(gamma - 1) * (dU.grad_p/U.T - U.p * dU.grad_T/U.T**2)
 
-        elif U.is_set(U.T, U.rho_Ei, dU.T, dU.rho_Ei):
+        elif U.is_set(U.T, U.rho_Ei, dU.grad_T, dU.grad_rho_Ei):
             logger.debug("Returning density gradient from temperature and inner energy.")
-            return gamma * (dU.rho_Ei/U.T - U.rho_Ei * dU.T/U.T**2)
+            return gamma * (dU.grad_rho_Ei/U.T - U.rho_Ei * dU.grad_T/U.T**2)
 
     def pressure_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
         r"""Returns the pressure gradient from a given state
@@ -251,13 +258,13 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.rho, U.T, dU.rho, dU.T):
+        if U.is_set(U.rho, U.T, dU.grad_rho, dU.grad_T):
             logger.debug("Returning pressure gradient from density and temperature.")
-            return (gamma - 1)/gamma * (dU.rho * U.T + U.rho * dU.T)
+            return (gamma - 1)/gamma * (dU.grad_rho * U.T + U.rho * dU.grad_T)
 
-        elif U.is_set(dU.rho_Ei):
+        elif U.is_set(dU.grad_rho_Ei):
             logger.debug("Returning pressure gradient from inner energy gradient.")
-            return (gamma - 1) * dU.rho_Ei
+            return (gamma - 1) * dU.grad_rho_Ei
 
     def temperature_gradient(self, U: CompressibleState,  dU: CompressibleStateGradient) -> bla.VECTOR:
         r"""Returns the temperature gradient from a given state
@@ -269,13 +276,13 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.rho, U.p, dU.p, dU.rho):
+        if U.is_set(U.rho, U.p, dU.grad_p, dU.grad_rho):
             logger.debug("Returning temperature gradient from density and pressure.")
-            return gamma/(gamma - 1) * (dU.p/U.rho - U.p * dU.rho/U.rho**2)
+            return gamma/(gamma - 1) * (dU.grad_p/U.rho - U.p * dU.grad_rho/U.rho**2)
 
-        elif U.is_set(dU.Ei):
+        elif U.is_set(dU.grad_Ei):
             logger.debug("Returning temperature gradient from specific inner energy gradient.")
-            return gamma * dU.Ei
+            return gamma * dU.grad_Ei
 
     def characteristic_velocities(self, U: CompressibleState, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
 
@@ -318,11 +325,11 @@ class IdealGas(EquationOfState):
 
         unit_vector = bla.as_vector(unit_vector)
 
-        if U.is_set(U.rho, U.c, dU.rho, dU.p, dU.u):
+        if U.is_set(U.rho, U.c, dU.grad_rho, dU.grad_p, dU.grad_u):
 
-            grad_rho_n = bla.inner(dU.rho, unit_vector)
-            grad_p_n = bla.inner(dU.p, unit_vector)
-            grad_u_n = dU.u * unit_vector
+            grad_rho_n = bla.inner(dU.grad_rho, unit_vector)
+            grad_p_n = bla.inner(dU.grad_p, unit_vector)
+            grad_u_n = dU.grad_u * unit_vector
 
             if unit_vector.dim == 2:
 
@@ -660,11 +667,5 @@ class IdealGas(EquationOfState):
                 raise NotImplementedError()
 
             return bla.as_matrix(Pinv, dims=(dim, dim))
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.output += super().format()
-        formatter.entry('Heat Capacity Ratio', self.heat_capacity_ratio)
-        return formatter.output
 
     heat_capacity_ratio: ngs.Parameter

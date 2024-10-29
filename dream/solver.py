@@ -9,201 +9,310 @@ from .sensor import Sensor
 
 from .compressible import CompressibleFlowConfiguration
 
-from .config import UniqueConfiguration, FiniteElementConfig, multiple
-from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, TimeConfig
-from .io import IOConfig, ResultsDirectoryTree, Drawer, SolverLoader, SolverSaver
+from .config import UniqueConfiguration, MultipleConfiguration, multiple, any, unique
+from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
 
 logger = logging.getLogger(__name__)
 
 
+class BonusIntegrationOrder(UniqueConfiguration):
+
+    @any(default=0)
+    def vol(self, vol):
+        return int(vol)
+
+    @any(default=0)
+    def bnd(self, bnd):
+        return int(bnd)
+
+    @any(default=0)
+    def bbnd(self, bbnd):
+        return int(bbnd)
+
+    @any(default=0)
+    def bbbnd(self, bbbnd):
+        return int(bbbnd)
+
+    vol: int
+    bnd: int
+    bbnd: int
+    bbbnd: int
+
+
+class Inverse(MultipleConfiguration, is_interface=True):
+
+    cfg: SolverConfiguration
+
+    def get_inverse(self, blf: ngs.BilinearForm, pre: ngs.BilinearForm, fes: ngs.FESpace):
+        NotImplementedError()
+
+
+class Direct(Inverse):
+
+    name: str = "direct"
+
+    @any(default="umfpack")
+    def solver(self, solver: str):
+        return solver
+
+    def get_inverse(self, blf: ngs.BilinearForm, pre: ngs.BilinearForm, fes: ngs.FESpace):
+        return blf.mat.Inverse(fes.FreeDofs(blf.condense), inverse=self.solver)
+
+    solver: str
+
+
+class NonlinearMethod(MultipleConfiguration, is_interface=True):
+
+    cfg: SolverConfiguration
+
+    def reset_status(self):
+        self.is_converged = False
+        self.is_nan = False
+
+    def set_solution_routine_attributes(self):
+        raise NotImplementedError()
+
+    def solve_update_step(self):
+        raise NotImplementedError()
+
+    def update_solution(self):
+        raise NotImplementedError()
+
+    def set_iteration_error(self, it: int | None = None, t: float | None = None):
+        raise NotImplementedError()
+
+    def log_iteration_error(self, error: float, it: int | None = None, t: float | None = None):
+        msg = f"Iteration error: {error:8e}"
+        if it is not None:
+            msg += f" - iteration number: {it}"
+        if t is not None:
+            msg += f" - time step: {t}"
+        logger.info(msg)
+
+
+class NewtonsMethod(NonlinearMethod):
+
+    name: str = "newton"
+
+    @any(default=1)
+    def damping_factor(self, damping_factor: float):
+        return float(damping_factor)
+
+    def set_solution_routine_attributes(self):
+        self.fes = self.cfg.pde.fes
+        self.gfu = self.cfg.pde.gfu
+        self.inverse = self.cfg.solver.inverse
+
+        self.blf = self.cfg.solver.blf
+        self.lf = self.cfg.solver.lf
+
+        self.residual = self.gfu.vec.CreateVector()
+        self.temporary = self.gfu.vec.CreateVector()
+
+    def solve_update_step(self):
+
+        self.blf.Apply(self.gfu.vec, self.residual)
+        self.residual.data -= self.lf.vec
+        self.blf.AssembleLinearization(self.gfu.vec)
+
+        inv = self.cfg.solver.inverse.get_inverse(self.blf, fes=self.fes)
+        if self.blf.condense:
+            self.residual.data += self.blf.harmonic_extension_trans * self.residual
+            self.temporary.data = inv * self.residual
+            self.temporary.data += self.blf.harmonic_extension * self.temporary
+            self.temporary.data += self.blf.inner_solve * self.residual
+        else:
+            self.temporary.data = inv * self.residual
+
+    def update_solution(self):
+        self.gfu.vec.data -= self.damping_factor * self.temporary
+
+    def set_iteration_error(self, it: int | None = None, t: float | None = None):
+        error = ngs.sqrt(ngs.InnerProduct(self.temporary, self.residual)**2)
+
+        self.is_converged = error < self.cfg.solver.convergence_criterion
+
+        if isnan(error):
+            self.is_nan = True
+            logger.error("Solution process diverged!")
+
+        self.log_iteration_error(error, it, t)
+        self.error = error
+
+    damping_factor: float
+
+
+class Solver(MultipleConfiguration, is_interface=True):
+
+    cfg: SolverConfiguration
+
+    @multiple(default=Direct)
+    def inverse(self, inverse: Inverse):
+        return inverse
+
+    def set_discrete_system(self):
+
+        fes = self.cfg.pde.fes
+        condense = self.cfg.optimizations.static_condensation
+
+        self.blf = ngs.BilinearForm(fes, condense=condense)
+        self.lf = ngs.LinearForm(fes)
+
+        for name, cf in self.cfg.pde.blf:
+            logger.debug(f"Adding {name} to the BilinearForm!")
+            self.blf += cf
+
+        for name, cf in self.cfg.pde.lf:
+            logger.debug(f"Adding {name} to the LinearForm!")
+            self.lf += cf
+
+    inverse: Direct
+
+
+class LinearSolver(Solver):
+
+    name: str = "linear"
+
+    def solve(self):
+
+        for t in self.cfg.time.routine():
+            raise NotImplementedError()
+
+
+class NonlinearSolver(Solver):
+
+    name: str = "nonlinear"
+
+    @any(default=10)
+    def max_iterations(self, max_iterations: int):
+        return int(max_iterations)
+
+    @any(default=1e-8)
+    def convergence_criterion(self, convergence_criterion: float):
+        if convergence_criterion <= 0:
+            raise ValueError("Convergence Criterion must be greater zero!")
+        return float(convergence_criterion)
+
+    @multiple(default=NewtonsMethod)
+    def method(self, method: NonlinearMethod):
+        return method
+
+    def set_discrete_system(self):
+        super().set_discrete_system()
+        self.method.set_solution_routine_attributes()
+
+    def solve(self):
+
+        for t in self.cfg.time.routine():
+
+            self.method.reset_status()
+
+            for it in range(self.max_iterations):
+
+                self.cfg.time.iteration_update(it)
+
+                self.method.solve_update_step()
+                self.method.set_iteration_error(it, t)
+
+                if self.method.is_nan:
+                    break
+
+                self.method.update_solution()
+
+                if self.method.is_converged:
+                    break
+
+            if self.method.is_nan:
+                break
+
+    max_iterations: int
+    convergence_criterion: float
+    method: NonlinearMethod
+
+
+class Optimizations(UniqueConfiguration):
+
+    @any(default=False)
+    def compile_flag(self, compile_flag: bool):
+        return bool(compile_flag)
+
+    @any(default=True)
+    def static_condensation(self, static_condensation):
+        return bool(static_condensation)
+
+    @unique(default=BonusIntegrationOrder)
+    def bonus_int_order(self, dict_):
+        return dict_
+
+    compile_flag: bool
+    static_condensation: bool
+    bonus_int_order: BonusIntegrationOrder
+
+
 class SolverConfiguration(UniqueConfiguration):
 
-    def __init__(self, mesh, **kwargs) -> None:
+    name: str = 'cfg'
+
+    def __init__(self, mesh: ngs.Mesh, **kwargs) -> None:
         self.mesh = mesh
-        super().__init__(**kwargs)
+        super().__init__(root=self, **kwargs)
 
-    #     self._fem = FiniteElementConfig()
+        if not hasattr(mesh, 'normal'):
+            self.mesh.normal = ngs.specialcf.normal(mesh.dim)
 
-    #     # Solution routine Configuration
-    #     self.compile_flag = True
-    #     self.max_iterations = 10
-    #     self.convergence_criterion = 1e-8
-    #     self.damping_factor = 1
-    #     self.linear_solver = "pardiso"
+        if not hasattr(mesh, 'tangential'):
+            self.mesh.tangential = ngs.specialcf.tangential(mesh.dim)
 
-    #     # Output Configuration
-    #     self._io = IOConfig()
+        if not hasattr(mesh, 'mesh_size'):
+            self.mesh.meshsize = ngs.specialcf.mesh_size
+
+    @multiple(default=LinearSolver)
+    def solver(self, solver: Solver):
+        return solver
 
     @multiple(default=CompressibleFlowConfiguration)
     def pde(self, pde):
-        self.pde._mesh = self.mesh
         return pde
-    
-    @multiple(default=FiniteElementConfig)
-    def fem(self, fem):
-        return fem
-    
+
     @multiple(default=StationaryConfig)
     def time(self, time):
         return time
-    
+
+    @unique(default=Optimizations)
+    def optimizations(self, optimizations):
+        return optimizations
+
+    def set_grid_deformation(self):
+        grid_deformation = self.pde.dcs.get_grid_deformation_function()
+        self.mesh.SetDeformation(grid_deformation)
+
+    def set_spaces_and_gridfunctions(self):
+        self.pde.set_finite_element_spaces()
+        self.pde.set_trial_and_test_functions()
+        self.pde.set_gridfunctions()
+
+        if not self.time.is_stationary:
+            self.pde.set_transient_gridfunctions()
+
+    def set_discrete_system_tree(self,
+                                 set_initial: bool = True,
+                                 set_boundary: bool = True):
+
+        if set_boundary:
+            self.pde.set_boundary_conditions()
+
+        if set_initial:
+            self.pde.set_initial_conditions()
+
+        self.pde.set_discrete_system_tree()
+
+    solver: LinearSolver | NonlinearSolver
     pde: CompressibleFlowConfiguration
-    fem: FiniteElementConfig
     time: StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
-    
-
-        
-    # @property
-    # def simulation(self) -> StationaryConfig | TransientConfig | PseudoTimeSteppingConfig:
-    #     return self._simulation
-
-    # @simulation.setter
-    # def simulation(self, simulation: str) -> None:
-    #     self._simulation = self._get_type(simulation, SimulationConfig)
-
-    # @property
-    # def compile_flag(self) -> bool:
-    #     return self._compile_flag
-
-    # @compile_flag.setter
-    # def compile_flag(self, compile_flag: bool):
-    #     self._compile_flag = bool(compile_flag)
-
-    # @property
-    # def max_iterations(self) -> int:
-    #     return self._max_iterations
-
-    # @max_iterations.setter
-    # def max_iterations(self, max_iterations: int):
-    #     self._max_iterations = int(max_iterations)
-
-    # @property
-    # def convergence_criterion(self) -> float:
-    #     return self._convergence_criterion
-
-    # @convergence_criterion.setter
-    # def convergence_criterion(self, convergence_criterion: float):
-    #     convergence_criterion = float(convergence_criterion)
-    #     if convergence_criterion <= 0:
-    #         raise ValueError("Convergence Criterion must be greater zero!")
-    #     self._convergence_criterion = convergence_criterion
-
-    # @property
-    # def damping_factor(self) -> float:
-    #     return self._damping_factor
-
-    # @damping_factor.setter
-    # def damping_factor(self, damping_factor: float):
-    #     self._damping_factor = float(damping_factor)
-
-    # @property
-    # def linear_solver(self) -> str:
-    #     return self._linear_solver
-
-    # @linear_solver.setter
-    # def linear_solver(self, linear_solver: str):
-    #     self._linear_solver = str(linear_solver).lower()
-
-    # @property
-    # def io(self) -> IOConfig:
-    #     return self._io
-
-    # @io.setter
-    # def io(self, io: IOConfig):
-    #     self._io.update(io)
-
-    # def __repr__(self) -> str:
-
-    #     formatter = self.formatter.new()
-    #     formatter.header('Solver Configuration').newline()
-
-    #     formatter.add_config(self.pde).newline()
-    #     formatter.add_config(self.time).newline()
-    #     formatter.add_config(self.fem).newline()
-
-    #     formatter.subheader('Solution Routine Configuration').newline()
-    #     formatter.entry('Compile Flag', str(self._compile_flag))
-    #     formatter.entry('Linear Solver', self._linear_solver)
-    #     formatter.entry('Damping Factor', self._damping_factor)
-    #     formatter.entry('Convergence Criterion', self._convergence_criterion)
-    #     formatter.entry('Maximal Iterations', self._max_iterations)
-    #     formatter.newline()
-
-    #     formatter.add_config(self.io).newline()
-
-    #     return formatter.output
+    optimizations: Optimizations
 
 
-class IterationError(NamedTuple):
-    error: float
-    iteration_number: Optional[int]
-    time: Optional[float]
-
-    def __repr__(self) -> str:
-
-        error_digit = DreAmLogger._iteration_error_digit
-        time_step_digit = DreAmLogger._time_step_digit
-
-        string = f"Iteration Error: {self.error:{error_digit}e}"
-        if self.iteration_number is not None:
-            string += f" - Iteration Number: {self.iteration_number}"
-        if self.time is not None:
-            string += f" - Time Step: {self.time:.{time_step_digit}f}"
-
-        return string
-
-
-class SolverStatus:
-
-    def __init__(self, solver_configuration: SolverConfiguration) -> None:
-        self.solver_configuration = solver_configuration
-        self.reset()
-
-    @property
-    def is_converged(self) -> bool:
-        return self._is_converged
-
-    @property
-    def is_nan(self) -> bool:
-        return self._is_nan
-
-    @property
-    def iteration_error(self) -> IterationError:
-        return self._iteration_error
-
-    @iteration_error.setter
-    def iteration_error(self, value: IterationError):
-        min_convergence = self.solver_configuration.convergence_criterion
-
-        self._iteration_error = value
-        self._is_converged = value.error < min_convergence
-
-        if isnan(value.error):
-            self._is_nan = True
-            logger.error("Solution process diverged!")
-
-    def reset_convergence_status(self):
-        self._is_converged = False
-        self._is_nan = False
-
-    def reset(self):
-        self.reset_convergence_status()
-        self.iteration_error_list = []
-
-    def check_convergence(self,
-                          step_direction,
-                          residual,
-                          time: Optional[float] = None,
-                          iteration_number: Optional[int] = None) -> None:
-
-        error = sqrt(InnerProduct(step_direction, residual)**2)
-        self.iteration_error = IterationError(error, iteration_number, time)
-
-        if logger.hasHandlers():
-            logger.info(self.iteration_error)
-
-
-class Solver:
+class Solver_:
 
     def __init__(self, mesh: ngs.Mesh, cfg: SolverConfiguration):
 
@@ -249,9 +358,6 @@ class Solver:
         return self._drawer
 
     def setup(self, reinitialize: bool = True):
-
-        if self.formulation.dmesh.is_grid_deformation:
-            self.formulation.dmesh.set_grid_deformation()
 
         if reinitialize:
             self.formulation.initialize()

@@ -4,8 +4,12 @@ from __future__ import annotations
 import numpy as np
 import ngsolve as ngs
 import logging
+import typing
 
-from dream.config import UniqueConfiguration, MultipleConfiguration, parameter, any, multiple
+from dream.config import UniqueConfiguration, MultipleConfiguration, parameter, any, multiple, unique
+
+if typing.TYPE_CHECKING:
+    from dream.solver import SolverConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -69,16 +73,16 @@ class TimeSchemes(MultipleConfiguration, is_interface=True):
         gfus = [ngs.GridFunction(gfu.space) for _ in self.time_levels[:-1]] + [gfu]
         return {level: gfu for level, gfu in zip(self.time_levels, gfus)}
 
-    def update_gridfunctions_after_time_step(self, *gfus: dict[str, ngs.GridFunction]):
+    def update_gridfunctions_after_time_step(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
 
-        for gfu in gfus:
+        for gfu in gfus.values():
 
             for old, new in zip(self.time_levels[:-1], self.time_levels[1:]):
                 gfu[old].vec.data = gfu[new].vec
 
-    def update_gridfunctions_after_initial_solution(self, *gfus: dict[str, ngs.GridFunction]):
+    def update_gridfunctions_after_initial_solution(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
 
-        for gfu in gfus:
+        for gfu in gfus.values():
 
             for old in list(gfu.values())[1:]:
                 old.vec.data = gfu['n+1'].vec
@@ -122,14 +126,22 @@ class BDF2(TimeSchemes):
 
 class TimeConfig(MultipleConfiguration, is_interface=True):
 
+    cfg: SolverConfiguration
+
     @property
     def is_stationary(self) -> bool:
         return isinstance(self, StationaryConfig)
+
+    def iteration_update(self, it: int):
+        pass
 
 
 class StationaryConfig(TimeConfig):
 
     name: str = "stationary"
+
+    def routine(self):
+        yield None
 
 
 class TransientConfig(TimeConfig):
@@ -140,19 +152,69 @@ class TransientConfig(TimeConfig):
     def scheme(self, scheme):
         return scheme
 
-    @multiple(default=Timer)
+    @unique(default=Timer)
     def timer(self, timer):
         return timer
+
+    def routine(self):
+
+        for t in self.timer():
+            yield t
+
+            self.scheme.update_gridfunctions_after_time_step(self.cfg.pde.gfus_transient)
 
     scheme: ImplicitEuler | BDF2
     timer: Timer
 
 
-class PseudoTimeSteppingConfig(TransientConfig):
+class PseudoTimeSteppingConfig(TimeConfig):
 
     name: str = "pseudo_time_stepping"
     aliases = ("pseudo", )
 
+    @multiple(default=ImplicitEuler)
+    def scheme(self, scheme):
+        return scheme
+
+    @unique(default=Timer)
+    def timer(self, timer):
+        return timer
+
     @any(default=1.0)
     def max_time_step(self, max_time_step):
-        return max_time_step
+        return float(max_time_step)
+
+    @any(default=10)
+    def increment_at(self, increment_at):
+        return int(increment_at)
+
+    @any(default=10)
+    def increment_factor(self, increment_factor):
+        return int(increment_factor)
+
+    def routine(self):
+        yield None
+
+        self.scheme.update_gridfunctions_after_time_step(self.cfg.pde.gfus_transient)
+
+    def iteration_update(self, it: int):
+        self.scheme.update_gridfunctions_after_time_step(self.cfg.pde.gfus_transient)
+
+        old_time_step = self.timer.step.Get()
+
+        if self.max_time_step > old_time_step:
+            if (it % self.increment_at == 0) and (it > 0):
+                new_time_step = old_time_step * self.increment_factor
+
+                if new_time_step > self.max_time_step:
+                    new_time_step = self.max_time_step
+
+                self.timer.step = new_time_step
+                logger.info(f"Successfully updated time step at iteration {it}")
+                logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
+
+    scheme: ImplicitEuler | BDF2
+    timer: Timer
+    max_time_step: float
+    increment_at: int
+    increment_factor: int

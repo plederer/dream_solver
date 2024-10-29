@@ -5,22 +5,19 @@ from dream.config import MultipleConfiguration, any
 from dream.compressible.config import CompressibleState
 
 if typing.TYPE_CHECKING:
-    from dream.compressible import CompressibleEquations
+    from dream.solver import SolverConfiguration
 
 
 class DynamicViscosity(MultipleConfiguration, is_interface=True):
+
+    cfg: SolverConfiguration
 
     @property
     def is_inviscid(self) -> bool:
         return isinstance(self, Inviscid)
 
-    def viscosity(self, U: CompressibleState, equations: CompressibleEquations = None):
+    def viscosity(self, U: CompressibleState):
         raise NotImplementedError()
-
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.entry('Dynamic Viscosity', str(self))
-        return formatter.output
 
 
 class Inviscid(DynamicViscosity):
@@ -28,7 +25,7 @@ class Inviscid(DynamicViscosity):
     name: str = "inviscid"
     aliases = ('euler', )
 
-    def viscosity(self, U: CompressibleState, equations: CompressibleEquations = None):
+    def viscosity(self, U: CompressibleState):
         raise TypeError("Inviscid Setting! Dynamic Viscosity not defined!")
 
 
@@ -36,7 +33,7 @@ class Constant(DynamicViscosity):
 
     name: str = "constant"
 
-    def viscosity(self, U: CompressibleState, equations: CompressibleEquations = None):
+    def viscosity(self, U: CompressibleState):
         return 1
 
 
@@ -52,23 +49,16 @@ class Sutherland(DynamicViscosity):
     def measurement_viscosity(self, value: float) -> float:
         return value
 
-    def viscosity(self, U: CompressibleState, equations: CompressibleEquations):
+    def viscosity(self, U: CompressibleState):
 
         T = U.T
 
         if U.is_set(T):
 
-            REF = equations.get_reference_state()
-            INF = equations.get_farfield_state()
+            REF = self.cfg.pde.equations.get_reference_state()
+            INF = self.cfg.pde.equations.get_farfield_state()
 
             T0 = self.measurement_temperature/REF.T
 
             return (T/INF.T)**(3/2) * (INF.T + T0)/(T + T0)
 
-    def format(self):
-        formatter = self.formatter.new()
-        formatter.output += super().format()
-        formatter.entry('Law Reference Temperature', self.measurement_temperature)
-        formatter.entry('Law Reference Viscosity', self.measurement_viscosity)
-
-        return formatter.output

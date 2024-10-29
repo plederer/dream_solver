@@ -1,13 +1,27 @@
 from __future__ import annotations
+import ngsolve as ngs
 
 from dream import bla
 from dream.config import variable, State, any
-from dream.pde import Formulation
+from dream.pde import FiniteElement
 from dream.mesh import Condition
 
 
-class CompressibleFormulation(Formulation, is_interface=True):
-    ...
+class CompressibleFiniteElement(FiniteElement, is_interface=True):
+
+    @property
+    def gfu(self) -> ngs.GridFunction:
+        return self.cfg.pde.gfu
+
+    @any(default=2)
+    def order(self, order):
+        return int(order)
+
+    order: int
+
+    def set_boundary_conditions(self) -> None:
+        """ Boundary conditions for compressible flows are set weakly. Therefore we do nothing here."""
+        pass
 
 
 class CompressibleState(State):
@@ -30,22 +44,22 @@ class CompressibleState(State):
 
 class CompressibleStateGradient(State):
 
-    rho = variable(bla.as_vector, 'density')
-    u = variable(bla.as_matrix, 'velocity')
-    rho_u = variable(bla.as_matrix, 'momentum')
-    p = variable(bla.as_vector, 'pressure')
-    T = variable(bla.as_vector, 'temperature')
-    rho_E = variable(bla.as_vector, 'energy')
-    E = variable(bla.as_vector, 'specific_energy')
-    rho_Ei = variable(bla.as_vector, 'inner_energy')
-    Ei = variable(bla.as_vector, 'specific_inner_energy')
-    rho_Ek = variable(bla.as_vector, 'kinetic_energy')
-    Ek = variable(bla.as_vector, 'specific_kinetic_energy')
-    rho_H = variable(bla.as_vector, 'enthalpy')
-    H = variable(bla.as_vector, 'specific_enthalpy')
-    c = variable(bla.as_vector, 'speed_of_sound')
+    grad_rho = variable(bla.as_vector, 'density_gradient')
+    grad_u = variable(bla.as_matrix, 'velocity_gradient')
+    grad_rho_u = variable(bla.as_matrix, 'momentum_gradient')
+    grad_p = variable(bla.as_vector, 'pressure_gradient')
+    grad_T = variable(bla.as_vector, 'temperature_gradient')
+    grad_rho_E = variable(bla.as_vector, 'energy_gradient')
+    grad_E = variable(bla.as_vector, 'specific_energy_gradient')
+    grad_rho_Ei = variable(bla.as_vector, 'inner_energy_gradient')
+    grad_Ei = variable(bla.as_vector, 'specific_inner_energy_gradient')
+    grad_rho_Ek = variable(bla.as_vector, 'kinetic_energy_gradient')
+    grad_Ek = variable(bla.as_vector, 'specific_kinetic_energy_gradient')
+    grad_rho_H = variable(bla.as_vector, 'enthalpy_gradient')
+    grad_H = variable(bla.as_vector, 'specific_enthalpy_gradient')
+    grad_c = variable(bla.as_vector, 'speed_of_sound_gradient')
 
-    eps = variable(bla.as_matrix, 'strain_rate_tensor')
+    strain = variable(bla.as_matrix, 'strain_rate_tensor')
 
 
 class ReferenceState(State):
@@ -64,7 +78,7 @@ class FarField(Condition):
     name = "farfield"
 
     @any(default=None)
-    def state(self, state) -> State:
+    def state(self, state) -> CompressibleState:
         if state is not None:
             state = CompressibleState(**state)
         return state
@@ -74,9 +88,7 @@ class FarField(Condition):
         if self.data['state'] is None:
             raise ValueError("Farfield state not set!")
 
-    @any(default=0)
-    def theta(self, theta: float):
-        return theta
+    state: CompressibleState
 
 
 class Outflow(Condition):
@@ -85,6 +97,11 @@ class Outflow(Condition):
 
     @any(default=None)
     def pressure(self, pressure) -> State:
+        if isinstance(pressure, CompressibleState):
+            ...
+        elif bla.is_scalar(pressure):
+            pressure = CompressibleState(pressure=pressure)
+
         return pressure
 
     @pressure.getter_check
@@ -117,7 +134,7 @@ class CBC(Condition, is_interface=True):
             parameters = {key: value for key, value in zip(parameters, param)}
         elif isinstance(param, dict):
             parameters = {key: value for key, value in zip(parameters, param.values())}
-        return param
+        return parameters
 
     @any(default=False)
     def is_tangential_convective_fluxes(self, tangential_convective_fluxes: bool):
