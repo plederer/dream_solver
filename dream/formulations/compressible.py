@@ -7,12 +7,12 @@ from dream import mesh as dmesh
 from dream.config import (
     MultipleConfiguration,
     State,
-    variable,
+    quantity,
     any,
     parameter,
     multiple_configuration)
 
-from dream.time_schemes import TransientGridfunction
+from dream.time import TransientGridfunction
 from dream.formulations import formulation as form
 
 if typing.TYPE_CHECKING:
@@ -23,56 +23,56 @@ if typing.TYPE_CHECKING:
 
 class CompressibleState(State):
 
-    density = variable(bla.as_scalar)
-    velocity = variable(bla.as_vector)
-    momentum = variable(bla.as_vector)
-    pressure = variable(bla.as_scalar)
-    temperature = variable(bla.as_scalar)
-    energy = variable(bla.as_scalar)
-    specific_energy = variable(bla.as_scalar)
-    inner_energy = variable(bla.as_scalar)
-    specific_inner_energy = variable(bla.as_scalar)
-    kinetic_energy = variable(bla.as_scalar)
-    specific_kinetic_energy = variable(bla.as_scalar)
-    enthalpy = variable(bla.as_scalar)
-    specific_enthalpy = variable(bla.as_scalar)
-    speed_of_sound = variable(bla.as_scalar)
+    density = quantity(bla.as_scalar)
+    velocity = quantity(bla.as_vector)
+    momentum = quantity(bla.as_vector)
+    pressure = quantity(bla.as_scalar)
+    temperature = quantity(bla.as_scalar)
+    energy = quantity(bla.as_scalar)
+    specific_energy = quantity(bla.as_scalar)
+    inner_energy = quantity(bla.as_scalar)
+    specific_inner_energy = quantity(bla.as_scalar)
+    kinetic_energy = quantity(bla.as_scalar)
+    specific_kinetic_energy = quantity(bla.as_scalar)
+    enthalpy = quantity(bla.as_scalar)
+    specific_enthalpy = quantity(bla.as_scalar)
+    speed_of_sound = quantity(bla.as_scalar)
 
-    convective_flux = variable(bla.as_matrix)
-    diffusive_flux = variable(bla.as_matrix)
+    convective_flux = quantity(bla.as_matrix)
+    diffusive_flux = quantity(bla.as_matrix)
 
-    viscosity = variable(bla.as_scalar)
-    strain_rate_tensor = variable(bla.as_matrix)
-    deviatoric_stress_tensor = variable(bla.as_matrix)
-    heat_flux = variable(bla.as_vector)
+    viscosity = quantity(bla.as_scalar)
+    strain_rate_tensor = quantity(bla.as_matrix)
+    deviatoric_stress_tensor = quantity(bla.as_matrix)
+    heat_flux = quantity(bla.as_vector)
 
-    density_gradient = variable(bla.as_vector)
-    velocity_gradient = variable(bla.as_matrix)
-    momentum_gradient = variable(bla.as_matrix)
-    pressure_gradient = variable(bla.as_vector)
-    temperature_gradient = variable(bla.as_vector)
-    energy_gradient = variable(bla.as_vector)
-    specific_energy_gradient = variable(bla.as_vector)
-    inner_energy_gradient = variable(bla.as_vector)
-    specific_inner_energy_gradient = variable(bla.as_vector)
-    kinetic_energy_gradient = variable(bla.as_vector)
-    specific_kinetic_energy_gradient = variable(bla.as_vector)
-    enthalpy_gradient = variable(bla.as_vector)
-    specific_enthalpy_gradient = variable(bla.as_vector)
+    density_gradient = quantity(bla.as_vector)
+    velocity_gradient = quantity(bla.as_matrix)
+    momentum_gradient = quantity(bla.as_matrix)
+    pressure_gradient = quantity(bla.as_vector)
+    temperature_gradient = quantity(bla.as_vector)
+    energy_gradient = quantity(bla.as_vector)
+    specific_energy_gradient = quantity(bla.as_vector)
+    inner_energy_gradient = quantity(bla.as_vector)
+    specific_inner_energy_gradient = quantity(bla.as_vector)
+    kinetic_energy_gradient = quantity(bla.as_vector)
+    specific_kinetic_energy_gradient = quantity(bla.as_vector)
+    enthalpy_gradient = quantity(bla.as_vector)
+    specific_enthalpy_gradient = quantity(bla.as_vector)
 
 
 class ScalingState(CompressibleState):
 
-    length = variable(bla.as_scalar)
-    density = variable(bla.as_scalar)
-    momentum = variable(bla.as_scalar)
-    velocity = variable(bla.as_scalar)
-    speed_of_sound = variable(bla.as_scalar)
-    temperature = variable(bla.as_scalar)
-    pressure = variable(bla.as_scalar)
-    energy = variable(bla.as_scalar)
-    inner_energy = variable(bla.as_scalar)
-    kinetic_energy = variable(bla.as_scalar)
+    length = quantity(bla.as_scalar)
+    density = quantity(bla.as_scalar)
+    momentum = quantity(bla.as_scalar)
+    velocity = quantity(bla.as_scalar)
+    speed_of_sound = quantity(bla.as_scalar)
+    temperature = quantity(bla.as_scalar)
+    pressure = quantity(bla.as_scalar)
+    energy = quantity(bla.as_scalar)
+    inner_energy = quantity(bla.as_scalar)
+    kinetic_energy = quantity(bla.as_scalar)
 
 # ------- Dynamic Configuration ------- #
 

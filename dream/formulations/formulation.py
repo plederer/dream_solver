@@ -10,7 +10,7 @@ import ngsolve as ngs
 from dream import bla
 from dream import mesh as dmesh
 from dream.config import MultipleConfiguration, State, InterfaceConfiguration
-from dream.time_schemes import TransientGridfunction
+from dream.time import TransientGridfunction
 
 logger = logging.getLogger(__name__)
 

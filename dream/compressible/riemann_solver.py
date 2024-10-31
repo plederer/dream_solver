@@ -10,13 +10,25 @@ if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
 
 
-
 class RiemannSolver(MultipleConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
+    @property
+    def equations(self):
+        return self.cfg.pde.equations
+
     def get_convective_stabilisation_matrix(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         NotImplementedError()
+
+
+class Upwind(RiemannSolver):
+
+    name = "upwind"
+
+    def get_convective_stabilisation_matrix(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        unit_vector = bla.as_vector(unit_vector)
+        return self.equations.get_conservative_convective_jacobian(U, unit_vector, 'outgoing')
 
 
 class LaxFriedrich(RiemannSolver):
@@ -27,8 +39,8 @@ class LaxFriedrich(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         unit_vector = bla.as_vector(unit_vector)
 
-        u = self.cfg.pde.equations.velocity(U)
-        c = self.cfg.pde.equations.speed_of_sound(U)
+        u = self.equations.velocity(U)
+        c = self.equations.speed_of_sound(U)
 
         lambda_max = bla.abs(bla.inner(u, unit_vector)) + c
         return lambda_max * ngs.Id(unit_vector.dim + 2)
@@ -41,8 +53,8 @@ class Roe(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         unit_vector = bla.as_vector(unit_vector)
 
-        lambdas = self.cfg.pde.equations.characteristic_velocities(U, unit_vector, type_="absolute")
-        return self.cfg.pde.equations.transform_characteristic_to_conservative(bla.diagonal(lambdas), U, unit_vector)
+        lambdas = self.equations.characteristic_velocities(U, unit_vector, type_="absolute")
+        return self.equations.transform_characteristic_to_conservative(bla.diagonal(lambdas), U, unit_vector)
 
 
 class HLL(RiemannSolver):
@@ -52,8 +64,8 @@ class HLL(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         unit_vector = bla.as_vector(unit_vector)
 
-        u = self.cfg.pde.equations.velocity(U)
-        c = self.cfg.pde.equations.speed_of_sound(U)
+        u = self.equations.velocity(U)
+        c = self.equations.speed_of_sound(U)
 
         un = bla.inner(u, unit_vector)
         s_plus = bla.max(un + c)
@@ -76,8 +88,8 @@ class HLLEM(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: CompressibleState, unit_vector: bla.VECTOR) -> ngs.CF:
         unit_vector = bla.as_vector(unit_vector)
 
-        u = self.cfg.pde.equations.velocity(U)
-        c = self.cfg.pde.equations.speed_of_sound(U)
+        u = self.equations.velocity(U)
+        c = self.equations.speed_of_sound(U)
 
         un = bla.inner(u, unit_vector)
         un_abs = bla.abs(un)
@@ -85,7 +97,7 @@ class HLLEM(RiemannSolver):
 
         theta = bla.max(un_abs/(un_abs + c), self.theta_0)
         THETA = bla.diagonal([1] + unit_vector.dim * [theta] + [1])
-        THETA = self.cfg.pde.equations.transform_characteristic_to_conservative(THETA, U, unit_vector)
+        THETA = self.equations.transform_characteristic_to_conservative(THETA, U, unit_vector)
 
         return s_plus * THETA
 

@@ -373,6 +373,8 @@ class CompressibleEquations:
             logger.debug("Returning kinetic energy from density and specific kinetic energy.")
             return U.rho * U.Ek
 
+        return None
+
     @equation
     def specific_kinetic_energy(self, U: CompressibleState) -> bla.SCALAR:
         if U.is_set(U.u):
@@ -391,6 +393,8 @@ class CompressibleEquations:
             logger.debug("Returning specific kinetic energy from specific energy and speicific inner energy.")
             return U.E - U.Ei
 
+        return None
+
     @equation
     def energy(self, U: CompressibleState) -> bla.SCALAR:
         if U.is_set(U.rho, U.E):
@@ -400,6 +404,10 @@ class CompressibleEquations:
         elif U.is_set(U.rho_Ei, U.rho_Ek):
             logger.debug("Returning energy from inner energy and kinetic energy.")
             return U.rho_Ei + U.rho_Ek
+
+        else:
+            logger.debug("Returning energy from calculated inner energy and kinetic energy")
+            return self.inner_energy(U) + self.kinetic_energy(U)
 
     @equation
     def specific_energy(self, U: CompressibleState) -> bla.SCALAR:
@@ -411,6 +419,8 @@ class CompressibleEquations:
             logger.debug("Returning specific energy from specific inner energy and specific kinetic energy.")
             return U.Ei + U.Ek
 
+        return None
+
     @equation
     def enthalpy(self, U: CompressibleState) -> bla.SCALAR:
         if U.is_set(U.rho_E, U.p):
@@ -421,6 +431,8 @@ class CompressibleEquations:
             logger.debug("Returning enthalpy from density and specific enthalpy.")
             return U.rho * U.H
 
+        return None
+
     @equation
     def specific_enthalpy(self, U: CompressibleState) -> bla.SCALAR:
         if U.is_set(U.rho, U.rho_H):
@@ -430,6 +442,8 @@ class CompressibleEquations:
         elif U.is_set(U.rho, U.rho_E, U.p):
             logger.debug("Returning specific enthalpy from specific energy, density and pressure.")
             return U.E + U.p/U.rho
+
+        return None
 
     @equation
     def speed_of_sound(self, U: CompressibleState) -> bla.SCALAR:
@@ -602,3 +616,8 @@ class CompressibleEquations:
     @equation
     def characteristic_from_conservative(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
         return self.cfg.equation_of_state.characteristic_from_conservative(U, unit_vector)
+
+
+__all__ = [
+
+]

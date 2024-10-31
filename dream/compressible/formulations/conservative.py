@@ -5,7 +5,7 @@ import typing
 
 import dream.bla as bla
 
-from dream.config import MultipleConfiguration, multiple
+from dream.config import MultipleConfiguration, State, multiple
 
 from dream.compressible.config import (
     CompressibleState, CompressibleStateGradient, CompressibleFiniteElement, FarField, Outflow, InviscidWall, Symmetry,
@@ -98,7 +98,7 @@ class StrainHeat(MixedMethod):
         if self.cfg.pde.dynamic_viscosity.is_inviscid:
             raise TypeError(f"Inviscid configuration does not require mixed method!")
 
-        dim = 4*dim - 3
+        dim = 4*self.mesh.dim - 3
         order = self.cfg.pde.fe.order
 
         Q = ngs.L2(self.mesh, order=order)
@@ -149,12 +149,12 @@ class StrainHeat(MixedMethod):
         Q, P = self.Q_TnT
         blf['Q'] = bla.inner(Q, P) * ngs.dx
 
-        for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items():
+        # for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items():
 
-            strain = self.equations.strain_rate_tensor(dc.state)
-            Q_init = ngs.CF((strain[0, 0], strain[0, 1], strain[1, 1],
-                            self.equations.temperature_gradient(dc.state, dc.state)))
-            lf[f"{dc.name}_{dom}"] = Q_init * P * ngs.dx(definedon=self.mesh.Materials(dom))
+        #     strain = self.equations.strain_rate_tensor(dc.state)
+        #     Q_init = ngs.CF((strain[0, 0], strain[0, 1], strain[1, 1],
+        #                     self.equations.temperature_gradient(dc.state, dc.state)))
+        #     lf[f"{dc.name}_{dom}"] = Q_init * P * ngs.dx(definedon=self.mesh.Materials(dom))
 
     def get_mixed_state(self, Q: ngs.CoefficientFunction):
 
@@ -242,10 +242,10 @@ class ConservativeMethod(MultipleConfiguration, is_interface=True):
 
     @property
     def U_gfu_transient(self) -> dict[str, ngs.GridFunction]:
-        return self.cfg.pde.gfus_transient['U']
+        return self.cfg.pde.transient_gfus['U']
 
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]) -> None:
-        gfus['U'] = self.cfg.time.scheme.allocate_transient_gridfunctions(self.U_gfu)
+        gfus['U'] = self.cfg.time.scheme.get_transient_gridfunctions(self.U_gfu)
 
     def add_initial_conditions(self, blf: dict[str, ngs.comp.SumOfIntegrals], lf: dict[str, ngs.comp.SumOfIntegrals]):
 
@@ -259,7 +259,7 @@ class ConservativeMethod(MultipleConfiguration, is_interface=True):
                  self.equations.momentum(dc.state),
                  self.equations.energy(dc.state)))
 
-            lf[f"{dc.name}_{dom}"] = U_init * V * ngs.dx(definedon=self.mesh.Materials(dom))
+            lf[f"{dc.name}_U_{dom}"] = U_init * V * ngs.dx(definedon=self.mesh.Materials(dom))
 
     def add_time_derivative_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -271,13 +271,11 @@ class ConservativeMethod(MultipleConfiguration, is_interface=True):
         U_dt = self.U_gfu_transient.copy()
         U_dt['n+1'] = U
 
-        U_dt = self.cfg.time.scheme.get_discrete_time_derivative(self.U_gfu, dt)
+        U_dt = self.cfg.time.scheme.get_discrete_time_derivative(U_dt, dt)
 
         blf['time'] = bla.inner(U_dt, V) * ngs.dx
 
     def get_conservative_state(self, U: ngs.CoefficientFunction) -> CompressibleState:
-
-        # equations = self.cfg.pde.equations
 
         if isinstance(U, ngs.GridFunction):
             U = U.components
@@ -287,10 +285,31 @@ class ConservativeMethod(MultipleConfiguration, is_interface=True):
         U_.rho_u = U[slice(1, self.mesh.dim + 1)]
         U_.rho_E = U[self.mesh.dim + 1]
 
+        U_.u = self.equations.velocity(U_)
+        U_.rho_Ek = self.equations.kinetic_energy(U_)
+        U_.rho_Ei = self.equations.inner_energy(U_)
+        U_.p = self.equations.pressure(U_)
+        U_.T = self.equations.temperature(U_)
+        U_.c = self.equations.speed_of_sound(U_)
+
         if isinstance(U, ngs.comp.ProxyFunction):
             U_.U = U
 
         return U_
+
+    def get_drawing_state(self, quantities: dict[str, bool]) -> CompressibleState:
+        U = self.get_conservative_state(self.U_gfu)
+
+        draw = CompressibleState()
+        for name, symbol in U.name_to_symbol.items():
+            if name in quantities and quantities[name]:
+                quantities.pop(name)
+                draw[symbol] = getattr(self.equations, name)(U)
+            elif symbol in quantities and quantities[symbol]:
+                quantities.pop(symbol)
+                draw[symbol] = getattr(self.equations, name)(U)
+
+        return draw
 
 
 class HDG(ConservativeMethod):
@@ -311,7 +330,7 @@ class HDG(ConservativeMethod):
 
     @property
     def Uhat_gfu_transient(self) -> dict[str, ngs.GridFunction]:
-        return self.cfg.pde.gfus_transient['Uhat']
+        return self.cfg.pde.transient_gfus['Uhat']
 
     def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]) -> None:
 
@@ -319,8 +338,8 @@ class HDG(ConservativeMethod):
 
         dim = self.mesh.dim + 2
 
-        U = ngs.L2(self.mesh, order)
-        Uhat = ngs.FacetFESpace(self.mesh, order)
+        U = ngs.L2(self.mesh, order=order)
+        Uhat = ngs.FacetFESpace(self.mesh, order=order)
 
         psponge_layers = self.cfg.pde.dcs.to_pattern(PSpongeLayer)
         if psponge_layers:
@@ -330,11 +349,9 @@ class HDG(ConservativeMethod):
         fes['U'] = U**dim
         fes['Uhat'] = Uhat**dim
 
-        self.mixed_method.add_mixed_finite_element_spaces(fes)
-
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]) -> None:
         super().add_transient_gridfunctions(gfus)
-        gfus['Uhat'] = self.cfg.time.scheme.allocate_transient_gridfunctions(self.Uhat_gfu)
+        # gfus['Uhat'] = self.cfg.time.scheme.get_transient_gridfunctions(self.Uhat_gfu)
 
     def add_initial_conditions(self, blf: dict[str, ngs.comp.SumOfIntegrals], lf: dict[str, ngs.comp.SumOfIntegrals]):
         super().add_initial_conditions(blf, lf)
@@ -349,7 +366,8 @@ class HDG(ConservativeMethod):
                  self.equations.momentum(dc.state),
                  self.equations.energy(dc.state)))
 
-            lf[f"{dc.name}_{dom}"] = U_init * Vhat * ngs.dx(element_boundary=True, definedon=self.mesh.Materials(dom))
+            lf[f"{dc.name}_Uhat_{dom}"] = ngs.InnerProduct(
+                U_init, Vhat) * ngs.dx(element_boundary=True, definedon=self.mesh.Materials(dom))
 
     def add_convection_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -478,8 +496,8 @@ class HDG(ConservativeMethod):
         Uhat, Vhat = self.Uhat_TnT
 
         U = self.get_conservative_state(U)
-        U.p = self.equations.pressure(bc.pressure)
-        U_bc = ngs.CF((self.equations.density(U), self.equations.momentum(U), self.equations.energy(U)))
+        U_bc = CompressibleState(rho=U.rho, rho_u=U.rho_u, rho_Ek=U.rho_Ek, p=bc.state.p)
+        U_bc = ngs.CF((self.equations.density(U_bc), self.equations.momentum(U_bc), self.equations.energy(U_bc)))
 
         Gamma_out = ngs.InnerProduct(Uhat - U_bc, Vhat)
         blf[f"{bc.name}_{bnd}"] = Gamma_out * ngs.ds(skeleton=True, definedon=bnd_, bonus_intorder=bonus.bnd)
@@ -517,12 +535,8 @@ class HDG(ConservativeMethod):
         Uhat, Vhat = self.Uhat_TnT
 
         U = self.get_conservative_state(U)
-        U.T = bc.temperature
-
-        U_bc = ngs.CF(
-            (self.equations.density(U),
-             tuple(0 for _ in range(self.mesh.dim)),
-             self.equations.inner_energy(U)))
+        U_bc = CompressibleState(rho=U.rho, rho_u=tuple(0 for _ in range(self.mesh.dim)), rho_Ek=0, T=bc.state.T)
+        U_bc = ngs.CF((self.equations.density(U_bc), self.equations.momentum(U_bc), self.equations.inner_energy(U_bc)))
 
         Gamma_iso = ngs.InnerProduct(Uhat - U_bc, Vhat)
         blf[f"{bc.name}_{bnd}"] = Gamma_iso * ngs.ds(skeleton=True, definedon=bnd_, bonus_intorder=bonus.bnd)
@@ -641,7 +655,9 @@ class HDG(ConservativeMethod):
         fes = ngs.FacetFESpace(self.mesh, order=0)
         mask = ngs.GridFunction(fes, name="mask")
         mask.vec[:] = 0
-        mask.vec[~fes.GetDofs(self.cfg.pde.bcs.get_domain_boundaries(True))] = 1
+
+        bnd_dofs = fes.GetDofs(self.mesh.Boundaries(self.cfg.pde.bcs.get_domain_boundaries(True)))
+        mask.vec[~bnd_dofs] = 1
 
         return mask
 
@@ -658,37 +674,21 @@ class ConservativeFiniteElement(CompressibleFiniteElement):
     def mixed_method(self, mixed_method):
         return mixed_method
 
-    def get_finite_element_spaces(self, fes: dict[str, ngs.FESpace] | None = None) -> None:
-
-        if fes is None:
-            fes = {}
-
+    def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]):
         self.method.add_finite_element_spaces(fes)
         self.mixed_method.add_mixed_finite_element_spaces(fes)
+        super().add_finite_element_spaces(fes)
 
-        super().get_finite_element_spaces(fes)
-
-    def get_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]] | None = None) -> None:
-
-        if gfus is None:
-            gfus = {}
-
+    def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         self.method.add_transient_gridfunctions(gfus)
         self.mixed_method.add_transient_gridfunctions(gfus)
+        super().add_transient_gridfunctions(gfus)
 
-        super().get_transient_gridfunctions(gfus)
-
-    def get_discrete_system(self, blf: dict[str, ngs.comp.SumOfIntegrals] = None,
-                            lf: dict[str, ngs.comp.SumOfIntegrals] = None):
+    def add_discrete_system(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+                            lf: dict[str, ngs.comp.SumOfIntegrals]):
 
         if self.cfg.time.is_stationary:
             raise ValueError("Compressible flow requires transient solver!")
-
-        if blf is None:
-            blf = {}
-
-        if lf is None:
-            lf = {}
 
         self.method.add_time_derivative_formulation(blf, lf)
         self.method.add_convection_formulation(blf, lf)
@@ -700,8 +700,11 @@ class ConservativeFiniteElement(CompressibleFiniteElement):
 
         self.method.add_boundary_conditions(blf, lf)
         self.method.add_domain_conditions(blf, lf)
+        super().add_discrete_system(blf, lf)
 
-        return blf, lf
+    def get_drawing_state(self, quantities: dict[str, bool]) -> State:
+        U = self.method.get_drawing_state(quantities)
+        return U
 
     def set_initial_conditions(self) -> None:
         mass = {}

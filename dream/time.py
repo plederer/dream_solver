@@ -69,22 +69,20 @@ class TimeSchemes(MultipleConfiguration, is_interface=True):
 
     time_levels: tuple[str, ...]
 
-    def allocate_transient_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
+    def get_transient_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
         gfus = [ngs.GridFunction(gfu.space) for _ in self.time_levels[:-1]] + [gfu]
         return {level: gfu for level, gfu in zip(self.time_levels, gfus)}
 
-    def update_gridfunctions_after_time_step(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
+    def update_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
 
         for gfu in gfus.values():
-
             for old, new in zip(self.time_levels[:-1], self.time_levels[1:]):
                 gfu[old].vec.data = gfu[new].vec
 
-    def update_gridfunctions_after_initial_solution(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
+    def set_initial_conditions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
 
         for gfu in gfus.values():
-
-            for old in list(gfu.values())[1:]:
+            for old in list(gfu.values())[:-1]:
                 old.vec.data = gfu['n+1'].vec
 
     def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction], dt: ngs.Parameter) -> ngs.CF:
@@ -161,7 +159,7 @@ class TransientConfig(TimeConfig):
         for t in self.timer():
             yield t
 
-            self.scheme.update_gridfunctions_after_time_step(self.cfg.pde.gfus_transient)
+            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
     scheme: ImplicitEuler | BDF2
     timer: Timer
@@ -195,10 +193,10 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def routine(self):
         yield None
 
-        self.scheme.update_gridfunctions_after_time_step(self.cfg.pde.gfus_transient)
+        self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
     def iteration_update(self, it: int):
-        self.scheme.update_gridfunctions_after_time_step(self.cfg.pde.gfus_transient)
+        self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
         old_time_step = self.timer.step.Get()
 

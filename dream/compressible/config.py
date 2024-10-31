@@ -2,7 +2,7 @@ from __future__ import annotations
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import variable, State, any
+from dream.config import quantity, State, any
 from dream.pde import FiniteElement
 from dream.mesh import Condition
 
@@ -26,51 +26,51 @@ class CompressibleFiniteElement(FiniteElement, is_interface=True):
 
 class CompressibleState(State):
 
-    rho = variable(bla.as_scalar, 'density')
-    u = variable(bla.as_vector, 'velocity')
-    rho_u = variable(bla.as_vector, 'momentum')
-    p = variable(bla.as_scalar, 'pressure')
-    T = variable(bla.as_scalar, 'temperature')
-    rho_E = variable(bla.as_scalar, 'energy')
-    E = variable(bla.as_scalar, 'specific_energy')
-    rho_Ei = variable(bla.as_scalar, 'inner_energy')
-    Ei = variable(bla.as_scalar, 'specific_inner_energy')
-    rho_Ek = variable(bla.as_scalar, 'kinetic_energy')
-    Ek = variable(bla.as_scalar, 'specific_kinetic_energy')
-    rho_H = variable(bla.as_scalar, 'enthalpy')
-    H = variable(bla.as_scalar, 'specific_enthalpy')
-    c = variable(bla.as_scalar, 'speed_of_sound')
+    rho = quantity(bla.as_scalar, 'density')
+    u = quantity(bla.as_vector, 'velocity')
+    rho_u = quantity(bla.as_vector, 'momentum')
+    p = quantity(bla.as_scalar, 'pressure')
+    T = quantity(bla.as_scalar, 'temperature')
+    rho_E = quantity(bla.as_scalar, 'energy')
+    E = quantity(bla.as_scalar, 'specific_energy')
+    rho_Ei = quantity(bla.as_scalar, 'inner_energy')
+    Ei = quantity(bla.as_scalar, 'specific_inner_energy')
+    rho_Ek = quantity(bla.as_scalar, 'kinetic_energy')
+    Ek = quantity(bla.as_scalar, 'specific_kinetic_energy')
+    rho_H = quantity(bla.as_scalar, 'enthalpy')
+    H = quantity(bla.as_scalar, 'specific_enthalpy')
+    c = quantity(bla.as_scalar, 'speed_of_sound')
 
 
 class CompressibleStateGradient(State):
 
-    grad_rho = variable(bla.as_vector, 'density_gradient')
-    grad_u = variable(bla.as_matrix, 'velocity_gradient')
-    grad_rho_u = variable(bla.as_matrix, 'momentum_gradient')
-    grad_p = variable(bla.as_vector, 'pressure_gradient')
-    grad_T = variable(bla.as_vector, 'temperature_gradient')
-    grad_rho_E = variable(bla.as_vector, 'energy_gradient')
-    grad_E = variable(bla.as_vector, 'specific_energy_gradient')
-    grad_rho_Ei = variable(bla.as_vector, 'inner_energy_gradient')
-    grad_Ei = variable(bla.as_vector, 'specific_inner_energy_gradient')
-    grad_rho_Ek = variable(bla.as_vector, 'kinetic_energy_gradient')
-    grad_Ek = variable(bla.as_vector, 'specific_kinetic_energy_gradient')
-    grad_rho_H = variable(bla.as_vector, 'enthalpy_gradient')
-    grad_H = variable(bla.as_vector, 'specific_enthalpy_gradient')
-    grad_c = variable(bla.as_vector, 'speed_of_sound_gradient')
+    grad_rho = quantity(bla.as_vector, 'density_gradient')
+    grad_u = quantity(bla.as_matrix, 'velocity_gradient')
+    grad_rho_u = quantity(bla.as_matrix, 'momentum_gradient')
+    grad_p = quantity(bla.as_vector, 'pressure_gradient')
+    grad_T = quantity(bla.as_vector, 'temperature_gradient')
+    grad_rho_E = quantity(bla.as_vector, 'energy_gradient')
+    grad_E = quantity(bla.as_vector, 'specific_energy_gradient')
+    grad_rho_Ei = quantity(bla.as_vector, 'inner_energy_gradient')
+    grad_Ei = quantity(bla.as_vector, 'specific_inner_energy_gradient')
+    grad_rho_Ek = quantity(bla.as_vector, 'kinetic_energy_gradient')
+    grad_Ek = quantity(bla.as_vector, 'specific_kinetic_energy_gradient')
+    grad_rho_H = quantity(bla.as_vector, 'enthalpy_gradient')
+    grad_H = quantity(bla.as_vector, 'specific_enthalpy_gradient')
+    grad_c = quantity(bla.as_vector, 'speed_of_sound_gradient')
 
-    strain = variable(bla.as_matrix, 'strain_rate_tensor')
+    strain = quantity(bla.as_matrix, 'strain_rate_tensor')
 
 
 class ReferenceState(State):
 
-    L = variable(bla.as_scalar, "length")
-    rho = variable(bla.as_scalar, "density")
-    rho_u = variable(bla.as_scalar, "momentum")
-    u = variable(bla.as_scalar, "velocity")
-    c = variable(bla.as_scalar, "speed_of_sound")
-    T = variable(bla.as_scalar, "temperature")
-    p = variable(bla.as_scalar, "pressure")
+    L = quantity(bla.as_scalar, "length")
+    rho = quantity(bla.as_scalar, "density")
+    rho_u = quantity(bla.as_scalar, "momentum")
+    u = quantity(bla.as_scalar, "velocity")
+    c = quantity(bla.as_scalar, "speed_of_sound")
+    T = quantity(bla.as_scalar, "temperature")
+    p = quantity(bla.as_scalar, "pressure")
 
 
 class FarField(Condition):
@@ -96,18 +96,20 @@ class Outflow(Condition):
     name = "outflow"
 
     @any(default=None)
-    def pressure(self, pressure) -> State:
-        if isinstance(pressure, CompressibleState):
-            ...
-        elif bla.is_scalar(pressure):
-            pressure = CompressibleState(pressure=pressure)
+    def state(self, state) -> CompressibleState:
+        if state is not None:
+            if bla.is_scalar(state):
+                state = CompressibleState(p=state)
+            else:
+                state = CompressibleState(**state)
+        return state
 
-        return pressure
+    @state.getter_check
+    def state(self) -> None:
+        if self.data['state'] is None:
+            raise ValueError("Outflow state not set!")
 
-    @pressure.getter_check
-    def pressure(self) -> None:
-        if self.data['pressure'] is None:
-            raise ValueError("Static pressure not set!")
+    state: CompressibleState
 
 
 class CBC(Condition, is_interface=True):
@@ -174,13 +176,20 @@ class IsothermalWall(Condition):
     name = "isothermal_wall"
 
     @any(default=None)
-    def temperature(self, temperature) -> State:
-        return temperature
+    def state(self, state) -> CompressibleState:
+        if state is not None:
+            if bla.is_scalar(state):
+                state = CompressibleState(T=state)
+            else:
+                state = CompressibleState(**state)
+        return state
 
-    @temperature.getter_check
-    def temperature(self) -> None:
-        if self.data['temperature'] is None:
-            raise ValueError("Temperature not set!")
+    @state.getter_check
+    def state(self) -> None:
+        if self.data['state'] is None:
+            raise ValueError("Isothermal Wall state not set!")
+
+    state: CompressibleState
 
 
 class AdiabaticWall(Condition):

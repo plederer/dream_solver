@@ -1,4 +1,4 @@
-#%%
+# %%
 from __future__ import annotations
 import unittest
 
@@ -9,9 +9,8 @@ import dream.config as cfg
 
 class DummyState(cfg.State):
 
-    dummy = cfg.descriptor()
-    rho = cfg.variable(lambda x: 2*x, 'density')
-    p = cfg.variable(lambda x: 5*x, 'pressure')
+    rho = cfg.quantity(lambda x: 2*x, 'density')
+    p = cfg.quantity(lambda x: 5*x, 'pressure')
 
 
 class MultipleConfiguration(cfg.MultipleConfiguration, is_interface=True):
@@ -58,20 +57,16 @@ class UniqueConfiguration_(cfg.UniqueConfiguration):
 # ------- Tests ------- #
 
 
-
-class TestDescriptor(unittest.TestCase):
-
-    def setUp(self):
-        self.obj = DummyState
-
-    def test_descriptor_name(self):
-        self.assertEqual(self.obj.dummy.name, "dummy")
-
-
 class TestVariable(unittest.TestCase):
 
     def setUp(self):
         self.obj = DummyState()
+
+    def test_variable_name(self):
+        self.assertEqual(type(self.obj).rho.name, "density")
+
+    def test_variable_symbol(self):
+        self.assertEqual(type(self.obj).rho.symbol, "rho")
 
     def tearDown(self) -> None:
         self.obj.clear()
@@ -107,42 +102,39 @@ class TestState(unittest.TestCase):
     def test_update(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
 
-        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25})
-        self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data, "u": 5})
+        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25, 'u': 5})
+        self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data})
 
     def test_keys(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.keys()), ("density", "pressure"))
+        self.assertTupleEqual(tuple(self.obj.keys()), ("density", "pressure", 'u'))
 
     def test_values(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.values()), (4, 25))
+        self.assertTupleEqual(tuple(self.obj.values()), (4, 25, 5))
 
     def test_items(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.items()), (('density', 4), ('pressure', 25)))
+        self.assertTupleEqual(tuple(self.obj.items()), (('density', 4), ('pressure', 25), ('u', 5)))
 
     def test_set_item(self):
         self.obj["rho"] = 2
         self.obj["p"] = 5
         self.obj["u"] = 5
 
-        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25})
-        self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data, "u": 5})
+        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25, 'u': 5})
+        self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data})
 
     def test_get_item(self):
         self.assertEqual(self.obj["p"], None)
 
-        with self.assertRaises(AttributeError):
-            self.obj["u"]
-
     def test_iterator(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj), ("density", "pressure"))
+        self.assertTupleEqual(tuple(self.obj), ("density", "pressure", 'u'))
 
     def test_length(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertEqual(len(self.obj), 2)
+        self.assertEqual(len(self.obj), 3)
 
 
 class TestDescriptorConfigurationChild(unittest.TestCase):
@@ -206,7 +198,8 @@ class TestUniqueConfiguration(unittest.TestCase):
         self.assertEqual(id(self.obj), id(self.obj.other.cfg))
 
     def test_export_default(self):
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0})
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a',
+                             'other.x': 0.0, 'other.y': 0.0, 'param': 2.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
@@ -214,23 +207,30 @@ class TestUniqueConfiguration(unittest.TestCase):
             {'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
-        self.assertDictEqual(self.obj.to_flat_dict(data={'z': 2}), {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
+        self.assertDictEqual(
+            self.obj.to_flat_dict(data={'z': 2}),
+            {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_update_subconfiguration(self):
         self.obj.update({'other.x': 3.0, 'other.y': 5.0, 'param': 5})
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a', 'other.x': 3.0, 'other.y': 5.0, 'param': 5.0})
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a',
+                             'other.x': 3.0, 'other.y': 5.0, 'param': 5.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
             self.obj.to_flat_dict(root='unique'),
-            {'unique.other': 'child_a','unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
+            {'unique.other': 'child_a', 'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
-        self.assertDictEqual(self.obj.to_flat_dict(data={'z': 2}), {'other': 'child_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
+        self.assertDictEqual(
+            self.obj.to_flat_dict(data={'z': 2}),
+            {'other': 'child_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_set_subconfiguration_by_string(self):
         self.obj.other = "child_b"
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_b','other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
+        self.assertDictEqual(
+            self.obj.to_flat_dict(),
+            {'other': 'child_b', 'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_instance(self):
         self.obj.other = MultipleB()
@@ -238,7 +238,8 @@ class TestUniqueConfiguration(unittest.TestCase):
 
     def test_set_subconfiguration_by_dict(self):
         self.obj.other = {'x': 2.0, 'y': 3.0, 'z': 5}
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a', 'other.x': 2.0, 'other.y': 3.0, 'param': 2.0})
+        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a',
+                             'other.x': 2.0, 'other.y': 3.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_string_id(self):
         old = id(self.obj.other)

@@ -248,6 +248,9 @@ class Condition(MultipleConfiguration, is_interface=True):
 
     def __hash__(self) -> int:
         return id(self)
+    
+    def __eq__(self, other) -> bool:
+        return self is other
 
     def __repr__(self) -> str:
         return f"{self.name}:\n" + super().__repr__()

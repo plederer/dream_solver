@@ -9,6 +9,21 @@ import ngsolve as ngs
 
 logger = logging.getLogger(__name__)
 
+# ------ Helper Functions ------ #
+def is_notebook() -> bool:
+    try:
+        shell = get_ipython().__class__.__name__
+        if shell == 'ZMQInteractiveShell':
+            return True
+        elif shell == 'TerminalInteractiveShell':
+            return False
+        else:
+            return False
+    except NameError:
+        return False
+
+
+
 
 # ------- State ------- #
 
@@ -46,15 +61,7 @@ def equation(func):
 # ------- Descriptors ------- #
 
 
-class descriptor:
-
-    __slots__ = ("name", )
-
-    def __set_name__(self, owner, name: str):
-        self.name = name
-
-
-class variable(descriptor):
+class quantity:
     """
     Variable is a descriptor that mimics a physical quantity.
 
@@ -63,27 +70,36 @@ class variable(descriptor):
     tensor dimensions.
     """
 
-    __slots__ = ("cast", "symbol")
+    __slots__ = ('symbol', 'cast', 'name')
 
-    def __init__(self, cast: typing.Callable, symbol: str) -> None:
-        self.cast = cast
+    def __set_name__(self, owner, symbol: str):
         self.symbol = symbol
 
+    def __init__(self, cast: typing.Callable, name: str) -> None:
+        self.cast = cast
+        self.name = name
+
     def __get__(self, state: State, objtype) -> ngs.CF:
-        return state.data.get(self.symbol, None)
+        if state is None:
+            return self
+
+        return state.data.get(self.name, None)
 
     def __set__(self, state: State, value) -> None:
         if value is not None:
             value = self.cast(value)
-            state.data[self.symbol] = value
+            state.data[self.name] = value
 
     def __delete__(self, state: State):
-        del state.data[self.symbol]
+        del state.data[self.name]
 
 
-class configuration(descriptor):
+class configuration:
 
-    __slots__ = ('_default', 'fset_', 'fget_', '__doc__')
+    __slots__ = ('name', '_default', 'fset_', 'fget_', '__doc__')
+
+    def __set_name__(self, owner, name: str):
+        self.name = name
 
     def __init__(self, default, fset_=None, fget_=None, doc: str = None):
         self.default = default
@@ -265,28 +281,40 @@ class InheritanceTree(collections.UserDict):
 
 class State(collections.UserDict):
 
-    def __init_subclass__(cls) -> None:
-        cls.alias_map = {value.symbol: var for var, value in vars(cls).items() if isinstance(value, variable)}
-        return super().__init_subclass__()
-
-    def __setitem__(self, key: str, value):
-        if key in self.alias_map:
-            key = self.alias_map[key]
-        setattr(self, key, value)
-
-    def __getitem__(self, key):
-        if key in self.alias_map:
-            key = self.alias_map[key]
-        return getattr(self, key)
-
-    def __delitem__(self, key) -> None:
-        if key in self.alias_map:
-            key = self.alias_map[key]
-        delattr(self, key)
-
     @staticmethod
     def is_set(*args) -> bool:
         return all([arg is not None for arg in args])
+
+    def __init_subclass__(cls) -> None:
+        cls.name_to_symbol = {value.name: symbol for symbol, value in vars(cls).items() if isinstance(value, quantity)}
+        return super().__init_subclass__()
+
+    def __setitem__(self, key: str, value):
+        if key in self.name_to_symbol:
+            key = self.name_to_symbol[key]
+            setattr(self, key, value)
+        elif key in self.name_to_symbol.values():
+            setattr(self, key, value)
+        else:
+            super().__setitem__(key, value)
+
+    def __getitem__(self, key):
+        if key in self.name_to_symbol:
+            key = self.name_to_symbol[key]
+            return getattr(self, key)
+        elif key in self.name_to_symbol.values():
+            return getattr(self, key)
+        else:
+            return super().__getitem__(key)
+
+    def __delitem__(self, key) -> None:
+        if key in self.name_to_symbol:
+            key = self.name_to_symbol[key]
+            delattr(self, key)
+        elif key in self.name_to_symbol.values():
+            delattr(self, key)
+        else:
+            super().__delitem__(key)
 
     def to_float(self) -> State:
         """ Returns the current state represented by pure python objects. 

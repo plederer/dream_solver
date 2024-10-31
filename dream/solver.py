@@ -10,7 +10,7 @@ from .sensor import Sensor
 from .compressible import CompressibleFlowConfiguration
 
 from .config import UniqueConfiguration, MultipleConfiguration, multiple, any, unique
-from .time_schemes import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
+from .time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class Inverse(MultipleConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
-    def get_inverse(self, blf: ngs.BilinearForm, pre: ngs.BilinearForm, fes: ngs.FESpace):
+    def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, pre: ngs.BilinearForm = None):
         NotImplementedError()
 
 
@@ -55,7 +55,7 @@ class Direct(Inverse):
     def solver(self, solver: str):
         return solver
 
-    def get_inverse(self, blf: ngs.BilinearForm, pre: ngs.BilinearForm, fes: ngs.FESpace):
+    def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, pre: ngs.BilinearForm = None):
         return blf.mat.Inverse(fes.FreeDofs(blf.condense), inverse=self.solver)
 
     solver: str
@@ -82,11 +82,11 @@ class NonlinearMethod(MultipleConfiguration, is_interface=True):
         raise NotImplementedError()
 
     def log_iteration_error(self, error: float, it: int | None = None, t: float | None = None):
-        msg = f"Iteration error: {error:8e}"
+        msg = f"residual: {error:8e}"
         if it is not None:
-            msg += f" - iteration number: {it}"
+            msg += f" | iteration: {it}"
         if t is not None:
-            msg += f" - time step: {t}"
+            msg += f" | t: {t:.{self.cfg.time.timer.digit}f}"
         logger.info(msg)
 
 
@@ -115,7 +115,7 @@ class NewtonsMethod(NonlinearMethod):
         self.residual.data -= self.lf.vec
         self.blf.AssembleLinearization(self.gfu.vec)
 
-        inv = self.cfg.solver.inverse.get_inverse(self.blf, fes=self.fes)
+        inv = self.cfg.solver.inverse.get_inverse(self.blf, self.fes)
         if self.blf.condense:
             self.residual.data += self.blf.harmonic_extension_trans * self.residual
             self.temporary.data = inv * self.residual
@@ -131,13 +131,12 @@ class NewtonsMethod(NonlinearMethod):
         error = ngs.sqrt(ngs.InnerProduct(self.temporary, self.residual)**2)
 
         self.is_converged = error < self.cfg.solver.convergence_criterion
+        self.log_iteration_error(error, it, t)
+        self.error = error
 
         if isnan(error):
             self.is_nan = True
             logger.error("Solution process diverged!")
-
-        self.log_iteration_error(error, it, t)
-        self.error = error
 
     damping_factor: float
 
@@ -154,17 +153,26 @@ class Solver(MultipleConfiguration, is_interface=True):
 
         fes = self.cfg.pde.fes
         condense = self.cfg.optimizations.static_condensation
+        compile = self.cfg.optimizations.compile
 
         self.blf = ngs.BilinearForm(fes, condense=condense)
         self.lf = ngs.LinearForm(fes)
 
-        for name, cf in self.cfg.pde.blf:
+        for name, cf in self.cfg.pde.blf.items():
             logger.debug(f"Adding {name} to the BilinearForm!")
-            self.blf += cf
 
-        for name, cf in self.cfg.pde.lf:
+            if compile.realcompile:
+                self.blf += cf.Compile(**compile)
+            else:
+                self.blf += cf
+
+        for name, cf in self.cfg.pde.lf.items():
             logger.debug(f"Adding {name} to the LinearForm!")
-            self.lf += cf
+
+            if compile.realcompile:
+                self.lf += cf.Compile(**compile)
+            else:
+                self.lf += cf
 
     inverse: Direct
 
@@ -183,6 +191,10 @@ class NonlinearSolver(Solver):
 
     name: str = "nonlinear"
 
+    @multiple(default=NewtonsMethod)
+    def method(self, method: NonlinearMethod):
+        return method
+
     @any(default=10)
     def max_iterations(self, max_iterations: int):
         return int(max_iterations)
@@ -192,10 +204,6 @@ class NonlinearSolver(Solver):
         if convergence_criterion <= 0:
             raise ValueError("Convergence Criterion must be greater zero!")
         return float(convergence_criterion)
-
-    @multiple(default=NewtonsMethod)
-    def method(self, method: NonlinearMethod):
-        return method
 
     def set_discrete_system(self):
         super().set_discrete_system()
@@ -225,16 +233,37 @@ class NonlinearSolver(Solver):
             if self.method.is_nan:
                 break
 
+            self.cfg.pde.redraw()
+
+    method: NonlinearMethod
     max_iterations: int
     convergence_criterion: float
-    method: NonlinearMethod
+
+
+class Compile(UniqueConfiguration):
+
+    @any(default=True)
+    def realcompile(self, flag: bool):
+        return bool(flag)
+
+    @any(default=False)
+    def wait(self, flag: bool):
+        return bool(flag)
+
+    @any(default=False)
+    def keep_files(self, flag: bool):
+        return bool(flag)
+
+    realcompile: bool
+    wait: bool
+    keep_files: bool
 
 
 class Optimizations(UniqueConfiguration):
 
-    @any(default=False)
-    def compile_flag(self, compile_flag: bool):
-        return bool(compile_flag)
+    @unique(default=Compile)
+    def compile(self, compile):
+        return compile
 
     @any(default=True)
     def static_condensation(self, static_condensation):
@@ -244,7 +273,7 @@ class Optimizations(UniqueConfiguration):
     def bonus_int_order(self, dict_):
         return dict_
 
-    compile_flag: bool
+    compile: Compile
     static_condensation: bool
     bonus_int_order: BonusIntegrationOrder
 
@@ -255,7 +284,7 @@ class SolverConfiguration(UniqueConfiguration):
 
     def __init__(self, mesh: ngs.Mesh, **kwargs) -> None:
         self.mesh = mesh
-        super().__init__(root=self, **kwargs)
+        super().__init__(cfg=self, **kwargs)
 
         if not hasattr(mesh, 'normal'):
             self.mesh.normal = ngs.specialcf.normal(mesh.dim)
@@ -282,27 +311,41 @@ class SolverConfiguration(UniqueConfiguration):
     def optimizations(self, optimizations):
         return optimizations
 
+    @any(default=None)
+    def info(self, info=None):
+
+        if info is None:
+            info = {}
+
+        if not isinstance(info, dict):
+            raise ValueError("Info must be a dictionary!")
+
+        return info
+
     def set_grid_deformation(self):
         grid_deformation = self.pde.dcs.get_grid_deformation_function()
         self.mesh.SetDeformation(grid_deformation)
 
-    def set_spaces_and_gridfunctions(self):
+    def set_finite_element_spaces(self):
         self.pde.set_finite_element_spaces()
         self.pde.set_trial_and_test_functions()
+
+    def set_gridfunctions(self):
         self.pde.set_gridfunctions()
 
         if not self.time.is_stationary:
             self.pde.set_transient_gridfunctions()
 
-    def set_discrete_system_tree(self,
-                                 set_initial: bool = True,
-                                 set_boundary: bool = True):
+    def set_initial_conditions(self):
+        self.pde.set_initial_conditions()
+
+        if not self.time.is_stationary:
+            self.time.scheme.set_initial_conditions(self.pde.transient_gfus)
+
+    def set_discrete_system_tree(self, set_boundary: bool = True):
 
         if set_boundary:
             self.pde.set_boundary_conditions()
-
-        if set_initial:
-            self.pde.set_initial_conditions()
 
         self.pde.set_discrete_system_tree()
 
