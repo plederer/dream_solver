@@ -4,81 +4,84 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import MultipleConfiguration, parameter
-from dream.compressible.config import CompressibleState, CompressibleStateGradient
+from dream.config import InterfaceConfiguration, parameter
+from dream.compressible.config import flowstate
 
 logger = logging.getLogger(__name__)
 
 
-class EquationOfState(MultipleConfiguration, is_interface=True):
+class EquationOfState(InterfaceConfiguration, is_interface=True):
 
-    def density(self, U: CompressibleState) -> ngs.CF:
+    def density(self, U: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def pressure(self, U: CompressibleState) -> ngs.CF:
+    def pressure(self, U: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def temperature(self, U: CompressibleState) -> ngs.CF:
+    def temperature(self, U: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def inner_energy(self, U: CompressibleState) -> ngs.CF:
+    def inner_energy(self, U: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def specific_inner_energy(self, U: CompressibleState) -> ngs.CF:
+    def specific_inner_energy(self, U: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def speed_of_sound(self, U: CompressibleState) -> ngs.CF:
+    def speed_of_sound(self, U: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def density_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> ngs.CF:
+    def density_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def pressure_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> ngs.CF:
+    def pressure_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
-    def temperature_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> ngs.CF:
+    def temperature_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
     def characteristic_velocities(
-            self, U: CompressibleState, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
+            self, U: flowstate, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
         raise NotImplementedError()
 
     def characteristic_variables(
-            self, U: CompressibleState, dU: CompressibleStateGradient, unit_vector: bla.VECTOR) -> bla.VECTOR:
+            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR) -> bla.VECTOR:
         raise NotImplementedError()
 
     def characteristic_amplitudes(
-            self, U: CompressibleState, dU: CompressibleStateGradient, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
+            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
         raise NotImplementedError()
 
-    def primitive_from_conservative(self, U: CompressibleState) -> bla.MATRIX:
+    def primitive_from_conservative(self, U: flowstate) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_from_characteristic(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def primitive_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_convective_jacobian_x(self, U: CompressibleState) -> bla.MATRIX:
+    def primitive_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_convective_jacobian_y(self, U: CompressibleState) -> bla.MATRIX:
+    def primitive_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_from_primitive(self, U: CompressibleState) -> bla.MATRIX:
+    def conservative_from_primitive(self, U: flowstate) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_from_characteristic(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def conservative_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_convective_jacobian_x(self, U: CompressibleState) -> bla.MATRIX:
+    def conservative_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_convective_jacobian_y(self, U: CompressibleState) -> bla.MATRIX:
+    def conservative_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def characteristic_from_primitive(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_primitive(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def characteristic_from_conservative(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_conservative(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        raise NotImplementedError()
+
+    def isentropic_density(self, U: flowstate, Uref: flowstate) -> ngs.CF:
         raise NotImplementedError()
 
 
@@ -91,7 +94,7 @@ class IdealGas(EquationOfState):
     def heat_capacity_ratio(self, heat_capacity_ratio: float):
         return heat_capacity_ratio
 
-    def density(self, U: CompressibleState) -> bla.SCALAR:
+    def density(self, U: flowstate) -> bla.SCALAR:
         r"""Returns the density from a given state
 
         .. math::
@@ -101,22 +104,24 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if U.rho is not None:
+            return U.rho
 
-        if U.is_set(U.p, U.T):
+        elif all((U.p, U.T)):
             logger.debug("Returning density from pressure and temperature.")
             return gamma/(gamma - 1) * U.p/U.T
 
-        elif U.is_set(U.p, U.c):
+        elif all((U.p, U.c)):
             logger.debug("Returning density from pressure and speed of sound.")
             return gamma * U.p/U.c**2
 
-        elif U.is_set(U.rho_Ei, U.T):
+        elif all((U.rho_Ei, U.T)):
             logger.debug("Returning density from inner energy and temperature.")
             return gamma * U.rho_Ei/U.T
 
         return None
 
-    def pressure(self, U: CompressibleState) -> bla.SCALAR:
+    def pressure(self, U: flowstate) -> bla.SCALAR:
         r"""Returns the density from a given state
 
         .. math::
@@ -126,22 +131,24 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if U.p is not None:
+            return U.p
 
-        if U.is_set(U.rho, U.T):
+        elif all((U.rho, U.T)):
             logger.debug("Returning pressure from density and temperature.")
             return (gamma - 1)/gamma * U.rho * U.T
 
-        elif U.is_set(U.rho_Ei):
+        elif U.rho_Ei is not None:
             logger.debug("Returning pressure from inner energy.")
             return (gamma - 1) * U.rho_Ei
 
-        elif U.is_set(U.rho, U.c):
+        elif all((U.rho, U.c)):
             logger.debug("Returning pressure from density and speed of sound.")
             return U.rho * U.c**2/gamma
 
         return None
 
-    def temperature(self, U: CompressibleState) -> bla.SCALAR:
+    def temperature(self, U: flowstate) -> bla.SCALAR:
         r"""Returns the temperature from a given state
 
         .. math::
@@ -151,22 +158,24 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if U.T is not None:
+            return U.T
 
-        if U.is_set(U.p, U.rho):
+        elif all((U.p, U.rho)):
             logger.debug("Returning temperature from density and pressure.")
             return gamma/(gamma - 1) * U.p/U.rho
 
-        elif U.is_set(U.Ei):
+        elif U.Ei is not None:
             logger.debug("Returning temperature from specific inner energy.")
             return gamma * U.Ei
 
-        elif U.is_set(U.c):
+        elif U.c is not None:
             logger.debug("Returning temperature from speed of sound.")
             return U.c**2/(gamma - 1)
 
         return None
 
-    def inner_energy(self, U: CompressibleState) -> bla.SCALAR:
+    def inner_energy(self, U: flowstate) -> bla.SCALAR:
         r"""Returns the inner energy from a given state
 
         .. math::
@@ -175,18 +184,20 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if U.rho_Ei is not None:
+            return U.rho_Ei
 
-        if U.is_set(U.p):
+        elif U.p is not None:
             logger.debug("Returning inner energy from pressure.")
             return U.p/(gamma - 1)
 
-        elif U.is_set(U.rho, U.T):
+        elif all((U.rho, U.T)):
             logger.debug("Returning inner energy from density and temperature.")
             return U.rho * U.T/gamma
 
         return None
 
-    def specific_inner_energy(self, U: CompressibleState) -> bla.SCALAR:
+    def specific_inner_energy(self, U: flowstate) -> bla.SCALAR:
         r"""Returns the specific inner energy from a given state
 
         .. math::
@@ -195,18 +206,20 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if U.Ei is not None:
+            return U.Ei
 
-        if U.is_set(U.T):
+        elif U.T is not None:
             logger.debug("Returning specific inner energy from temperature.")
             return U.T/gamma
 
-        elif U.is_set(U.rho, U.p):
+        elif all((U.rho, U.p)):
             logger.debug("Returning specific inner energy from density and pressure.")
             return U.p/(gamma - 1)/U.rho
 
         return None
 
-    def speed_of_sound(self, U: CompressibleState) -> bla.SCALAR:
+    def speed_of_sound(self, U: flowstate) -> bla.SCALAR:
         r"""Returns the speed of sound from a given state
 
         .. math::
@@ -216,21 +229,24 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.rho, U.p):
+        if U.c is not None:
+            return U.c
+
+        elif all((U.rho, U.p)):
             logger.debug("Returning speed of sound from pressure and density.")
             return ngs.sqrt(gamma * U.p/U.rho)
 
-        elif U.is_set(U.T):
+        elif U.T is not None:
             logger.debug("Returning speed of sound from temperature.")
             return ngs.sqrt((gamma - 1) * U.T)
 
-        elif U.is_set(U.Ei):
+        elif U.Ei is not None:
             logger.debug("Returning speed of sound from specific inner energy.")
             return ngs.sqrt((gamma - 1) * U.Ei/gamma)
 
         return None
 
-    def density_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+    def density_gradient(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
         r"""Returns the density gradient from a given state
 
         .. math::
@@ -239,16 +255,18 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if dU.grad_rho is not None:
+            return dU.grad_rho
 
-        if U.is_set(U.p, U.T, dU.grad_p, dU.grad_T):
+        elif all((U.p, U.T, dU.grad_p, dU.grad_T)):
             logger.debug("Returning density gradient from pressure and temperature.")
             return gamma/(gamma - 1) * (dU.grad_p/U.T - U.p * dU.grad_T/U.T**2)
 
-        elif U.is_set(U.T, U.rho_Ei, dU.grad_T, dU.grad_rho_Ei):
+        elif all((U.T, U.rho_Ei, dU.grad_T, dU.grad_rho_Ei)):
             logger.debug("Returning density gradient from temperature and inner energy.")
             return gamma * (dU.grad_rho_Ei/U.T - U.rho_Ei * dU.grad_T/U.T**2)
 
-    def pressure_gradient(self, U: CompressibleState, dU: CompressibleStateGradient) -> bla.VECTOR:
+    def pressure_gradient(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
         r"""Returns the pressure gradient from a given state
 
         .. math::
@@ -257,16 +275,18 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if dU.grad_p is not None:
+            return dU.grad_p
 
-        if U.is_set(U.rho, U.T, dU.grad_rho, dU.grad_T):
+        elif all((U.rho, U.T, dU.grad_rho, dU.grad_T)):
             logger.debug("Returning pressure gradient from density and temperature.")
             return (gamma - 1)/gamma * (dU.grad_rho * U.T + U.rho * dU.grad_T)
 
-        elif U.is_set(dU.grad_rho_Ei):
+        elif dU.grad_rho_Ei is not None:
             logger.debug("Returning pressure gradient from inner energy gradient.")
             return (gamma - 1) * dU.grad_rho_Ei
 
-    def temperature_gradient(self, U: CompressibleState,  dU: CompressibleStateGradient) -> bla.VECTOR:
+    def temperature_gradient(self, U: flowstate,  dU: flowstate) -> bla.VECTOR:
         r"""Returns the temperature gradient from a given state
 
         .. math::
@@ -275,20 +295,22 @@ class IdealGas(EquationOfState):
         """
 
         gamma = self.heat_capacity_ratio
+        if dU.grad_T is not None:
+            return dU.grad_T
 
-        if U.is_set(U.rho, U.p, dU.grad_p, dU.grad_rho):
+        elif all((U.rho, U.p, dU.grad_p, dU.grad_rho)):
             logger.debug("Returning temperature gradient from density and pressure.")
             return gamma/(gamma - 1) * (dU.grad_p/U.rho - U.p * dU.grad_rho/U.rho**2)
 
-        elif U.is_set(dU.grad_Ei):
+        elif dU.grad_Ei is not None:
             logger.debug("Returning temperature gradient from specific inner energy gradient.")
             return gamma * dU.grad_Ei
 
-    def characteristic_velocities(self, U: CompressibleState, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
+    def characteristic_velocities(self, U: flowstate, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
 
         unit_vector = bla.as_vector(unit_vector)
 
-        if U.is_set(U.u, U.c):
+        if all((U.u, U.c)):
 
             un = bla.inner(U.u, unit_vector)
 
@@ -321,11 +343,11 @@ class IdealGas(EquationOfState):
             return bla.as_vector([lam_m_c] + U.u.dim * [lam] + [lam_p_c])
 
     def characteristic_variables(
-            self, U: CompressibleState, dU: CompressibleStateGradient, unit_vector: bla.VECTOR) -> bla.VECTOR:
+            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR) -> bla.VECTOR:
 
         unit_vector = bla.as_vector(unit_vector)
 
-        if U.is_set(U.rho, U.c, dU.grad_rho, dU.grad_p, dU.grad_u):
+        if all((U.rho, U.c, dU.grad_rho, dU.grad_p, dU.grad_u)):
 
             grad_rho_n = bla.inner(dU.grad_rho, unit_vector)
             grad_p_n = bla.inner(dU.grad_p, unit_vector)
@@ -345,7 +367,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_vector(char)
 
-    def characteristic_amplitudes(self, U: CompressibleState, dU: CompressibleStateGradient, unit_vector: bla.VECTOR,
+    def characteristic_amplitudes(self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR,
                                   type_: str = None) -> bla.VECTOR:
         """ The charachteristic amplitudes are defined as
 
@@ -359,10 +381,10 @@ class IdealGas(EquationOfState):
         velocities = self.characteristic_velocities(U, unit_vector, type_)
         variables = self.characteristic_variables(U, dU, unit_vector)
 
-        if U.is_set(velocities, variables):
+        if all((velocities, variables)):
             return bla.as_vector([vel * var for vel, var in zip(velocities, variables)])
 
-    def primitive_from_conservative(self, U: CompressibleState) -> bla.MATRIX:
+    def primitive_from_conservative(self, U: flowstate) -> bla.MATRIX:
         """
         The M inverse matrix transforms conservative variables to primitive variables
 
@@ -377,7 +399,7 @@ class IdealGas(EquationOfState):
         """
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.rho, U.u):
+        if all((U.rho, U.u)):
 
             if U.u.dim == 2:
 
@@ -395,7 +417,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(Minv, dims=(dim, dim))
 
-    def primitive_from_characteristic(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def primitive_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         """
         The L matrix transforms characteristic variables to primitive variables
 
@@ -410,7 +432,7 @@ class IdealGas(EquationOfState):
         """
         unit_vector = bla.as_vector(unit_vector)
 
-        if U.is_set(U.rho, U.c):
+        if all((U.rho, U.c)):
             if unit_vector.dim == 2:
                 d0, d1 = unit_vector
 
@@ -425,9 +447,9 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(L, dims=(dim, dim))
 
-    def primitive_convective_jacobian_x(self, U: CompressibleState) -> bla.MATRIX:
+    def primitive_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
 
-        if U.is_set(U.u, U.rho, U.c):
+        if all((U.u, U.rho, U.c)):
             dim = U.u.dim + 2
 
             if dim == 4:
@@ -443,9 +465,9 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(A, dims=(dim, dim))
 
-    def primitive_convective_jacobian_y(self, U: CompressibleState) -> bla.MATRIX:
+    def primitive_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
 
-        if U.is_set(U.u, U.rho, U.c):
+        if all((U.u, U.rho, U.c)):
             dim = U.u.dim + 2
 
             if dim == 4:
@@ -461,7 +483,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(B, dims=(dim, dim))
 
-    def conservative_from_primitive(self, U: CompressibleState) -> bla.MATRIX:
+    def conservative_from_primitive(self, U: flowstate) -> bla.MATRIX:
         """
         The M matrix transforms primitive variables to conservative variables
 
@@ -476,7 +498,7 @@ class IdealGas(EquationOfState):
         """
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.rho, U.u):
+        if all((U.rho, U.u)):
             dim = U.u.dim + 2
 
             if dim == 4:
@@ -492,7 +514,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(M, dims=(dim, dim))
 
-    def conservative_from_characteristic(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def conservative_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         """
         The P matrix transforms characteristic variables to conservative variables
 
@@ -509,7 +531,7 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.rho, U.c, U.u):
+        if all((U.rho, U.c, U.u)):
             dim = unit_vector.dim + 2
 
             if dim == 4:
@@ -533,7 +555,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(P, dims=(dim, dim))
 
-    def conservative_convective_jacobian_x(self, U: CompressibleState) -> bla.MATRIX:
+    def conservative_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
         r""" First Jacobian of the convective fluxes 
 
         .. math::
@@ -552,7 +574,7 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.u, U.E):
+        if all((U.u, U.E)):
             dim = U.u.dim + 2
 
             if dim == 4:
@@ -568,7 +590,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(A, dims=(dim, dim))
 
-    def conservative_convective_jacobian_y(self, U: CompressibleState) -> bla.MATRIX:
+    def conservative_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
         r""" Second Jacobian of the convective fluxes 
 
         .. math::
@@ -586,7 +608,7 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.u, U.E):
+        if all((U.u, U.E)):
             dim = U.u.dim + 2
 
             if dim == 4:
@@ -603,7 +625,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(B, dims=(dim, dim))
 
-    def characteristic_from_primitive(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_primitive(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         """
         The L inverse matrix transforms primitive variables to charactersitic variables
 
@@ -618,7 +640,7 @@ class IdealGas(EquationOfState):
         """
         unit_vector = bla.as_vector(unit_vector)
 
-        if U.is_set(U.rho, U.c):
+        if all((U.rho, U.c)):
             dim = unit_vector.dim + 2
 
             if dim == 4:
@@ -634,7 +656,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(Linv, dims=(dim, dim))
 
-    def characteristic_from_conservative(self, U: CompressibleState, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_conservative(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         """
         The P inverse matrix transforms conservative variables to characteristic variables
 
@@ -651,7 +673,7 @@ class IdealGas(EquationOfState):
 
         gamma = self.heat_capacity_ratio
 
-        if U.is_set(U.rho, U.c, U.u):
+        if all((U.rho, U.c, U.u)):
             dim = unit_vector.dim + 2
 
             if dim == 4:
@@ -667,5 +689,22 @@ class IdealGas(EquationOfState):
                 raise NotImplementedError()
 
             return bla.as_matrix(Pinv, dims=(dim, dim))
+
+    def isentropic_density(self, U: flowstate, Uref: flowstate) -> ngs.CF:
+        r"""Returns the isentropic density from a given state
+
+        .. math::
+            \rho = \rho_{ref} (\frac{T}{T_{ref}})^{\frac{1}{\gamma - 1}}
+            \rho = \rho_{ref} (\frac{p}{p_{ref}})^{\frac{1}{\gamma}}
+        """
+        if U.p is not None and all((Uref.rho, Uref.p)):
+            logger.debug("Returning isentropic density from pressure.")
+            return Uref.rho * (U.p/Uref.p)**(1/self.heat_capacity_ratio)
+
+        elif U.T is not None and all((Uref.rho, Uref.T)):
+            logger.debug("Returning isentropic density from temperature.")
+            return Uref.rho * (U.T/Uref.T)**(1/(self.heat_capacity_ratio - 1))
+
+        return None
 
     heat_capacity_ratio: ngs.Parameter

@@ -5,11 +5,10 @@ import typing
 
 import dream.bla as bla
 
-from dream.config import MultipleConfiguration, State, multiple
+from dream.config import InterfaceConfiguration, interface
 
-from dream.compressible.config import (
-    CompressibleState, CompressibleStateGradient, CompressibleFiniteElement, FarField, Outflow, InviscidWall, Symmetry,
-    IsothermalWall, AdiabaticWall)
+from dream.compressible.config import (flowstate, CompressibleFiniteElement, FarField, Outflow, InviscidWall, Symmetry,
+                                       IsothermalWall, AdiabaticWall, CBC, GRCBC, NSCBC)
 from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
 
 logger = logging.getLogger(__name__)
@@ -20,17 +19,13 @@ if typing.TYPE_CHECKING:
 
 # --- Conservative --- #
 
-class MixedMethod(MultipleConfiguration, is_interface=True):
+class MixedMethod(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
     @property
     def mesh(self) -> ngs.Mesh:
         return self.cfg.mesh
-
-    @property
-    def equations(self):
-        return self.cfg.pde.equations
 
     @property
     def Q_TnT(self) -> ngs.CF:
@@ -54,29 +49,16 @@ class MixedMethod(MultipleConfiguration, is_interface=True):
         # gfus['Q'] = self.cfg.time.scheme.allocate_transient_gridfunctions(self.Q_gfu)
         pass
 
-    def get_diffusive_stabilisation_matrix(self, U: CompressibleState) -> bla.MATRIX:
+    def get_cbc_viscous_terms(self, bc: CBC) -> ngs.CF:
+        return ngs.CF(tuple(0 for _ in range(self.mesh.dim + 2)))
+
+    def get_diffusive_stabilisation_matrix(self, U: flowstate) -> bla.MATRIX:
         Re = self.cfg.pde.reference_reynolds_number
         Pr = self.cfg.pde.prandtl_number
-        mu = self.cfg.pde.equations.viscosity(U)
+        mu = self.cfg.pde.viscosity(U)
 
-        if self.mesh.dim == 2:
-
-            tau_d = ngs.CF((0, 0, 0, 0,
-                            0, 1, 0, 0,
-                            0, 0, 1, 0,
-                            0, 0, 0, 1/Pr), dims=(4, 4))
-
-        elif self.mesh.dim == 3:
-
-            tau_d = ngs.CF((0, 0, 0, 0, 0,
-                            0, 1, 0, 0, 0,
-                            0, 0, 1, 0, 0,
-                            0, 0, 0, 1, 0,
-                            0, 0, 0, 0, 1/Pr), dims=(5, 5))
-
-        tau_d *= mu / Re
-
-        return tau_d
+        tau_d = [0] + [1 for _ in range(self.mesh.dim)] + [1/Pr]
+        return bla.diagonal(tau_d) * mu / Re
 
 
 class Inactive(MixedMethod):
@@ -119,12 +101,12 @@ class StrainHeat(MixedMethod):
         Q, P = self.Q_TnT
 
         U = self.cfg.pde.fe.method.get_conservative_state(U)
-        U.u = self.cfg.pde.equations.velocity(U)
-        U.T = self.cfg.pde.equations.temperature(U)
+        U.u = self.cfg.pde.velocity(U)
+        U.T = self.cfg.pde.temperature(U)
 
         Uhat = self.cfg.pde.fe.method.get_conservative_state(Uhat)
-        Uhat.u = self.cfg.pde.equations.velocity(Uhat)
-        Uhat.T = self.cfg.pde.equations.temperature(Uhat)
+        Uhat.u = self.cfg.pde.velocity(Uhat)
+        Uhat.T = self.cfg.pde.temperature(Uhat)
 
         gradient_P = ngs.grad(P)
         Q = self.get_mixed_state(Q)
@@ -144,26 +126,51 @@ class StrainHeat(MixedMethod):
         blf['mixed'] -= ngs.InnerProduct(Uhat.T*self.mesh.normal,
                                          P.grad_T) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
-    def add_initial_conditions(self, blf: dict[str, ngs.comp.SumOfIntegrals], lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def get_cbc_viscous_terms(self, bc: CBC):
 
-        Q, P = self.Q_TnT
-        blf['Q'] = bla.inner(Q, P) * ngs.dx
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method CBC is not implemented for domain dimension 3!")
 
-        # for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items():
+        Q, _ = self.Q_TnT
+        U, _ = self.cfg.pde.fe.method.U_TnT
 
-        #     strain = self.equations.strain_rate_tensor(dc.state)
-        #     Q_init = ngs.CF((strain[0, 0], strain[0, 1], strain[1, 1],
-        #                     self.equations.temperature_gradient(dc.state, dc.state)))
-        #     lf[f"{dc.name}_{dom}"] = Q_init * P * ngs.dx(definedon=self.mesh.Materials(dom))
+        U = self.cfg.pde.fe.method.get_conservative_state(U)
+        Q = self.get_mixed_state(Q)
 
-    def get_mixed_state(self, Q: ngs.CoefficientFunction):
+        t = self.mesh.tangential
+        n = self.mesh.normal
+
+        R = ngs.CF((n, t), dims=(2, 2)).trans
+
+        grad_Q = ngs.grad(Q.Q) * n
+        grad_EPS = R.trans * ngs.CF((grad_Q[0], grad_Q[1], grad_Q[1], grad_Q[2]), dims=(2, 2)) * R
+        grad_q = ngs.CF((grad_Q[3], grad_Q[4]))
+
+        if bc.target == "outflow":
+            grad_q = R.trans * ngs.CF((grad_Q[3], grad_Q[4]))
+            grad_EPS = R * ngs.CF((grad_EPS[0], 0, 0, grad_EPS[2]), dims=(2, 2)) * R.trans
+            grad_q = R * ngs.CF((0, grad_q[1]))
+        else:
+            grad_EPS = R * ngs.CF((0, grad_EPS[1], grad_EPS[1], grad_EPS[2]), dims=(2, 2)) * R.trans
+
+        grad_Q = ngs.CF((grad_EPS[0], grad_EPS[1], grad_EPS[2], grad_q[0], grad_q[1]))
+
+        S = self.get_conservative_diffusive_jacobian(U, Q, t) * (ngs.grad(U.U) * t)
+        S += self.get_conservative_diffusive_jacobian(U, Q, n) * (ngs.grad(U.U) * n)
+        S += self.get_mixed_diffusive_jacobian(U, t) * (ngs.grad(Q.Q) * t)
+        # S += self.get_mixed_diffusive_jacobian(U, n) * (ngs.grad(Q.Q) * n)
+        S += self.get_mixed_diffusive_jacobian(U, n) * grad_Q
+
+        return S
+
+    def get_mixed_state(self, Q: ngs.CF):
 
         dim = self.mesh.dim
 
         if isinstance(Q, ngs.GridFunction):
             Q = Q.components
 
-        Q_ = CompressibleStateGradient()
+        Q_ = flowstate()
         Q_.strain = bla.symmetric_matrix_from_vector(Q[:3*dim - 3])
         Q_.grad_T = Q[3*dim - 3:]
 
@@ -171,6 +178,105 @@ class StrainHeat(MixedMethod):
             Q_.Q = Q
 
         return Q_
+
+    def get_conservative_diffusive_jacobian_x(self, U: flowstate, Q: flowstate):
+
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
+
+        rho = self.cfg.pde.density(U)
+        stess_tensor = self.cfg.pde.deviatoric_stress_tensor(U, Q)
+        txx, txy = stess_tensor[0, 0], stess_tensor[0, 1]
+        ux, uy = U.u
+
+        A = ngs.CF((
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            -txx*ux/rho - txy*uy/rho, txx/rho, txy/rho, 0
+        ), dims=(4, 4))
+
+        return A
+
+    def get_conservative_diffusive_jacobian_y(self, U: flowstate, Q: flowstate):
+
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
+
+        rho = self.cfg.pde.density(U)
+        stess_tensor = self.cfg.pde.deviatoric_stress_tensor(U, Q)
+        tyx, tyy = stess_tensor[1, 0], stess_tensor[1, 1]
+        ux, uy = U.u
+
+        B = ngs.CF((
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            0, 0, 0, 0,
+            -tyx*ux/rho - tyy*uy/rho, tyx/rho, tyy/rho, 0
+        ), dims=(4, 4))
+
+        return B
+
+    def get_conservative_diffusive_jacobian(
+            self, U: flowstate, Q: flowstate, unit_vector: ngs.CF) -> ngs.CF:
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
+
+        unit_vector = bla.as_vector(unit_vector)
+
+        A = self.get_conservative_diffusive_jacobian_x(U, Q)
+        B = self.get_conservative_diffusive_jacobian_y(U, Q)
+        return A * unit_vector[0] + B * unit_vector[1]
+
+    def get_mixed_diffusive_jacobian_x(self, U: flowstate):
+
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
+
+        Re = self.cfg.pde.reference_reynolds_number
+        Pr = self.cfg.pde.prandtl_number
+        mu = self.cfg.pde.viscosity(U)
+
+        ux, uy = U.u
+
+        A = mu/Re * ngs.CF((
+            0, 0, 0, 0, 0,
+            1, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            ux, uy, 0, 1/Pr, 0
+        ), dims=(4, 5))
+
+        return A
+
+    def get_mixed_diffusive_jacobian_y(self, U: flowstate):
+
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
+
+        Re = self.cfg.pde.reference_reynolds_number
+        Pr = self.cfg.pde.prandtl_number
+        mu = self.cfg.pde.viscosity(U)
+
+        ux, uy = U.u
+
+        B = mu/Re * ngs.CF((
+            0, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
+            0, 0, 1, 0, 0,
+            0, ux, uy, 0, 1/Pr
+        ), dims=(4, 5))
+
+        return B
+
+    def get_mixed_diffusive_jacobian(self, U: flowstate, unit_vector: ngs.CF) -> ngs.CF:
+
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
+
+        unit_vector = bla.as_vector(unit_vector)
+        A = self.get_mixed_diffusive_jacobian_x(U)
+        B = self.get_mixed_diffusive_jacobian_y(U)
+        return A * unit_vector[0] + B * unit_vector[1]
 
 
 class Gradient(MixedMethod):
@@ -209,7 +315,7 @@ class Gradient(MixedMethod):
         if isinstance(Q, ngs.GridFunction):
             Q = Q.components
 
-        Q_ = CompressibleStateGradient()
+        Q_ = flowstate()
         Q_.grad_rho = Q[0]
         Q_.grad_rho_u = Q[slice(1, self.mesh.dim + 1)]
         Q_.grad_rho_E = Q[self.mesh.dim + 1]
@@ -220,17 +326,13 @@ class Gradient(MixedMethod):
         return Q_
 
 
-class ConservativeMethod(MultipleConfiguration, is_interface=True):
+class ConservativeMethod(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
     @property
     def mesh(self) -> ngs.Mesh:
         return self.cfg.mesh
-
-    @property
-    def equations(self):
-        return self.cfg.pde.equations
 
     @property
     def U_TnT(self) -> tuple[ngs.comp.ProxyFunction, ...]:
@@ -247,67 +349,62 @@ class ConservativeMethod(MultipleConfiguration, is_interface=True):
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]) -> None:
         gfus['U'] = self.cfg.time.scheme.get_transient_gridfunctions(self.U_gfu)
 
-    def add_initial_conditions(self, blf: dict[str, ngs.comp.SumOfIntegrals], lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def set_initial_conditions(self, U: ngs.CF = None):
 
-        U, V = self.U_TnT
-        blf['U'] = bla.inner(U, V) * ngs.dx
+        if U is None:
+            U = self.mesh.MaterialCF({dom: ngs.CF(
+                (self.cfg.pde.density(dc.state),
+                 self.cfg.pde.momentum(dc.state),
+                 self.cfg.pde.energy(dc.state))) for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items()})
 
-        for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items():
-
-            U_init = ngs.CF(
-                (self.equations.density(dc.state),
-                 self.equations.momentum(dc.state),
-                 self.equations.energy(dc.state)))
-
-            lf[f"{dc.name}_U_{dom}"] = U_init * V * ngs.dx(definedon=self.mesh.Materials(dom))
+        self.U_gfu.Set(U)
 
     def add_time_derivative_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
             lf: dict[str, ngs.comp.SumOfIntegrals]):
 
         U, V = self.U_TnT
-        dt = self.cfg.time.timer.step
 
         U_dt = self.U_gfu_transient.copy()
         U_dt['n+1'] = U
 
-        U_dt = self.cfg.time.scheme.get_discrete_time_derivative(U_dt, dt)
+        U_dt = self.cfg.time.scheme.get_discrete_time_derivative(U_dt)
 
         blf['time'] = bla.inner(U_dt, V) * ngs.dx
 
-    def get_conservative_state(self, U: ngs.CoefficientFunction) -> CompressibleState:
+    def get_conservative_state(self, U: ngs.CoefficientFunction) -> flowstate:
 
         if isinstance(U, ngs.GridFunction):
             U = U.components
 
-        U_ = CompressibleState()
+        U_ = flowstate()
         U_.rho = U[0]
         U_.rho_u = U[slice(1, self.mesh.dim + 1)]
         U_.rho_E = U[self.mesh.dim + 1]
 
-        U_.u = self.equations.velocity(U_)
-        U_.rho_Ek = self.equations.kinetic_energy(U_)
-        U_.rho_Ei = self.equations.inner_energy(U_)
-        U_.p = self.equations.pressure(U_)
-        U_.T = self.equations.temperature(U_)
-        U_.c = self.equations.speed_of_sound(U_)
+        U_.u = self.cfg.pde.velocity(U_)
+        U_.rho_Ek = self.cfg.pde.kinetic_energy(U_)
+        U_.rho_Ei = self.cfg.pde.inner_energy(U_)
+        U_.p = self.cfg.pde.pressure(U_)
+        U_.T = self.cfg.pde.temperature(U_)
+        U_.c = self.cfg.pde.speed_of_sound(U_)
 
         if isinstance(U, ngs.comp.ProxyFunction):
             U_.U = U
 
         return U_
 
-    def get_drawing_state(self, quantities: dict[str, bool]) -> CompressibleState:
+    def get_drawing_state(self, quantities: dict[str, bool]) -> flowstate:
         U = self.get_conservative_state(self.U_gfu)
 
-        draw = CompressibleState()
-        for name, symbol in U.name_to_symbol.items():
+        draw = flowstate()
+        for symbol, name in U.symbols.items():
             if name in quantities and quantities[name]:
                 quantities.pop(name)
-                draw[symbol] = getattr(self.equations, name)(U)
+                draw[symbol] = getattr(self.cfg.pde, name)(U)
             elif symbol in quantities and quantities[symbol]:
                 quantities.pop(symbol)
-                draw[symbol] = getattr(self.equations, name)(U)
+                draw[symbol] = getattr(self.cfg.pde, name)(U)
 
         return draw
 
@@ -335,7 +432,6 @@ class HDG(ConservativeMethod):
     def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]) -> None:
 
         order = self.cfg.pde.fe.order
-
         dim = self.mesh.dim + 2
 
         U = ngs.L2(self.mesh, order=order)
@@ -346,28 +442,41 @@ class HDG(ConservativeMethod):
             U = self.cfg.pde.dcs.reduce_psponge_layers_order_elementwise(U, psponge_layers)
             Uhat = self.cfg.pde.dcs.reduce_psponge_layers_order_facetwise(Uhat, psponge_layers)
 
+        if self.cfg.pde.bcs.has(Periodic):
+            Uhat = ngs.Periodic(Uhat)
+
         fes['U'] = U**dim
         fes['Uhat'] = Uhat**dim
 
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]) -> None:
         super().add_transient_gridfunctions(gfus)
-        # gfus['Uhat'] = self.cfg.time.scheme.get_transient_gridfunctions(self.Uhat_gfu)
 
-    def add_initial_conditions(self, blf: dict[str, ngs.comp.SumOfIntegrals], lf: dict[str, ngs.comp.SumOfIntegrals]):
-        super().add_initial_conditions(blf, lf)
+        if self.cfg.pde.bcs.has(CBC):
+            gfus['Uhat'] = self.cfg.time.scheme.get_transient_gridfunctions(self.Uhat_gfu)
 
-        Uhat, Vhat = self.Uhat_TnT
-        blf['Uhat'] = bla.inner(Uhat, Vhat) * ngs.dx(element_boundary=True)
+    def set_initial_conditions(self, U: ngs.CF = None):
 
-        for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items():
+        if U is None:
+            U = self.mesh.MaterialCF({dom: ngs.CF(
+                (self.cfg.pde.density(dc.state),
+                 self.cfg.pde.momentum(dc.state),
+                 self.cfg.pde.energy(dc.state))) for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items()})
 
-            U_init = ngs.CF(
-                (self.equations.density(dc.state),
-                 self.equations.momentum(dc.state),
-                 self.equations.energy(dc.state)))
+        super().set_initial_conditions(U)
 
-            lf[f"{dc.name}_Uhat_{dom}"] = ngs.InnerProduct(
-                U_init, Vhat) * ngs.dx(element_boundary=True, definedon=self.mesh.Materials(dom))
+        u, v = self.Uhat_gfu.space.TnT()
+
+        blf = ngs.BilinearForm(self.Uhat_gfu.space)
+        blf += u * v * ngs.dx(element_boundary=True)
+
+        f = ngs.LinearForm(self.Uhat_gfu.space)
+        f += U * v * ngs.dx(element_boundary=True)
+
+        with ngs.TaskManager():
+            blf.Assemble()
+            f.Assemble()
+
+            self.Uhat_gfu.vec.data = blf.mat.Inverse(inverse="sparsecholesky") * f.vec
 
     def add_convection_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -383,7 +492,7 @@ class HDG(ConservativeMethod):
         U = self.get_conservative_state(U)
         Uhat = self.get_conservative_state(Uhat)
 
-        F = self.equations.convective_flux(U)
+        F = self.cfg.pde.get_convective_flux(U)
         Fn = self.get_convective_numerical_flux(U, Uhat, self.mesh.normal)
 
         blf['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
@@ -405,7 +514,7 @@ class HDG(ConservativeMethod):
         Uhat = self.get_conservative_state(Uhat)
         Q = self.cfg.pde.fe.mixed_method.get_mixed_state(Q)
 
-        G = self.equations.diffusive_flux(U, Q)
+        G = self.cfg.pde.get_diffusive_flux(U, Q)
         Gn = self.get_diffusive_numerical_flux(U, Uhat, Q, self.mesh.normal)
 
         blf['diffusion'] = ngs.InnerProduct(G, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
@@ -422,6 +531,9 @@ class HDG(ConservativeMethod):
 
             if isinstance(bc, FarField):
                 self.add_farfield_formulation(blf, lf, bc, bnd)
+
+            elif isinstance(bc, (GRCBC, NSCBC)):
+                self.add_cbc_formulation(blf, lf, bc, bnd)
 
             elif isinstance(bc, Outflow):
                 self.add_outflow_formulation(blf, lf, bc, bnd)
@@ -467,22 +579,27 @@ class HDG(ConservativeMethod):
             bc: FarField, bnd: str):
 
         bonus = self.cfg.optimizations.bonus_int_order
-        bnd_ = self.mesh.Boundaries(bnd)
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
 
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
         Uhat = self.get_conservative_state(Uhat)
 
         U_infty = ngs.CF(
-            (self.equations.density(bc.state),
-             self.equations.momentum(bc.state),
-             self.equations.energy(bc.state)))
+            (self.cfg.pde.density(bc.state),
+             self.cfg.pde.momentum(bc.state),
+             self.cfg.pde.energy(bc.state)))
 
-        An_in = self.equations.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'incoming')
-        An_out = self.equations.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'outgoing')
+        if bc.identity_jacobian:
+            Q_in = self.cfg.pde.get_conservative_convective_identity(Uhat, self.mesh.normal, 'incoming')
+            Q_out = self.cfg.pde.get_conservative_convective_identity(Uhat, self.mesh.normal, 'outgoing')
+            Gamma_infty = ngs.InnerProduct(Uhat.U - Q_out * U - Q_in * U_infty, Vhat)
+        else:
+            An_in = self.cfg.pde.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'incoming')
+            An_out = self.cfg.pde.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'outgoing')
+            Gamma_infty = ngs.InnerProduct(An_out * (Uhat.U - U) - An_in * (Uhat.U - U_infty), Vhat)
 
-        Gamma_infty = ngs.InnerProduct(An_out * (Uhat.U - U) - An_in * (Uhat.U - U_infty), Vhat)
-        blf[f"{bc.name}_{bnd}"] = Gamma_infty * ngs.ds(skeleton=True, definedon=bnd_, bonus_intorder=bonus.bnd)
+        blf[f"{bc.name}_{bnd}"] = Gamma_infty * dS
 
     def add_outflow_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -490,17 +607,73 @@ class HDG(ConservativeMethod):
             bc: Outflow, bnd: str):
 
         bonus = self.cfg.optimizations.bonus_int_order
-        bnd_ = self.mesh.Boundaries(bnd)
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
 
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
         U = self.get_conservative_state(U)
-        U_bc = CompressibleState(rho=U.rho, rho_u=U.rho_u, rho_Ek=U.rho_Ek, p=bc.state.p)
-        U_bc = ngs.CF((self.equations.density(U_bc), self.equations.momentum(U_bc), self.equations.energy(U_bc)))
+        U_bc = flowstate(rho=U.rho, rho_u=U.rho_u, rho_Ek=U.rho_Ek, p=bc.state.p)
+        U_bc = ngs.CF((self.cfg.pde.density(U_bc), self.cfg.pde.momentum(U_bc), self.cfg.pde.energy(U_bc)))
 
         Gamma_out = ngs.InnerProduct(Uhat - U_bc, Vhat)
-        blf[f"{bc.name}_{bnd}"] = Gamma_out * ngs.ds(skeleton=True, definedon=bnd_, bonus_intorder=bonus.bnd)
+        blf[f"{bc.name}_{bnd}"] = Gamma_out * dS
+
+    def add_cbc_formulation(self,
+                            blf: dict[str, ngs.comp.SumOfIntegrals],
+                            lf: dict[str, ngs.comp.SumOfIntegrals],
+                            bc: CBC, bnd: str):
+
+        bonus = self.cfg.optimizations.bonus_int_order
+        label = f"{bc.name}_{bnd}"
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
+
+        U, _ = self.U_TnT
+        Uhat, Vhat = self.Uhat_TnT
+
+        U = self.get_conservative_state(U)
+        Uhat = self.get_conservative_state(Uhat)
+
+        if bc.target == "farfield":
+            U_bc = ngs.CF(
+                (self.cfg.pde.density(bc.state),
+                 self.cfg.pde.momentum(bc.state),
+                 self.cfg.pde.energy(bc.state)))
+
+        elif bc.target == "outflow":
+            U_bc = flowstate(rho=U.rho, rho_u=U.rho_u, rho_Ek=U.rho_Ek, p=bc.state.p)
+            U_bc = ngs.CF((self.cfg.pde.density(U_bc), self.cfg.pde.momentum(U_bc), self.cfg.pde.energy(U_bc)))
+
+        elif bc.target == "mass_inflow":
+            U_bc = flowstate(rho=bc.state.rho, rho_u=bc.state.rho_u, rho_Ek=bc.state.rho_Ek, p=U.p)
+            U_bc = ngs.CF((self.cfg.pde.density(U_bc), self.cfg.pde.momentum(U_bc), self.cfg.pde.energy(U_bc)))
+
+        elif bc.target == "temperature_inflow":
+            rho_ = self.cfg.pde.isentropic_density(U, bc.state)
+            U_bc = flowstate(rho=rho_, u=bc.state.u, T=U.T)
+            U_bc.Ek = self.cfg.pde.specific_kinetic_energy(U_bc)
+            U_bc = ngs.CF((self.cfg.pde.density(U_bc), self.cfg.pde.momentum(U_bc), self.cfg.pde.energy(U_bc)))
+
+        D = bc.get_relaxation_matrix(
+            dt=self.cfg.time.timer.step, c=self.cfg.pde.speed_of_sound(Uhat),
+            M=self.cfg.pde.mach_number)
+        D = self.cfg.pde.transform_characteristic_to_conservative(D, Uhat, self.mesh.normal)
+
+        beta = bc.tangential_relaxation
+        Qin = self.cfg.pde.get_conservative_convective_identity(Uhat, self.mesh.normal, "incoming")
+        Qout = self.cfg.pde.get_conservative_convective_identity(Uhat, self.mesh.normal, "outgoing")
+        B = self.cfg.pde.get_conservative_convective_jacobian(Uhat, self.mesh.tangential)
+
+        dt = self.cfg.time.scheme.get_normalized_time_step()
+        Uhat_dt = self.Uhat_gfu_transient.copy()
+        Uhat_dt['n+1'] = Uhat.U
+
+        blf[label] = (Uhat.U - Qout * U.U - Qin * self.cfg.time.scheme.get_normalized_explicit_terms(Uhat_dt)) * Vhat * dS
+        blf[label] -= dt * Qin * D * (U_bc - Uhat.U) * Vhat * dS
+        blf[label] += dt * beta * Qin * B * (ngs.grad(Uhat.U) * self.mesh.tangential) * Vhat * dS
+
+        if bc.is_viscous_fluxes:
+            blf[label] -= dt * Qin * self.mixed_method.get_cbc_viscous_terms(bc) * Vhat * dS
 
     def add_inviscid_wall_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -508,20 +681,20 @@ class HDG(ConservativeMethod):
             bc: InviscidWall, bnd: str):
 
         n = self.mesh.normal
-        bnd_ = self.mesh.Boundaries(bnd)
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd))
 
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
         U = self.get_conservative_state(U)
 
-        rho = self.equations.density(U)
-        rho_u = self.equations.momentum(U)
-        rho_E = self.equations.energy(U)
+        rho = self.cfg.pde.density(U)
+        rho_u = self.cfg.pde.momentum(U)
+        rho_E = self.cfg.pde.energy(U)
         U_bc = ngs.CF((rho, rho_u - ngs.InnerProduct(rho_u, n)*n, rho_E))
 
         Gamma_inv = ngs.InnerProduct(Uhat - U_bc, Vhat)
-        blf[f"{bc.name}_{bnd}"] = Gamma_inv * ngs.ds(skeleton=True, definedon=bnd_)
+        blf[f"{bc.name}_{bnd}"] = Gamma_inv * dS
 
     def add_isothermal_wall_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -529,17 +702,17 @@ class HDG(ConservativeMethod):
             bc: IsothermalWall, bnd: str):
 
         bonus = self.cfg.optimizations.bonus_int_order
-        bnd_ = self.mesh.Boundaries(bnd)
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
 
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
         U = self.get_conservative_state(U)
-        U_bc = CompressibleState(rho=U.rho, rho_u=tuple(0 for _ in range(self.mesh.dim)), rho_Ek=0, T=bc.state.T)
-        U_bc = ngs.CF((self.equations.density(U_bc), self.equations.momentum(U_bc), self.equations.inner_energy(U_bc)))
+        U_bc = flowstate(rho=U.rho, rho_u=tuple(0 for _ in range(self.mesh.dim)), rho_Ek=0, T=bc.state.T)
+        U_bc = ngs.CF((self.cfg.pde.density(U_bc), self.cfg.pde.momentum(U_bc), self.cfg.pde.inner_energy(U_bc)))
 
         Gamma_iso = ngs.InnerProduct(Uhat - U_bc, Vhat)
-        blf[f"{bc.name}_{bnd}"] = Gamma_iso * ngs.ds(skeleton=True, definedon=bnd_, bonus_intorder=bonus.bnd)
+        blf[f"{bc.name}_{bnd}"] = Gamma_iso * dS
 
     def add_adiabatic_wall_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -550,7 +723,8 @@ class HDG(ConservativeMethod):
             raise NotImplementedError(f"Adiabatic wall not implemented for {self.mixed_method}")
 
         bonus = self.cfg.optimizations.bonus_int_order
-        bnd_ = self.mesh.Boundaries(bnd)
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
+
         n = self.mesh.normal
 
         U, _ = self.U_TnT
@@ -562,43 +736,43 @@ class HDG(ConservativeMethod):
         Q = self.mixed_method.get_mixed_state(Q)
 
         tau = self.mixed_method.get_diffusive_stabilisation_matrix(U)
-        T_grad = self.equations.temperature_gradient(U, Q)
+        T_grad = self.cfg.pde.temperature_gradient(U, Q)
 
         U_bc = ngs.CF((Uhat.rho - U.rho, Uhat.rho_u, tau * (Uhat.rho_E - U.rho_E + T_grad * n)))
 
         Gamma_ad = ngs.InnerProduct(Uhat.U - U_bc, Vhat)
-        blf[f"{bc.name}_{bnd}"] = Gamma_ad * ngs.ds(skeleton=True, definedon=bnd_, bonus_intorder=bonus.bnd)
+        blf[f"{bc.name}_{bnd}"] = Gamma_ad * dS
 
     def add_sponge_layer_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
             lf: dict[str, ngs.comp.SumOfIntegrals],
             dc: SpongeLayer, dom: str):
 
-        dom_ = self.mesh.Materials(dom)
+        dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
 
         U, V = self.U_TnT
         U_target = ngs.CF(
-            (self.equations.density(dc.target_state),
-             self.equations.momentum(dc.target_state),
-             self.equations.energy(dc.target_state)))
+            (self.cfg.pde.density(dc.target_state),
+             self.cfg.pde.momentum(dc.target_state),
+             self.cfg.pde.energy(dc.target_state)))
 
-        blf[f"{dc.name}_{dom}"] = dc.function * (U - U_target) * V * ngs.dx(definedon=dom_, bonus_intorder=dc.order)
+        blf[f"{dc.name}_{dom}"] = dc.function * (U - U_target) * V * dX
 
     def add_psponge_layer_formulation(
             self, blf: dict[str, ngs.comp.SumOfIntegrals],
             lf: dict[str, ngs.comp.SumOfIntegrals],
             dc: PSpongeLayer, dom: str):
 
-        dom_ = self.mesh.Materials(dom)
+        dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
 
         U, V = self.U_TnT
 
         if dc.is_equal_order:
 
             U_target = ngs.CF(
-                (self.equations.density(dc.target_state),
-                 self.equations.momentum(dc.target_state),
-                 self.equations.energy(dc.target_state)))
+                (self.cfg.pde.density(dc.target_state),
+                 self.cfg.pde.momentum(dc.target_state),
+                 self.cfg.pde.energy(dc.target_state)))
 
             Delta_U = U - U_target
 
@@ -608,9 +782,9 @@ class HDG(ConservativeMethod):
             U_low = ngs.CF(tuple(ngs.Interpolate(proxy, low_order_space) for proxy in U))
             Delta_U = U - U_low
 
-        blf[f"{dc.name}_{dom}"] = dc.function * Delta_U * V * ngs.dx(definedon=dom_, bonus_intorder=dc.order)
+        blf[f"{dc.name}_{dom}"] = dc.function * Delta_U * V * dX
 
-    def get_convective_numerical_flux(self, U: CompressibleState, Uhat: CompressibleState, unit_vector: bla.VECTOR):
+    def get_convective_numerical_flux(self, U: flowstate, Uhat: flowstate, unit_vector: bla.VECTOR):
         """
         Convective numerical flux
 
@@ -626,10 +800,10 @@ class HDG(ConservativeMethod):
 
         tau = self.cfg.pde.riemann_solver.get_convective_stabilisation_matrix(Uhat, unit_vector)
 
-        return self.equations.convective_flux(Uhat) * unit_vector + tau * (U.U - Uhat.U)
+        return self.cfg.pde.get_convective_flux(Uhat) * unit_vector + tau * (U.U - Uhat.U)
 
     def get_diffusive_numerical_flux(
-            self, U: CompressibleState, Uhat: CompressibleState, Q: CompressibleStateGradient, unit_vector: bla.VECTOR):
+            self, U: flowstate, Uhat: flowstate, Q: flowstate, unit_vector: bla.VECTOR):
         """
         Diffusive numerical flux
 
@@ -645,7 +819,7 @@ class HDG(ConservativeMethod):
 
         tau_d = self.cfg.pde.fe.mixed_method.get_diffusive_stabilisation_matrix(Uhat)
 
-        return self.equations.diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U.U - Uhat.U)
+        return self.cfg.pde.get_diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U.U - Uhat.U)
 
     def get_domain_boundary_mask(self) -> ngs.GridFunction:
         """ 
@@ -666,11 +840,11 @@ class ConservativeFiniteElement(CompressibleFiniteElement):
 
     name: str = "conservative"
 
-    @multiple(default=HDG)
+    @interface(default=HDG)
     def method(self, method):
         return method
 
-    @multiple(default=Inactive)
+    @interface(default=Inactive)
     def mixed_method(self, mixed_method):
         return mixed_method
 
@@ -702,30 +876,18 @@ class ConservativeFiniteElement(CompressibleFiniteElement):
         self.method.add_domain_conditions(blf, lf)
         super().add_discrete_system(blf, lf)
 
-    def get_drawing_state(self, quantities: dict[str, bool]) -> State:
+    def get_drawing_state(self, quantities: dict[str, bool]) -> flowstate:
         U = self.method.get_drawing_state(quantities)
         return U
 
     def set_initial_conditions(self) -> None:
-        mass = {}
-        rhs = {}
 
-        self.method.add_initial_conditions(mass, rhs)
-        self.mixed_method.add_initial_conditions(mass, rhs)
+        U = self.mesh.MaterialCF({dom: ngs.CF(
+            (self.cfg.pde.density(dc.state),
+             self.cfg.pde.momentum(dc.state),
+             self.cfg.pde.energy(dc.state))) for dom, dc in self.cfg.pde.dcs.to_pattern(Initial).items()})
 
-        blf = ngs.BilinearForm(self.cfg.pde.fes)
-        for cf in mass.values():
-            blf += cf
-
-        lf = ngs.LinearForm(self.cfg.pde.fes)
-        for cf in rhs.values():
-            lf += cf
-
-        with ngs.TaskManager():
-            blf.Assemble()
-            lf.Assemble()
-
-            self.gfu.vec.data = blf.mat.Inverse(inverse="sparsecholesky") * lf.vec
+        self.method.set_initial_conditions(U)
 
     method: HDG
     mixed_method: Inactive | StrainHeat | Gradient

@@ -4,10 +4,10 @@ import logging
 import ngsolve as ngs
 
 from collections import UserDict
-from typing import Callable, Sequence, Any, TypeVar
+from typing import Callable, Sequence
 
 from dream import bla
-from dream.config import State, MultipleConfiguration, any
+from dream.config import ngsdict, InterfaceConfiguration, configuration
 
 logger = logging.getLogger(__name__)
 
@@ -244,13 +244,18 @@ class GridMapping:
         return self.map(x_)
 
 
-class Condition(MultipleConfiguration, is_interface=True):
+class Condition(InterfaceConfiguration, is_interface=True):
+
+    mesh: ngs.Mesh
 
     def __hash__(self) -> int:
         return id(self)
-    
+
     def __eq__(self, other) -> bool:
         return self is other
+
+    def __ne__(self, other):
+        return self is not other
 
     def __repr__(self) -> str:
         return f"{self.name}:\n" + super().__repr__()
@@ -260,8 +265,8 @@ class Initial(Condition):
 
     name = "initial"
 
-    @any(default=None)
-    def state(self, state) -> State:
+    @configuration(default=None)
+    def state(self, state) -> ngsdict:
         return state
 
     @state.getter_check
@@ -269,7 +274,7 @@ class Initial(Condition):
         if self.data['state'] is None:
             raise ValueError("Initial State not set!")
 
-    state: State
+    state: ngsdict
 
 
 class Perturbation(Condition):
@@ -284,7 +289,7 @@ class Force(Condition):
 
 class Buffer(Condition, is_interface=True):
 
-    @any(default=None)
+    @configuration(default=None)
     def function(self, buffer_function) -> ngs.CF:
         return buffer_function
 
@@ -293,7 +298,7 @@ class Buffer(Condition, is_interface=True):
         if self.data['function'] is None:
             raise ValueError("Buffer function not set!")
 
-    @any(default=0)
+    @configuration(default=0)
     def order(self, order) -> int:
         return int(order)
 
@@ -309,23 +314,23 @@ class GridDeformation(Buffer):
 
     name = "grid_deformation"
 
-    @any(default=2)
+    @configuration(default=2)
     def dim(self, dim) -> int:
         return int(dim)
 
-    @any(default=None)
+    @configuration(default=None)
     def x(self, x) -> GridMapping:
         map = self.check_mapping(x, ngs.x)
         self.set_function(x=x)
         return map
 
-    @any(default=None)
+    @configuration(default=None)
     def y(self, y) -> GridMapping:
         map = self.check_mapping(y, ngs.y)
         self.set_function(y=y)
         return map
 
-    @any(default=None)
+    @configuration(default=None)
     def z(self, z) -> GridMapping:
         map = self.check_mapping(z, ngs.z)
         self.set_function(z=z)
@@ -377,8 +382,8 @@ class SpongeLayer(Buffer):
 
     name = "sponge_layer"
 
-    @any(default=None)
-    def target_state(self, target_state) -> State:
+    @configuration(default=None)
+    def target_state(self, target_state) -> ngsdict:
         return target_state
 
     @target_state.getter_check
@@ -413,14 +418,14 @@ class SpongeLayer(Buffer):
 
         return fes
 
-    target_state: State
+    target_state: ngsdict
 
 
 class PSpongeLayer(SpongeLayer):
 
     name = "psponge_layer"
 
-    @any(default=0)
+    @configuration(default=0)
     def high_order(self, high_order) -> int:
 
         if high_order < 0:
@@ -432,7 +437,7 @@ class PSpongeLayer(SpongeLayer):
 
         return int(high_order)
 
-    @any(default=0)
+    @configuration(default=0)
     def low_order(self, low_order) -> int:
 
         if low_order < 0:
@@ -465,6 +470,10 @@ class Conditions(UserDict):
 
     conditions: dict[str, Condition] = {}
 
+    @classmethod
+    def register_condition(cls, condition: Condition) -> None:
+        cls.conditions[condition.name] = condition
+
     def __init_subclass__(cls) -> None:
         cls.conditions = {}
         return super().__init_subclass__()
@@ -473,8 +482,16 @@ class Conditions(UserDict):
         self.data = {region: [] for region in regions}
         self.mesh = mesh
 
-        if not hasattr(mesh, "is_periodic"):
-            self.mesh.is_periodic = is_mesh_periodic(mesh)
+    def has(self, condition_type: Condition | str) -> bool:
+
+        if isinstance(condition_type, str):
+            condition_type = self.conditions[condition_type]
+
+        for container in self.values():
+            if configuration(isinstance(condition, condition_type) for condition in container):
+                return True
+
+        return False
 
     def to_pattern(self, condition_type: Condition | str = Condition) -> dict[str, Condition]:
 
@@ -493,10 +510,6 @@ class Conditions(UserDict):
 
     def clear(self) -> None:
         self.data = {region: [] for region in self}
-
-    @classmethod
-    def register_condition(cls, condition: Condition) -> None:
-        cls.conditions[condition.name] = condition
 
     def __setitem__(self, pattern: str, condition: Condition) -> None:
 
@@ -521,11 +534,17 @@ class Conditions(UserDict):
         for region in regions:
             self.data[region].append(condition)
 
+            # Give mesh access to the condition
+            condition.mesh = self.mesh
+
             if len(self.data[region]) > 1:
-                logger.warning(f"Multiple conditions set for region '{region}': {'|'.join([condition.name for condition in self[region]])}!")
+                logger.warning(f"""Multiple conditions set for region '{region}': {
+                               '|'.join([condition.name for condition in self[region]])}!""")
 
     def __repr__(self) -> str:
-        return "\n".join([f"{region}: {'|'.join([condition.name for condition in conditions])}" for region, conditions in self.items()])
+        return "\n".join([f"{region}: {'|'.join([condition.name for condition in conditions])} "for region,
+                          conditions in self.items()])
+
 
 class BoundaryConditions(Conditions):
 

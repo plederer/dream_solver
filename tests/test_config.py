@@ -2,32 +2,32 @@
 from __future__ import annotations
 import unittest
 
-import dream.config as cfg
+from dream.config import configuration, ngsdict, quantity, InterfaceConfiguration, UniqueConfiguration, parameter, interface
 
 # ------- Setup ------- #
 
 
-class DummyState(cfg.State):
+class teststate(ngsdict):
 
-    rho = cfg.quantity(lambda x: 2*x, 'density')
-    p = cfg.quantity(lambda x: 5*x, 'pressure')
+    rho = quantity('density')
+    p = quantity('pressure')
 
 
-class MultipleConfiguration(cfg.MultipleConfiguration, is_interface=True):
+class Interface(InterfaceConfiguration, is_interface=True):
     ...
 
 
-class MultipleA(MultipleConfiguration):
-    name = "child_A"
+class OptionA(Interface):
+    name = "option_a"
     aliases = ("A", )
 
-    @cfg.any(default=0.0)
+    @configuration(default=0.0)
     def x(self, x: float):
         if x < 0.0:
             raise ValueError("Non negative x not allowed!")
         return float(x)
 
-    @cfg.any(default=0.0)
+    @configuration(default=0.0)
     def y(self, y: float):
         return float(y)
 
@@ -37,22 +37,22 @@ class MultipleA(MultipleConfiguration):
             ValueError("x is too large!")
 
 
-class MultipleB(MultipleConfiguration):
-    name = "child_B"
+class OptionB(Interface):
+    name = "option_b"
 
-    @cfg.any(default="abc")
+    @configuration(default="abc")
     def alphabet(self, abc: str):
         return str(abc)
 
-    @cfg.parameter(default=2.0)
+    @parameter(default=2.0)
     def number(self, number: float):
         return number
 
 
-class UniqueConfiguration_(cfg.UniqueConfiguration):
+class MainConfiguration(UniqueConfiguration):
 
-    other = cfg.multiple(default=MultipleA)
-    param = cfg.parameter(default=2.0)
+    other = interface(default=OptionA)
+    param = parameter(default=2.0)
 
 # ------- Tests ------- #
 
@@ -60,7 +60,7 @@ class UniqueConfiguration_(cfg.UniqueConfiguration):
 class TestVariable(unittest.TestCase):
 
     def setUp(self):
-        self.obj = DummyState()
+        self.obj = teststate()
 
     def test_variable_name(self):
         self.assertEqual(type(self.obj).rho.name, "density")
@@ -80,10 +80,10 @@ class TestVariable(unittest.TestCase):
 
     def test_setter(self):
         self.obj.p = 10
-        self.assertEqual(self.obj.p, 50)
+        self.assertEqual(self.obj.to_py()['pressure'], 10)
 
         self.obj.p = None
-        self.assertEqual(self.obj.p, 50)
+        self.assertEqual(self.obj.to_py()['pressure'], 10)
 
     def test_deleter(self):
         self.obj.p = 20
@@ -94,7 +94,7 @@ class TestVariable(unittest.TestCase):
 class TestState(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.obj = DummyState()
+        self.obj = teststate()
 
     def tearDown(self) -> None:
         self.obj.clear()
@@ -102,8 +102,7 @@ class TestState(unittest.TestCase):
     def test_update(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
 
-        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25, 'u': 5})
-        self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data})
+        self.assertDictEqual(self.obj.to_py(), {"density": 2, "pressure": 5, 'u': 5})
 
     def test_keys(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
@@ -111,22 +110,24 @@ class TestState(unittest.TestCase):
 
     def test_values(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.values()), (4, 25, 5))
+        self.assertTupleEqual(tuple(self.obj.to_py().values()), (2, 5, 5))
 
     def test_items(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.items()), (('density', 4), ('pressure', 25), ('u', 5)))
+        self.assertTupleEqual(tuple(self.obj.to_py().items()), (('density', 2), ('pressure', 5), ('u', 5)))
 
     def test_set_item(self):
         self.obj["rho"] = 2
         self.obj["p"] = 5
         self.obj["u"] = 5
 
-        self.assertDictEqual(self.obj.data, {"density": 4, "pressure": 25, 'u': 5})
-        self.assertDictEqual(self.obj.__dict__, {"data": self.obj.data})
+        self.assertDictEqual(self.obj.to_py(), {"density": 2, "pressure": 5, 'u': 5})
 
     def test_get_item(self):
-        self.assertEqual(self.obj["p"], None)
+        self.assertEqual(self.obj.p, None)
+
+        with self.assertRaises(KeyError):
+            self.obj["p"]
 
     def test_iterator(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
@@ -140,13 +141,13 @@ class TestState(unittest.TestCase):
 class TestDescriptorConfigurationChild(unittest.TestCase):
 
     def setUp(self):
-        self.obj = MultipleA()
+        self.obj = OptionA()
 
     def tearDown(self) -> None:
         self.obj.clear()
 
     def test_inheritance_tree(self):
-        self.assertDictEqual(self.obj.leafs.data, {'child_a': MultipleA, 'a': MultipleA,  'child_b': MultipleB})
+        self.assertDictEqual(self.obj.tree.leafs, {'option_a': OptionA, 'a': OptionA,  'option_b': OptionB})
 
     def test_configurations_id_after_clear(self):
         old = [self.obj.x, self.obj.y]
@@ -177,19 +178,19 @@ class TestDescriptorConfigurationChild(unittest.TestCase):
         self.assertEqual(id(self.obj.cfg), id(self.obj))
 
     def test_export_default(self):
-        self.assertDictEqual(self.obj.to_flat_dict(), {'x': 0.0, 'y': 0.0})
+        self.assertDictEqual(self.obj.to_tree(), {'x': 0.0, 'y': 0.0})
 
     def test_export_parent_argument(self):
-        self.assertDictEqual(self.obj.to_flat_dict(root="parent"), {'parent.x': 0.0, 'parent.y': 0.0})
+        self.assertDictEqual(self.obj.to_tree(root="parent"), {'parent.x': 0.0, 'parent.y': 0.0})
 
     def test_export_data_argument(self):
-        self.assertDictEqual(self.obj.to_flat_dict(data={'z': 2}), {'x': 0.0, 'y': 0.0, 'z': 2})
+        self.assertDictEqual(self.obj.to_tree(data={'z': 2}), {'x': 0.0, 'y': 0.0, 'z': 2})
 
 
 class TestUniqueConfiguration(unittest.TestCase):
 
     def setUp(self):
-        self.obj = UniqueConfiguration_()
+        self.obj = MainConfiguration()
 
     def tearDown(self) -> None:
         self.obj.clear()
@@ -198,58 +199,58 @@ class TestUniqueConfiguration(unittest.TestCase):
         self.assertEqual(id(self.obj), id(self.obj.other.cfg))
 
     def test_export_default(self):
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a',
+        self.assertDictEqual(self.obj.to_tree(), {'other': 'option_a',
                              'other.x': 0.0, 'other.y': 0.0, 'param': 2.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
-            self.obj.to_flat_dict(root='unique'),
+            self.obj.to_tree(root='unique'),
             {'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
         self.assertDictEqual(
-            self.obj.to_flat_dict(data={'z': 2}),
+            self.obj.to_tree(data={'z': 2}),
             {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_update_subconfiguration(self):
         self.obj.update({'other.x': 3.0, 'other.y': 5.0, 'param': 5})
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a',
+        self.assertDictEqual(self.obj.to_tree(), {'other': 'option_a',
                              'other.x': 3.0, 'other.y': 5.0, 'param': 5.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
-            self.obj.to_flat_dict(root='unique'),
-            {'unique.other': 'child_a', 'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
+            self.obj.to_tree(root='unique'),
+            {'unique.other': 'option_a', 'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
         self.assertDictEqual(
-            self.obj.to_flat_dict(data={'z': 2}),
-            {'other': 'child_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
+            self.obj.to_tree(data={'z': 2}),
+            {'other': 'option_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_set_subconfiguration_by_string(self):
-        self.obj.other = "child_b"
+        self.obj.other = "option_b"
         self.assertDictEqual(
-            self.obj.to_flat_dict(),
-            {'other': 'child_b', 'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
+            self.obj.to_tree(),
+            {'other': 'option_b', 'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_instance(self):
-        self.obj.other = MultipleB()
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
+        self.obj.other = OptionB()
+        self.assertDictEqual(self.obj.to_tree(), {'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_dict(self):
         self.obj.other = {'x': 2.0, 'y': 3.0, 'z': 5}
-        self.assertDictEqual(self.obj.to_flat_dict(), {'other': 'child_a',
+        self.assertDictEqual(self.obj.to_tree(), {'other': 'option_a',
                              'other.x': 2.0, 'other.y': 3.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_string_id(self):
         old = id(self.obj.other)
-        self.obj.other = "child_a"
+        self.obj.other = "option_a"
         new = id(self.obj.other)
         self.assertEqual(old, new)
 
     def test_set_subconfiguration_by_instance(self):
         old = id(self.obj.other)
-        self.obj.other = MultipleA()
+        self.obj.other = OptionA()
         new = id(self.obj.other)
         self.assertNotEqual(old, new)
 

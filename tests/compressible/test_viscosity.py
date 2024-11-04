@@ -1,9 +1,7 @@
 from __future__ import annotations
 import unittest
-from tests import simplex
 
-from dream.compressible import CompressibleFlowConfiguration, CompressibleState
-from dream.compressible.viscosity import Inviscid, Constant, Sutherland
+from dream.compressible import flowstate
 from tests.compressible.setup import cfg, mip
 
 class TestInviscid(unittest.TestCase):
@@ -17,7 +15,7 @@ class TestInviscid(unittest.TestCase):
 
     def test_viscosity(self):
         with self.assertRaises(TypeError):
-            self.mu.viscosity(CompressibleState())
+            self.mu.viscosity(flowstate())
 
 
 class TestConstant(unittest.TestCase):
@@ -30,7 +28,7 @@ class TestConstant(unittest.TestCase):
         self.assertFalse(self.mu.is_inviscid)
 
     def test_viscosity(self):
-        state = CompressibleState()
+        state = flowstate()
         self.assertAlmostEqual(self.mu.viscosity(state), 1)
 
 
@@ -50,10 +48,10 @@ class TestSutherland(unittest.TestCase):
 
     def test_viscosity(self):
 
-        state = CompressibleState()
+        state = flowstate()
         self.assertIs(self.mu.viscosity(state), None)
 
-        state = CompressibleState(temperature=1)
+        state = flowstate(temperature=1)
 
         cfg.pde.scaling = "aerodynamic"
         cfg.pde.scaling.reference_values.T = 1

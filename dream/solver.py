@@ -6,10 +6,9 @@ from typing import Optional, NamedTuple, Any
 from math import isnan
 
 from .sensor import Sensor
-
 from .compressible import CompressibleFlowConfiguration
-
-from .config import UniqueConfiguration, MultipleConfiguration, multiple, any, unique
+from .mesh import is_mesh_periodic
+from .config import UniqueConfiguration, InterfaceConfiguration, interface, configuration, unique
 from .time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
 
 logger = logging.getLogger(__name__)
@@ -17,19 +16,19 @@ logger = logging.getLogger(__name__)
 
 class BonusIntegrationOrder(UniqueConfiguration):
 
-    @any(default=0)
+    @configuration(default=0)
     def vol(self, vol):
         return int(vol)
 
-    @any(default=0)
+    @configuration(default=0)
     def bnd(self, bnd):
         return int(bnd)
 
-    @any(default=0)
+    @configuration(default=0)
     def bbnd(self, bbnd):
         return int(bbnd)
 
-    @any(default=0)
+    @configuration(default=0)
     def bbbnd(self, bbbnd):
         return int(bbbnd)
 
@@ -39,7 +38,7 @@ class BonusIntegrationOrder(UniqueConfiguration):
     bbbnd: int
 
 
-class Inverse(MultipleConfiguration, is_interface=True):
+class Inverse(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
@@ -51,7 +50,7 @@ class Direct(Inverse):
 
     name: str = "direct"
 
-    @any(default="umfpack")
+    @configuration(default="umfpack")
     def solver(self, solver: str):
         return solver
 
@@ -61,7 +60,7 @@ class Direct(Inverse):
     solver: str
 
 
-class NonlinearMethod(MultipleConfiguration, is_interface=True):
+class NonlinearMethod(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
@@ -94,7 +93,7 @@ class NewtonsMethod(NonlinearMethod):
 
     name: str = "newton"
 
-    @any(default=1)
+    @configuration(default=1)
     def damping_factor(self, damping_factor: float):
         return float(damping_factor)
 
@@ -141,11 +140,11 @@ class NewtonsMethod(NonlinearMethod):
     damping_factor: float
 
 
-class Solver(MultipleConfiguration, is_interface=True):
+class Solver(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
-    @multiple(default=Direct)
+    @interface(default=Direct)
     def inverse(self, inverse: Inverse):
         return inverse
 
@@ -191,15 +190,15 @@ class NonlinearSolver(Solver):
 
     name: str = "nonlinear"
 
-    @multiple(default=NewtonsMethod)
+    @interface(default=NewtonsMethod)
     def method(self, method: NonlinearMethod):
         return method
 
-    @any(default=10)
+    @configuration(default=10)
     def max_iterations(self, max_iterations: int):
         return int(max_iterations)
 
-    @any(default=1e-8)
+    @configuration(default=1e-8)
     def convergence_criterion(self, convergence_criterion: float):
         if convergence_criterion <= 0:
             raise ValueError("Convergence Criterion must be greater zero!")
@@ -242,15 +241,15 @@ class NonlinearSolver(Solver):
 
 class Compile(UniqueConfiguration):
 
-    @any(default=True)
+    @configuration(default=True)
     def realcompile(self, flag: bool):
         return bool(flag)
 
-    @any(default=False)
+    @configuration(default=False)
     def wait(self, flag: bool):
         return bool(flag)
 
-    @any(default=False)
+    @configuration(default=False)
     def keep_files(self, flag: bool):
         return bool(flag)
 
@@ -265,7 +264,7 @@ class Optimizations(UniqueConfiguration):
     def compile(self, compile):
         return compile
 
-    @any(default=True)
+    @configuration(default=True)
     def static_condensation(self, static_condensation):
         return bool(static_condensation)
 
@@ -284,26 +283,22 @@ class SolverConfiguration(UniqueConfiguration):
 
     def __init__(self, mesh: ngs.Mesh, **kwargs) -> None:
         self.mesh = mesh
+        self.mesh.normal = ngs.specialcf.normal(mesh.dim)
+        self.mesh.tangential = ngs.specialcf.tangential(mesh.dim)
+        self.mesh.meshsize = ngs.specialcf.mesh_size
+        self.mesh.is_periodic = is_mesh_periodic(mesh)
+
         super().__init__(cfg=self, **kwargs)
 
-        if not hasattr(mesh, 'normal'):
-            self.mesh.normal = ngs.specialcf.normal(mesh.dim)
-
-        if not hasattr(mesh, 'tangential'):
-            self.mesh.tangential = ngs.specialcf.tangential(mesh.dim)
-
-        if not hasattr(mesh, 'mesh_size'):
-            self.mesh.meshsize = ngs.specialcf.mesh_size
-
-    @multiple(default=LinearSolver)
-    def solver(self, solver: Solver):
-        return solver
-
-    @multiple(default=CompressibleFlowConfiguration)
+    @interface(default=CompressibleFlowConfiguration)
     def pde(self, pde):
         return pde
 
-    @multiple(default=StationaryConfig)
+    @interface(default=LinearSolver)
+    def solver(self, solver: Solver):
+        return solver
+
+    @interface(default=StationaryConfig)
     def time(self, time):
         return time
 
@@ -311,7 +306,7 @@ class SolverConfiguration(UniqueConfiguration):
     def optimizations(self, optimizations):
         return optimizations
 
-    @any(default=None)
+    @configuration(default=None)
     def info(self, info=None):
 
         if info is None:

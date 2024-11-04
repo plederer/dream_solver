@@ -3,7 +3,8 @@ import typing
 import logging
 import ngsolve as ngs
 
-from dream.config import MultipleConfiguration, any, State, is_notebook
+from dream.config import InterfaceConfiguration, configuration, is_notebook, ngsdict
+from dream.mesh import BoundaryConditions, DomainConditions, Periodic
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
@@ -11,7 +12,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FiniteElement(MultipleConfiguration, is_interface=True):
+class FiniteElement(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
@@ -19,7 +20,7 @@ class FiniteElement(MultipleConfiguration, is_interface=True):
     def mesh(self) -> ngs.Mesh:
         return self.cfg.mesh
 
-    @any(default=2)
+    @configuration(default=2)
     def order(self, order):
         return int(order)
 
@@ -33,7 +34,7 @@ class FiniteElement(MultipleConfiguration, is_interface=True):
                             lf: dict[str, ngs.comp.SumOfIntegrals]):
         pass
 
-    def get_drawing_state(self, quantities: dict[str, bool]) -> State:
+    def get_drawing_state(self, quantities: dict[str, bool]) -> ngsdict:
         raise NotImplementedError()
 
     def set_initial_conditions(self) -> None:
@@ -45,9 +46,11 @@ class FiniteElement(MultipleConfiguration, is_interface=True):
     order: int
 
 
-class PDEConfiguration(MultipleConfiguration, is_interface=True):
+class PDEConfiguration(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
+    bcs: BoundaryConditions
+    dcs: DomainConditions
 
     @property
     def mesh(self) -> ngs.Mesh:
@@ -93,12 +96,16 @@ class PDEConfiguration(MultipleConfiguration, is_interface=True):
         self.fe.add_discrete_system(self.blf, self.lf)
 
     def set_boundary_conditions(self) -> None:
+
+        if self.mesh.is_periodic and not self.bcs.has(Periodic):
+            raise ValueError("Mesh is periodic, but no periodic boundary conditions are set!")
+
         self.fe.set_boundary_conditions()
 
     def set_initial_conditions(self) -> None:
         self.fe.set_initial_conditions()
 
-    def get_drawing_state(self, **quantities) -> State:
+    def get_drawing_state(self, **quantities) -> ngsdict:
         self.drawings = self.fe.get_drawing_state(quantities)
 
         for quantity in quantities:

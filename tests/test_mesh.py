@@ -3,7 +3,7 @@ import logging
 import unittest
 from netgen.occ import WorkPlane, OCCGeometry
 from dream.mesh import (DomainConditions, BoundaryConditions, BufferCoord, GridMapping, GridDeformation, Periodic,
-                         Condition, get_pattern_from_sequence, SpongeFunction, SpongeLayer)
+                        Condition, get_pattern_from_sequence, SpongeFunction, SpongeLayer)
 
 
 logging.disable(50)
@@ -67,9 +67,6 @@ class TestDomainConditions(unittest.TestCase):
 
     def test_dim(self):
         self.assertEqual(self.dcs.mesh.dim, 2)
-
-    def test_periodic(self):
-        self.assertTrue(self.dcs.mesh.is_periodic)
 
     def test_pattern(self):
         self.assertEqual(get_pattern_from_sequence(["left", "right"]), "left|right")

@@ -1,8 +1,6 @@
 from __future__ import annotations
 import logging
 import typing
-import textwrap
-import collections
 import functools
 
 import ngsolve as ngs
@@ -10,6 +8,8 @@ import ngsolve as ngs
 logger = logging.getLogger(__name__)
 
 # ------ Helper Functions ------ #
+
+
 def is_notebook() -> bool:
     try:
         shell = get_ipython().__class__.__name__
@@ -23,42 +23,26 @@ def is_notebook() -> bool:
         return False
 
 
-
-
 # ------- State ------- #
 
 def equation(func):
-    """ Equation is a decorator that wraps a function which takes as first argument a state.
+    """ Equation is a decorator that wraps a function which takes states as arguments.
 
-        The name of the function should ressemble a physical quantity like 'density' or 'velocity'.
-
-        When the decorated function get's called the wrapper checks first if the quantity is already defined
-        and returns it. 
-        If the quantity is not defined, the wrapper executes the decorated function, which should
+        The wrapper executes the decorated function, which should
         return a valid value. Otherwise a ValueError is thrown.
     """
 
     @functools.wraps(func)
-    def state(self, U: State, *args, **kwargs):
+    def state(self, *args: ngsdict, **kwargs):
 
-        _state = U.data.get(func.__name__, None)
+        quantity = func(self, *args, **kwargs)
 
-        if _state is not None:
-            name = " ".join(func.__name__.split("_")).capitalize()
-            logger.debug(f"{name} set by user! Returning it.")
-            return _state
-
-        _state = func(self, U, *args, **kwargs)
-
-        if _state is None:
+        if quantity is None:
             raise ValueError(f"Can not determine {func.__name__} from given state!")
 
-        return _state
+        return quantity
 
     return state
-
-
-# ------- Descriptors ------- #
 
 
 class quantity:
@@ -70,45 +54,89 @@ class quantity:
     tensor dimensions.
     """
 
-    __slots__ = ('symbol', 'cast', 'name')
+    __slots__ = ('symbol', 'name')
 
     def __set_name__(self, owner, symbol: str):
         self.symbol = symbol
 
-    def __init__(self, cast: typing.Callable, name: str) -> None:
-        self.cast = cast
+    def __init__(self, name: str) -> None:
         self.name = name
 
-    def __get__(self, state: State, objtype) -> ngs.CF:
+    def __get__(self, state: ngsdict, objtype) -> ngs.CF:
         if state is None:
             return self
+        return state.get(self.name, None)
 
-        return state.data.get(self.name, None)
-
-    def __set__(self, state: State, value) -> None:
+    def __set__(self, state: ngsdict, value) -> None:
         if value is not None:
-            value = self.cast(value)
-            state.data[self.name] = value
+            state[self.name] = value
 
-    def __delete__(self, state: State):
-        del state.data[self.name]
+    def __delete__(self, state: ngsdict):
+        del state[self.name]
 
 
+class ngsdict(typing.MutableMapping, dict):
+
+    symbols: dict[str, str] = {}
+
+    def __init_subclass__(cls) -> None:
+        symbols = {symbol: value.name for symbol, value in vars(cls).items() if isinstance(value, quantity)}
+        if hasattr(cls, "symbols"):
+            symbols.update(cls.symbols)
+        cls.symbols = symbols
+        return super().__init_subclass__()
+
+    def __init__(self, *args, **kwargs):
+        self.data = {}
+        self.update(*args, **kwargs)
+
+    def __setitem__(self, key: str, value):
+        if not isinstance(value, ngs.CF):
+            value = ngs.CF(value)
+
+        if key in self.symbols:
+            key = self.symbols[key]
+
+        self.data[key] = value
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __delitem__(self, key):
+        del self.data[key]
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def to_py(self) -> dict:
+        """ Returns the current state represented by pure python objects. 
+        """
+        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+        return {key: value(mesh()) if isinstance(value, ngs.CF) else value for key, value in self.items()}
+
+    def __repr__(self):
+        return str(self.to_py())
+
+
+# ------- User configuration ------- #
 class configuration:
 
-    __slots__ = ('name', '_default', 'fset_', 'fget_', '__doc__')
+    __slots__ = ('name', 'default', 'fset', 'fget', '__doc__')
 
     def __set_name__(self, owner, name: str):
         self.name = name
 
-    def __init__(self, default, fset_=None, fget_=None, doc: str = None):
+    def __init__(self, default, fset=None, fget=None, doc: str = None):
         self.default = default
-        self.fset_ = fset_
-        self.fget_ = fget_
+        self.fset = fset
+        self.fget = fget
         self.__doc__ = doc
 
-        if doc is None and fset_ is not None:
-            doc = fset_.__doc__
+        if doc is None and fset is not None:
+            doc = fset.__doc__
 
         self.__doc__ = doc
 
@@ -117,62 +145,59 @@ class configuration:
         """ Called when an attribute is accessed via class not an instance """
 
     @typing.overload
-    def __get__(self, instance: MultipleConfiguration, owner: type[object]) -> typing.Any:
+    def __get__(self, instance: InterfaceConfiguration, owner: type[object]) -> typing.Any:
         """ Called when an attribute is accessed on an instance variable """
 
-    def __get__(self, cfg: MultipleConfiguration, owner: type[MultipleConfiguration]):
+    def __get__(self, cfg: InterfaceConfiguration, owner: type[InterfaceConfiguration]):
         if cfg is None:
             return self
 
-        if self.fget_ is not None:
-            self.fget_(cfg)
+        if self.fget is not None:
+            self.fget(cfg)
 
         return cfg.data[self.name]
 
-    def __delete__(self, cfg: MultipleConfiguration):
+    def __delete__(self, cfg: InterfaceConfiguration):
         del cfg.data[self.name]
 
     def getter_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        prop = type(self)(self.default, self.fset_, fget_, self.__doc__)
+        prop = type(self)(self.default, self.fset, fget_, self.__doc__)
         return prop
 
     def setter_check(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        prop = type(self)(self.default, fset_, self.fget_, self.__doc__)
+        prop = type(self)(self.default, fset_, self.fget, self.__doc__)
         return prop
 
     def __call__(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
         return self.setter_check(fset_)
 
-
-class any(configuration):
-
-    def __set__(self, cfg: MultipleConfiguration, value):
-        if self.fset_ is not None:
-            value = self.fset_(cfg, value)
+    def __set__(self, cfg: InterfaceConfiguration, value):
+        if self.fset is not None:
+            value = self.fset(cfg, value)
 
         cfg.data[self.name] = value
 
-    def reset(self, cfg: MultipleConfiguration):
+    def reset(self, cfg: InterfaceConfiguration):
         self.__set__(cfg, self.default)
 
 
 class parameter(configuration):
 
-    def __set__(self, cfg: MultipleConfiguration, value: float) -> None:
+    def __set__(self, cfg: InterfaceConfiguration, value: float) -> None:
 
         if isinstance(value, ngs.Parameter):
             value = value.Get()
 
-        if self.fset_ is not None:
-            value = self.fset_(cfg, value)
+        if self.fset is not None:
+            value = self.fset(cfg, value)
 
         cfg.data[self.name].Set(value)
 
-    def reset(self, cfg: MultipleConfiguration):
+    def reset(self, cfg: InterfaceConfiguration):
 
         value = self.default
-        if self.fset_ is not None:
-            value = self.fset_(cfg, value)
+        if self.fset is not None:
+            value = self.fset(cfg, value)
 
         cfg.data[self.name] = ngs.Parameter(value)
 
@@ -181,7 +206,7 @@ class unique(configuration):
 
     default: UniqueConfiguration
 
-    def __set__(self, cfg: MultipleConfiguration, value: str | MultipleConfiguration) -> None:
+    def __set__(self, cfg: InterfaceConfiguration, value: str | InterfaceConfiguration) -> None:
 
         if isinstance(value, self.default):
             cfg.data[self.name] = value
@@ -196,8 +221,8 @@ class unique(configuration):
                 """
                 raise TypeError(msg)
 
-            if self.fset_ is not None:
-                value = self.fset_(cfg, cfg.data[self.name])
+            if self.fset is not None:
+                value = self.fset(cfg, cfg.data[self.name])
 
         elif isinstance(value, dict):
             cfg.data[self.name].update(**value)
@@ -214,26 +239,26 @@ class unique(configuration):
             """
             raise TypeError(msg)
 
-    def reset(self, cfg: MultipleConfiguration):
+    def reset(self, cfg: InterfaceConfiguration):
         self.__set__(cfg, self.default(cfg=cfg.cfg))
 
 
-class multiple(unique):
+class interface(unique):
 
-    default: MultipleConfiguration
+    default: InterfaceConfiguration
 
-    def __set__(self, cfg: MultipleConfiguration, value: str | MultipleConfiguration) -> None:
+    def __set__(self, cfg: InterfaceConfiguration, value: str | InterfaceConfiguration) -> None:
 
-        if isinstance(value, self.default.leafs.root):
+        if isinstance(value, self.default.tree.root):
             cfg.data[self.name] = value
 
         elif isinstance(value, str):
-            cfg_ = self.default.leafs[value]
+            cfg_ = self.default.tree[value]
             if not isinstance(cfg.data[self.name], cfg_):
                 cfg.data[self.name] = cfg_(cfg=cfg.cfg)
 
-            if self.fset_ is not None:
-                value = self.fset_(cfg, cfg.data[self.name])
+            if self.fset is not None:
+                value = self.fset(cfg, cfg.data[self.name])
 
         elif isinstance(value, dict):
             cfg.data[self.name].update(**value)
@@ -242,8 +267,8 @@ class multiple(unique):
             msg = f""" Can not set variable of type {type(value)}!
 
             To set '{self.name}' pass either:
-            1. An instance of type {self.default.leafs.root}.
-            2. A keyword from available options: {list(self.default.leafs)}.
+            1. An instance of type {self.default.tree.root}.
+            2. A keyword from available options: {list(self.default.tree)}.
 
             To update the current instance pass a dictionary with following keywords:
             {list(cfg.data[self.name].data.keys())}
@@ -251,21 +276,19 @@ class multiple(unique):
             raise TypeError(msg)
 
 
-# ------- Abstract Classes ------- #
-
-class InheritanceTree(collections.UserDict):
+class InterfaceTree(typing.MutableMapping, dict):
 
     def __init__(self, root: UniqueConfiguration):
         self.root = root
-        super().__init__()
+        self.leafs = {}
 
-    def __getitem__(self, alias) -> UniqueConfiguration | MultipleConfiguration:
+    def __getitem__(self, alias) -> UniqueConfiguration | InterfaceConfiguration:
         if isinstance(alias, self.root):
             return type(alias)
         elif isinstance(alias, type) and issubclass(alias, self.root):
             return alias
         elif alias in self:
-            return super().__getitem__(alias)
+            return self.leafs[alias]
         else:
             msg = f"Invalid type '{alias}' for class '{self.root}'.\n"
             msg += f"Allowed options: {list(self)}!"
@@ -276,81 +299,25 @@ class InheritanceTree(collections.UserDict):
             return True
         elif isinstance(key, type) and issubclass(key, self.root):
             return True
-        return super().__contains__(key)
-
-
-class State(collections.UserDict):
-
-    @staticmethod
-    def is_set(*args) -> bool:
-        return all([arg is not None for arg in args])
-
-    def __init_subclass__(cls) -> None:
-        cls.name_to_symbol = {value.name: symbol for symbol, value in vars(cls).items() if isinstance(value, quantity)}
-        return super().__init_subclass__()
+        return key in self.leafs
 
     def __setitem__(self, key: str, value):
-        if key in self.name_to_symbol:
-            key = self.name_to_symbol[key]
-            setattr(self, key, value)
-        elif key in self.name_to_symbol.values():
-            setattr(self, key, value)
-        else:
-            super().__setitem__(key, value)
+        self.leafs[key] = value
 
-    def __getitem__(self, key):
-        if key in self.name_to_symbol:
-            key = self.name_to_symbol[key]
-            return getattr(self, key)
-        elif key in self.name_to_symbol.values():
-            return getattr(self, key)
-        else:
-            return super().__getitem__(key)
+    def __delitem__(self, key):
+        del self.leafs[key]
 
-    def __delitem__(self, key) -> None:
-        if key in self.name_to_symbol:
-            key = self.name_to_symbol[key]
-            delattr(self, key)
-        elif key in self.name_to_symbol.values():
-            delattr(self, key)
-        else:
-            super().__delitem__(key)
+    def __iter__(self):
+        return iter(self.leafs)
 
-    def to_float(self) -> State:
-        """ Returns the current state represented by pure python objects. 
-        """
-        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
-        return {key: value(mesh()) if isinstance(value, ngs.CF) else value for key, value in self.items()}
-
-    def __repr__(self):
-        return str(self.to_float())
+    def __len__(self):
+        return len(self.leafs)
 
 
-class UniqueConfiguration(collections.UserDict):
+class UniqueConfiguration(typing.MutableMapping, dict):
 
     name: str
     cfgs: list[configuration]
-
-    def __init_subclass__(cls) -> None:
-
-        if not hasattr(cls, "cfgs"):
-            cls.cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, configuration)]
-
-        if not hasattr(cls, "name"):
-            cls.name = cls.__name__
-
-        cls.name = cls.name.lower()
-
-        super().__init_subclass__()
-
-    def __init__(self, cfg: UniqueConfiguration = None, **kwargs):
-
-        if cfg is None:
-            cfg = self
-        self.cfg = cfg
-
-        self.clear()
-        self.update(**kwargs)
 
     def update(self, dict=None, **kwargs):
 
@@ -376,7 +343,7 @@ class UniqueConfiguration(collections.UserDict):
         for key, value in kwargs.items():
             self[key].update(value)
 
-    def to_flat_dict(self, data: dict = None, root: str = "") -> dict[str, typing.Any]:
+    def to_tree(self, data: dict = None, root: str = "") -> dict[str, typing.Any]:
 
         if data is None:
             data = {}
@@ -395,7 +362,7 @@ class UniqueConfiguration(collections.UserDict):
 
                 case UniqueConfiguration():
                     data[key] = value.name
-                    value.to_flat_dict(data, key)
+                    value.to_tree(data, key)
                 case ngs.Parameter():
                     data[key] = value.Get()
                 case _:
@@ -408,6 +375,27 @@ class UniqueConfiguration(collections.UserDict):
         for value in self.cfgs:
             value.reset(self)
 
+    def __init_subclass__(cls) -> None:
+
+        if not hasattr(cls, "cfgs"):
+            cls.cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, configuration)]
+
+        if not hasattr(cls, "name"):
+            cls.name = cls.__name__
+
+        cls.name = cls.name.lower()
+
+        super().__init_subclass__()
+
+    def __init__(self, cfg: UniqueConfiguration = None, **kwargs):
+
+        if cfg is None:
+            cfg = self
+        self.cfg = cfg
+
+        self.clear()
+        self.update(**kwargs)
+
     def __setitem__(self, key: str, value):
         setattr(self, key, value)
 
@@ -417,30 +405,39 @@ class UniqueConfiguration(collections.UserDict):
     def __delitem__(self, key) -> None:
         delattr(self, key)
 
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self.data
+
     def __repr__(self) -> str:
-        return "\n".join([f"{key}: {value}" for key, value in self.to_flat_dict(root=self.name).items()])
+        return "\n".join([f"{key}: {value}" for key, value in self.to_tree(root=self.name).items()])
 
 
-class MultipleConfiguration(UniqueConfiguration):
+class InterfaceConfiguration(UniqueConfiguration):
 
     name: str
-    leafs: InheritanceTree
+    tree: InterfaceTree
     cfgs: list[configuration]
     aliases: tuple[str]
 
     def __init_subclass__(cls, is_interface: bool = False) -> None:
 
         if is_interface:
-            cls.leafs = InheritanceTree(cls)
+            cls.tree = InterfaceTree(cls)
             cls.aliases = ()
             cls.cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
 
         else:
             for name in [cls.name, *cls.aliases]:
                 name = name.lower()
-                if name in cls.leafs:
-                    raise ValueError(f"Concrete Class of type {cls.leafs.root} with name {name} already included!")
-                cls.leafs[name] = cls
+                if name in cls.tree:
+                    raise ValueError(f"Concrete Class of type {cls.tree.root} with name {name} already included!")
+                cls.tree[name] = cls
 
             cls.cfgs = cls.cfgs + [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
 

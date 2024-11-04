@@ -6,7 +6,7 @@ import ngsolve as ngs
 import logging
 import typing
 
-from dream.config import UniqueConfiguration, MultipleConfiguration, parameter, any, multiple, unique
+from dream.config import UniqueConfiguration, InterfaceConfiguration, parameter, configuration, interface, unique
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class Timer(UniqueConfiguration):
 
-    @any(default=(0.0, 1.0))
+    @configuration(default=(0.0, 1.0))
     def interval(self, interval):
         start, end = interval
 
@@ -65,9 +65,14 @@ class Timer(UniqueConfiguration):
     t: ngs.Parameter
 
 
-class TimeSchemes(MultipleConfiguration, is_interface=True):
+class TimeSchemes(InterfaceConfiguration, is_interface=True):
 
+    cfg: SolverConfiguration
     time_levels: tuple[str, ...]
+
+    @property
+    def dt(self) -> ngs.Parameter:
+        return self.cfg.time.timer.step
 
     def get_transient_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
         gfus = [ngs.GridFunction(gfu.space) for _ in self.time_levels[:-1]] + [gfu]
@@ -85,44 +90,77 @@ class TimeSchemes(MultipleConfiguration, is_interface=True):
             for old in list(gfu.values())[:-1]:
                 old.vec.data = gfu['n+1'].vec
 
-    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction], dt: ngs.Parameter) -> ngs.CF:
-        return (self.get_implicit_terms(gfus) - self.get_explicit_terms(gfus))/dt
-
-    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.LinearForm:
+    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         raise NotImplementedError()
 
-    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.LinearForm:
+    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_time_step(self) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_normalized_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_normalized_time_step(self) -> ngs.CF:
         raise NotImplementedError()
 
 
 class ImplicitEuler(TimeSchemes):
 
     name: str = "implicit_euler"
-    aliases = ("IE", )
+    aliases = ("ie", )
 
     time_levels = ('n', 'n+1')
 
-    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return gfus['n']
+    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return (gfus['n+1'] - gfus['n'])/self.dt
 
     def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return gfus['n+1']
 
+    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return gfus['n']
+
+    def get_time_step(self) -> ngs.CF:
+        return self.dt
+
+    def get_normalized_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return self.get_explicit_terms(gfus)
+
+    def get_normalized_time_step(self) -> ngs.CF:
+        return self.dt
+
 
 class BDF2(TimeSchemes):
 
-    name: str = "BDF2"
+    name: str = "bdf2"
 
     time_levels = ('n-1', 'n', 'n+1')
 
-    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return 2 * gfus['n'] - 0.5 * gfus['n-1']
+    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return (3*gfus['n+1'] - 4*gfus['n'] + gfus['n-1'])/(2*self.dt)
 
     def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return 1.5 * gfus['n+1']
+        return 3 * gfus['n+1']
+
+    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return 4 * gfus['n'] - gfus['n-1']
+
+    def get_time_step(self):
+        return 2*self.dt
+
+    def get_normalized_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return 4/3*gfus['n'] - 1/3*gfus['n-1']
+
+    def get_normalized_time_step(self):
+        return 2/3*self.dt
 
 
-class TimeConfig(MultipleConfiguration, is_interface=True):
+class TimeConfig(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
@@ -146,7 +184,7 @@ class TransientConfig(TimeConfig):
 
     name: str = "transient"
 
-    @multiple(default=ImplicitEuler)
+    @interface(default=ImplicitEuler)
     def scheme(self, scheme):
         return scheme
 
@@ -170,7 +208,7 @@ class PseudoTimeSteppingConfig(TimeConfig):
     name: str = "pseudo_time_stepping"
     aliases = ("pseudo", )
 
-    @multiple(default=ImplicitEuler)
+    @interface(default=ImplicitEuler)
     def scheme(self, scheme):
         return scheme
 
@@ -178,15 +216,15 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def timer(self, timer):
         return timer
 
-    @any(default=1.0)
+    @configuration(default=1.0)
     def max_time_step(self, max_time_step):
         return float(max_time_step)
 
-    @any(default=10)
+    @configuration(default=10)
     def increment_at(self, increment_at):
         return int(increment_at)
 
-    @any(default=10)
+    @configuration(default=10)
     def increment_factor(self, increment_factor):
         return int(increment_factor)
 

@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import ngsolve as ngs
 from dream import bla
-from dream.config import MultipleConfiguration, any
-from dream.compressible.config import ReferenceState
+from dream.config import InterfaceConfiguration, configuration
+from dream.compressible.config import referencestate
 
 
-class Scaling(MultipleConfiguration, is_interface=True):
+class Scaling(InterfaceConfiguration, is_interface=True):
 
-    @any(default=None)
-    def reference_values(self, state: ReferenceState):
-        reference = ReferenceState({'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325})
+    @configuration(default=None)
+    def reference_values(self, state: referencestate):
+        reference = referencestate({'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325})
         if state is not None:
             reference.update(state)
         return reference
@@ -28,7 +28,7 @@ class Scaling(MultipleConfiguration, is_interface=True):
         mag = self.velocity_magnitude(mach_number)
         return mag * bla.unit_vector(direction)
 
-    reference_values: ReferenceState
+    reference_values: referencestate
 
 
 class Aerodynamic(Scaling):
