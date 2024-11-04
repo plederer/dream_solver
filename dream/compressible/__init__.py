@@ -76,62 +76,105 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         self.dcs = CompressibleDomainConditions(self.mesh)
 
     @interface(default=ConservativeFiniteElement)
-    def fe(self, fe):
+    def fe(self, fe: ConservativeFiniteElement):
+        r""" Sets the finite element for the compressible flow solver. 
+
+            :setter: Sets the finite element, defaults to ConservativeFiniteElement
+            :getter: Returns the finite element
+        """
         return fe
 
     @parameter(default=0.3)
-    def mach_number(self, mach_number: float):
+    def mach_number(self, mach_number: ngs.Parameter):
+        r""" Sets the ratio of the farfield flow velocity to the farfield speed of sound.
+
+            .. math::
+                \Ma_\infty = \frac{u_\infty}{c_\infty}
+
+            :setter: Sets the Mach number, defaults to 0.3
+            :getter: Returns the Mach number
+        """
 
         if mach_number < 0:
             raise ValueError("Invalid Mach number. Value has to be >= 0!")
 
         return mach_number
 
-    @parameter(default=1)
-    def reynolds_number(self, reynolds_number: float):
-        """ Represents the ratio between inertial and viscous forces """
+    @parameter(default=150)
+    def reynolds_number(self, reynolds_number: ngs.Parameter):
+        r""" Sets the ratio of inertial to viscous forces 
+
+            .. math::
+                \Re_\infty = \frac{\rho_\infty u_\infty L}{\mu_\infty}
+
+            :setter: Sets the Reynolds number, defaults to 150
+            :getter: Returns the Reynolds number
+        """
         if reynolds_number <= 0:
             raise ValueError("Invalid Reynold number. Value has to be > 0!")
 
         return reynolds_number
-
-    @parameter(default=0.72)
-    def prandtl_number(self, prandtl_number: float):
-        if prandtl_number <= 0:
-            raise ValueError("Invalid Prandtl_number. Value has to be > 0!")
-
-        return prandtl_number
-
-    @interface(default=IdealGas)
-    def equation_of_state(self, equation_of_state):
-        return equation_of_state
-
-    @interface(default=Inviscid)
-    def dynamic_viscosity(self, dynamic_viscosity):
-        return dynamic_viscosity
-
-    @interface(default=Aerodynamic)
-    def scaling(self, scaling):
-        return scaling
-
-    @interface(default=LaxFriedrich)
-    def riemann_solver(self, riemann_solver: LaxFriedrich):
-        self.riemann_solver._cfg = self
-        return riemann_solver
 
     @reynolds_number.getter_check
     def reynolds_number(self):
         if self.dynamic_viscosity.is_inviscid:
             raise ValueError("Inviscid solver configuration: Reynolds number not applicable")
 
+    @parameter(default=0.72)
+    def prandtl_number(self, prandtl_number: float):
+        r""" Sets the ratio of momentum diffusivity to thermal diffusivity 
+
+            .. math::
+                \Pr_\infty = \frac{c_p \mu_\infty}{k_\infty}
+
+            :setter: Sets the Prandtl number, defaults to 0.72
+            :getter: Returns the Prandtl number
+        """
+        if prandtl_number <= 0:
+            raise ValueError("Invalid Prandtl_number. Value has to be > 0!")
+
+        return prandtl_number
+
     @prandtl_number.getter_check
     def prandtl_number(self):
         if self.dynamic_viscosity.is_inviscid:
             raise ValueError("Inviscid solver configuration: Prandtl number not applicable")
 
-    @property
-    def reference_reynolds_number(self):
-        return self.reynolds_number/self.scaling.velocity_magnitude(self.mach_number)
+    @interface(default=IdealGas)
+    def equation_of_state(self, equation_of_state):
+        r""" Sets the equation of state for the compressible flow solver. 
+
+            :setter: Sets the equation of state, defaults to IdealGas
+            :getter: Returns the equation of state
+        """
+        return equation_of_state
+
+    @interface(default=Inviscid)
+    def dynamic_viscosity(self, dynamic_viscosity):
+        r""" Sets the dynamic viscosity for the compressible flow solver.
+
+            :setter: Sets the dynamic viscosity, defaults to Inviscid
+            :getter: Returns the dynamic viscosity
+        """
+        return dynamic_viscosity
+
+    @interface(default=Aerodynamic)
+    def scaling(self, scaling):
+        r""" Sets the dimensional scaling for the compressible flow solver.
+
+            :setter: Sets the scaling, defaults to Aerodynamic
+            :getter: Returns the scaling
+        """
+        return scaling
+
+    @interface(default=LaxFriedrich)
+    def riemann_solver(self, riemann_solver: LaxFriedrich):
+        r""" Sets the Riemann solver for the compressible flow solver.
+
+            :setter: Sets the Riemann solver, defaults to LaxFriedrich
+            :getter: Returns the Riemann solver
+        """
+        return riemann_solver
 
     fe: ConservativeFiniteElement
     mach_number: ngs.Parameter
@@ -141,6 +184,19 @@ class CompressibleFlowConfiguration(PDEConfiguration):
     dynamic_viscosity: Constant | Inviscid | Sutherland
     scaling: Aerodynamic | Acoustic | Aeroacoustic
     riemann_solver: LaxFriedrich | Roe | HLL | HLLEM
+
+    @property
+    def reference_reynolds_number(self) -> ngs.CF:
+        r""" Returns the reference Reynolds number depending on the scaling in use. 
+
+            .. math:: 
+                \Re_r = \begin{cases} \Re_\infty & \text{if Aerodynamic} \\
+                                      \frac{\Re_\infty}{\Ma_\infty} & \text{if Acoustic} \\
+                                      \frac{\Re_\infty (1+\Ma_\infty)}{\Ma_\infty} & \text{if Aeroacoustic} \end{cases}
+
+            :getter: Returns the reference Reynolds number
+        """
+        return self.reynolds_number/self.scaling.velocity_magnitude(self.mach_number)
 
     def get_farfield_state(self, direction: tuple[float, ...] = None) -> flowstate:
 
@@ -184,16 +240,13 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         return REF
 
     def get_convective_flux(self, U: flowstate) -> bla.MATRIX:
-        """
-        Conservative convective flux
+        r""" Returns the conservative convective flux from a given state.
 
-        Equation 2, page 5
+            .. math::
+                \bm{F} = \begin{bmatrix} \rho u \\ \rho u \otimes u + p \bm{I} \\ \rho H u \end{bmatrix}
 
-        Literature:
-        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
-              Hybridisable Discontinuous Galerkin form.Formulation of Compressible Flows.
-              Arch Computat Methods Eng 28, 753–784 (2021).
-              https://doi.org/10.1007/s11831-020-09508-z
+            :param U: A dictionary containing the flow quantities
+            :type U: flowstate
         """
         rho = self.density(U)
         rho_u = self.momentum(U)
@@ -206,16 +259,15 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         return bla.as_matrix(flux, dims=(u.dim + 2, u.dim))
 
     def get_diffusive_flux(self, U: flowstate, dU: flowstate) -> bla.MATRIX:
-        """
-        Conservative diffusive flux
+        r""" Returns the conservative diffusive flux from given states.
 
-        Equation 2, page 5
+            .. math::
+                \bm{G} = \frac{1}{\Re_{r}} \begin{bmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \frac{\bm{q}}{\Pr} \right) \end{bmatrix}
 
-        Literature:
-        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
-              Hybridisable Discontinuous Galerkin form.Formulation of Compressible Flows.
-              Arch Computat Methods Eng 28, 753–784 (2021).
-              https://doi.org/10.1007/s11831-020-09508-z
+            :param U: A dictionary containing the flow quantities
+            :type U: flowstate
+            :param dU: A dictionary containing the gradients of the flow quantities
+            :type dU: flowstate
         """
         u = self.velocity(U)
         tau = self.deviatoric_stress_tensor(U, dU)

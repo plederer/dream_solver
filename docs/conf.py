@@ -1,13 +1,15 @@
+from dream import SolverConfiguration
+from dream.config import configuration
+import sphinx_rtd_theme
 import os
 import sys
-# sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
 sys.path.append(os.path.abspath('../'))
 sys.path.append(os.path.abspath('.'))
+# sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
+
 # print(sys.path)
 
-from macros import mymacros
 # from configuration import SolverConfiguration
-from dream import CompressibleHDGSolver, SolverConfiguration
 
 
 # Configuration file for the Sphinx documentation builder.
@@ -18,7 +20,7 @@ from dream import CompressibleHDGSolver, SolverConfiguration
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'dream_solver'
+project = 'dream'
 copyright = '2023, Philip Lederer'
 author = 'Philip Lederer'
 release = '0.1'
@@ -29,25 +31,48 @@ release = '0.1'
 extensions = ['sphinx.ext.mathjax', "myst_parser", 'sphinx.ext.autodoc']
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['build', 'Thumbs.db', '.DS_Store']
 
-mathjax3_config = {                  
+mathjax3_config = {
     # "loader": {"load": ['[tex]/color']},
-    "tex": { 
-        # "packages" : {'[+]': ['color']},                       
-        "macros": mymacros
-    }                           
-    }                 
+    "tex": {
+        # "packages" : {'[+]': ['color']},
+        "macros": {
+            "bm": ["\\boldsymbol{#1}", 1],
+            "div": "{\\operatorname{div}}",
+            "tr": "{\\operatorname{tr}}",
+            "dev": "{\\operatorname{dev}}",
+            "curl": "{\\operatorname{curl}}",
+            "grad": "{\\nabla}",
+            "T": "{\\rm{T}}",
+            "I": "{\\operatorname{I}}",
+            "Re": "{\\operatorname{\\rm{Re}}}",
+            "Pr": "{\\operatorname{\\rm{Pr}}}",
+            "Ma": "{\\operatorname{\\rm{Ma}}}",
+            "Fr": "{\\operatorname{\\rm{Fr}}}",
+            "jump": ["{{[\\![#1]\\!]}}", 1],
+            "sym": ["{{\\rm sym} (#1) }", 1],
+            "skw": ["{{\\rm skw} (#1) }", 1],
+            "vec": ["{\\bm{#1}}", 1],
+            "mat": ["{#1}", 1],
+        }
+    }
+}
 
-myst_enable_extensions = ["amsmath","dollarmath"]
+myst_enable_extensions = ["amsmath", "dollarmath"]
 suppress_warnings = ["myst.header"]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-import sphinx_rtd_theme
 
 html_theme = 'sphinx_rtd_theme'
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-
 html_static_path = ['_static']
+
+# def test_autodoc_process_bases(app, what, name, obj, options, signature, return_annotation):
+#     if isinstance(obj, configuration):
+#         options['show_inheritance'] = True
+#         return (f"{signature}", return_annotation)
+
+# def setup(app):
+#     app.connect("autodoc-process-signature", test_autodoc_process_bases)

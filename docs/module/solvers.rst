@@ -1,7 +1,7 @@
-Configuration
+Solvers
 ========================================
 
 This class can be used as...
 
-.. autoclass:: dream.configuration.SolverConfiguration
+.. autoclass:: dream.solver.SolverConfiguration
    :members:

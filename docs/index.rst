@@ -9,25 +9,15 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Continuous Formulation:
+   :caption: Solvers:
 
-   basics/navierstokes.md
-   basics/conservative.md
-   basics/setofvariables.md
+   module/solvers
 
 .. toctree::
    :maxdepth: 2
-   :caption: Discretization:
+   :caption: PDEs:
 
-   hdg/hdg.md
-
-.. toctree::
-   :maxdepth: 3
-   :caption: Python-Module:
-
-   module/configuration
-
-
+   module/pde
 
 
 Funding

@@ -122,68 +122,71 @@ class ngsdict(typing.MutableMapping, dict):
 
 
 # ------- User configuration ------- #
-class configuration:
 
-    __slots__ = ('name', 'default', 'fset', 'fget', '__doc__')
+VALUE = typing.TypeVar('VALUE')
 
-    def __set_name__(self, owner, name: str):
-        self.name = name
 
-    def __init__(self, default, fset=None, fget=None, doc: str = None):
+class configuration(typing.Generic[VALUE]):
+
+    __slots__ = ('default', 'fset', 'fget', '__name__', '__doc__', '__annotations__')
+
+    def __set_name__(self, owner, name):
+        self.__name__ = name
+
+    def __init__(self, default, fset=None, fget=None, doc: str | None = None):
+
+        if doc is None and fset is not None:
+            doc = fset.__doc__
+
         self.default = default
         self.fset = fset
         self.fget = fget
         self.__doc__ = doc
 
-        if doc is None and fset is not None:
-            doc = fset.__doc__
-
-        self.__doc__ = doc
-
     @typing.overload
-    def __get__(self, instance: None, owner: type[object]) -> configuration:
+    def __get__(self, cfg: None, owner: type[CONFIG]) -> configuration:
         """ Called when an attribute is accessed via class not an instance """
 
     @typing.overload
-    def __get__(self, instance: InterfaceConfiguration, owner: type[object]) -> typing.Any:
+    def __get__(self, cfg: CONFIG, owner: type[CONFIG]) -> VALUE:
         """ Called when an attribute is accessed on an instance variable """
 
-    def __get__(self, cfg: InterfaceConfiguration, owner: type[InterfaceConfiguration]):
+    def __get__(self, cfg: CONFIG | None, owner: type[CONFIG]) -> VALUE | configuration:
         if cfg is None:
             return self
 
         if self.fget is not None:
             self.fget(cfg)
 
-        return cfg.data[self.name]
+        return cfg.data[self.__name__]
 
-    def __delete__(self, cfg: InterfaceConfiguration):
-        del cfg.data[self.name]
-
-    def getter_check(self, fget_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        prop = type(self)(self.default, self.fset, fget_, self.__doc__)
-        return prop
-
-    def setter_check(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        prop = type(self)(self.default, fset_, self.fget, self.__doc__)
-        return prop
-
-    def __call__(self, fset_: typing.Callable[[typing.Any, typing.Any], None]) -> configuration:
-        return self.setter_check(fset_)
-
-    def __set__(self, cfg: InterfaceConfiguration, value):
+    def __set__(self, cfg: CONFIG, value):
         if self.fset is not None:
             value = self.fset(cfg, value)
 
-        cfg.data[self.name] = value
+        cfg.data[self.__name__] = value
 
-    def reset(self, cfg: InterfaceConfiguration):
+    def __delete__(self, cfg: UniqueConfiguration):
+        del cfg.data[self.__name__]
+
+    def getter_check(self, fget: typing.Callable[[CONFIG], None]):
+        return type(self)(self.default, self.fset, fget, self.__doc__)
+
+    def setter_check(self, fset: typing.Callable[[CONFIG, typing.Any], VALUE]):
+        return type(self)(self.default, fset, self.fget, self.__doc__)
+
+    def __call__(self, fset: typing.Callable[[CONFIG, typing.Any], typing.Any]) -> configuration:
+        return self.setter_check(fset)
+
+    def reset(self, cfg: UniqueConfiguration):
         self.__set__(cfg, self.default)
 
 
 class parameter(configuration):
 
-    def __set__(self, cfg: InterfaceConfiguration, value: float) -> None:
+    default: float
+
+    def __set__(self, cfg: CONFIG, value) -> None:
 
         if isinstance(value, ngs.Parameter):
             value = value.Get()
@@ -191,30 +194,30 @@ class parameter(configuration):
         if self.fset is not None:
             value = self.fset(cfg, value)
 
-        cfg.data[self.name].Set(value)
+        cfg.data[self.__name__].Set(value)
 
-    def reset(self, cfg: InterfaceConfiguration):
+    def reset(self, cfg: UniqueConfiguration):
 
         value = self.default
         if self.fset is not None:
             value = self.fset(cfg, value)
 
-        cfg.data[self.name] = ngs.Parameter(value)
+        cfg.data[self.__name__] = ngs.Parameter(value)
 
 
 class unique(configuration):
 
-    default: UniqueConfiguration
+    default: type[UniqueConfiguration]
 
-    def __set__(self, cfg: InterfaceConfiguration, value: str | InterfaceConfiguration) -> None:
+    def __set__(self, cfg: CONFIG, value) -> None:
 
         if isinstance(value, self.default):
-            cfg.data[self.name] = value
+            cfg.data[self.__name__] = value
 
         elif isinstance(value, str):
 
             if value == self.default.name:
-                cfg.data[self.name] = self.default(cfg=cfg.cfg)
+                cfg.data[self.__name__] = self.default(cfg=cfg.cfg)
             else:
                 msg = f""" Invalid type '{value}'!
                            Allowed option: '{self.default.name}!'
@@ -222,56 +225,56 @@ class unique(configuration):
                 raise TypeError(msg)
 
             if self.fset is not None:
-                value = self.fset(cfg, cfg.data[self.name])
+                value = self.fset(cfg, cfg.data[self.__name__])
 
         elif isinstance(value, dict):
-            cfg.data[self.name].update(**value)
+            cfg.data[self.__name__].update(**value)
 
         else:
             msg = f""" Can not set variable of type {type(value)}!
 
-            To set '{self.name}' pass either:
+            To set '{self.__name__}' pass either:
             1. An instance of type {self.default}.
             2. A keyword: {list(self.default.name)}.
 
             To update the current instance pass a dictionary with following keywords:
-            {list(cfg.data[self.name].data.keys())}
+            {list(cfg.data[self.__name__].data.keys())}
             """
             raise TypeError(msg)
 
-    def reset(self, cfg: InterfaceConfiguration):
+    def reset(self, cfg: CONFIG):
         self.__set__(cfg, self.default(cfg=cfg.cfg))
 
 
 class interface(unique):
 
-    default: InterfaceConfiguration
+    default: type[InterfaceConfiguration]
 
-    def __set__(self, cfg: InterfaceConfiguration, value: str | InterfaceConfiguration) -> None:
+    def __set__(self, cfg: CONFIG, value) -> None:
 
         if isinstance(value, self.default.tree.root):
-            cfg.data[self.name] = value
+            cfg.data[self.__name__] = value
 
         elif isinstance(value, str):
             cfg_ = self.default.tree[value]
-            if not isinstance(cfg.data[self.name], cfg_):
-                cfg.data[self.name] = cfg_(cfg=cfg.cfg)
+            if not isinstance(cfg.data[self.__name__], cfg_):
+                cfg.data[self.__name__] = cfg_(cfg=cfg.cfg)
 
             if self.fset is not None:
-                value = self.fset(cfg, cfg.data[self.name])
+                value = self.fset(cfg, cfg.data[self.__name__])
 
         elif isinstance(value, dict):
-            cfg.data[self.name].update(**value)
+            cfg.data[self.__name__].update(**value)
 
         else:
             msg = f""" Can not set variable of type {type(value)}!
 
-            To set '{self.name}' pass either:
+            To set '{self.__name__}' pass either:
             1. An instance of type {self.default.tree.root}.
             2. A keyword from available options: {list(self.default.tree)}.
 
             To update the current instance pass a dictionary with following keywords:
-            {list(cfg.data[self.name].data.keys())}
+            {list(cfg.data[self.__name__].data.keys())}
             """
             raise TypeError(msg)
 
@@ -317,7 +320,6 @@ class InterfaceTree(typing.MutableMapping, dict):
 class UniqueConfiguration(typing.MutableMapping, dict):
 
     name: str
-    cfgs: list[configuration]
 
     def update(self, dict=None, **kwargs):
 
@@ -343,7 +345,7 @@ class UniqueConfiguration(typing.MutableMapping, dict):
         for key, value in kwargs.items():
             self[key].update(value)
 
-    def to_tree(self, data: dict = None, root: str = "") -> dict[str, typing.Any]:
+    def to_tree(self, data: dict | None = None, root: str = "") -> dict[str, typing.Any]:
 
         if data is None:
             data = {}
@@ -387,7 +389,7 @@ class UniqueConfiguration(typing.MutableMapping, dict):
 
         super().__init_subclass__()
 
-    def __init__(self, cfg: UniqueConfiguration = None, **kwargs):
+    def __init__(self, cfg=None, **kwargs):
 
         if cfg is None:
             cfg = self
@@ -442,3 +444,5 @@ class InterfaceConfiguration(UniqueConfiguration):
             cls.cfgs = cls.cfgs + [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
 
         super().__init_subclass__()
+
+CONFIG = typing.TypeVar('CONFIG', bound=UniqueConfiguration)
