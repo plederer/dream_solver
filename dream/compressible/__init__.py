@@ -198,7 +198,41 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         """
         return self.reynolds_number/self.scaling.velocity_magnitude(self.mach_number)
 
-    def get_farfield_state(self, direction: tuple[float, ...] = None) -> flowstate:
+    def get_farfield_state(self, direction: tuple[float, ...]) -> flowstate:
+        r""" Returns the dimensionless farfield state depending on the scaling in use and the flow direction. 
+
+            Aerodynamic Scaling
+                .. math:: 
+                    \begin{align*}
+                        \rho &= 1, &
+                        \| \bm{u} \|  &= 1, &
+                        c &= \frac{1}{\Ma_\infty}, &
+                        T &= \frac{1}{(\gamma - 1)\Ma_\infty^2}, &
+                        p &= \frac{1}{\gamma \Ma_\infty^2}.
+                    \end{align*}
+
+            Acoustic Scaling
+                .. math::
+                    \begin{align*}
+                        \rho &= 1, &
+                        \| \bm{u} \|  &= \Ma_\infty, &
+                        c &= 1, &
+                        T &= \frac{1}{(\gamma - 1)}, &
+                        p &= \frac{1}{\gamma}.
+                    \end{align*}
+
+            Aeroacoustic Scaling
+                .. math::
+                    \begin{align*}
+                        \rho &= 1, &
+                        \| \bm{u} \|  &= \frac{\Ma_\infty}{1 + \Ma_\infty}, &
+                        c &= \frac{1}{1 + \Ma_\infty}, &
+                        T &= \frac{1}{(\gamma - 1) ( 1+ \Ma_\infty^2)}, &
+                        p &= \frac{1}{\gamma (1+ \Ma_\infty^2)}.
+                    \end{align*}
+
+            :param direction: A container containing the flow direction
+        """
 
         Ma = self.mach_number
         INF = flowstate()
@@ -208,42 +242,38 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         INF.T = self.temperature(INF)
         INF.p = self.pressure(INF)
 
-        if direction is not None:
-            direction = bla.as_vector(direction)
+        direction = bla.as_vector(direction)
 
-            if not 1 <= direction.dim <= 3:
-                raise ValueError(f"Invalid Dimension!")
+        if not direction.dim == self.mesh.dim:
+            raise ValueError(f"Direction dimension {direction.dim} does not match mesh dimension {self.mesh.dim}")
 
-            INF.u = self.scaling.velocity(direction, Ma)
-            INF.rho_Ei = self.inner_energy(INF)
-            INF.rho_Ek = self.kinetic_energy(INF)
-            INF.rho_E = self.energy(INF)
+        INF.u = self.scaling.velocity(direction, Ma)
+        INF.rho_Ei = self.inner_energy(INF)
+        INF.rho_Ek = self.kinetic_energy(INF)
+        INF.rho_E = self.energy(INF)
 
         return INF
 
-    def get_reference_state(self, direction: tuple[float, ...] = None) -> referencestate:
+    def get_dimensional_state(self, U: flowstate) -> flowstate:
+        r""" Returns the dimensional state from a given state depending on the scaling. 
 
-        INF = self.get_farfield_state(direction)
-        INF_ = self.scaling.reference_values
-        REF = referencestate()
+            :param U: A dictionary containing the flow quantities
+            :type U: flowstate
+        """
 
-        for key, value in INF_.items():
-            value_ = INF.get(key, None)
+        REF = self.scaling.reference_values
+        DIM = flowstate()
+        for key, value in U.items():
+            if key in REF:
+                DIM[key] = value * REF[key]
 
-            if value_ is not None:
-
-                if bla.is_vector(value_):
-                    value_ = bla.inner(value_, value_)
-
-                REF[key] = value/value_
-
-        return REF
+        return DIM
 
     def get_convective_flux(self, U: flowstate) -> bla.MATRIX:
         r""" Returns the conservative convective flux from a given state.
 
             .. math::
-                \bm{F} = \begin{bmatrix} \rho u \\ \rho u \otimes u + p \bm{I} \\ \rho H u \end{bmatrix}
+                \bm{F} = \begin{pmatrix} \rho \bm{u} \\ \rho \bm{u} \otimes \bm{u} + p \bm{I} \\ \rho H \bm{u} \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
             :type U: flowstate
@@ -262,7 +292,7 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         r""" Returns the conservative diffusive flux from given states.
 
             .. math::
-                \bm{G} = \frac{1}{\Re_{r}} \begin{bmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \frac{\bm{q}}{\Pr} \right) \end{bmatrix}
+                \bm{G} = \begin{pmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \bm{q}\right) \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
             :type U: flowstate
@@ -273,14 +303,9 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         tau = self.deviatoric_stress_tensor(U, dU)
         q = self.heat_flux(U, dU)
 
-        Re = self.reference_reynolds_number
-        Pr = self.prandtl_number
-
         continuity = tuple(0 for _ in range(u.dim))
 
-        flux = (continuity, tau/Re, (tau*u - q/Pr)/Re)
-
-        return bla.as_matrix(flux, dims=(u.dim + 2, u.dim))
+        return bla.as_matrix((continuity, tau, tau*u - q), dims=(u.dim + 2, u.dim))
 
     def get_local_mach_number(self, U: flowstate):
         u = self.velocity(U)
@@ -624,17 +649,28 @@ class CompressibleFlowConfiguration(PDEConfiguration):
             return dU.strain
         elif dU.grad_u is not None:
             logger.debug("Returning strain rate tensor from velocity.")
-            return 0.5 * (dU.grad_u + dU.grad_u.trans) - 1/3 * bla.trace(dU.grad_u, id=True)
+            return 0.5 * (dU.grad_u + dU.grad_u.trans) - 1/3 * bla.trace(dU.grad_u) * ngs.Id(self.mesh.dim)
 
     @equation
     def deviatoric_stress_tensor(self, U: flowstate, dU: flowstate):
+        r""" Returns the deviatoric stress tensor from the given states. 
+
+            .. math::
+                \bm{\tau} = 2 \frac{\mu}{\Re_r} \mat{\varepsilon}
+
+            :param U: A dictionary containing the flow quantities
+            :type U: flowstate
+            :param dU: A dictionary containing the gradients of the flow quantities
+            :type dU: flowstate
+        """
 
         mu = self.viscosity(U)
+        Re = self.reference_reynolds_number
         eps = self.strain_rate_tensor(dU)
 
         if all((mu, eps)):
             logger.debug("Returning deviatoric stress tensor from strain rate tensor and viscosity.")
-            return 2 * mu * eps
+            return 2*mu/Re * eps
 
     @equation
     def viscosity(self, U: flowstate) -> bla.SCALAR:
@@ -644,10 +680,12 @@ class CompressibleFlowConfiguration(PDEConfiguration):
     def heat_flux(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
 
         k = self.viscosity(U)
+        Re = self.reference_reynolds_number
+        Pr = self.prandtl_number
 
         if all((k, dU.grad_T)):
             logger.debug("Returning heat flux from temperature gradient.")
-            return -k * dU.grad_T
+            return -k/(Re * Pr) * dU.grad_T
 
     @equation
     def characteristic_velocities(self, U: flowstate, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:

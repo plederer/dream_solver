@@ -53,10 +53,10 @@ class Sutherland(DynamicViscosity):
 
         if U.T is not None:
 
-            REF = self.cfg.pde.get_reference_state()
-            INF = self.cfg.pde.get_farfield_state()
+            INF = flowstate(rho=self.cfg.pde.scaling.density(), c=self.cfg.pde.scaling.speed_of_sound(self.cfg.pde.mach_number))
+            INF.T = self.cfg.pde.temperature(INF)
 
-            T0 = self.measurement_temperature/REF.T
+            T0 = self.measurement_temperature/self.cfg.pde.scaling.reference_values.T * INF.T
 
             return (U.T/INF.T)**(3/2) * (INF.T + T0)/(U.T + T0)
 

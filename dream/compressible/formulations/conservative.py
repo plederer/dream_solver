@@ -101,12 +101,7 @@ class StrainHeat(MixedMethod):
         Q, P = self.Q_TnT
 
         U = self.cfg.pde.fe.method.get_conservative_state(U)
-        U.u = self.cfg.pde.velocity(U)
-        U.T = self.cfg.pde.temperature(U)
-
         Uhat = self.cfg.pde.fe.method.get_conservative_state(Uhat)
-        Uhat.u = self.cfg.pde.velocity(Uhat)
-        Uhat.T = self.cfg.pde.temperature(Uhat)
 
         gradient_P = ngs.grad(P)
         Q = self.get_mixed_state(Q)
@@ -158,7 +153,6 @@ class StrainHeat(MixedMethod):
         S = self.get_conservative_diffusive_jacobian(U, Q, t) * (ngs.grad(U.U) * t)
         S += self.get_conservative_diffusive_jacobian(U, Q, n) * (ngs.grad(U.U) * n)
         S += self.get_mixed_diffusive_jacobian(U, t) * (ngs.grad(Q.Q) * t)
-        # S += self.get_mixed_diffusive_jacobian(U, n) * (ngs.grad(Q.Q) * n)
         S += self.get_mixed_diffusive_jacobian(U, n) * grad_Q
 
         return S
@@ -241,9 +235,9 @@ class StrainHeat(MixedMethod):
 
         A = mu/Re * ngs.CF((
             0, 0, 0, 0, 0,
-            1, 0, 0, 0, 0,
-            0, 1, 0, 0, 0,
-            ux, uy, 0, 1/Pr, 0
+            2, 0, 0, 0, 0,
+            0, 2, 0, 0, 0,
+            2*ux, 2*uy, 0, 1/Pr, 0
         ), dims=(4, 5))
 
         return A
@@ -261,9 +255,9 @@ class StrainHeat(MixedMethod):
 
         B = mu/Re * ngs.CF((
             0, 0, 0, 0, 0,
-            0, 1, 0, 0, 0,
-            0, 0, 1, 0, 0,
-            0, ux, uy, 0, 1/Pr
+            0, 2, 0, 0, 0,
+            0, 0, 2, 0, 0,
+            0, 2*ux, 2*uy, 0, 1/Pr
         ), dims=(4, 5))
 
         return B
