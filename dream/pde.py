@@ -34,7 +34,7 @@ class FiniteElement(InterfaceConfiguration, is_interface=True):
                             lf: dict[str, ngs.comp.SumOfIntegrals]):
         pass
 
-    def get_drawing_state(self, quantities: dict[str, bool]) -> ngsdict:
+    def get_state(self, quantities: dict[str, bool]) -> ngsdict:
         raise NotImplementedError()
 
     def set_initial_conditions(self) -> None:
@@ -59,6 +59,18 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
     @property
     def fe(self) -> FiniteElement:
         raise NotImplementedError("Overload this configuration in derived class!")
+
+    def set_system(self) -> None:
+        self.set_finite_element_spaces()
+        self.set_trial_and_test_functions()
+        self.set_gridfunctions()
+        self.set_boundary_conditions()
+
+        if not self.cfg.time.is_stationary:
+            self.set_transient_gridfunctions()
+            self.set_initial_conditions()
+
+        self.set_discrete_system_tree()
 
     def set_finite_element_spaces(self) -> None:
 
@@ -105,8 +117,15 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
     def set_initial_conditions(self) -> None:
         self.fe.set_initial_conditions()
 
-    def get_drawing_state(self, **quantities) -> ngsdict:
-        self.drawings = self.fe.get_drawing_state(quantities)
+        if not self.cfg.time.is_stationary:
+
+            if not hasattr(self, "transient_gfus"):
+                raise ValueError("Transient gridfunctions are not set!")
+
+            self.cfg.time.scheme.set_initial_conditions(self.transient_gfus)
+
+    def get_drawing_state(self, **quantities: bool) -> ngsdict:
+        self.drawings = self.fe.get_state(quantities)
 
         for quantity in quantities:
             logger.info(f"Can not draw {quantity}!")

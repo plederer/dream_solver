@@ -394,7 +394,7 @@ class ConservativeMethod(InterfaceConfiguration, is_interface=True):
 
         return U_
 
-    def get_drawing_state(self, quantities: dict[str, bool]) -> flowstate:
+    def get_state(self, quantities: dict[str, bool]) -> flowstate:
         U = self.get_conservative_state(self.U_gfu)
 
         draw = flowstate()
@@ -876,8 +876,8 @@ class ConservativeFiniteElement(CompressibleFiniteElement):
         self.method.add_domain_conditions(blf, lf)
         super().add_discrete_system(blf, lf)
 
-    def get_drawing_state(self, quantities: dict[str, bool]) -> flowstate:
-        U = self.method.get_drawing_state(quantities)
+    def get_state(self, quantities: dict[str, bool]) -> flowstate:
+        U = self.method.get_state(quantities)
         return U
 
     def set_initial_conditions(self) -> None:

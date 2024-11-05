@@ -321,29 +321,6 @@ class SolverConfiguration(UniqueConfiguration):
         grid_deformation = self.pde.dcs.get_grid_deformation_function()
         self.mesh.SetDeformation(grid_deformation)
 
-    def set_finite_element_spaces(self):
-        self.pde.set_finite_element_spaces()
-        self.pde.set_trial_and_test_functions()
-
-    def set_gridfunctions(self):
-        self.pde.set_gridfunctions()
-
-        if not self.time.is_stationary:
-            self.pde.set_transient_gridfunctions()
-
-    def set_initial_conditions(self):
-        self.pde.set_initial_conditions()
-
-        if not self.time.is_stationary:
-            self.time.scheme.set_initial_conditions(self.pde.transient_gfus)
-
-    def set_discrete_system_tree(self, set_boundary: bool = True):
-
-        if set_boundary:
-            self.pde.set_boundary_conditions()
-
-        self.pde.set_discrete_system_tree()
-
     solver: LinearSolver | NonlinearSolver
     pde: CompressibleFlowConfiguration
     time: StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
