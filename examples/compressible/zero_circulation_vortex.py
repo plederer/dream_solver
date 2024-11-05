@@ -4,7 +4,7 @@ from dream import *
 from dream.compressible import flowstate, FarField, Initial, Outflow, GRCBC, NSCBC
 
 ngsglobals.msg_level = 0
-SetNumThreads(8)
+SetNumThreads(4)
 
 # Setup Mesh
 face = WorkPlane().RectangleC(1, 1).Face()
@@ -75,10 +75,7 @@ cfg.pde.dcs['default'] = initial
 
 
 # Setup Spaces and Gridfunctions
-cfg.set_finite_element_spaces()
-cfg.set_gridfunctions()
-cfg.set_discrete_system_tree()
-cfg.set_initial_conditions()
+cfg.pde.set_system()
 
 drawing = cfg.pde.get_drawing_state(p=True)
 drawing['p*'] = (drawing.p - Uinf.p)/(p_00 - Uinf.p)

@@ -488,7 +488,7 @@ class Conditions(UserDict):
             condition_type = self.conditions[condition_type]
 
         for container in self.values():
-            if configuration(isinstance(condition, condition_type) for condition in container):
+            if any(isinstance(condition, condition_type) for condition in container):
                 return True
 
         return False
@@ -558,7 +558,7 @@ class BoundaryConditions(Conditions):
             while periodic boundaries are neglected! 
         """
 
-        bnds = [bnd for bnd, bc in self.items() if not isinstance(bc, Periodic) or bc]
+        bnds = [bnd for bnd, bcs in self.items() if not any([isinstance(bc, Periodic) for bc in bcs]) and bcs]
 
         if as_pattern:
             bnds = get_pattern_from_sequence(bnds)

@@ -13,12 +13,6 @@ class CompressibleFiniteElement(FiniteElement, is_interface=True):
     def gfu(self) -> ngs.GridFunction:
         return self.cfg.pde.gfu
 
-    @configuration(default=2)
-    def order(self, order):
-        return int(order)
-
-    order: int
-
     def set_boundary_conditions(self) -> None:
         """ Boundary conditions for compressible flows are set weakly. Therefore we do nothing here."""
         pass

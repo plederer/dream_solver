@@ -110,7 +110,7 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
     def set_boundary_conditions(self) -> None:
 
         if self.mesh.is_periodic and not self.bcs.has(Periodic):
-            raise ValueError("Mesh is periodic, but no periodic boundary conditions are set!")
+            raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
 
         self.fe.set_boundary_conditions()
 
@@ -124,12 +124,16 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
 
             self.cfg.time.scheme.set_initial_conditions(self.transient_gfus)
 
-    def get_drawing_state(self, **quantities: bool) -> ngsdict:
-        self.drawings = self.fe.get_state(quantities)
+    def get_state(self, **quantities: bool) -> ngsdict:
+        state = self.fe.get_state(quantities)
 
         for quantity in quantities:
-            logger.info(f"Can not draw {quantity}!")
+            logger.info(f"Quantity {quantity} not defined!")
 
+        return state
+
+    def get_drawing_state(self, **quantities: bool) -> ngsdict:
+        self.drawings = self.get_state(**quantities)
         return self.drawings
 
     def draw(self, **kwargs):

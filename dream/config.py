@@ -432,7 +432,6 @@ class InterfaceConfiguration(UniqueConfiguration):
         if is_interface:
             cls.tree = InterfaceTree(cls)
             cls.aliases = ()
-            cls.cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
 
         else:
             for name in [cls.name, *cls.aliases]:
@@ -441,8 +440,12 @@ class InterfaceConfiguration(UniqueConfiguration):
                     raise ValueError(f"Concrete Class of type {cls.tree.root} with name {name} already included!")
                 cls.tree[name] = cls
 
-            cls.cfgs = cls.cfgs + [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
+        cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
+        if hasattr(cls, "cfgs"):
+            cfgs = cls.cfgs + cfgs
+        cls.cfgs = cfgs
 
         super().__init_subclass__()
+
 
 CONFIG = typing.TypeVar('CONFIG', bound=UniqueConfiguration)
