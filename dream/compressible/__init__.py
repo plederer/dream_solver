@@ -21,7 +21,6 @@ from dream.compressible.viscosity import Inviscid, Constant, Sutherland
 from dream.compressible.scaling import Aerodynamic, Aeroacoustic, Acoustic
 from dream.compressible.riemann_solver import LaxFriedrich, Roe, HLL, HLLEM
 from dream.compressible.config import (flowstate,
-                                       referencestate,
                                        FarField,
                                        Outflow,
                                        InviscidWall,

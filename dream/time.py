@@ -46,7 +46,7 @@ class Timer(UniqueConfiguration):
 
         for i in range(1 - include_start, N):
             self.t = start + stride*i*step
-            yield self.t.Get()
+            yield round(self.t.Get(), self.digit)
 
     def to_array(self, include_start: bool = False, stride: int = 1) -> np.ndarray:
         return np.array(list(self.start(include_start, stride)))

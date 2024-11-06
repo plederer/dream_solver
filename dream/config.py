@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import typing
 import functools
+import pathlib
 
 import ngsolve as ngs
 
@@ -115,7 +116,7 @@ class ngsdict(typing.MutableMapping, dict):
         """ Returns the current state represented by pure python objects. 
         """
         mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
-        return {key: value(mesh()) if isinstance(value, ngs.CF) else value for key, value in self.items()}
+        return {key: value(mesh()) for key, value in self.items()}
 
     def __repr__(self):
         return str(self.to_py())
@@ -367,6 +368,10 @@ class UniqueConfiguration(typing.MutableMapping, dict):
                     value.to_tree(data, key)
                 case ngs.Parameter():
                     data[key] = value.Get()
+                case ngsdict():
+                    data[key] = value.to_py()
+                case pathlib.Path():
+                    data[key] = str(value)
                 case _:
                     data[key] = value
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import ngsolve as ngs
 import logging
+import typing
 
 from typing import Optional, NamedTuple, Any
 from math import isnan
@@ -10,6 +11,7 @@ from .compressible import CompressibleFlowConfiguration
 from .mesh import is_mesh_periodic
 from .config import UniqueConfiguration, InterfaceConfiguration, interface, configuration, unique
 from .time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
+from .io import InputOutputConfiguration
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +87,7 @@ class NonlinearMethod(InterfaceConfiguration, is_interface=True):
         if it is not None:
             msg += f" | iteration: {it}"
         if t is not None:
-            msg += f" | t: {t:.{self.cfg.time.timer.digit}f}"
+            msg += f" | {t}"
         logger.info(msg)
 
 
@@ -306,6 +308,10 @@ class SolverConfiguration(UniqueConfiguration):
     def optimizations(self, optimizations):
         return optimizations
 
+    @unique(default=InputOutputConfiguration)
+    def io(self, io):
+        return io
+
     @configuration(default=None)
     def info(self, info=None):
 
@@ -317,6 +323,16 @@ class SolverConfiguration(UniqueConfiguration):
 
         return info
 
+    def set_solver_documentation(self, doc: str):
+        if isinstance(doc, str):
+            ...
+        elif isinstance(doc, typing.Sequence):
+            doc = "\n".join(doc)
+        else:
+            raise ValueError("Documentation must be a string or sequence!")
+
+        self.doc = doc
+
     def set_grid_deformation(self):
         grid_deformation = self.pde.dcs.get_grid_deformation_function()
         self.mesh.SetDeformation(grid_deformation)
@@ -325,6 +341,7 @@ class SolverConfiguration(UniqueConfiguration):
     pde: CompressibleFlowConfiguration
     time: StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
     optimizations: Optimizations
+    io: InputOutputConfiguration
 
 
 class Solver_:
