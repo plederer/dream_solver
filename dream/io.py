@@ -148,11 +148,19 @@ class VTKHandler(Handler):
         if fields is None:
             return {}
 
-        path = self.cfg.io.tree.vtk.joinpath(self.filename)
+        path = self.path.joinpath(self.filename)
+
         self.handler = ngs.VTKOutput(ma=self.cfg.mesh, coefs=list(fields.values()), names=list(
             fields.keys()), filename=str(path), subdivision=self.subdivision)
 
         return fields
+
+    @property
+    def path(self) -> Path:
+        path = self.cfg.io.tree.vtk
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
 
     def save(self,  t: float | None = -1, it: int | None = None) -> Path:
         return self.handler.Do(t, drawelems=self.region)
@@ -162,9 +170,15 @@ class MeshHandler(Handler):
 
     name: str = "mesh"
 
-    def save(self,  t: float | None = None, it: int | None = None) -> None:
+    @property
+    def path(self) -> Path:
+        path = self.cfg.io.tree.root
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
 
-        path = self.cfg.io.tree.root.joinpath(self.filename + ".pickle")
+    def save(self,  t: float | None = None, it: int | None = None) -> None:
+        path = self.path.joinpath(self.filename + ".pickle")
 
         with path.open("wb") as open:
             pickle.dump(self.cfg.mesh, open, protocol=pickle.DEFAULT_PROTOCOL)
@@ -186,6 +200,13 @@ class ConfigurationHandler(Handler):
     def yaml(self, yaml: bool):
         return bool(yaml)
 
+    @property
+    def path(self) -> Path:
+        path = self.cfg.io.tree.configuration
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def save(self, t: float | None = None, it: int | None = None):
         if self.pickle:
             self.save_pickle()
@@ -200,10 +221,7 @@ class ConfigurationHandler(Handler):
             pickle.dump(self.cfg.to_tree(), open, protocol=pickle.DEFAULT_PROTOCOL)
 
     def save_txt(self):
-        path = self.cfg.io.tree.configuration.joinpath(self.filename + ".txt")
-
-        if not path.parent.exists():
-            path.parent.mkdir(parents=True, exist_ok=True)
+        path = self.path.joinpath(self.filename + ".txt")
 
         with path.open("w") as open:
             txt = [acknowledgements(), ""]
@@ -237,8 +255,12 @@ class StateHandler(Handler):
     def save_time_level_at_ith_step(self, i: int):
         return int(i)
 
-    save_at_ith_step: int
-    save_time_level_at_ith_step: int
+    @property
+    def path(self) -> Path:
+        path = self.cfg.io.tree.states
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
 
     def save(self, t: float | None = None, it: int | None = None):
 
@@ -246,10 +268,10 @@ class StateHandler(Handler):
         if t is not None:
             filename = f"{filename}_{t}"
 
-            if it & self.save_time_level_at_ith_step == 0:
+            if it & self.save_time_level_at_ith_step == 0 and bool(self.save_time_level_at_ith_step):
                 self.save_transient_gridfunctions(filename)
 
-        if it % self.save_at_ith_step == 0:
+        if it % self.save_at_ith_step == 0 and bool(self.save_at_ith_step):
             self.save_gridfunction(self.cfg.pde.gfu, filename)
 
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
@@ -257,7 +279,8 @@ class StateHandler(Handler):
         if filename is None:
             filename = self.filename
 
-        file = self.cfg.io.tree.states.joinpath(filename + ".ngs")
+        file = self.path.joinpath(filename + ".ngs")
+
         gfu.Save(str(file))
 
     def save_transient_gridfunctions(self, filename: str | None = None) -> None:
@@ -268,8 +291,11 @@ class StateHandler(Handler):
         for fes, gfus in self.cfg.pde.transient_gfus.items():
 
             for level, gfu in gfus.items():
-                filename = f"{filename}_{fes}_{level}"
-                self.save_gridfunction(gfu, filename)
+
+                self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
+
+    save_at_ith_step: int
+    save_time_level_at_ith_step: int
 
 
 class Saver(UniqueConfiguration):
