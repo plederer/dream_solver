@@ -1,4 +1,3 @@
-# %%
 from __future__ import annotations
 import typing
 import pickle
@@ -53,6 +52,22 @@ class path(configuration):
                     cfg.data[key] = cfg.data[self.__name__].joinpath(name)
 
 
+class save(configuration):
+
+    def __set__(self, cfg: CONFIG, save: bool) -> None:
+
+        if isinstance(save, str) and save == self.__name__:
+            save = True
+
+        if not isinstance(save, bool):
+            raise ValueError(f"Pass boolean to activate/deactivate handler")
+
+        if save:
+            cfg.data[self.__name__] = self.fset(cfg, save)
+        elif not save and self.__name__ in cfg.data:
+            del cfg.data[self.__name__]
+
+
 class DirectoryTree(InterfaceConfiguration, is_interface=True):
 
     @path(default=None)
@@ -91,22 +106,6 @@ class SingleTree(DirectoryTree):
 class BenchmarkTree(DirectoryTree):
 
     name: str = 'benchmark'
-
-
-class save(configuration):
-
-    def __set__(self, cfg: CONFIG, save: bool) -> None:
-
-        if isinstance(save, str) and save == self.__name__:
-            save = True
-
-        if not isinstance(save, bool):
-            raise ValueError(f"Pass boolean to activate/deactivate handler")
-
-        if save:
-            cfg.data[self.__name__] = self.fset(cfg, save)
-        elif not save and self.__name__ in cfg.data:
-            del cfg.data[self.__name__]
 
 
 class Handler(InterfaceConfiguration, is_interface=True):
@@ -155,7 +154,7 @@ class VTKHandler(Handler):
 
         return fields
 
-    def save(self, t: float | None = -1) -> Path:
+    def save(self,  t: float | None = -1, it: int | None = None) -> Path:
         return self.handler.Do(t, drawelems=self.region)
 
 
@@ -163,12 +162,13 @@ class MeshHandler(Handler):
 
     name: str = "mesh"
 
-    def save(self, t: float | None = None) -> None:
+    def save(self,  t: float | None = None, it: int | None = None) -> None:
 
         path = self.cfg.io.tree.root.joinpath(self.filename + ".pickle")
 
         with path.open("wb") as open:
             pickle.dump(self.cfg.mesh, open, protocol=pickle.DEFAULT_PROTOCOL)
+
 
 class ConfigurationHandler(Handler):
 
@@ -177,18 +177,16 @@ class ConfigurationHandler(Handler):
     @configuration(default=True)
     def pickle(self, pickle: bool):
         return bool(pickle)
-    
+
     @configuration(default=True)
     def txt(self, txt: bool):
         return bool(txt)
-    
+
     @configuration(default=False)
     def yaml(self, yaml: bool):
         return bool(yaml)
 
-    
-    def save(self):
-
+    def save(self, t: float | None = None, it: int | None = None):
         if self.pickle:
             self.save_pickle()
         if self.txt:
@@ -221,80 +219,93 @@ class ConfigurationHandler(Handler):
             import yaml
         except ImportError:
             raise ImportError("Install pyyaml to save configuration as yaml")
-        
-        yaml.add_path_resolver('!person', ['Person'], dict)
 
-        
         path = self.cfg.io.tree.configuration.joinpath(self.filename + ".yaml")
         with path.open("w") as open:
             yaml.dump(self.cfg.to_tree(), open, sort_keys=False)
+
+
+class StateHandler(Handler):
+
+    name: str = "state"
+
+    @configuration(default=1)
+    def save_at_ith_step(self, i: int):
+        return int(i)
+
+    @configuration(default=0)
+    def save_time_level_at_ith_step(self, i: int):
+        return int(i)
+
+    save_at_ith_step: int
+    save_time_level_at_ith_step: int
+
+    def save(self, t: float | None = None, it: int | None = None):
+
+        filename = self.filename
+        if t is not None:
+            filename = f"{filename}_{t}"
+
+            if it & self.save_time_level_at_ith_step == 0:
+                self.save_transient_gridfunctions(filename)
+
+        if it % self.save_at_ith_step == 0:
+            self.save_gridfunction(self.cfg.pde.gfu, filename)
+
+    def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        file = self.cfg.io.tree.states.joinpath(filename + ".ngs")
+        gfu.Save(str(file))
+
+    def save_transient_gridfunctions(self, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        for fes, gfus in self.cfg.pde.transient_gfus.items():
+
+            for level, gfu in gfus.items():
+                filename = f"{filename}_{fes}_{level}"
+                self.save_gridfunction(gfu, filename)
+
 
 class Saver(UniqueConfiguration):
 
     cfg: SolverConfiguration
 
     @save(default=False)
-    def vtk(self, save: bool):
-        return VTKHandler(cfg=self.cfg)
-
-    @save(default=False)
     def mesh(self, save: bool):
         return MeshHandler(cfg=self.cfg)
-    
+
+    @save(default=False)
+    def state(self, save: bool):
+        return StateHandler(cfg=self.cfg)
+
     @save(default=False)
     def configuration(self, save: bool):
         return ConfigurationHandler(cfg=self.cfg)
 
+    @save(default=False)
+    def vtk(self, save: bool):
+        return VTKHandler(cfg=self.cfg)
 
-    # # def save_state(self, gfu: ngs.GridFunction = None, t name: str = "state", suffix: str = ".ngs") -> None:
-    # #     path = self.cfg.io.tree.states.joinpath(name + suffix)
-    # #     gfu.Save(str(path))
+    def pre_solution_routine_saving(self):
+        for handler in self.values():
+            if isinstance(handler, (MeshHandler, ConfigurationHandler)):
+                handler.save()
 
+    def solution_routine_saving(self, t: float | None = None, it: int | None = None):
+        for handler in self.values():
+            if isinstance(handler, (VTKHandler, StateHandler)):
+                handler.save(t, it)
 
-    def save_configuration(self,
-                           configuration: SolverConfiguration,
-                           name: str = "config",
-                           comment: Optional[str] = None,
-                           save_pickle: bool = True,
-                           save_txt: bool = True):
-
-        if save_pickle:
-            self._save_pickle_configuration(configuration, name)
-        if save_txt:
-            self._save_txt_configuration(configuration, name, comment)
-
-    # def save_gridfunction(self, gfu: GridFunction, name: str = "state") -> None:
-    #     file = self.state_folder.joinpath(name)
-    #     gfu.Save(str(file))
-
-    # def save_sensor_data(self, sensor: Sensor, save_dataframe: bool = True):
-
-    #     file = self.sensor_folder.joinpath(f"{sensor.name}.csv")
-
-    #     df = sensor.to_dataframe_all()
-    #     df.to_csv(file)
-
-    #     if save_dataframe:
-    #         file = self.sensor_folder.joinpath(f"{sensor.name}.pickle")
-    #         with file.open("wb") as openfile:
-    #             pickle.dump(df, openfile, protocol=pickle.DEFAULT_PROTOCOL)
-
-    # def save_vtk(self, time: float = -1, region=None, **kwargs) -> Path:
-    #     if self._vtk is None:
-    #         raise ValueError("Call 'saver.initialize_vtk_handler()' before saving vtk")
-    #     return self._vtk.Do(time, drawelems=region, **kwargs)
-
-
-    def _save_pickle_configuration(self, configuration: SolverConfiguration, name: str, suffix: str = ".pickle"):
-        file = self.main_folder.joinpath(name + suffix)
-        dictionary = configuration.to_dict()
-
-        with file.open("wb") as openfile:
-            pickle.dump(dictionary, openfile, protocol=pickle.DEFAULT_PROTOCOL)
-
-    vtk: VTKHandler
     mesh: MeshHandler
+    state: StateHandler
     configuration: ConfigurationHandler
+    vtk: VTKHandler
 
 
 class InputOutputConfiguration(UniqueConfiguration):
@@ -311,5 +322,3 @@ class InputOutputConfiguration(UniqueConfiguration):
 
     tree: SingleTree | BenchmarkTree
     saver: Saver
-
-# %%

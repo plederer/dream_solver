@@ -184,7 +184,7 @@ class LinearSolver(Solver):
 
     def solve(self):
 
-        for t in self.cfg.time.routine():
+        for t in self.cfg.time.solution_routine():
             raise NotImplementedError()
 
 
@@ -212,7 +212,7 @@ class NonlinearSolver(Solver):
 
     def solve(self):
 
-        for t in self.cfg.time.routine():
+        for t in self.cfg.time.solution_routine():
 
             self.method.reset_status()
 

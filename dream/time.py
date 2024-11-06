@@ -176,8 +176,13 @@ class StationaryConfig(TimeConfig):
 
     name: str = "stationary"
 
-    def routine(self):
+    def solution_routine(self):
+
+        self.cfg.io.saver.pre_solution_routine_saving()
+
         yield None
+
+        self.cfg.io.saver.solution_routine_saving()
 
 
 class TransientConfig(TimeConfig):
@@ -192,12 +197,15 @@ class TransientConfig(TimeConfig):
     def timer(self, timer):
         return timer
 
-    def routine(self):
+    def solution_routine(self):
 
-        for t in self.timer():
+        self.cfg.io.saver.pre_solution_routine_saving()
+
+        for it, t in enumerate(self.timer()):
             yield t
 
             self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
+            self.cfg.io.saver.solution_routine_saving(t, it)
 
     scheme: ImplicitEuler | BDF2
     timer: Timer
@@ -228,9 +236,13 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def increment_factor(self, increment_factor):
         return int(increment_factor)
 
-    def routine(self):
+    def solution_routine(self):
+
+        self.cfg.io.saver.pre_solution_routine_saving()
+
         yield None
 
+        self.cfg.io.saver.solution_routine_saving()
         self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
     def iteration_update(self, it: int):
