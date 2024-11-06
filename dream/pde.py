@@ -109,7 +109,7 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
 
     def set_boundary_conditions(self) -> None:
 
-        if self.mesh.is_periodic and not self.bcs.has(Periodic):
+        if self.mesh.is_periodic and not self.bcs.has_condition(Periodic):
             raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
 
         self.fe.set_boundary_conditions()

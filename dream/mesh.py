@@ -482,7 +482,13 @@ class Conditions(UserDict):
         self.data = {region: [] for region in regions}
         self.mesh = mesh
 
-    def has(self, condition_type: Condition | str) -> bool:
+    def get_region(self, *condition_types, as_pattern=False) -> str | list[str]:
+        reg = [name for name, cond in self.items() if any(isinstance(c, condition_types) for c in cond)]
+        if as_pattern:
+            reg = get_pattern_from_sequence(reg)
+        return reg
+
+    def has_condition(self, condition_type: Condition | str) -> bool:
 
         if isinstance(condition_type, str):
             condition_type = self.conditions[condition_type]

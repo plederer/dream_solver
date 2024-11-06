@@ -55,6 +55,19 @@ class TestBoundaryConditions(unittest.TestCase):
         self.assertIsInstance(self.bcs['a'][0], Periodic)
         self.assertIsInstance(self.bcs['c'][0], Periodic)
 
+    def test_get_boundaries(self):
+
+        self.bcs['a'] = Periodic()
+        self.bcs['b'] = Condition()
+        self.bcs['c'] = Condition()
+
+        self.assertListEqual(self.bcs.get_region(Periodic), ['a'])
+        self.assertEqual(self.bcs.get_region(Periodic, as_pattern=True), 'a')
+
+        self.assertListEqual(self.bcs.get_region(Periodic, Condition), ['a', 'b', 'c'])
+        self.assertEqual(self.bcs.get_region(Periodic, Condition, as_pattern=True), 'a|b|c')
+
+
     def test_get_domain_boundaries(self):
         self.bcs['a'] = Periodic()
         self.bcs['b'] = Condition()

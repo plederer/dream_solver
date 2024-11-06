@@ -436,7 +436,7 @@ class HDG(ConservativeMethod):
             U = self.cfg.pde.dcs.reduce_psponge_layers_order_elementwise(U, psponge_layers)
             Uhat = self.cfg.pde.dcs.reduce_psponge_layers_order_facetwise(Uhat, psponge_layers)
 
-        if self.cfg.pde.bcs.has(Periodic):
+        if self.cfg.pde.bcs.has_condition(Periodic):
             Uhat = ngs.Periodic(Uhat)
 
         fes['U'] = U**dim
@@ -445,7 +445,7 @@ class HDG(ConservativeMethod):
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]) -> None:
         super().add_transient_gridfunctions(gfus)
 
-        if self.cfg.pde.bcs.has(CBC):
+        if self.cfg.pde.bcs.has_condition(CBC):
             gfus['Uhat'] = self.cfg.time.scheme.get_transient_gridfunctions(self.Uhat_gfu)
 
     def set_initial_conditions(self, U: ngs.CF = None):
