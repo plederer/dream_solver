@@ -107,10 +107,10 @@ class StrainHeat(MixedMethod):
         Q = self.get_mixed_state(Q)
         P = self.get_mixed_state(P)
 
-        dev_zeta = P.strain - bla.trace(P.strain) * ngs.Id(self.mesh.dim)/3
+        dev_zeta = P.eps - bla.trace(P.eps) * ngs.Id(self.mesh.dim)/3
         div_dev_zeta = ngs.CF((gradient_P[0, 0] + gradient_P[1, 1], gradient_P[1, 0] + gradient_P[2, 1]))
         div_dev_zeta -= 1/3 * ngs.CF((gradient_P[0, 0] + gradient_P[2, 0], gradient_P[0, 1] + gradient_P[2, 1]))
-        blf['mixed'] = ngs.InnerProduct(Q.strain, P.strain) * ngs.dx
+        blf['mixed'] = ngs.InnerProduct(Q.eps, P.eps) * ngs.dx
         blf['mixed'] += ngs.InnerProduct(U.u, div_dev_zeta) * ngs.dx(bonus_intorder=bonus.vol)
         blf['mixed'] -= ngs.InnerProduct(Uhat.u,
                                          dev_zeta*self.mesh.normal) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
@@ -165,7 +165,7 @@ class StrainHeat(MixedMethod):
             Q = Q.components
 
         Q_ = flowstate()
-        Q_.strain = bla.symmetric_matrix_from_vector(Q[:3*dim - 3])
+        Q_.eps = bla.symmetric_matrix_from_vector(Q[:3*dim - 3])
         Q_.grad_T = Q[3*dim - 3:]
 
         if isinstance(Q, ngs.comp.ProxyFunction):

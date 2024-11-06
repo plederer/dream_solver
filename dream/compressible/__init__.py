@@ -644,8 +644,8 @@ class CompressibleFlowConfiguration(PDEConfiguration):
 
     @equation
     def strain_rate_tensor(self, dU: flowstate) -> bla.MATRIX:
-        if dU.strain is not None:
-            return dU.strain
+        if dU.eps is not None:
+            return dU.eps
         elif dU.grad_u is not None:
             logger.debug("Returning strain rate tensor from velocity.")
             return 0.5 * (dU.grad_u + dU.grad_u.trans) - 1/3 * bla.trace(dU.grad_u) * ngs.Id(self.mesh.dim)

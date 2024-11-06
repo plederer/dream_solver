@@ -47,7 +47,7 @@ class flowstate(ngsdict):
     grad_rho_H = quantity('enthalpy_gradient')
     grad_H = quantity('specific_enthalpy_gradient')
     grad_c = quantity('speed_of_sound_gradient')
-    strain = quantity('strain_rate_tensor')
+    eps = quantity('strain_rate_tensor')
 
 
 class referencestate(ngsdict):
