@@ -384,12 +384,13 @@ class UniqueConfiguration(typing.MutableMapping, dict):
 
     def __init_subclass__(cls) -> None:
 
-        if not hasattr(cls, "cfgs"):
-            cls.cfgs = [cfg_ for cfg_ in vars(cls).values() if isinstance(cfg_, configuration)]
+        cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
+        if hasattr(cls, "cfgs"):
+            cfgs = cls.cfgs + cfgs
+        cls.cfgs = cfgs
 
         if not hasattr(cls, "name"):
             cls.name = cls.__name__
-
         cls.name = cls.name.lower()
 
         super().__init_subclass__()
@@ -444,11 +445,6 @@ class InterfaceConfiguration(UniqueConfiguration):
                 if name in cls.tree:
                     raise ValueError(f"Concrete Class of type {cls.tree.root} with name {name} already included!")
                 cls.tree[name] = cls
-
-        cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
-        if hasattr(cls, "cfgs"):
-            cfgs = cls.cfgs + cfgs
-        cls.cfgs = cfgs
 
         super().__init_subclass__()
 

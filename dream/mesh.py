@@ -7,7 +7,7 @@ from collections import UserDict
 from typing import Callable, Sequence
 
 from dream import bla
-from dream.config import ngsdict, InterfaceConfiguration, configuration
+from dream.config import ngsdict, UniqueConfiguration, configuration
 
 logger = logging.getLogger(__name__)
 
@@ -244,7 +244,7 @@ class GridMapping:
         return self.map(x_)
 
 
-class Condition(InterfaceConfiguration, is_interface=True):
+class Condition(UniqueConfiguration):
 
     mesh: ngs.Mesh
 
@@ -287,7 +287,7 @@ class Force(Condition):
     name = "force"
 
 
-class Buffer(Condition, is_interface=True):
+class Buffer(Condition):
 
     @configuration(default=None)
     def function(self, buffer_function) -> ngs.CF:

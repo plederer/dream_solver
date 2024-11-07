@@ -103,7 +103,7 @@ class Outflow(Condition):
     state: flowstate
 
 
-class CBC(Condition, is_interface=True):
+class CBC(Condition):
 
     name = "cbc"
 
