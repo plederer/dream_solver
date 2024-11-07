@@ -286,6 +286,17 @@ class Force(Condition):
 
     name = "force"
 
+    @configuration(default=None)
+    def state(self, state) -> ngsdict:
+        return state
+
+    @state.getter_check
+    def state(self) -> None:
+        if self.data['state'] is None:
+            raise ValueError("Force State not set!")
+
+    state: ngsdict
+
 
 class Buffer(Condition):
 
@@ -556,6 +567,9 @@ class BoundaryConditions(Conditions):
 
     def __init__(self, mesh: ngs.Mesh) -> None:
         super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh)
+
+    def get_periodic_boundaries(self, as_pattern: bool = False) -> str | list[str]:
+        return self.get_region(Periodic, as_pattern=as_pattern)
 
     def get_domain_boundaries(self, as_pattern: bool = False) -> list | str:
         """ Returns a list or pattern of the domain boundaries!

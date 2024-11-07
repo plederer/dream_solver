@@ -152,12 +152,12 @@ class Solver(InterfaceConfiguration, is_interface=True):
 
     def set_discrete_system(self):
 
-        fes = self.cfg.pde.fes
+        self.fes = self.cfg.pde.fes
         condense = self.cfg.optimizations.static_condensation
         compile = self.cfg.optimizations.compile
 
-        self.blf = ngs.BilinearForm(fes, condense=condense)
-        self.lf = ngs.LinearForm(fes)
+        self.blf = ngs.BilinearForm(self.fes, condense=condense)
+        self.lf = ngs.LinearForm(self.fes)
 
         for name, cf in self.cfg.pde.blf.items():
             logger.debug(f"Adding {name} to the BilinearForm!")
@@ -184,8 +184,35 @@ class LinearSolver(Solver):
 
     def solve(self):
 
+        self.blf.Assemble()
+
+        if hasattr(self, 'dirichlet'):
+            self.dirichlet.data = self.blf.mat * self.gfu.vec
+
         for t in self.cfg.time.solution_routine():
-            raise NotImplementedError()
+            self.lf.Assemble()
+
+            if hasattr(self, 'dirichlet'):
+                self.lf.vec.data -= self.proj * self.dirichlet
+
+            self.cfg.pde.gfu.vec.data += self.inverse.get_inverse(self.blf, self.cfg.pde.fes) * self.lf.vec
+
+            self.cfg.pde.redraw()
+
+    def set_dirichlet_vector(self):
+
+        periodic = self.cfg.pde.bcs.get_periodic_boundaries(True)
+        dofs = ~self.fes.FreeDofs() & ~self.fes.GetDofs(self.cfg.mesh.Boundaries(periodic))
+
+        if any(dofs):
+            self.proj = ngs.Projector(dofs, False)   # dirichlet mask
+            self.dirichlet = self.gfu.vec.CreateVector()
+            self.dirichlet[:] = 0
+
+    def set_discrete_system(self):
+        super().set_discrete_system()
+        self.gfu = self.cfg.pde.gfu
+        self.set_dirichlet_vector()
 
 
 class NonlinearSolver(Solver):
@@ -266,7 +293,7 @@ class Optimizations(UniqueConfiguration):
     def compile(self, compile):
         return compile
 
-    @configuration(default=True)
+    @configuration(default=False)
     def static_condensation(self, static_condensation):
         return bool(static_condensation)
 
