@@ -1,5 +1,6 @@
-*.dat
 __pycache__/
-*.ini
+.mypy_cache/
 *.vscode
+*.dat
+*.ini
 *.ipynb_checkpoints
