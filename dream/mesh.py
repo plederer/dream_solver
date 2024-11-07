@@ -136,7 +136,7 @@ class GridMapping:
 
     @classmethod
     def linear(cls, scale: float, coordinate: BufferCoord):
-        """ Returns a linear grid mapping. 
+        r""" Returns a linear grid mapping. 
 
         The thickness of the buffer layer is scaled by the factor 'scale'.
 
@@ -156,7 +156,7 @@ class GridMapping:
 
     @classmethod
     def exponential(cls, scale: float, coordinate: BufferCoord):
-        """ Returns an exponential grid mapping. 
+        r""" Returns an exponential grid mapping. 
 
         The thickness of the buffer layer is scaled by the factor 'scale'.
 
@@ -183,7 +183,7 @@ class GridMapping:
 
     @classmethod
     def tangential(cls, scale: float, coordinate: BufferCoord):
-        """ Returns a tangential grid mapping. 
+        r""" Returns a tangential grid mapping. 
 
         The thickness of the buffer layer is scaled by the factor 'scale'.
 
