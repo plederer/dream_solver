@@ -31,7 +31,7 @@ from dream.compressible.config import (flowstate,
                                        GRCBC,
                                        NSCBC)
 
-from dream.compressible.formulations import ConservativeFiniteElement
+from dream.compressible.formulations import ConservativeFiniteElementMethod
 
 logger = logging.getLogger(__name__)
 
@@ -74,14 +74,14 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         self.bcs = CompressibleBoundaryConditions(self.mesh)
         self.dcs = CompressibleDomainConditions(self.mesh)
 
-    @interface(default=ConservativeFiniteElement)
-    def fe(self, fe: ConservativeFiniteElement):
+    @interface(default=ConservativeFiniteElementMethod)
+    def fem(self, fem: ConservativeFiniteElementMethod):
         r""" Sets the finite element for the compressible flow solver. 
 
             :setter: Sets the finite element, defaults to ConservativeFiniteElement
             :getter: Returns the finite element
         """
-        return fe
+        return fem
 
     @parameter(default=0.3)
     def mach_number(self, mach_number: ngs.Parameter):
@@ -175,7 +175,7 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         """
         return riemann_solver
 
-    fe: ConservativeFiniteElement
+    fem: ConservativeFiniteElementMethod
     mach_number: ngs.Parameter
     reynolds_number: ngs.Parameter
     prandtl_number: ngs.Parameter

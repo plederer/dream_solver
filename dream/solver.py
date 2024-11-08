@@ -150,7 +150,7 @@ class Solver(InterfaceConfiguration, is_interface=True):
     def inverse(self, inverse: Inverse):
         return inverse
 
-    def set_discrete_system(self):
+    def initialize(self):
 
         self.fes = self.cfg.pde.fes
         condense = self.cfg.optimizations.static_condensation
@@ -209,8 +209,8 @@ class LinearSolver(Solver):
             self.dirichlet = self.gfu.vec.CreateVector()
             self.dirichlet[:] = 0
 
-    def set_discrete_system(self):
-        super().set_discrete_system()
+    def initialize(self):
+        super().initialize()
         self.gfu = self.cfg.pde.gfu
         self.set_dirichlet_vector()
 
@@ -233,8 +233,8 @@ class NonlinearSolver(Solver):
             raise ValueError("Convergence Criterion must be greater zero!")
         return float(convergence_criterion)
 
-    def set_discrete_system(self):
-        super().set_discrete_system()
+    def initialize(self):
+        super().initialize()
         self.method.set_solution_routine_attributes()
 
     def solve(self):

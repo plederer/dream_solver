@@ -81,7 +81,7 @@ class StrainHeat(MixedMethod):
             raise TypeError(f"Inviscid configuration does not require mixed method!")
 
         dim = 4*self.mesh.dim - 3
-        order = self.cfg.pde.fe.order
+        order = self.cfg.pde.fem.order
 
         Q = ngs.L2(self.mesh, order=order)
         Q = self.cfg.pde.dcs.reduce_psponge_layers_order_elementwise(Q)
@@ -96,12 +96,12 @@ class StrainHeat(MixedMethod):
 
         bonus = self.cfg.optimizations.bonus_int_order
 
-        U, _ = self.cfg.pde.fe.method.U_TnT
-        Uhat, _ = self.cfg.pde.fe.method.Uhat_TnT
+        U, _ = self.cfg.pde.fem.method.U_TnT
+        Uhat, _ = self.cfg.pde.fem.method.Uhat_TnT
         Q, P = self.Q_TnT
 
-        U = self.cfg.pde.fe.method.get_conservative_state(U)
-        Uhat = self.cfg.pde.fe.method.get_conservative_state(Uhat)
+        U = self.cfg.pde.fem.method.get_conservative_state(U)
+        Uhat = self.cfg.pde.fem.method.get_conservative_state(Uhat)
 
         gradient_P = ngs.grad(P)
         Q = self.get_mixed_state(Q)
@@ -127,9 +127,9 @@ class StrainHeat(MixedMethod):
             raise NotImplementedError("StrainHeat method CBC is not implemented for domain dimension 3!")
 
         Q, _ = self.Q_TnT
-        U, _ = self.cfg.pde.fe.method.U_TnT
+        U, _ = self.cfg.pde.fem.method.U_TnT
 
-        U = self.cfg.pde.fe.method.get_conservative_state(U)
+        U = self.cfg.pde.fem.method.get_conservative_state(U)
         Q = self.get_mixed_state(Q)
 
         t = self.mesh.tangential
@@ -283,7 +283,7 @@ class Gradient(MixedMethod):
             raise TypeError(f"Inviscid configuration does not require mixed method!")
 
         dim = self.mesh.dim + 2
-        order = self.cfg.pde.fe.order
+        order = self.cfg.pde.fem.order
 
         Q = ngs.VectorL2(self.mesh, order=order)
         Q = self.cfg.pde.dcs.reduce_psponge_layers_order_elementwise(Q)
@@ -294,8 +294,8 @@ class Gradient(MixedMethod):
                               lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
 
         Q, P = self.Q_TnT
-        U, _ = self.cfg.pde.fe.method.U_TnT
-        Uhat, _ = self.cfg.pde.fe.method.Uhat_TnT
+        U, _ = self.cfg.pde.fem.method.U_TnT
+        Uhat, _ = self.cfg.pde.fem.method.Uhat_TnT
 
         blf['mixed'] = ngs.InnerProduct(Q, P) * ngs.dx
         blf['mixed'] += ngs.InnerProduct(U, ngs.div(P)) * ngs.dx
@@ -409,7 +409,7 @@ class HDG(ConservativeMethod):
 
     @property
     def mixed_method(self) -> MixedMethod:
-        return self.cfg.pde.fe.mixed_method
+        return self.cfg.pde.fem.mixed_method
 
     @property
     def Uhat_TnT(self) -> tuple[ngs.comp.ProxyFunction, ...]:
@@ -425,7 +425,7 @@ class HDG(ConservativeMethod):
 
     def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]) -> None:
 
-        order = self.cfg.pde.fe.order
+        order = self.cfg.pde.fem.order
         dim = self.mesh.dim + 2
 
         U = ngs.L2(self.mesh, order=order)
@@ -506,7 +506,7 @@ class HDG(ConservativeMethod):
 
         U = self.get_conservative_state(U)
         Uhat = self.get_conservative_state(Uhat)
-        Q = self.cfg.pde.fe.mixed_method.get_mixed_state(Q)
+        Q = self.cfg.pde.fem.mixed_method.get_mixed_state(Q)
 
         G = self.cfg.pde.get_diffusive_flux(U, Q)
         Gn = self.get_diffusive_numerical_flux(U, Uhat, Q, self.mesh.normal)
@@ -811,7 +811,7 @@ class HDG(ConservativeMethod):
         """
         unit_vector = bla.as_vector(unit_vector)
 
-        tau_d = self.cfg.pde.fe.mixed_method.get_diffusive_stabilisation_matrix(Uhat)
+        tau_d = self.cfg.pde.fem.mixed_method.get_diffusive_stabilisation_matrix(Uhat)
 
         return self.cfg.pde.get_diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U.U - Uhat.U)
 
@@ -830,7 +830,7 @@ class HDG(ConservativeMethod):
         return mask
 
 
-class ConservativeFiniteElement(CompressibleFiniteElement):
+class ConservativeFiniteElementMethod(CompressibleFiniteElement):
 
     name: str = "conservative"
 

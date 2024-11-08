@@ -46,10 +46,10 @@ cfg.pde.scaling = "acoustic"
 cfg.pde.mach_number = 0.03
 cfg.pde.riemann_solver = "lf"
 
-cfg.pde.fe = "conservative"
-cfg.pde.fe.order = 4
-cfg.pde.fe.method = "hdg"
-cfg.pde.fe.mixed_method = "inactive"
+cfg.pde.fem = "conservative"
+cfg.pde.fem.order = 4
+cfg.pde.fem.method = "hdg"
+cfg.pde.fem.mixed_method = "inactive"
 
 cfg.time = "transient"
 cfg.time.scheme = "ie"
@@ -69,7 +69,7 @@ cfg.optimizations.compile.realcompile = False
 cfg.optimizations.bonus_int_order = {'vol': 4, 'bnd': 4}
 
 if circle:
-    mesh.Curve(cfg.pde.fe.order)
+    mesh.Curve(cfg.pde.fem.order)
 
 # Setup Initial and Boundary Conditions
 Uinf = cfg.pde.get_farfield_state((1, 0))
@@ -89,12 +89,12 @@ cfg.pde.dcs['default'] = initial
 
 
 # Setup Spaces and Gridfunctions
-cfg.pde.set_system()
+cfg.pde.initialize_system()
 
 drawing = cfg.pde.get_drawing_state(p=True)
 drawing["p'"] = drawing.p - Uinf.p
 cfg.pde.draw(autoscale=False, min=-1e-4, max=1e-4)
 
-cfg.solver.set_discrete_system()
+cfg.solver.initialize()
 with TaskManager():
     cfg.solver.solve()

@@ -3,11 +3,11 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import quantity, configuration, ngsdict
-from dream.pde import FiniteElement
+from dream.pde import FiniteElementMethod
 from dream.mesh import Condition
 
 
-class CompressibleFiniteElement(FiniteElement, is_interface=True):
+class CompressibleFiniteElement(FiniteElementMethod, is_interface=True):
 
     @property
     def gfu(self) -> ngs.GridFunction:

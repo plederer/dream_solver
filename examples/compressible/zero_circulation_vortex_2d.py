@@ -25,10 +25,10 @@ cfg.pde.reynolds_number = 150
 cfg.pde.prandtl_number = 0.72
 cfg.pde.riemann_solver = "upwind"
 
-cfg.pde.fe = "conservative"
-cfg.pde.fe.order = 4
-cfg.pde.fe.method = "hdg"
-cfg.pde.fe.mixed_method = "inactive"
+cfg.pde.fem = "conservative"
+cfg.pde.fem.order = 4
+cfg.pde.fem.method = "hdg"
+cfg.pde.fem.mixed_method = "inactive"
 # cfg.pde.fe.mixed_method = "strain_heat"
 
 cfg.time = "transient"
@@ -75,12 +75,12 @@ cfg.pde.dcs['default'] = initial
 
 
 # Setup Spaces and Gridfunctions
-cfg.pde.set_system()
+cfg.pde.initialize_system()
 
 drawing = cfg.pde.get_drawing_state(p=True)
 drawing['p*'] = (drawing.p - Uinf.p)/(p_00 - Uinf.p)
 cfg.pde.draw(autoscale=False, min=-1e-4, max=1e-4)
 
-cfg.solver.set_discrete_system()
+cfg.solver.initialize()
 with TaskManager():
     cfg.solver.solve()

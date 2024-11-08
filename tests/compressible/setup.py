@@ -6,10 +6,10 @@ mip = mesh(0.5, 0.5)
 
 cfg = SolverConfiguration(mesh)
 cfg.pde= "compressible"
-cfg.pde.fe= "conservative"
-cfg.pde.fe.order= 2
-cfg.pde.fe.method= "hdg"
-cfg.pde.fe.mixed_method= "inactive"
+cfg.pde.fem= "conservative"
+cfg.pde.fem.order= 2
+cfg.pde.fem.method= "hdg"
+cfg.pde.fem.mixed_method= "inactive"
 cfg.pde.mach_number= 0.3
 cfg.pde.equation_of_state= "ideal"
 cfg.pde.equation_of_state.heat_capacity_ratio= 1.4

@@ -1,1 +1,1 @@
-from .conservative import ConservativeFiniteElement
+from .conservative import ConservativeFiniteElementMethod
