@@ -194,7 +194,7 @@ class TaylorHood(IncompressibleFiniteElement):
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         gfus['u'] = self.cfg.time.scheme.get_transient_gridfunctions(self.u_gfu)
 
-    def add_discrete_system(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
                             lf: dict[str, ngs.comp.SumOfIntegrals]):
 
         self.add_stokes_system(blf, lf)
@@ -238,11 +238,12 @@ class IncompressibleFlowConfiguration(PDEConfiguration):
 
     name = "incompressible"
 
-    def __init__(self, cfg: UniqueConfiguration = None, **kwargs):
-        super().__init__(cfg, **kwargs)
+    def __init__(self, cfg=None, mesh=None, **kwargs):
+        super().__init__(cfg, mesh, **kwargs)
 
-        self.bcs = IncompressibleBoundaryConditions(self.mesh)
-        self.dcs = IncompressibleDomainConditions(self.mesh)
+        if mesh is not None:
+            self.bcs = IncompressibleBoundaryConditions(self.mesh)
+            self.dcs = IncompressibleDomainConditions(self.mesh)
 
     @interface(default=TaylorHood)
     def fem(self, fem: TaylorHood):
