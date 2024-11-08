@@ -4,44 +4,46 @@ from dream.incompressible import *
 
 mesh = Mesh(unit_square.GenerateMesh(maxh=0.1))
 
+# Set up the solver configuration
 cfg = SolverConfiguration(mesh)
 cfg.pde = "incompressible"
-cfg.pde.reynolds_number = 1e-2
-cfg.pde.fe.order = 4
+cfg.pde.reynolds_number = 1
+cfg.pde.fem.order = 4
 
 cfg.solver.inverse.solver = "umfpack"
 
-# cfg.pde.bcs['top'] = Inflow(state=flowstate(u=(1, 0)))
-# cfg.pde.bcs['left|bottom|right'] = "wall"
-
+# Set up the boundary conditions
 cfg.pde.bcs['left'] = Inflow(state=flowstate(u=(1, 0)))
 cfg.pde.bcs['top|bottom'] = "wall"
 cfg.pde.bcs['right'] = "outflow"
 
-cfg.pde.set_finite_element_spaces()
-cfg.pde.set_trial_and_test_functions()
-cfg.pde.set_gridfunctions()
-cfg.pde.set_boundary_conditions()
-cfg.pde.set_discrete_system_tree()
+# Initialize the finite element spaces, trial and test functions, gridfunctions, and boundary conditions
+cfg.pde.initialize_finite_element_spaces()
+cfg.pde.initialize_trial_and_test_functions()
+cfg.pde.initialize_gridfunctions()
+cfg.pde.initialize_boundary_conditions()
+cfg.pde.initialize_symbolic_forms()
 
-
-drawing = cfg.pde.get_drawing_state(u=True, p=True, asdjas=True)
+# Draw quantities
+drawing = cfg.pde.get_drawing_state(u=True, p=True)
 cfg.pde.draw()
 
-cfg.solver.set_discrete_system()
+# Initialize the solver and solve the system
+cfg.solver.initialize()
 cfg.solver.solve()
 
-
+# Change the viscosity model
 cfg.pde.dynamic_viscosity = "powerlaw"
 cfg.pde.dynamic_viscosity.powerlaw_exponent = 1.2
 cfg.solver = "nonlinear"
 cfg.solver.method = "newton"
-cfg.solver.method.damping_factor = 0.1
+cfg.solver.method.damping_factor = 0.5
 cfg.solver.max_iterations = 100
 
-cfg.pde.set_discrete_system_tree()
+# Initialize forms again without reinitializing the finite element spaces
+cfg.pde.initialize_symbolic_forms()
 drawing = cfg.pde.get_drawing_state(u=True, p=True)
-cfg.pde.draw()
 
-cfg.solver.set_discrete_system()
+# Solve the system again
+cfg.solver.initialize()
 cfg.solver.solve()

@@ -15,7 +15,7 @@ from dream.config import (configuration,
                           ngsdict,
                           quantity,
                           equation)
-from dream.pde import PDEConfiguration, FiniteElement
+from dream.pde import PDEConfiguration, FiniteElementMethod
 from dream.mesh import (BoundaryConditions,
                         DomainConditions,
                         Condition,
@@ -142,7 +142,7 @@ class Powerlaw(DynamicViscosity):
 # %%
 # Define Finite Elements
 
-class IncompressibleFiniteElement(FiniteElement, is_interface=True):
+class IncompressibleFiniteElement(FiniteElementMethod, is_interface=True):
 
     @property
     def u_TnT(self):
@@ -245,8 +245,8 @@ class IncompressibleFlowConfiguration(PDEConfiguration):
         self.dcs = IncompressibleDomainConditions(self.mesh)
 
     @interface(default=TaylorHood)
-    def fe(self, fe: TaylorHood):
-        return fe
+    def fem(self, fem: TaylorHood):
+        return fem
 
     @parameter(default=150)
     def reynolds_number(self, reynolds_number: ngs.Parameter):
@@ -264,7 +264,7 @@ class IncompressibleFlowConfiguration(PDEConfiguration):
         """
         return dynamic_viscosity
 
-    fe: TaylorHood
+    fem: TaylorHood
     reynolds_number: ngs.Parameter
     dynamic_viscosity: Constant
 
