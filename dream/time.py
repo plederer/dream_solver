@@ -204,8 +204,8 @@ class TransientConfig(TimeConfig):
         for it, t in enumerate(self.timer()):
             yield t
 
-            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
             self.cfg.io.save.solution_routine_saving(t, it)
+            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
     scheme: ImplicitEuler | BDF2
     timer: Timer
