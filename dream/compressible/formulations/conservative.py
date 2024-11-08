@@ -837,12 +837,10 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElement):
     def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]):
         self.method.add_finite_element_spaces(fes)
         self.mixed_method.add_mixed_finite_element_spaces(fes)
-        super().add_finite_element_spaces(fes)
 
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         self.method.add_transient_gridfunctions(gfus)
         self.mixed_method.add_transient_gridfunctions(gfus)
-        super().add_transient_gridfunctions(gfus)
 
     def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
                            lf: dict[str, ngs.comp.SumOfIntegrals]):
@@ -860,7 +858,6 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElement):
 
         self.method.add_boundary_conditions(blf, lf)
         self.method.add_domain_conditions(blf, lf)
-        super().add_symbolic_forms(blf, lf)
 
     def get_state(self, quantities: dict[str, bool]) -> flowstate:
         U = self.method.get_state(quantities)
