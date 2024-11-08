@@ -317,7 +317,7 @@ class SolverConfiguration(UniqueConfiguration):
         self.mesh.meshsize = ngs.specialcf.mesh_size
         self.mesh.is_periodic = is_mesh_periodic(mesh)
 
-        super().__init__(cfg=self, **kwargs)
+        super().__init__(cfg=self, mesh=self.mesh, **kwargs)
 
     @interface(default=CompressibleFlowConfiguration)
     def pde(self, pde):
@@ -387,10 +387,6 @@ class Solver_:
     @property
     def dmesh(self):
         return self.formulation.dmesh
-
-    @property
-    def mesh(self):
-        return self.formulation.mesh
 
     @property
     def solver_configuration(self):

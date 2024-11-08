@@ -24,10 +24,6 @@ class MixedMethod(InterfaceConfiguration, is_interface=True):
     cfg: SolverConfiguration
 
     @property
-    def mesh(self) -> ngs.Mesh:
-        return self.cfg.mesh
-
-    @property
     def Q_TnT(self) -> ngs.CF:
         return self.cfg.pde.TnT['Q']
 
@@ -323,10 +319,6 @@ class Gradient(MixedMethod):
 class ConservativeMethod(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
-
-    @property
-    def mesh(self) -> ngs.Mesh:
-        return self.cfg.mesh
 
     @property
     def U_TnT(self) -> tuple[ngs.comp.ProxyFunction, ...]:
@@ -852,8 +844,8 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElement):
         self.mixed_method.add_transient_gridfunctions(gfus)
         super().add_transient_gridfunctions(gfus)
 
-    def add_discrete_system(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                            lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+                           lf: dict[str, ngs.comp.SumOfIntegrals]):
 
         if self.cfg.time.is_stationary:
             raise ValueError("Compressible flow requires transient solver!")
@@ -868,7 +860,7 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElement):
 
         self.method.add_boundary_conditions(blf, lf)
         self.method.add_domain_conditions(blf, lf)
-        super().add_discrete_system(blf, lf)
+        super().add_symbolic_forms(blf, lf)
 
     def get_state(self, quantities: dict[str, bool]) -> flowstate:
         U = self.method.get_state(quantities)
