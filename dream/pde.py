@@ -16,10 +16,6 @@ class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
-    @property
-    def mesh(self) -> ngs.Mesh:
-        return self.cfg.mesh
-
     @configuration(default=2)
     def order(self, order):
         return int(order)
@@ -30,7 +26,7 @@ class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         pass
 
-    def add_discrete_system(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
                             lf: dict[str, ngs.comp.SumOfIntegrals]):
         pass
 
@@ -51,10 +47,6 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
     cfg: SolverConfiguration
     bcs: BoundaryConditions
     dcs: DomainConditions
-
-    @property
-    def mesh(self) -> ngs.Mesh:
-        return self.cfg.mesh
 
     @property
     def fem(self) -> FiniteElementMethod:
@@ -105,7 +97,7 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
     def initialize_symbolic_forms(self) -> None:
         self.blf = {}
         self.lf = {}
-        self.fem.add_discrete_system(self.blf, self.lf)
+        self.fem.add_symbolic_forms(self.blf, self.lf)
 
     def initialize_boundary_conditions(self) -> None:
 

@@ -172,7 +172,7 @@ class TestDescriptorConfigurationChild(unittest.TestCase):
         self.obj.clear()
 
         self.assertDictEqual(self.obj.data, {'x': 0.0, 'y': 0.0})
-        self.assertDictEqual(self.obj.__dict__, {'cfg': self.obj.cfg, 'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
+        self.assertDictEqual(self.obj.__dict__, {'cfg': self.obj.cfg, 'mesh': None, 'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
 
     def test_root_id(self):
         self.assertEqual(id(self.obj.cfg), id(self.obj))

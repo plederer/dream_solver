@@ -214,11 +214,13 @@ class unique(configuration):
 
         if isinstance(value, self.default):
             cfg.data[self.__name__] = value
+            cfg.data[self.__name__].cfg = cfg.cfg
+            cfg.data[self.__name__].mesh = cfg.mesh
 
         elif isinstance(value, str):
 
             if value == self.default.name:
-                cfg.data[self.__name__] = self.default(cfg=cfg.cfg)
+                cfg.data[self.__name__] = self.default(cfg=cfg.cfg, mesh=cfg.mesh)
             else:
                 msg = f""" Invalid type '{value}'!
                            Allowed option: '{self.default.name}!'
@@ -244,7 +246,7 @@ class unique(configuration):
             raise TypeError(msg)
 
     def reset(self, cfg: CONFIG):
-        self.__set__(cfg, self.default(cfg=cfg.cfg))
+        self.__set__(cfg, self.default(cfg=cfg.cfg, mesh=cfg.mesh))
 
 
 class interface(unique):
@@ -255,11 +257,13 @@ class interface(unique):
 
         if isinstance(value, self.default.tree.root):
             cfg.data[self.__name__] = value
+            cfg.data[self.__name__].cfg = cfg.cfg
+            cfg.data[self.__name__].mesh = cfg.mesh
 
         elif isinstance(value, str):
             cfg_ = self.default.tree[value]
             if not isinstance(cfg.data[self.__name__], cfg_):
-                cfg.data[self.__name__] = cfg_(cfg=cfg.cfg)
+                cfg.data[self.__name__] = cfg_(cfg=cfg.cfg, mesh=cfg.mesh)
 
             if self.fset is not None:
                 value = self.fset(cfg, cfg.data[self.__name__])
@@ -321,6 +325,7 @@ class InterfaceTree(typing.MutableMapping, dict):
 class UniqueConfiguration(typing.MutableMapping, dict):
 
     name: str
+    mesh: ngs.Mesh
 
     def update(self, dict=None, **kwargs):
 
@@ -395,11 +400,13 @@ class UniqueConfiguration(typing.MutableMapping, dict):
 
         super().__init_subclass__()
 
-    def __init__(self, cfg=None, **kwargs):
+    def __init__(self, cfg=None, mesh=None, **kwargs):
 
         if cfg is None:
             cfg = self
+
         self.cfg = cfg
+        self.mesh = mesh
 
         self.clear()
         self.update(**kwargs)

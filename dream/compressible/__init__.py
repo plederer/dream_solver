@@ -68,11 +68,12 @@ class CompressibleFlowConfiguration(PDEConfiguration):
 
     name = "compressible"
 
-    def __init__(self, cfg: UniqueConfiguration = None, **kwargs):
-        super().__init__(cfg, **kwargs)
+    def __init__(self, cfg=None, mesh=None, **kwargs):
+        super().__init__(cfg=cfg, mesh=mesh, **kwargs)
 
-        self.bcs = CompressibleBoundaryConditions(self.mesh)
-        self.dcs = CompressibleDomainConditions(self.mesh)
+        if mesh is not None:
+            self.bcs = CompressibleBoundaryConditions(self.mesh)
+            self.dcs = CompressibleDomainConditions(self.mesh)
 
     @interface(default=ConservativeFiniteElementMethod)
     def fem(self, fem: ConservativeFiniteElementMethod):

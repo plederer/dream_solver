@@ -303,20 +303,20 @@ class Saver(UniqueConfiguration):
     cfg: SolverConfiguration
 
     @save(default=False)
-    def mesh(self, save: bool):
-        return MeshHandler(cfg=self.cfg)
+    def ngsmesh(self, save: bool):
+        return MeshHandler(cfg=self.cfg, mesh=self.mesh)
 
     @save(default=False)
     def state(self, save: bool):
-        return StateHandler(cfg=self.cfg)
+        return StateHandler(cfg=self.cfg, mesh=self.mesh)
 
     @save(default=False)
     def configuration(self, save: bool):
-        return ConfigurationHandler(cfg=self.cfg)
+        return ConfigurationHandler(cfg=self.cfg, mesh=self.mesh)
 
     @save(default=False)
     def vtk(self, save: bool):
-        return VTKHandler(cfg=self.cfg)
+        return VTKHandler(cfg=self.cfg, mesh=self.mesh)
 
     def pre_solution_routine_saving(self):
         for handler in self.values():
@@ -328,7 +328,7 @@ class Saver(UniqueConfiguration):
             if isinstance(handler, (VTKHandler, StateHandler)):
                 handler.save(t, it)
 
-    mesh: MeshHandler
+    ngsmesh: MeshHandler
     state: StateHandler
     configuration: ConfigurationHandler
     vtk: VTKHandler
@@ -343,8 +343,8 @@ class InputOutputConfiguration(UniqueConfiguration):
         return tree
 
     @unique(default=Saver)
-    def saver(self, saver: Saver):
-        return saver
+    def save(self, save: Saver):
+        return save
 
     tree: SingleTree | BenchmarkTree
-    saver: Saver
+    save: Saver
