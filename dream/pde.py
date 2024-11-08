@@ -21,23 +21,23 @@ class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
         return int(order)
 
     def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
-        pass
+        raise NotImplementedError("Overload this method in derived class!")
 
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
-        pass
+        raise NotImplementedError("Overload this method in derived class!")
 
     def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                            lf: dict[str, ngs.comp.SumOfIntegrals]):
-        pass
+                           lf: dict[str, ngs.comp.SumOfIntegrals]):
+        raise NotImplementedError("Overload this method in derived class!")
 
     def get_state(self, quantities: dict[str, bool]) -> ngsdict:
-        raise NotImplementedError()
+        raise NotImplementedError("Overload this method in derived class!")
 
     def set_initial_conditions(self) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError("Overload this method in derived class!")
 
     def set_boundary_conditions(self) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError("Overload this method in derived class!")
 
     order: int
 
