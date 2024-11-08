@@ -12,7 +12,7 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class FiniteElement(InterfaceConfiguration, is_interface=True):
+class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
@@ -57,25 +57,25 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
         return self.cfg.mesh
 
     @property
-    def fe(self) -> FiniteElement:
+    def fem(self) -> FiniteElementMethod:
         raise NotImplementedError("Overload this configuration in derived class!")
 
-    def set_system(self) -> None:
-        self.set_finite_element_spaces()
-        self.set_trial_and_test_functions()
-        self.set_gridfunctions()
-        self.set_boundary_conditions()
+    def initialize_system(self) -> None:
+        self.initialize_finite_element_spaces()
+        self.initialize_trial_and_test_functions()
+        self.initialize_gridfunctions()
+        self.initialize_boundary_conditions()
 
         if not self.cfg.time.is_stationary:
-            self.set_transient_gridfunctions()
-            self.set_initial_conditions()
+            self.initialize_transient_gridfunctions()
+            self.initialize_initial_conditions()
 
-        self.set_discrete_system_tree()
+        self.initialize_symbolic_forms()
 
-    def set_finite_element_spaces(self) -> None:
+    def initialize_finite_element_spaces(self) -> None:
 
         self.spaces = {}
-        self.fe.add_finite_element_spaces(self.spaces)
+        self.fem.add_finite_element_spaces(self.spaces)
 
         if not self.spaces:
             raise ValueError("Spaces container is empty!")
@@ -87,35 +87,35 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
 
         self.fes: ngs.ProductSpace = fes[0]
 
-    def set_trial_and_test_functions(self) -> None:
+    def initialize_trial_and_test_functions(self) -> None:
         self.TnT = {label: (tr, te) for label, tr, te in zip(
             self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
 
-    def set_gridfunctions(self) -> None:
+    def initialize_gridfunctions(self) -> None:
         self.gfu = ngs.GridFunction(self.fes)
 
         self.gfus = {label: self.gfu for label in self.spaces.keys()}
         for label, gfu in zip(self.spaces.keys(), self.gfu.components):
             self.gfus[label] = gfu
 
-    def set_transient_gridfunctions(self) -> None:
+    def initialize_transient_gridfunctions(self) -> None:
         self.transient_gfus = {}
-        self.fe.add_transient_gridfunctions(self.transient_gfus)
+        self.fem.add_transient_gridfunctions(self.transient_gfus)
 
-    def set_discrete_system_tree(self) -> None:
+    def initialize_symbolic_forms(self) -> None:
         self.blf = {}
         self.lf = {}
-        self.fe.add_discrete_system(self.blf, self.lf)
+        self.fem.add_discrete_system(self.blf, self.lf)
 
-    def set_boundary_conditions(self) -> None:
+    def initialize_boundary_conditions(self) -> None:
 
         if self.mesh.is_periodic and not self.bcs.has_condition(Periodic):
             raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
 
-        self.fe.set_boundary_conditions()
+        self.fem.set_boundary_conditions()
 
-    def set_initial_conditions(self) -> None:
-        self.fe.set_initial_conditions()
+    def initialize_initial_conditions(self) -> None:
+        self.fem.set_initial_conditions()
 
         if not self.cfg.time.is_stationary:
 
@@ -125,7 +125,7 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
             self.cfg.time.scheme.set_initial_conditions(self.transient_gfus)
 
     def get_state(self, **quantities: bool) -> ngsdict:
-        state = self.fe.get_state(quantities)
+        state = self.fem.get_state(quantities)
 
         for quantity in quantities:
             logger.info(f"Quantity {quantity} not defined!")
