@@ -202,10 +202,11 @@ class TransientConfig(TimeConfig):
         self.cfg.io.save.pre_solution_routine_saving()
 
         for it, t in enumerate(self.timer()):
+            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
+            
             yield t
 
             self.cfg.io.save.solution_routine_saving(t, it)
-            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
     scheme: ImplicitEuler | BDF2
     timer: Timer
@@ -240,10 +241,11 @@ class PseudoTimeSteppingConfig(TimeConfig):
 
         self.cfg.io.save.pre_solution_routine_saving()
 
+        self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
+
         yield None
 
         self.cfg.io.save.solution_routine_saving()
-        self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
     def iteration_update(self, it: int):
         self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
