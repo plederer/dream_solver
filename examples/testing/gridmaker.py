@@ -12,8 +12,8 @@ def CreateSimpleGrid(gridparam):
     isCircle      = gridparam[0]
     isStructured  = gridparam[1] 
     isPeriodic    = gridparam[2]
-    maxElemSize   = gridparam[3] 
-
+    maxElemSize   = gridparam[3]
+    finiteElement = gridparam[4]
 
     # For now, there is two choices: circle and a unit-square domain.
     if isCircle:
@@ -24,10 +24,18 @@ def CreateSimpleGrid(gridparam):
         mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxElemSize))
     
     else:
-    
+ 
+        # Select what type of element to use.
+        if finiteElement == "quadrilateral":
+            isQuad = True
+        elif finiteElement == "triangle":
+            isQuad = False
+        else:
+            raise ValueError("Unknown element type.")
+
         if isStructured:
             N = int(1 / maxElemSize)
-            mesh = MakeStructured2DMesh(False, N, N, periodic_y=isPeriodic, mapping=lambda x, y: (x - 0.5, y - 0.5))
+            mesh = MakeStructured2DMesh(isQuad, N, N, periodic_y=isPeriodic, mapping=lambda x, y: (x - 0.5, y - 0.5))
         else:
             face = WorkPlane().RectangleC(1, 1).Face()
     
@@ -38,10 +46,8 @@ def CreateSimpleGrid(gridparam):
                 periodic_edge.Identify(face.edges[2], "periodic", IdentificationType.PERIODIC)
             mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=maxElemSize))
 
-
     # Return the grid.
     return mesh
-
 
 
 # Function that checks if the boundary is curved.

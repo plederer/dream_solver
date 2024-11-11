@@ -17,13 +17,14 @@ ngsglobals.msg_level = 0
 # # # # # # # # # #
 
 # Characteristic grid configuration.
+typeElement  = "quadrilateral"
 isCircle     = False
-isStructured = False
+isStructured = True
 isPeriodic   = True
 maxElemSize  = 0.1
 
 # Pack the grid data.
-gridparam = [isCircle, isStructured, isPeriodic, maxElemSize]
+gridparam = [isCircle, isStructured, isPeriodic, maxElemSize, typeElement]
 
 # Generate a simple grid.
 mesh = CreateSimpleGrid(gridparam)
@@ -43,7 +44,7 @@ cfg.solver = "nonlinear"
 nPoly      = 4
 
 # Number of threads.
-nThread    = 1
+nThread    = 4
 
 
 # Set the number of threads.
@@ -83,8 +84,8 @@ PDE.fem.mixed_method = "inactive"
 # # # # # # # # # # # # # #
 
 TEMPORAL.scheme         = "implicit_euler"
-TEMPORAL.timer.interval = (0, 0.1)
-TEMPORAL.timer.step     =  0.1
+TEMPORAL.timer.interval = (0, 1.0)
+TEMPORAL.timer.step     =  0.025
 
 
 # # # # # # # # # # #
@@ -92,11 +93,11 @@ TEMPORAL.timer.step     =  0.1
 # # # # # # # # # # #
 
 SOLVER.method                = "newton"
-SOLVER.method.damping_factor = 1
+SOLVER.method.damping_factor =  1
 SOLVER.inverse               = "direct"
 SOLVER.inverse.solver        = "pardiso"
-SOLVER.max_iterations        = 10
-SOLVER.convergence_criterion = 1e-10
+SOLVER.max_iterations        =  10
+SOLVER.convergence_criterion =  1e-10
 
 
 # # # # # # # # # # #
@@ -128,9 +129,12 @@ initial = Initial(state=flowstate(rho=rho_0, u=Uinf.u, p=p_0))
 # # # # # # # # # # # # # # # # #
 
 # cfg.pde.bcs['left|top|bottom|right'] = FarField(state=Uinf)
-cfg.pde.bcs['left|right'] = FarField(state=Uinf)
-cfg.pde.bcs['top|bottom'] = "periodic"
-cfg.pde.dcs['default']    = initial
+cfg.pde.bcs['left|right']  = FarField(state=Uinf)
+cfg.pde.bcs['top|bottom']  = "periodic"
+if isStructured:
+    cfg.pde.dcs['dom']     = initial
+else:
+    cfg.pde.dcs['default'] = initial
 
 # Curve the grid, if need be.
 if CurvedBoundary(gridparam):
@@ -144,13 +148,16 @@ if CurvedBoundary(gridparam):
 # Setup Spaces and Gridfunctions
 cfg.pde.initialize_system()
 
-drawing = cfg.pde.get_drawing_state(p=True)
+# Solution visualization (native).
+drawing       = cfg.pde.get_drawing_state(p=True)
 drawing["p'"] = drawing.p - Uinf.p
 cfg.pde.draw(autoscale=False, min=-1e-4, max=1e-4)
 
-#cfg.io.save.vtk = True
-#fields = cfg.pde.get_state(p=True)
-#cfg.io.save.vtk.fields = cfg.pde.get_state(p=True)
+# Write output VTK file.
+cfg.io.save.vtk             = True
+cfg.io.save.vtk.subdivision = 1
+fields                      = cfg.pde.get_state(p=True)
+cfg.io.save.vtk.fields      = cfg.pde.get_state(p=True)
 
 
 # # # # # # # # # # #
