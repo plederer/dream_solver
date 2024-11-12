@@ -1,44 +1,15 @@
 from __future__ import annotations
 import unittest
 
-from tests import simplex, ngs
-from dream.pde import PDEConfiguration, FiniteElementMethod
-from dream.config import interface
+from tests import simplex, ngs, SolverConfiguration
 
-
-class DummyFiniteElementMethod(FiniteElementMethod):
-
-    name: str = 'dummy'
-    cfg: DummyPDE
-
-    def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
-        spaces['U'] = ngs.L2(self.mesh, order=0)
-        spaces['Uhat'] = ngs.L2(self.mesh, order=0)
-
-    def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
-        gfus['n+1'] = ngs.GridFunction(self.cfg.spaces['U'])
-
-    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                           lf: dict[str, ngs.comp.SumOfIntegrals]):
-        u, v = self.cfg.TnT['U']
-
-        blf['test'] = u * v * ngs.dx
-        lf['test'] = v * ngs.dx
-
-
-class DummyPDE(PDEConfiguration):
-
-    name: str = 'dummy'
-
-    @interface(default=DummyFiniteElementMethod)
-    def fem(self, fem):
-        return fem
 
 
 class TestPDEConfiguration(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.pde = DummyPDE(mesh=simplex())
+        self.cfg = SolverConfiguration(mesh=simplex(), pde="dummy")
+        self.pde = self.cfg.pde
 
     def test_initialize_finite_element_spaces_dictionary(self):
         self.pde.initialize_finite_element_spaces()
@@ -82,9 +53,12 @@ class TestPDEConfiguration(unittest.TestCase):
         self.pde.initialize_finite_element_spaces()
         self.pde.initialize_transient_gridfunctions()
 
-        self.assertIn('n+1', self.pde.transient_gfus)
-        self.assertIsInstance(self.pde.transient_gfus['n+1'], ngs.GridFunction)
-        self.assertIsInstance(self.pde.transient_gfus['n+1'].space, ngs.L2)
+        self.assertIn('U', self.pde.transient_gfus)
+        self.assertIn('Uhat', self.pde.transient_gfus)
+        self.assertIsInstance(self.pde.transient_gfus['U']['n+1'], ngs.GridFunction)
+        self.assertIsInstance(self.pde.transient_gfus['U']['n+1'].space, ngs.L2)
+        self.assertIsInstance(self.pde.transient_gfus['Uhat']['n+1'], ngs.GridFunction)
+        self.assertIsInstance(self.pde.transient_gfus['Uhat']['n+1'].space, ngs.L2)
 
     def test_initialize_symbolic_forms(self):
         self.pde.initialize_finite_element_spaces()

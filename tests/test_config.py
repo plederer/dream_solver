@@ -17,6 +17,22 @@ class Interface(InterfaceConfiguration, is_interface=True):
     ...
 
 
+class SubInterface(InterfaceConfiguration, is_interface=True):
+    ...
+
+
+class SubOptionA(SubInterface):
+    name = "sub_option_a"
+
+    @configuration(default=0.0)
+    def t(self, x: float):
+        return float(x)
+
+    @configuration(default=0.0)
+    def u(self, y: float):
+        return float(y)
+
+
 class OptionA(Interface):
     name = "option_a"
     aliases = ("A", )
@@ -47,6 +63,10 @@ class OptionB(Interface):
     @parameter(default=2.0)
     def number(self, number: float):
         return number
+
+    @interface(default=SubOptionA)
+    def sub(self, sub: SubInterface):
+        return sub
 
 
 class MainConfiguration(UniqueConfiguration):
@@ -172,7 +192,8 @@ class TestDescriptorConfigurationChild(unittest.TestCase):
         self.obj.clear()
 
         self.assertDictEqual(self.obj.data, {'x': 0.0, 'y': 0.0})
-        self.assertDictEqual(self.obj.__dict__, {'cfg': self.obj.cfg, 'mesh': None, 'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
+        self.assertDictEqual(self.obj.__dict__, {'cfg': self.obj.cfg,
+                             'mesh': None, 'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
 
     def test_root_id(self):
         self.assertEqual(id(self.obj.cfg), id(self.obj))
@@ -231,7 +252,9 @@ class TestUniqueConfiguration(unittest.TestCase):
         self.obj.other = "option_b"
         self.assertDictEqual(
             self.obj.to_tree(),
-            {'other': 'option_b', 'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
+            {'other': 'option_b', 'other.alphabet': 'abc', 'other.number': 2.0, 'other.sub': 'sub_option_a',
+             'other.sub.t': 0.0,
+             'other.sub.u': 0.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_instance(self):
         self.obj.other = OptionB()
@@ -259,6 +282,14 @@ class TestUniqueConfiguration(unittest.TestCase):
         self.obj.other = {'x': 2.0, 'y': 3.0, 'z': 5}
         new = id(self.obj.other)
         self.assertEqual(old, new)
+
+    def test_descriptor_set_recursive_update_subconfigurations(self):
+
+        sub_config = OptionB()
+
+        self.obj.other = sub_config
+
+        self.assertEqual(id(self.obj), id(self.obj.other.cfg))
 
 
 # %%

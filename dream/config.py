@@ -80,6 +80,12 @@ class ngsdict(typing.MutableMapping, dict):
 
     symbols: dict[str, str] = {}
 
+    def to_py(self) -> dict:
+        """ Returns the current state represented by pure python objects. 
+        """
+        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+        return {key: value(mesh()) for key, value in self.items()}
+
     def __init_subclass__(cls) -> None:
         symbols = {symbol: value.name for symbol, value in vars(cls).items() if isinstance(value, quantity)}
         if hasattr(cls, "symbols"):
@@ -112,14 +118,8 @@ class ngsdict(typing.MutableMapping, dict):
     def __len__(self):
         return len(self.data)
 
-    def to_py(self) -> dict:
-        """ Returns the current state represented by pure python objects. 
-        """
-        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
-        return {key: value(mesh()) for key, value in self.items()}
-
     def __repr__(self):
-        return str(self.to_py())
+        return "".join([f"{key}: {str(value)}" for key, value in self.items()])
 
 
 # ------- User configuration ------- #
@@ -213,9 +213,12 @@ class unique(configuration):
     def __set__(self, cfg: CONFIG, value) -> None:
 
         if isinstance(value, self.default):
+            value.cfg = cfg.cfg
+            value.mesh = cfg.mesh
+            self.update_subconfigurations_recursively(value)
+
+            # Set subconfiguration in parent configuration after all subconfigurations are updated
             cfg.data[self.__name__] = value
-            cfg.data[self.__name__].cfg = cfg.cfg
-            cfg.data[self.__name__].mesh = cfg.mesh
 
         elif isinstance(value, str):
 
@@ -226,9 +229,6 @@ class unique(configuration):
                            Allowed option: '{self.default.name}!'
                 """
                 raise TypeError(msg)
-
-            if self.fset is not None:
-                value = self.fset(cfg, cfg.data[self.__name__])
 
         elif isinstance(value, dict):
             cfg.data[self.__name__].update(**value)
@@ -245,8 +245,19 @@ class unique(configuration):
             """
             raise TypeError(msg)
 
+        if self.fset is not None:
+            value = self.fset(cfg, cfg.data[self.__name__])
+
     def reset(self, cfg: CONFIG):
         self.__set__(cfg, self.default(cfg=cfg.cfg, mesh=cfg.mesh))
+
+    def update_subconfigurations_recursively(self, parent: CONFIG):
+
+        for cfg in parent.data.values():
+            if isinstance(cfg, UniqueConfiguration):
+                cfg.cfg = parent.cfg
+                cfg.mesh = parent.mesh
+                self.update_subconfigurations_recursively(cfg)
 
 
 class interface(unique):
@@ -256,17 +267,17 @@ class interface(unique):
     def __set__(self, cfg: CONFIG, value) -> None:
 
         if isinstance(value, self.default.tree.root):
+            value.cfg = cfg.cfg
+            value.mesh = cfg.mesh
+            self.update_subconfigurations_recursively(value)
+
+            # Set subconfiguration in parent configuration after all subconfigurations are updated
             cfg.data[self.__name__] = value
-            cfg.data[self.__name__].cfg = cfg.cfg
-            cfg.data[self.__name__].mesh = cfg.mesh
 
         elif isinstance(value, str):
             cfg_ = self.default.tree[value]
             if not isinstance(cfg.data[self.__name__], cfg_):
                 cfg.data[self.__name__] = cfg_(cfg=cfg.cfg, mesh=cfg.mesh)
-
-            if self.fset is not None:
-                value = self.fset(cfg, cfg.data[self.__name__])
 
         elif isinstance(value, dict):
             cfg.data[self.__name__].update(**value)
@@ -282,6 +293,9 @@ class interface(unique):
             {list(cfg.data[self.__name__].data.keys())}
             """
             raise TypeError(msg)
+
+        if self.fset is not None:
+            value = self.fset(cfg, cfg.data[self.__name__])
 
 
 class InterfaceTree(typing.MutableMapping, dict):
@@ -373,8 +387,6 @@ class UniqueConfiguration(typing.MutableMapping, dict):
                     value.to_tree(data, key)
                 case ngs.Parameter():
                     data[key] = value.Get()
-                case ngsdict():
-                    data[key] = value.to_py()
                 case pathlib.Path():
                     data[key] = str(value)
                 case _:
