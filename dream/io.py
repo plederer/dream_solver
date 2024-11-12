@@ -93,7 +93,7 @@ class IOFolders(InterfaceConfiguration, is_interface=True):
         return path
 
     @path(default='cfg')
-    def configuration(self, path):
+    def settings(self, path):
         return path
 
     def get_directory_paths(self, pattern: str = "") -> tuple[Path, ...]:
@@ -105,7 +105,7 @@ class IOFolders(InterfaceConfiguration, is_interface=True):
     root: Path
     states: Path
     vtk: Path
-    configuration: Path
+    settings: Path
 
 
 class SingleFolders(IOFolders):
@@ -176,7 +176,7 @@ class SettingsStream(Stream):
 
     @property
     def path(self) -> Path:
-        path = self.cfg.io.folders.configuration
+        path = self.cfg.io.folders.settings
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
         return path
@@ -391,14 +391,81 @@ class TimeStateStream(StateStream):
                 super().load_gridfunction(gfu, f"{filename}_{t}_{fes}_{level}")
 
 
+class LogStream(Stream):
+
+    name: str = "dream"
+
+    def __init__(self, cfg=None, mesh=None, **kwargs):
+        self.logger = logging.getLogger('dream')
+        super().__init__(cfg=cfg, mesh=mesh, **kwargs)
+
+    @configuration(default=logging.INFO)
+    def level(self, level: int):
+
+        if isinstance(level, int):
+            level = logging.getLevelName(level)
+
+        self.logger.setLevel(level)
+
+        if level == 'DEBUG':
+            self.formatter = logging.Formatter(
+                "%(name)-15s (%(levelname)8s) | %(message)s (%(filename)s:%(lineno)s)", "%Y-%m-%d %H:%M:%S")
+        else:
+            self.formatter = logging.Formatter("%(name)-15s (%(levelname)s) | %(message)s")
+
+        return level
+
+    @configuration(default=True)
+    def to_terminal(self, to_terminal: bool):
+
+        if hasattr(self, 'terminal_handler'):
+            self.logger.removeHandler(self.terminal_handler)
+
+        if to_terminal:
+            self.terminal_handler = logging.StreamHandler()
+            self.terminal_handler.setFormatter(self.formatter)
+            self.logger.addHandler(self.terminal_handler)
+
+        return to_terminal
+
+    @configuration(default=False)
+    def to_file(self, to_file: bool):
+
+        if hasattr(self, 'file_handler'):
+            self.logger.removeHandler(self.file_handler)
+
+        if to_file:
+            self.file_handler = logging.FileHandler(self.path.joinpath(self.filename + ".log"))
+            self.file_handler.setFormatter(self.formatter)
+            self.logger.addHandler(self.file_handler)
+
+        return to_file
+
+    @property
+    def path(self) -> Path:
+        path = self.cfg.io.folders.root
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def save(self, **kwargs) -> None:
+        pass
+
+    def __del__(self):
+        if hasattr(self, 'terminal_handler'):
+            logging.getLogger().removeHandler(self.terminal_handler)
+        if hasattr(self, 'file_handler'):
+            logging.getLogger().removeHandler(self.file_handler)
+
+
 class IOConfiguration(UniqueConfiguration):
 
     cfg: SolverConfiguration
     name: str = "io"
 
-    @interface(default=SingleFolders)
-    def folders(self, folders: IOFolders):
-        return folders
+    @stream(default=True)
+    def log(self, activate: bool):
+        return LogStream(cfg=self.cfg, mesh=self.mesh)
 
     @stream(default=False)
     def ngsmesh(self, activate: bool):
@@ -421,6 +488,10 @@ class IOConfiguration(UniqueConfiguration):
     @stream(default=False)
     def vtk(self, activate: bool):
         return VTKStream(cfg=self.cfg, mesh=self.mesh)
+
+    @interface(default=SingleFolders)
+    def folders(self, folders: IOFolders):
+        return folders
 
     def initialize_streams(self):
         self.pre_routine_streams = [writer.initialize() for writer in self.values()
@@ -452,9 +523,10 @@ class IOConfiguration(UniqueConfiguration):
 
             yield t
 
-    folders: SingleFolders | BenchmarkFolders
+    log: LogStream
     ngsmesh: MeshStream
     state: StateStream
     time_state: TimeStateStream
     settings: SettingsStream
     vtk: VTKStream
+    folders: SingleFolders | BenchmarkFolders
