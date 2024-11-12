@@ -178,11 +178,14 @@ class StationaryConfig(TimeConfig):
 
     def solution_routine(self):
 
-        self.cfg.io.save.pre_solution_routine_saving()
+        self.cfg.io.initialize_streams()
+        self.cfg.io.save_pre_routine_streams()
 
+        # Solution routine starts here
         yield None
+        # Solution routine ends here
 
-        self.cfg.io.save.solution_routine_saving()
+        self.cfg.io.save_routine_streams()
 
 
 class TransientConfig(TimeConfig):
@@ -199,14 +202,17 @@ class TransientConfig(TimeConfig):
 
     def solution_routine(self):
 
-        self.cfg.io.save.pre_solution_routine_saving()
+        self.cfg.io.initialize_streams()
+        self.cfg.io.save_pre_routine_streams()
 
+        # Solution routine starts here
         for it, t in enumerate(self.timer()):
             self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
-            
+
             yield t
 
-            self.cfg.io.save.solution_routine_saving(t, it)
+            self.cfg.io.save_routine_streams(t, it)
+        # Solution routine ends here
 
     scheme: ImplicitEuler | BDF2
     timer: Timer
@@ -239,13 +245,16 @@ class PseudoTimeSteppingConfig(TimeConfig):
 
     def solution_routine(self):
 
-        self.cfg.io.save.pre_solution_routine_saving()
+        self.cfg.io.initialize_streams()
+        self.cfg.io.save_pre_routine_streams()
 
+        # Solution routine starts here
         self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
         yield None
+        # Solution routine ends here
 
-        self.cfg.io.save.solution_routine_saving()
+        self.cfg.io.save_routine_streams()
 
     def iteration_update(self, it: int):
         self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)

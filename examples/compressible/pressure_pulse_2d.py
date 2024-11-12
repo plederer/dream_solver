@@ -63,10 +63,16 @@ cfg.solver.inverse = "direct"
 cfg.solver.inverse.solver = "pardiso"
 cfg.solver.max_iterations = 10
 cfg.solver.convergence_criterion = 1e-10
-
 cfg.optimizations.static_condensation = True
 cfg.optimizations.compile.realcompile = False
 cfg.optimizations.bonus_int_order = {'vol': 4, 'bnd': 4}
+cfg.io.vtk = False
+cfg.io.settings = False
+cfg.io.settings.pickle = False
+cfg.io.settings.txt = False
+cfg.io.state = False
+cfg.io.time_state = False
+cfg.io.ngsmesh = False
 
 if circle:
     mesh.Curve(cfg.pde.fem.order)
@@ -84,6 +90,7 @@ initial = Initial(state=flowstate(rho=rho_0, u=Uinf.u, p=p_0))
 
 # cfg.pde.bcs['left|top|bottom|right'] = FarField(state=Uinf)
 cfg.pde.bcs['left|right'] = FarField(state=Uinf)
+# cfg.pde.bcs['top|bottom'] = FarField(state=Uinf)
 cfg.pde.bcs['top|bottom'] = "periodic"
 cfg.pde.dcs['default'] = initial
 
@@ -94,6 +101,8 @@ cfg.pde.initialize_system()
 drawing = cfg.pde.get_drawing_state(p=True)
 drawing["p'"] = drawing.p - Uinf.p
 cfg.pde.draw(autoscale=False, min=-1e-4, max=1e-4)
+
+cfg.io.vtk.fields = drawing
 
 cfg.solver.initialize()
 with TaskManager():

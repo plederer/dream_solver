@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typing
+import logging
 import pickle
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from dream._version import acknowledgements, header
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
+
+logger = logging.getLogger(__name__)
 
 
 class path(configuration):
@@ -52,23 +55,30 @@ class path(configuration):
                     cfg.data[key] = cfg.data[self.__name__].joinpath(name)
 
 
-class save(configuration):
+class stream(configuration):
 
-    def __set__(self, cfg: CONFIG, save: bool) -> None:
+    def __set__(self, cfg: CONFIG, stream: bool) -> None:
 
-        if isinstance(save, str) and save == self.__name__:
-            save = True
+        if isinstance(stream, str) and stream == self.__name__:
+            stream = True
 
-        if not isinstance(save, bool):
+        if not isinstance(stream, bool):
             raise ValueError(f"Pass boolean to activate/deactivate handler")
 
-        if save:
-            cfg.data[self.__name__] = self.fset(cfg, save)
-        elif not save and self.__name__ in cfg.data:
+        if stream:
+            cfg.data[self.__name__] = self.fset(cfg, stream)
+        elif not stream and self.__name__ in cfg.data:
             del cfg.data[self.__name__]
 
+    def __get__(self, cfg: CONFIG | None, owner: type[CONFIG]):
+        if self.__name__ not in cfg.data:
+            logger.warning(f"Handler '{self.__name__}' is not activated!")
+            return Stream()
 
-class DirectoryTree(InterfaceConfiguration, is_interface=True):
+        return super().__get__(cfg, owner)
+
+
+class IOFolders(InterfaceConfiguration, is_interface=True):
 
     @path(default=None)
     def root(self, path):
@@ -98,17 +108,17 @@ class DirectoryTree(InterfaceConfiguration, is_interface=True):
     configuration: Path
 
 
-class SingleTree(DirectoryTree):
+class SingleFolders(IOFolders):
 
     name: str = 'single'
 
 
-class BenchmarkTree(DirectoryTree):
+class BenchmarkFolders(IOFolders):
 
     name: str = 'benchmark'
 
 
-class Handler(InterfaceConfiguration, is_interface=True):
+class Stream(InterfaceConfiguration, is_interface=True):
 
     cfg: SolverConfiguration
 
@@ -118,75 +128,39 @@ class Handler(InterfaceConfiguration, is_interface=True):
             filename = self.name
         return filename
 
-    def save(self, t: float | None = None):
-        raise NotImplementedError()
+    def initialize(self) -> Stream:
+        return self
+
+    def save(self, **kwargs) -> None:
+        pass
 
 
-class VTKHandler(Handler):
-
-    name: str = "vtk"
-
-    @configuration(default=2)
-    def subdivision(self, subdivision: int):
-        return subdivision
-
-    @configuration(default=None)
-    def region(self, region):
-
-        if region is None:
-            return region
-
-        dofs = ngs.BitArray(self.cfg.mesh.ne)
-        dofs.Clear()
-        for el in self.cfg.mesh.Materials(region).Elements():
-            dofs[el.nr] = True
-
-        return dofs
-
-    @configuration(default=None)
-    def fields(self, fields: dict[str, ngs.CF]):
-        if fields is None:
-            return {}
-
-        path = self.path.joinpath(self.filename)
-
-        self.handler = ngs.VTKOutput(ma=self.cfg.mesh, coefs=list(fields.values()), names=list(
-            fields.keys()), filename=str(path), subdivision=self.subdivision)
-
-        return fields
-
-    @property
-    def path(self) -> Path:
-        path = self.cfg.io.tree.vtk
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def save(self,  t: float | None = -1, it: int | None = None) -> Path:
-        return self.handler.Do(t, drawelems=self.region)
-
-
-class MeshHandler(Handler):
+class MeshStream(Stream):
 
     name: str = "mesh"
 
     @property
     def path(self) -> Path:
-        path = self.cfg.io.tree.root
+        path = self.cfg.io.folders.root
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save(self,  t: float | None = None, it: int | None = None) -> None:
+    def save(self,  **kwargs) -> None:
         path = self.path.joinpath(self.filename + ".pickle")
 
         with path.open("wb") as open:
-            pickle.dump(self.cfg.mesh, open, protocol=pickle.DEFAULT_PROTOCOL)
+            pickle.dump(self.mesh, open, protocol=pickle.DEFAULT_PROTOCOL)
+
+    def load(self) -> ngs.Mesh:
+        file = self.path.joinpath(self.filename + '.pickle')
+        with file.open("rb") as openfile:
+            return pickle.load(openfile)
 
 
-class ConfigurationHandler(Handler):
+class SettingsStream(Stream):
 
-    name: str = "configuration"
+    name: str = "settings"
 
     @configuration(default=True)
     def pickle(self, pickle: bool):
@@ -202,26 +176,34 @@ class ConfigurationHandler(Handler):
 
     @property
     def path(self) -> Path:
-        path = self.cfg.io.tree.configuration
+        path = self.cfg.io.folders.configuration
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save(self, t: float | None = None, it: int | None = None):
+    def save(self, **kwargs):
         if self.pickle:
-            self.save_pickle()
+            self.save_to_pickle()
         if self.txt:
-            self.save_txt()
+            self.save_to_txt()
         if self.yaml:
-            self.save_yaml()
+            self.save_to_yaml()
 
-    def save_pickle(self):
-        path = self.cfg.io.tree.configuration.joinpath(self.filename + ".pickle")
+    def save_to_pickle(self, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        path = self.path.joinpath(filename + ".pickle")
         with path.open("wb") as open:
             pickle.dump(self.cfg.to_tree(), open, protocol=pickle.DEFAULT_PROTOCOL)
 
-    def save_txt(self):
-        path = self.path.joinpath(self.filename + ".txt")
+    def save_to_txt(self, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        path = self.path.joinpath(filename + ".txt")
 
         with path.open("w") as open:
             txt = [acknowledgements(), ""]
@@ -231,47 +213,122 @@ class ConfigurationHandler(Handler):
 
             open.write("\n".join(txt))
 
-    def save_yaml(self):
+    def save_to_yaml(self, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
 
         try:
             import yaml
         except ImportError:
             raise ImportError("Install pyyaml to save configuration as yaml")
 
-        path = self.cfg.io.tree.configuration.joinpath(self.filename + ".yaml")
+        path = self.path.joinpath(filename + ".yaml")
         with path.open("w") as open:
             yaml.dump(self.cfg.to_tree(), open, sort_keys=False)
 
+    def load_from_pickle(self, filename: str | None = None) -> dict:
 
-class StateHandler(Handler):
+        if filename is None:
+            filename = self.filename
 
-    name: str = "state"
+        path = self.path.joinpath(filename + ".pickle")
+
+        with path.open("rb") as open:
+            return pickle.load(open)
+
+    pickle: bool
+    txt: bool
+    yaml: bool
+
+
+class VTKStream(Stream):
+
+    name: str = "vtk"
 
     @configuration(default=1)
-    def save_at_ith_step(self, i: int):
-        return int(i)
+    def rate(self, i: int):
+        i = int(i)
+        if i <= 0:
+            raise ValueError("Saving frequency must be greater than 0, otherwise consider deactivating the vtk writer!")
+        return i
 
-    @configuration(default=0)
-    def save_time_level_at_ith_step(self, i: int):
-        return int(i)
+    @configuration(default=2)
+    def subdivision(self, subdivision: int):
+        return subdivision
+
+    @configuration(default=None)
+    def region(self, region):
+        return region
+
+    @configuration(default=None)
+    def fields(self, fields: dict[str, ngs.CF]):
+        if fields is None:
+            fields = {}
+        return fields
 
     @property
     def path(self) -> Path:
-        path = self.cfg.io.tree.states
+        path = self.cfg.io.folders.vtk
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save(self, t: float | None = None, it: int | None = None):
+    def initialize(self) -> VTKStream:
 
-        filename = self.filename
-        if t is not None:
-            filename = f"{filename}_{t}"
+        if not self.fields:
+            raise ValueError("No fields to save!")
 
-            if it & self.save_time_level_at_ith_step == 0 and bool(self.save_time_level_at_ith_step):
-                self.save_transient_gridfunctions(filename)
+        self.drawelems = None
+        if self.region is not None:
+            self.drawelems = ngs.BitArray(self.mesh.ne)
+            self.drawelems.Clear()
+            for el in self.cfg.mesh.Materials(self.region).Elements():
+                self.drawelems[el.nr] = True
 
-        if it % self.save_at_ith_step == 0 and bool(self.save_at_ith_step):
+        path = self.path.joinpath(self.filename)
+        self.writer = ngs.VTKOutput(ma=self.cfg.mesh, coefs=list(self.fields.values()), names=list(
+            self.fields.keys()), filename=str(path), subdivision=self.subdivision)
+
+        return self
+
+    def save(self,  t: float | None = None, it: int = 0, **kwargs) -> None:
+        if it % self.rate == 0:
+            self.writer.Do(t, drawelems=self.drawelems)
+
+    rate: int
+    subdivision: int
+    region: str
+    fields: ngsdict
+
+
+class StateStream(Stream):
+
+    name: str = "state"
+
+    @configuration(default=1)
+    def rate(self, i: int):
+        i = int(i)
+        if i <= 0:
+            raise ValueError(
+                "Saving/loading rate must be greater than 0, otherwise consider deactivating the statestream!")
+        return i
+
+    @property
+    def path(self) -> Path:
+        path = self.cfg.io.folders.states
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def save(self, t: float | None = None, it: int = 0, **kwargs):
+
+        if it % self.rate == 0:
+
+            filename = self.filename
+            if t is not None:
+                filename = f"{filename}_{t}"
+
             self.save_gridfunction(self.cfg.pde.gfu, filename)
 
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
@@ -283,7 +340,35 @@ class StateHandler(Handler):
 
         gfu.Save(str(file))
 
-    def save_transient_gridfunctions(self, filename: str | None = None) -> None:
+    def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        file = self.path.joinpath(filename + ".ngs")
+
+        gfu.Load(str(file))
+
+    def load_gridfunction_sequence(self, t: float, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        self.load_gridfunction(self.cfg.pde.gfu, f"{filename}_{t}")
+
+    rate: int
+
+
+class TimeStateStream(StateStream):
+
+    name: str = "time_state"
+
+    def save(self, t: float, it: int = 0, **kwargs):
+
+        if it % self.rate == 0:
+            self.save_gridfunction(t)
+
+    def save_gridfunction(self, t: float, filename: str | None = None) -> None:
 
         if filename is None:
             filename = self.filename
@@ -292,59 +377,84 @@ class StateHandler(Handler):
 
             for level, gfu in gfus.items():
 
-                self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
+                super().save_gridfunction(gfu, f"{filename}_{t}_{fes}_{level}")
 
-    save_at_ith_step: int
-    save_time_level_at_ith_step: int
+    def load_gridfunction(self, t: float, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        for fes, gfu in self.cfg.pde.transient_gfus.items():
+
+            for level, gfu in gfu.items():
+
+                super().load_gridfunction(gfu, f"{filename}_{t}_{fes}_{level}")
 
 
-class Saver(UniqueConfiguration):
+class IOConfiguration(UniqueConfiguration):
 
     cfg: SolverConfiguration
-
-    @save(default=False)
-    def ngsmesh(self, save: bool):
-        return MeshHandler(cfg=self.cfg, mesh=self.mesh)
-
-    @save(default=False)
-    def state(self, save: bool):
-        return StateHandler(cfg=self.cfg, mesh=self.mesh)
-
-    @save(default=False)
-    def configuration(self, save: bool):
-        return ConfigurationHandler(cfg=self.cfg, mesh=self.mesh)
-
-    @save(default=False)
-    def vtk(self, save: bool):
-        return VTKHandler(cfg=self.cfg, mesh=self.mesh)
-
-    def pre_solution_routine_saving(self):
-        for handler in self.values():
-            if isinstance(handler, (MeshHandler, ConfigurationHandler)):
-                handler.save()
-
-    def solution_routine_saving(self, t: float | None = None, it: int | None = None):
-        for handler in self.values():
-            if isinstance(handler, (VTKHandler, StateHandler)):
-                handler.save(t, it)
-
-    ngsmesh: MeshHandler
-    state: StateHandler
-    configuration: ConfigurationHandler
-    vtk: VTKHandler
-
-
-class InputOutputConfiguration(UniqueConfiguration):
-
     name: str = "io"
 
-    @interface(default=SingleTree)
-    def tree(self, tree: DirectoryTree):
-        return tree
+    @interface(default=SingleFolders)
+    def folders(self, folders: IOFolders):
+        return folders
 
-    @unique(default=Saver)
-    def save(self, save: Saver):
-        return save
+    @stream(default=False)
+    def ngsmesh(self, activate: bool):
+        return MeshStream(cfg=self.cfg, mesh=self.mesh)
 
-    tree: SingleTree | BenchmarkTree
-    save: Saver
+    @stream(default=False)
+    def state(self, activate: bool):
+        return StateStream(cfg=self.cfg, mesh=self.mesh)
+
+    @stream(default=False)
+    def time_state(self, activate: bool):
+        if self.cfg.time.is_stationary:
+            raise ValueError("TimeStateStream is not available in stationary mode!")
+        return TimeStateStream(cfg=self.cfg, mesh=self.mesh)
+
+    @stream(default=False)
+    def settings(self, activate: bool):
+        return SettingsStream(cfg=self.cfg, mesh=self.mesh)
+
+    @stream(default=False)
+    def vtk(self, activate: bool):
+        return VTKStream(cfg=self.cfg, mesh=self.mesh)
+
+    def initialize_streams(self):
+        self.pre_routine_streams = [writer.initialize() for writer in self.values()
+                                    if isinstance(writer, (MeshStream, SettingsStream))]
+        self.routine_streams = [writer.initialize() for writer in self.values()
+                                if isinstance(writer, (VTKStream, StateStream, TimeStateStream))]
+
+    def save_pre_routine_streams(self):
+        for stream in self.pre_routine_streams:
+            stream.save()
+
+    def save_routine_streams(self, t: float | None = None, it: int = 0):
+        for stream in self.routine_streams:
+            stream.save(t, it)
+
+    def load_gridfunction_routine(
+            self, filename: str, rate: int = 1, sleep_time: float = 0) -> typing.Generator[
+            float, None, None]:
+        import time
+
+        handler = StateStream(cfg=self.cfg, mesh=self.mesh, rate=rate)
+
+        self.cfg.pde.draw()
+
+        for t in self.cfg.time.timer.start(stride=handler.rate):
+            handler.load_gridfunction_sequence(t, filename)
+            self.cfg.pde.redraw()
+            time.sleep(sleep_time)
+
+            yield t
+
+    folders: SingleFolders | BenchmarkFolders
+    ngsmesh: MeshStream
+    state: StateStream
+    time_state: TimeStateStream
+    settings: SettingsStream
+    vtk: VTKStream
