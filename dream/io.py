@@ -453,9 +453,9 @@ class LogStream(Stream):
 
     def __del__(self):
         if hasattr(self, 'terminal_handler'):
-            logging.getLogger().removeHandler(self.terminal_handler)
+            self.logger.removeHandler(self.terminal_handler)
         if hasattr(self, 'file_handler'):
-            logging.getLogger().removeHandler(self.file_handler)
+            self.logger.removeHandler(self.file_handler)
 
 
 class IOConfiguration(UniqueConfiguration):
