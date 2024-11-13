@@ -5,6 +5,9 @@ from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
 from ngsolve.meshes import MakeStructured2DMesh
 
+# DEBUGGING
+#import ipdb
+
 # Needed to create simple grids.
 from gridmaker import *
 
@@ -33,6 +36,11 @@ mesh = CreateSimpleGrid(gridparam)
 # # # # # # # # # # # # 
 # Solver configuration.
 # # # # # # # # # # # #
+
+# DEBUGGING
+# To run it in a debugger, e.g. pdb (or ipdb), compile with -m pdb (or -m ipdb).
+# To start the debugger from a certain line, use: pdb.set_trace() or ipdb.set_trace().
+#ipdb.set_trace()
 
 # Base configuration.
 cfg        =  SolverConfiguration(mesh)

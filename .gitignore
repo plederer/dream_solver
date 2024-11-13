@@ -4,3 +4,4 @@ __pycache__/
 *.dat
 *.ini
 *.ipynb_checkpoints
+*.swp
