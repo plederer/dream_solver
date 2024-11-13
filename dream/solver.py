@@ -304,17 +304,21 @@ class Optimizations(UniqueConfiguration):
     bonus_int_order: BonusIntegrationOrder
 
 
+# This is the main class responsible for the solver configuration.
 class SolverConfiguration(UniqueConfiguration):
 
+    # Its abbreviated name is 'cfg'.
     name: str = 'cfg'
 
+    # Class constructor, which initializes the mesh and calls its parent's ctor.
     def __init__(self, mesh: ngs.Mesh, **kwargs) -> None:
-        self.mesh = mesh
-        self.mesh.normal = ngs.specialcf.normal(mesh.dim)
-        self.mesh.tangential = ngs.specialcf.tangential(mesh.dim)
-        self.mesh.meshsize = ngs.specialcf.mesh_size
+        self.mesh             = mesh
+        self.mesh.normal      = ngs.specialcf.normal(mesh.dim)
+        self.mesh.tangential  = ngs.specialcf.tangential(mesh.dim)
+        self.mesh.meshsize    = ngs.specialcf.mesh_size
         self.mesh.is_periodic = is_mesh_periodic(mesh)
 
+        # Calls the parent class constructor, i.e. UniqueConfiguration.
         super().__init__(cfg=self, mesh=self.mesh, **kwargs)
 
     @interface(default=CompressibleFlowConfiguration)
@@ -362,8 +366,10 @@ class SolverConfiguration(UniqueConfiguration):
         grid_deformation = self.pde.dcs.get_grid_deformation_function()
         self.mesh.SetDeformation(grid_deformation)
 
-    solver: LinearSolver | NonlinearSolver
-    pde: CompressibleFlowConfiguration
-    time: StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
+    # This tells the user/editor about what solver options are avaiable.
+    pde:           CompressibleFlowConfiguration
+    solver:        LinearSolver | NonlinearSolver
+    time:          StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
     optimizations: Optimizations
-    io: IOConfiguration
+    io:            IOConfiguration
+

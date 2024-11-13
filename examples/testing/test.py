@@ -15,6 +15,7 @@ from gridmaker import *
 ngsglobals.msg_level = 0
 
 
+
 # # # # # # # # # #
 # Grid Information.
 # # # # # # # # # #
@@ -31,6 +32,7 @@ gridparam = [isCircle, isStructured, isPeriodic, maxElemSize, typeElement]
 
 # Generate a simple grid.
 mesh = CreateSimpleGrid(gridparam)
+
 
 
 # # # # # # # # # # # # 
@@ -54,15 +56,16 @@ nPoly      = 4
 # Number of threads.
 nThread    = 4
 
-
 # Set the number of threads.
 SetNumThreads(nThread)
 
 # Abbreviations.
+IO           = cfg.io
 PDE          = cfg.pde
-TEMPORAL     = cfg.time
 SOLVER       = cfg.solver
+TEMPORAL     = cfg.time
 OPTIMIZATION = cfg.optimizations
+
 
 
 # # # # # # # # # # # #
@@ -76,6 +79,7 @@ PDE.scaling                               = "acoustic"
 PDE.mach_number                           =  0.03
 
 
+
 # # # # # # # # # # # # #
 # Spatial discretization.
 # # # # # # # # # # # # #
@@ -87,6 +91,7 @@ PDE.fem.method       = "hdg"
 PDE.fem.mixed_method = "inactive"
 
 
+
 # # # # # # # # # # # # # #
 # Temporal discretization. 
 # # # # # # # # # # # # # #
@@ -94,6 +99,7 @@ PDE.fem.mixed_method = "inactive"
 TEMPORAL.scheme         = "implicit_euler"
 TEMPORAL.timer.interval = (0, 1.0)
 TEMPORAL.timer.step     =  0.025
+
 
 
 # # # # # # # # # # #
@@ -108,6 +114,7 @@ SOLVER.max_iterations        =  10
 SOLVER.convergence_criterion =  1e-10
 
 
+
 # # # # # # # # # # #
 # Optimization flags.
 # # # # # # # # # # #
@@ -117,12 +124,13 @@ OPTIMIZATION.compile.realcompile = False
 OPTIMIZATION.bonus_int_order     = {'vol': 4, 'bnd': 4}
 
 
+
 # # # # # # # # # # #
 # Initial conditions.
 # # # # # # # # # # #
 
 # Velocity values (farfield). 
-Uinf = cfg.pde.get_farfield_state((1, 0))
+Uinf = PDE.get_farfield_state((1, 0))
 
 Gamma   = 0.1
 Rv      = 0.1
@@ -132,21 +140,23 @@ rho_0   = Uinf.rho * (1 + Gamma * exp(-r**2/Rv**2))
 initial = Initial(state=flowstate(rho=rho_0, u=Uinf.u, p=p_0))
 
 
+
 # # # # # # # # # # # # # # # # #
 # Boundary and domain conditions.
 # # # # # # # # # # # # # # # # #
 
-# cfg.pde.bcs['left|top|bottom|right'] = FarField(state=Uinf)
-cfg.pde.bcs['left|right']  = FarField(state=Uinf)
-cfg.pde.bcs['top|bottom']  = "periodic"
+# PDE.bcs['left|top|bottom|right'] = FarField(state=Uinf)
+PDE.bcs['left|right']  = FarField(state=Uinf)
+PDE.bcs['top|bottom']  = "periodic"
 if isStructured:
-    cfg.pde.dcs['dom']     = initial
+    PDE.dcs['dom']     = initial
 else:
-    cfg.pde.dcs['default'] = initial
+    PDE.dcs['default'] = initial
 
 # Curve the grid, if need be.
 if CurvedBoundary(gridparam):
     mesh.Curve(nPoly)
+
 
 
 # # # # # # # # # # # #
@@ -154,18 +164,19 @@ if CurvedBoundary(gridparam):
 # # # # # # # # # # # #
 
 # Setup Spaces and Gridfunctions
-cfg.pde.initialize_system()
+PDE.initialize_system()
 
 # Solution visualization (native).
-drawing       = cfg.pde.get_drawing_state(p=True)
+drawing       = PDE.get_drawing_state(p=True)
 drawing["p'"] = drawing.p - Uinf.p
-cfg.pde.draw(autoscale=False, min=-1e-4, max=1e-4)
+PDE.draw(autoscale=False, min=-1e-4, max=1e-4)
 
 # Write output VTK file.
-cfg.io.save.vtk             = True
-cfg.io.save.vtk.subdivision = 1
-fields                      = cfg.pde.get_state(p=True)
-cfg.io.save.vtk.fields      = cfg.pde.get_state(p=True)
+IO.save.vtk             = True
+IO.save.vtk.subdivision = 1
+fields                  = PDE.get_state(p=True)
+IO.save.vtk.fields      = PDE.get_state(p=True)
+
 
 
 # # # # # # # # # # #
@@ -173,9 +184,8 @@ cfg.io.save.vtk.fields      = cfg.pde.get_state(p=True)
 # # # # # # # # # # #
 
 # This passes all our configuration to NGSolve to solve.
-cfg.solver.initialize()
+SOLVER.initialize()
 with TaskManager():
-    cfg.solver.solve()
-
+    SOLVER.solve()
 
 

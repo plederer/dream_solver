@@ -284,8 +284,8 @@ class interface(unique):
         # Second, check if the input is of type string, e.g. 'compressible'.
         elif isinstance(value, str):
             
-            # If the value has a different configuration that what already exists 
-            # in cfg.data[item], then modify the latter.
+            # If the value has a different configuration than what already exists 
+            # in cfg.data[item], modify the latter.
             cfg_ = self.default.tree[value]
             if not isinstance(cfg.data[item], cfg_):
                 cfg.data[item] = cfg_(cfg=cfg.cfg, mesh=cfg.mesh)
