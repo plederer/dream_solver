@@ -708,3 +708,274 @@ class DomainConditions(Conditions):
             space = ngs.Compress(space, vhat_dofs)
 
         return space
+
+
+# --- Predefined Meshes --- #
+
+def get_cylinder_omesh(ri: float,
+                       ro: float,
+                       n_polar: int,
+                       n_radial: int,
+                       geom: float = 1,
+                       bnd: tuple[str, str, str] = ('cylinder', 'left', 'right')) -> ngs.Mesh:
+    """ Generates a ring mesh with a given inner and outer radius.
+
+    :param ri: Inner radius of the ring
+    :type ri: float
+    :param ro: Outer radius of the ring
+    :type ro: float
+    :param n_polar: Number of elements in the polar direction
+    :type n_polar: int
+    :param n_radial: Number of elements in the radial direction
+    :type n_radial: int
+    :param geom: Geometric factor for the radial direction, defaults to 1
+    :type geom: float, optional
+    :return: Ring mesh
+    :rtype: ngs.Mesh
+    """
+    from netgen.csg import Plane, Vec, Cylinder, Pnt, CSGeometry
+    from netgen.meshing import Element1D, Element2D, MeshPoint, FaceDescriptor, Mesh
+
+    if (n_polar % 4) > 0:
+        raise ValueError("Number of elements in polar direction must be a multiplicative of 4!")
+    if (n_radial % 2) > 0:
+        raise ValueError("Number of elements in radial direction must be a multiplicative of 2!")
+    if n_radial > int(n_polar/2):
+        raise ValueError("n_radial > n_polar/2!")
+
+    mesh = Mesh()
+    mesh.dim = 2
+
+    top = Plane(Pnt(0, 0, 0), Vec(0, 0, 1))
+    ring = Cylinder(Pnt(0, 0, 0), Pnt(0, 0, 1), ro)
+    inner = Cylinder(Pnt(0, 0, 0), Pnt(0, 0, 1), ri)
+    geo = CSGeometry()
+    geo.SetBoundingBox(Pnt(-ro, -ro, -ro), Pnt(ro, ro, ro))
+    geo.Add(top)
+    geo.Add(inner)
+    geo.Add(ring)
+
+    mesh.SetGeometry(geo)
+
+    pnums = []
+    for j in range(n_radial+1):
+        for i in range(n_polar):
+            phi = ngs.pi/n_polar * j
+            px = ngs.cos(2 * ngs.pi * i/n_polar + phi)
+            py = ngs.sin(2 * ngs.pi * i/n_polar + phi)
+
+            r = (ro - ri) * (j/n_radial)**geom + ri
+
+            pnums.append(mesh.Add(MeshPoint(Pnt(r * px, r * py, 0))))
+
+    # print(pnums)
+    mesh.Add(FaceDescriptor(surfnr=1, domin=1, bc=1))
+    mesh.Add(FaceDescriptor(surfnr=2, domin=1, domout=0, bc=1))
+    mesh.Add(FaceDescriptor(surfnr=3, domin=1, domout=0, bc=2))
+
+    idx_dom = 1
+
+    for j in range(n_radial):
+        # print("j=",j)
+        for i in range(n_polar-1):
+            # print("i=",i)
+            # offset =
+            mesh.Add(
+                Element2D(
+                    idx_dom, [pnums[i + j * (n_polar)],
+                              pnums[i + (j + 1) * (n_polar)],
+                              pnums[i + 1 + j * (n_polar)]]))
+            mesh.Add(
+                Element2D(
+                    idx_dom,
+                    [pnums[i + (j + 1) * (n_polar)],
+                     pnums[i + (j + 1) * (n_polar) + 1],
+                     pnums[i + 1 + j * (n_polar)]]))
+
+        mesh.Add(
+            Element2D(
+                idx_dom,
+                [pnums[n_polar - 1 + j * (n_polar)],
+                 pnums[n_polar - 1 + (j + 1) * (n_polar)],
+                 pnums[j * (n_polar)]]))
+        mesh.Add(
+            Element2D(
+                idx_dom,
+                [pnums[0 + j * (n_polar)],
+                 pnums[n_polar - 1 + (j + 1) * (n_polar)],
+                 pnums[(j + 1) * (n_polar)]]))
+
+    for i in range(n_polar-1):
+        mesh.Add(Element1D([pnums[i], pnums[i+1]], [0, 1], 1))
+    mesh.Add(Element1D([pnums[n_polar-1], pnums[0]], [0, 1], 1))
+
+    offset = int(-n_radial/2 + n_polar/4)
+
+    for i in range(0, offset):
+        mesh.Add(Element1D([pnums[i + n_radial * n_polar], pnums[i + n_radial * n_polar + 1]], [0, 2], index=3))
+
+    for i in range(offset, int(n_polar/2)+offset):
+        mesh.Add(Element1D([pnums[i + n_radial * n_polar], pnums[i + n_radial * n_polar + 1]], [0, 2], index=2))
+
+    for i in range(int(n_polar/2)+offset, n_polar-1):
+        mesh.Add(Element1D([pnums[i + n_radial * n_polar], pnums[i + n_radial * n_polar + 1]], [0, 2], index=3))
+    mesh.Add(Element1D([pnums[n_radial*n_polar], pnums[n_polar - 1 + n_radial * n_polar]], [0, 2], index=3))
+
+    for i, name in enumerate(bnd):
+        mesh.SetBCName(i, name)
+
+    return ngs.Mesh(mesh)
+
+
+def get_cylinder_mesh(radius: float = 0.5,
+                      sponge_layer: bool = False,
+                      boundary_layer_levels: int = 5,
+                      boundary_layer_thickness: float = 0.0,
+                      transition_layer_levels: int = 5,
+                      transition_layer_growth: float = 1.4,
+                      transition_radial_factor: float = 6,
+                      farfield_radial_factor: float = 50,
+                      sponge_radial_factor: float = 60,
+                      wake_maxh: float = 2,
+                      farfield_maxh: float = 4,
+                      sponge_maxh: float = 4,
+                      bnd: tuple[str, str, str] = ('inflow', 'outflow', 'cylinder'),
+                      mat: tuple[str, str] = ('sound', 'sponge'),
+                      curve_layers: bool = False,
+                      grading: float = 0.3):
+
+    import numpy as np
+    from netgen.occ import WorkPlane, OCCGeometry, Glue
+
+    if boundary_layer_thickness < 0:
+        raise ValueError(f"Boundary Layer Thickness needs to be greater equal Zero!")
+    if not sponge_layer:
+        sponge_radial_factor = farfield_radial_factor
+        sponge_maxh = farfield_maxh
+    elif sponge_radial_factor < farfield_radial_factor and sponge_layer:
+        raise ValueError("Sponge Radial Factor must be greater than Farfield Radial Factor")
+
+    bl_radius = radius + boundary_layer_thickness
+    tr_radius = transition_radial_factor * radius
+    ff_radius = farfield_radial_factor * radius
+    sp_radius = sponge_radial_factor * radius
+
+    wp = WorkPlane()
+
+    # Cylinder
+    cylinder = wp.Circle(radius).Face()
+    cylinder.edges[0].name = bnd[2]
+
+    # Viscous regime
+    if boundary_layer_thickness > 0:
+        bl_maxh = boundary_layer_thickness/boundary_layer_levels
+        bl_radial_levels = np.linspace(radius, bl_radius, int(boundary_layer_levels) + 1)
+        bl_faces = [wp.Circle(r).Face() for r in np.flip(bl_radial_levels[1:])]
+        for bl_face in bl_faces:
+            bl_face.maxh = bl_maxh
+        boundary_layer = Glue(bl_faces) - cylinder
+        for face in boundary_layer.faces:
+            face.name = mat[0]
+
+    # Transition regime
+    tr_layer_growth = np.linspace(0, 1, transition_layer_levels+1)**transition_layer_growth
+    tr_radial_levels = bl_radius + (tr_radius - bl_radius) * tr_layer_growth
+    tr_maxh = np.diff(tr_radial_levels)
+    tr_faces = [wp.Circle(r).Face() for r in np.flip(tr_radial_levels[1:])]
+    for tr_face, maxh in zip(tr_faces, tr_maxh):
+        tr_face.maxh = maxh
+    transition_regime = Glue(tr_faces) - cylinder
+    for face in transition_regime.faces:
+        face.name = mat[0]
+
+    # Farfield region
+    farfield = wp.MoveTo(0, 0).Circle(ff_radius).Face()
+    farfield.maxh = farfield_maxh
+    for face in farfield.faces:
+        face.name = mat[0]
+
+    # Wake region
+    wake_radius = tr_radius + maxh
+    wp.MoveTo(0, wake_radius).Direction(-1, 0)
+    wp.Arc(wake_radius, 180)
+    wp.LineTo(ff_radius, -wake_radius)
+    wp.LineTo(ff_radius, wake_radius)
+    wp.LineTo(0, wake_radius)
+    wake = wp.Face() - transition_regime - cylinder
+    wake = wake * farfield
+    wake.maxh = wake_maxh
+    for face in wake.faces:
+        face.name = mat[0]
+
+    # Outer region (if defined)
+    wp.MoveTo(0, sp_radius).Direction(-1, 0)
+    wp.Arc(sp_radius, 180)
+    wp.Arc(sp_radius, 180)
+    outer = wp.Face()
+
+    for edge, bc in zip(outer.edges, [bnd[0], bnd[1]]):
+        edge.name = bc
+
+    if sponge_layer:
+        for face in outer.faces:
+            face.name = mat[1]
+        outer = outer - farfield
+        outer.maxh = sponge_maxh
+        outer = Glue([outer, farfield])
+
+    sound = Glue([outer - wake, wake * outer]) - transition_regime - cylinder
+
+    geo = Glue([sound, transition_regime])
+    if boundary_layer_thickness > 0:
+        geo = Glue([geo, boundary_layer])
+
+    geo = OCCGeometry(geo, dim=2)
+    mesh = geo.GenerateMesh(maxh=sponge_maxh, grading=grading)
+
+    if not curve_layers:
+        from netgen.meshing import Mesh, FaceDescriptor, Element1D, Element2D
+
+        geo = outer - cylinder
+        geo = OCCGeometry(geo, dim=2)
+
+        new_mesh = Mesh()
+        new_mesh.dim = 2
+        new_mesh.SetGeometry(geo)
+
+        edge_map = set(elem.edgenr for elem in mesh.Elements1D())
+
+        new_mesh.Add(FaceDescriptor(surfnr=1, domin=1, domout=0, bc=1))
+        new_mesh.Add(FaceDescriptor(surfnr=2, domin=1, domout=0, bc=2))
+        new_mesh.Add(FaceDescriptor(surfnr=3, domin=1, domout=0, bc=3))
+
+        for i, name in enumerate(bnd):
+            new_mesh.SetBCName(i, name)
+
+        idx_dom = new_mesh.AddRegion(mat[0], dim=2)
+        new_mesh.SetMaterial(idx_dom, mat[0])
+
+        if sponge_layer:
+            new_mesh.SetBCName(3, "default")
+            sponge_dom = new_mesh.AddRegion(mat[1], dim=2)
+            new_mesh.SetMaterial(sponge_dom, mat[1])
+            edge_map = {1: (0, 1), 2: (1, 2), 3: (2, 4),  4: (2, 4), 5: (2, 4), max(edge_map): (3, 3)}
+        else:
+            edge_map = {6: (0, 1), 8: (1, 2), 7: (1, 2), 5: (1, 2), 1: (1, 2), max(edge_map): (2, 3)}
+
+        for point in mesh.Points():
+            new_mesh.Add(point)
+
+        for elem in mesh.Elements2D():
+            if sponge_layer and elem.index == 1:
+                new_mesh.Add(Element2D(sponge_dom, elem.vertices))
+            else:
+                new_mesh.Add(Element2D(idx_dom, elem.vertices))
+
+        for elem in mesh.Elements1D():
+            if elem.edgenr in edge_map:
+                edgenr, index = edge_map[elem.edgenr]
+                new_mesh.Add(Element1D(elem.points, elem.surfaces, index, edgenr))
+
+        mesh = new_mesh
+
+    return ngs.Mesh(mesh)
