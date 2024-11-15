@@ -1,15 +1,14 @@
 from dream import *
-from dream.compressible import flowstate, FarField, Initial
+from dream.compressible import flowstate, Initial
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
 from ngsolve.meshes import MakeStructured2DMesh
 
-# DEBUGGING
-#import ipdb
-
 # Needed to create simple grids.
 from gridmaker import *
+# Needed to initialize and verify the solution.
+from vnv import * 
 
 # Message output detail from netgen.
 ngsglobals.msg_level = 0
@@ -20,18 +19,15 @@ ngsglobals.msg_level = 0
 # Grid Information.
 # # # # # # # # # #
 
-# Characteristic grid configuration.
-typeElement  = "quadrilateral"
-isCircle     = False
-isStructured = True
-isPeriodic   = True
-maxElemSize  = 0.1
+# Number of elements per dimension.
+nElem1D = 10 
 
-# Pack the grid data.
-gridparam = [isCircle, isStructured, isPeriodic, maxElemSize, typeElement]
+# Dimension of the rectangular domain.
+xLength = 10.0
+yLength = 10.0
 
 # Generate a simple grid.
-mesh = CreateSimpleGrid(gridparam)
+mesh = CreateSimpleGrid(nElem1D, xLength, yLength)
 
 
 
@@ -39,22 +35,21 @@ mesh = CreateSimpleGrid(gridparam)
 # Solver configuration.
 # # # # # # # # # # # #
 
-# DEBUGGING
-# To run it in a debugger, e.g. pdb (or ipdb), compile with -m pdb (or -m ipdb).
-# To start the debugger from a certain line, use: pdb.set_trace() or ipdb.set_trace().
-#ipdb.set_trace()
-
 # Base configuration.
 cfg        =  SolverConfiguration(mesh)
 cfg.pde    = "compressible"
 cfg.time   = "transient"
 cfg.solver = "nonlinear"
 
-# Polynomial order of the FEM implementation.
-nPoly      = 4
-
 # Number of threads.
 nThread    = 4
+
+# Polynomial order of the FEM implementation.
+nPoly      = 3
+
+# Number of subdivisions, for visualization.
+nSubdiv    = 3
+
 
 # Set the number of threads.
 SetNumThreads(nThread)
@@ -76,7 +71,7 @@ PDE.dynamic_viscosity                     = "inviscid"
 PDE.equation_of_state                     = "ideal"
 PDE.equation_of_state.heat_capacity_ratio =  1.4
 PDE.scaling                               = "acoustic"
-PDE.mach_number                           =  0.03
+PDE.mach_number                           =  1.0
 
 
 
@@ -97,8 +92,8 @@ PDE.fem.mixed_method = "inactive"
 # # # # # # # # # # # # # #
 
 TEMPORAL.scheme         = "implicit_euler"
-TEMPORAL.timer.interval = (0, 1.0)
-TEMPORAL.timer.step     =  0.025
+TEMPORAL.timer.interval = (0, 20.0)
+TEMPORAL.timer.step     =  0.05
 
 
 
@@ -121,7 +116,6 @@ SOLVER.convergence_criterion =  1e-10
 
 OPTIMIZATION.static_condensation = True
 OPTIMIZATION.compile.realcompile = False
-OPTIMIZATION.bonus_int_order     = {'vol': 4, 'bnd': 4}
 
 
 
@@ -129,15 +123,11 @@ OPTIMIZATION.bonus_int_order     = {'vol': 4, 'bnd': 4}
 # Initial conditions.
 # # # # # # # # # # #
 
-# Velocity values (farfield). 
-Uinf = PDE.get_farfield_state((1, 0))
+# Obtain the initial condition.
+Uic  = InitialCondition(PDE, TEMPORAL, xLength, yLength)
 
-Gamma   = 0.1
-Rv      = 0.1
-r       = sqrt(x**2 + y**2)
-p_0     = Uinf.p * (1 + Gamma * exp(-r**2/Rv**2))
-rho_0   = Uinf.rho * (1 + Gamma * exp(-r**2/Rv**2))
-initial = Initial(state=flowstate(rho=rho_0, u=Uinf.u, p=p_0))
+# Define the initial solution state.
+initial = Initial(state=Uic)
 
 
 
@@ -146,16 +136,9 @@ initial = Initial(state=flowstate(rho=rho_0, u=Uinf.u, p=p_0))
 # # # # # # # # # # # # # # # # #
 
 # PDE.bcs['left|top|bottom|right'] = FarField(state=Uinf)
-PDE.bcs['left|right']  = FarField(state=Uinf)
+PDE.bcs['left|right']  = "periodic" 
 PDE.bcs['top|bottom']  = "periodic"
-if isStructured:
-    PDE.dcs['dom']     = initial
-else:
-    PDE.dcs['default'] = initial
-
-# Curve the grid, if need be.
-if CurvedBoundary(gridparam):
-    mesh.Curve(nPoly)
+PDE.dcs['internal']    = initial
 
 
 
@@ -163,20 +146,19 @@ if CurvedBoundary(gridparam):
 # Output/Visualization.
 # # # # # # # # # # # #
 
-# Setup Spaces and Gridfunctions
+# Set the spaces and associated grid functions.
 PDE.initialize_system()
 
-# Solution visualization (native).
-drawing       = PDE.get_drawing_state(p=True)
-drawing["p'"] = drawing.p - Uinf.p
-PDE.draw(autoscale=False, min=-1e-4, max=1e-4)
+# Get the analytic solution, function of time.
+Uexact = AnalyticSolution(PDE, TEMPORAL.timer.t, xLength, yLength)
 
 # Write output VTK file.
 IO.vtk             = True
 IO.vtk.rate        = 10
-IO.vtk.subdivision = 1
-fields             = PDE.get_state(p=True)
-IO.vtk.fields      = PDE.get_state(p=True)
+IO.vtk.subdivision = nSubdiv
+
+# VTK Visualization data.
+ProcessVTKData(IO, PDE, Uexact)
 
 
 
