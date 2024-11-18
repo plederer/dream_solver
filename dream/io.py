@@ -320,9 +320,10 @@ class VTKStream(Stream):
 
         return self
 
-    def save_pre_time_routine(self) -> None:
-        if not self.cfg.time.is_stationary:
-            self.writer.Do(self.cfg.time.timer.t.Get(), drawelems=self.drawelems)
+    def save_pre_time_routine(self, t: float | None = None) -> None:
+        if t is None:
+            t = -1
+        self.writer.Do(t, drawelems=self.drawelems)
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
         if it % self.rate == 0:
@@ -360,9 +361,8 @@ class FieldStream(Stream, is_interface=True):
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save_pre_time_routine(self) -> None:
-        if not self.cfg.time.is_stationary:
-            self.save_in_time_routine(self.cfg.time.timer.t.Get(), it=0)
+    def save_pre_time_routine(self, t: float | None = None) -> None:
+        self.save_in_time_routine(t, it=0)
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
         if t is None or not it % self.rate == 0:
@@ -553,7 +553,7 @@ class SensorStream(Stream):
         if isinstance(name, str):
             return BoundaryL2Sensor(sensor_name=name)
         return None
-    
+
     @configuration(default='w')
     def mode(self, mode: str):
         return mode
@@ -609,12 +609,15 @@ class SensorStream(Stream):
 
         return header
 
-    def save_pre_time_routine(self) -> None:
-        if not self.cfg.time.is_stationary:
+    def save_pre_time_routine(self, t: float | None = None) -> None:
 
-            for sensor, data in self.measure():
-                if self.to_csv:
-                    self.csv[sensor.sensor_name][1].writerow([self.cfg.time.timer.t.Get(), *data])
+        for sensor, data in self.measure():
+
+            if t is not None:
+                data = [t, *data]
+
+            if self.to_csv:
+                self.csv[sensor.sensor_name][1].writerow(data)
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
         for sensor, data in self.measure():
@@ -631,7 +634,7 @@ class SensorStream(Stream):
                 if self.to_csv:
                     self.csv[sensor.sensor_name][1].writerow([t, *data])
 
-    def load_as_dataframe(self, sensor: Sensor | str, header: tuple = [0, 1, 2], index_col: int = [0], **pd_kwargs):
+    def load_as_dataframe(self, sensor: Sensor | str, header: tuple = [0, 1, 2, 3], index_col: int = [0], **pd_kwargs):
         import pandas as pd
 
         if isinstance(sensor, Sensor):
@@ -829,9 +832,17 @@ class PointSensor(Sensor):
     def points(self, points: tuple[tuple[float, float, float], ...]):
         return points
 
+    def open(self, fields: dict[str, ngs.CF] | None = None):
+
+        if isinstance(self.points, str):
+            self.points = tuple(set(self.mesh[v].point for el in self.mesh.Boundaries(
+                self.points).Elements() for v in el.vertices))
+
+        super().open(fields)
+
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for point in self.points:
-            yield np.array(self._field(self.mesh(*point)))
+            yield np.atleast_1d(self._field(self.mesh(*point)))
 
     def get_header(self):
         header = {'point': [point for point in self.points for _ in range(self._field.dim)]}
@@ -889,12 +900,12 @@ class IOConfiguration(UniqueConfiguration):
             elif isinstance(stream, (VTKStream, GridfunctionStream, TransientGridfunctionStream, SensorStream)):
                 self.file_streams.append(stream.open())
 
-    def save_pre_time_routine(self):
+    def save_pre_time_routine(self, t: float | None = None):
         for stream in self.single_streams:
-            stream.save_pre_time_routine()
+            stream.save_pre_time_routine(t)
 
         for stream in self.file_streams:
-            stream.save_pre_time_routine()
+            stream.save_pre_time_routine(t)
 
     def save_in_time_routine(self, t: float, it: int):
         for stream in self.file_streams:
