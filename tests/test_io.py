@@ -59,12 +59,12 @@ class TestVTKStream(unittest.TestCase):
         self.cfg.time = "stationary"
         self.handler.save_pre_time_routine()
 
-        files = [file for file in self.handler.path.iterdir()]
-        self.assertListEqual(files, [])
+        path = self.handler.path.joinpath(f"vtk.vtu")
+        self.assertTrue(path.exists())
 
         self.cfg.time = "transient"
-        self.handler.save_pre_time_routine()
-        self.handler.save_pre_time_routine()
+        self.handler.save_pre_time_routine(0.0)
+        self.handler.save_pre_time_routine(0.0)
 
         path = self.handler.path.joinpath(f"vtk.pvd")
         self.assertTrue(path.exists())
@@ -153,11 +153,11 @@ class TestGridfunctionStream(unittest.TestCase):
         self.cfg.time = "stationary"
         self.handler.save_pre_time_routine()
 
-        files = [file for file in self.handler.path.iterdir()]
-        self.assertListEqual(files, [])
+        path = self.handler.path.joinpath(f"gfu.ngs")
+        self.assertTrue(path.exists())
 
         self.cfg.time = "transient"
-        self.handler.save_pre_time_routine()
+        self.handler.save_pre_time_routine(0.0)
 
         path = self.handler.path.joinpath(f"gfu_0.0.ngs")
         self.assertTrue(path.exists())
@@ -313,7 +313,7 @@ class TestSensorStream(unittest.TestCase):
         self.handler.point['test'].rate = 5
 
         with self.cfg.io as io:
-            io.save_pre_time_routine()
+            io.save_pre_time_routine(0.0)
             for it, t in enumerate(self.cfg.time.timer()):
                 io.save_in_time_routine(t, it)
             io.save_post_time_routine(t, it)
@@ -348,7 +348,7 @@ class TestSensorStream(unittest.TestCase):
         self.handler.domain['test'].rate = 5
 
         with self.cfg.io as io:
-            io.save_pre_time_routine()
+            io.save_pre_time_routine(0.0)
             for it, t in enumerate(self.cfg.time.timer()):
                 io.save_in_time_routine(t, it)
             io.save_post_time_routine(t, it)
@@ -386,7 +386,7 @@ class TestSensorStream(unittest.TestCase):
         self.handler.domain_L2['test'].rate = 5
 
         with self.cfg.io as io:
-            io.save_pre_time_routine()
+            io.save_pre_time_routine(0.0)
             for it, t in enumerate(self.cfg.time.timer()):
                 io.save_in_time_routine(t, it)
             io.save_post_time_routine(t, it)
@@ -425,7 +425,7 @@ class TestSensorStream(unittest.TestCase):
         self.handler.boundary['test'].rate = 5
 
         with self.cfg.io as io:
-            io.save_pre_time_routine()
+            io.save_pre_time_routine(0.0)
             for it, t in enumerate(self.cfg.time.timer()):
                 io.save_in_time_routine(t, it)
             io.save_post_time_routine(t, it)
@@ -464,7 +464,7 @@ class TestSensorStream(unittest.TestCase):
         self.handler.boundary_L2['test'].rate = 5
 
         with self.cfg.io as io:
-            io.save_pre_time_routine()
+            io.save_pre_time_routine(0.0)
             for it, t in enumerate(self.cfg.time.timer()):
                 io.save_in_time_routine(t, it)
             io.save_post_time_routine(t, it)

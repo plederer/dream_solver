@@ -744,3 +744,28 @@ class CompressibleFlowConfiguration(PDEConfiguration):
     @equation
     def isentropic_density(self, U: flowstate, Uref: flowstate) -> bla.SCALAR:
         return self.equation_of_state.isentropic_density(U, Uref)
+
+    @equation
+    def pressure_coefficient(self, U: flowstate, Uref: flowstate):
+        return (self.pressure(U) - self.pressure(Uref))/(self.kinetic_energy(Uref))
+
+    @equation
+    def stress_tensor(self, U: flowstate, dU: flowstate = None) -> bla.MATRIX:
+
+        sigma = -self.pressure(U) * ngs.Id(self.mesh.dim)
+        if not self.dynamic_viscosity.is_inviscid:
+            sigma += self.deviatoric_stress_tensor(U, dU)
+
+        return sigma
+
+    @equation
+    def drag_coefficient(
+            self, U: flowstate, dU: flowstate, Uref: flowstate, drag_direction: tuple[float, ...]) -> bla.SCALAR:
+        stress = self.stress_tensor(U, dU) * self.mesh.normal
+        return bla.inner(stress, bla.unit_vector(drag_direction))/(self.kinetic_energy(Uref))
+
+    @equation
+    def lift_coefficient(
+            self, U: flowstate, dU: flowstate, Uref: flowstate, lift_direction: tuple[float, ...]) -> bla.SCALAR:
+        stress = self.stress_tensor(U, dU) * self.mesh.normal
+        return bla.inner(stress, bla.unit_vector(lift_direction))/(self.kinetic_energy(Uref))

@@ -206,7 +206,7 @@ class TransientConfig(TimeConfig):
     def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
 
         with self.cfg.io as io:
-            io.save_pre_time_routine()
+            io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
             for it, t in enumerate(self.timer()):
@@ -252,16 +252,18 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
 
         with self.cfg.io as io:
-            io.save_pre_time_routine()
+            io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
             self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
             yield None
             # Solution routine ends here
+            io.save_in_time_routine(self.timer.t.Get(), it=0)
 
             self.cfg.pde.redraw()
-            io.save_post_time_routine()
+
+            io.save_post_time_routine(self.timer.t.Get())
 
     def solver_iteration_update(self, it: int):
         self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
