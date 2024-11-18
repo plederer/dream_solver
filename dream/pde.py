@@ -30,7 +30,7 @@ class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
                            lf: dict[str, ngs.comp.SumOfIntegrals]):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def get_state(self, quantities: dict[str, bool]) -> ngsdict:
+    def get_fields(self, quantities: dict[str, bool]) -> ngsdict:
         raise NotImplementedError("Overload this method in derived class!")
 
     def set_initial_conditions(self) -> None:
@@ -116,16 +116,16 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
 
             self.cfg.time.scheme.set_initial_conditions(self.transient_gfus)
 
-    def get_state(self, **quantities: bool) -> ngsdict:
-        state = self.fem.get_state(quantities)
+    def get_fields(self, **quantities: bool) -> ngsdict:
+        state = self.fem.get_fields(quantities)
 
         for quantity in quantities:
             logger.info(f"Quantity {quantity} not defined!")
 
         return state
 
-    def get_drawing_state(self, **quantities: bool) -> ngsdict:
-        self.drawings = self.get_state(**quantities)
+    def get_drawing_fields(self, **quantities: bool) -> ngsdict:
+        self.drawings = self.get_fields(**quantities)
         return self.drawings
 
     def draw(self, **kwargs):

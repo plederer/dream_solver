@@ -75,7 +75,7 @@ class DummyFiniteElementMethod(FiniteElementMethod):
         blf['test'] = u * v * ngs.dx
         lf['test'] = v * ngs.dx
 
-    def get_state(self, quantities: dict[str, bool]):
+    def get_fields(self, quantities: dict[str, bool]):
         pass
 
     def set_initial_conditions(self) -> None:
