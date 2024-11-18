@@ -77,9 +77,9 @@ cfg.pde.dcs['default'] = initial
 # Setup Spaces and Gridfunctions
 cfg.pde.initialize_system()
 
-drawing = cfg.pde.get_drawing_state(p=True)
+drawing = cfg.pde.get_fields(p=True)
 drawing['p*'] = (drawing.p - Uinf.p)/(p_00 - Uinf.p)
-cfg.pde.draw(autoscale=False, min=-1e-4, max=1e-4)
+cfg.pde.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
 
 cfg.solver.initialize()
 with TaskManager():

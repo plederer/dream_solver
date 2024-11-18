@@ -411,14 +411,15 @@ class GridfunctionStream(FieldStream):
 
         self.load_gridfunction(self.cfg.pde.gfu, filename)
 
-    def load_transient_routine(self, sleep: float = 0) -> typing.Generator[float, None, None]:
+    def load_transient_routine(self, fields: ngsdict = None, sleep: float = 0) -> typing.Generator[float, None, None]:
 
         if self.cfg.time.is_stationary:
             raise ValueError("Transient routine is not available in stationary mode!")
 
         import time
 
-        self.cfg.pde.draw()
+        if fields is not None:
+            self.cfg.pde.draw(fields)
 
         logger.info(f"Loading gridfunction from '{self.filename}'")
         for t in self.cfg.time.timer.start(stride=self.rate):
