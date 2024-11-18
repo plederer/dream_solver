@@ -43,7 +43,7 @@ def unit_circle(maxh=0.125, shift=(0, 0)) -> ngs.Mesh:
 def simplex(maxh=1, dim: int = 2) -> ngs.Mesh:
     if dim == 2:
         wp = occ.WorkPlane()
-        wp = wp.LineTo(1, 0).LineTo(0, 1).LineTo(0, 0).Face()
+        wp = wp.LineTo(1, 0, 'bottom').LineTo(0, 1, 'right').LineTo(0, 0, 'left').Face()
     elif dim == 3:
         wp = occ.Box(occ.Pnt(0, 0, 0), occ.Pnt(1, 1, 1))
         wp -= occ.WorkPlane(occ.Axes(p=(1, 0, 0), n=(1, 1, 1), h=(-1, 1, 0)), ).RectangleC(3, 3).Face().Extrude(3)
