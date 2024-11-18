@@ -12,6 +12,9 @@ SCALAR: TypeAlias = ngs.CF | Number
 VECTOR: TypeAlias = ngs.CF
 MATRIX: TypeAlias = ngs.CF
 
+SCALAR_COMPONENT = (" ",)
+VECTOR_COMPONENT = ("x", "y", "z")
+MATRIX_COMPONENT = ("xx", "xy", "xz", "yx", "yy", "yz", "zx", "zy", "zz")
 
 def abs(x: SCALAR) -> SCALAR:
     if isinstance(x, ngs.CF):
@@ -198,3 +201,4 @@ def skewsymmetric_matrix_from_vector(x: ngs.CF, factor: float = 1):
         return factor * ngs.CF((0, -x[0], x[1], x[0], 0, -x[2], -x[1], x[2], 0), dims=(3, 3))
     else:
         raise ValueError(f"Can not create symmetric matrix with component vector of length {x.dim}!")
+

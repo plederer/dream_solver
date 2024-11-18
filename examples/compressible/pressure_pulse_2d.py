@@ -72,8 +72,8 @@ cfg.io.vtk = False
 cfg.io.settings = False
 cfg.io.settings.pickle = False
 cfg.io.settings.txt = False
-cfg.io.state = False
-cfg.io.time_state = False
+cfg.io.gfu = False
+cfg.io.transient_gfu = False
 cfg.io.ngsmesh = False
 
 if circle:

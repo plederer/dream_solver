@@ -187,15 +187,13 @@ class LinearSolver(Solver):
         if hasattr(self, 'dirichlet'):
             self.dirichlet.data = self.blf.mat * self.gfu.vec
 
-        for t in self.cfg.time.solution_routine():
+        for t in self.cfg.time.start_solution_routine():
             self.lf.Assemble()
 
             if hasattr(self, 'dirichlet'):
                 self.lf.vec.data -= self.proj * self.dirichlet
 
             self.cfg.pde.gfu.vec.data += self.inverse.get_inverse(self.blf, self.cfg.pde.fes) * self.lf.vec
-
-            self.cfg.pde.redraw()
 
     def set_dirichlet_vector(self):
 
@@ -237,13 +235,13 @@ class NonlinearSolver(Solver):
 
     def solve(self):
 
-        for t in self.cfg.time.solution_routine():
+        for t in self.cfg.time.start_solution_routine():
 
             self.method.reset_status()
 
             for it in range(self.max_iterations):
 
-                self.cfg.time.iteration_update(it)
+                self.cfg.time.solver_iteration_update(it)
 
                 self.method.solve_update_step()
                 self.method.set_iteration_error(it, t)
@@ -258,8 +256,6 @@ class NonlinearSolver(Solver):
 
             if self.method.is_nan:
                 break
-
-            self.cfg.pde.redraw()
 
     method: NonlinearMethod
     max_iterations: int

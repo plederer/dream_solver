@@ -341,6 +341,10 @@ class UniqueConfiguration(typing.MutableMapping, dict):
     name: str
     mesh: ngs.Mesh
 
+    @classmethod
+    def get_configurations(cls, type: configuration) -> list[configuration]:
+        return [cfg for cfg in vars(cls).values() if isinstance(cfg, type)]
+
     def update(self, dict=None, **kwargs):
 
         if dict is not None:
@@ -401,7 +405,7 @@ class UniqueConfiguration(typing.MutableMapping, dict):
 
     def __init_subclass__(cls) -> None:
 
-        cfgs = [cfg for cfg in vars(cls).values() if isinstance(cfg, configuration)]
+        cfgs = cls.get_configurations(configuration)
         if hasattr(cls, "cfgs"):
             cfgs = cls.cfgs + cfgs
         cls.cfgs = cfgs
