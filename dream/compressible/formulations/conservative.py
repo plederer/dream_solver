@@ -389,11 +389,11 @@ class ConservativeMethod(InterfaceConfiguration, is_interface=True):
         U_ = self.get_conservative_fields(U)
 
         if isinstance(U, ngs.GridFunction):
-            U = U.components
+            dU = ngs.grad(U)
 
-            U_.grad_rho = ngs.grad(U)[0, :]
-            U_.grad_rho_u = ngs.grad(U)[slice(1, self.mesh.dim + 1), :]
-            U_.grad_rho_E = ngs.grad(U)[self.mesh.dim + 1, :]
+            U_.grad_rho = dU[0, :]
+            U_.grad_rho_u = dU[slice(1, self.mesh.dim + 1), :]
+            U_.grad_rho_E = dU[self.mesh.dim + 1, :]
 
             U_.grad_u = self.cfg.pde.velocity_gradient(U_, U_)
             U_.grad_rho_Ek = self.cfg.pde.kinetic_energy_gradient(U_, U_)
@@ -868,18 +868,31 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElement):
         self.method.add_boundary_conditions(blf, lf)
         self.method.add_domain_conditions(blf, lf)
 
-    def get_fields(self, quantities) -> flowstate:
+    def get_fields(self, quantities: dict[str, bool]) -> flowstate:
 
-        U = self.method.get_conservative_fields(self.method.U_gfu)
+        U = self.method.get_conservative_gradient_fields(self.method.U_gfu)
+        if not isinstance(self.mixed_method, Inactive):
+            U.update(self.mixed_method.get_mixed_fields(self.mixed_method.Q_gfu))
+
+        defaults = {'rho': True, 'u': True, 'p': True, 'T': True}
+        defaults.update(quantities)
 
         fields = flowstate()
-        for symbol, name in U.symbols.items():
-            if name in quantities and quantities[name]:
-                quantities.pop(name)
-                fields[symbol] = getattr(self.cfg.pde, name)(U)
-            elif symbol in quantities and quantities[symbol]:
-                quantities.pop(symbol)
-                fields[symbol] = getattr(self.cfg.pde, name)(U)
+        for symbol, value in defaults.items():
+            if not value:
+                continue
+
+            name = symbol
+            if symbol in U.symbols:
+                name = U.symbols[symbol]
+
+            if name in U:
+                fields[name] = U[name]
+
+                if symbol in quantities:
+                    quantities.pop(symbol)
+                elif name in quantities:
+                    quantities.pop(name)
 
         return fields
 

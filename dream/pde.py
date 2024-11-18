@@ -120,24 +120,17 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
         state = self.fem.get_fields(quantities)
 
         for quantity in quantities:
-            logger.info(f"Quantity {quantity} not defined!")
+            logger.info(f"Quantity {quantity} not predefined!")
 
         return state
 
-    def get_drawing_fields(self, **quantities: bool) -> ngsdict:
-        self.drawings = self.get_fields(**quantities)
-        return self.drawings
+    def draw(self, fields: ngsdict, **kwargs):
+        if is_notebook():
+            from ngsolve.webgui import Draw
+        else:
+            from ngsolve import Draw
 
-    def draw(self, **kwargs):
-
-        if hasattr(self, "drawings"):
-
-            if is_notebook():
-                from ngsolve.webgui import Draw
-            else:
-                from ngsolve import Draw
-
-            self.scenes = [Draw(draw, self.mesh, name, **kwargs) for name, draw in self.drawings.items()]
+        self.scenes = [Draw(draw, self.mesh, name, **kwargs) for name, draw in fields.items()]
 
     def redraw(self, blocking: bool = False):
 
