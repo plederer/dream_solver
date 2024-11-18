@@ -25,8 +25,7 @@ cfg.pde.initialize_boundary_conditions()
 cfg.pde.initialize_symbolic_forms()
 
 # Draw quantities
-drawing = cfg.pde.get_drawing_state(u=True, p=True)
-cfg.pde.draw()
+cfg.pde.draw(cfg.pde.get_fields(u=True, p=True))
 
 # Initialize the solver and solve the system
 cfg.solver.initialize()
@@ -42,7 +41,7 @@ cfg.solver.max_iterations = 100
 
 # Initialize forms again without reinitializing the finite element spaces
 cfg.pde.initialize_symbolic_forms()
-drawing = cfg.pde.get_drawing_state(u=True, p=True)
+cfg.pde.draw(cfg.pde.get_fields(u=True, p=True))
 
 # Solve the system again
 cfg.solver.initialize()

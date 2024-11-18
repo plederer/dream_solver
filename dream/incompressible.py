@@ -159,7 +159,7 @@ class IncompressibleFiniteElement(FiniteElementMethod, is_interface=True):
     def get_incompressible_state(self, u: ngs.CF) -> flowstate:
         raise NotImplementedError()
 
-    def get_state(self, quantities: dict[str, bool]) -> ngsdict:
+    def get_fields(self, quantities: dict[str, bool]) -> ngsdict:
         u = self.get_incompressible_state(self.cfg.pde.gfu)
 
         state = flowstate()
