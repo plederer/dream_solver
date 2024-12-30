@@ -23,6 +23,11 @@ class Upwind(RiemannSolver):
     name = "upwind"
 
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        
+            .. math::
+                \bm{\tau}_c := \bm{A}_n^+
+        """
         unit_vector = bla.as_vector(unit_vector)
         return self.cfg.pde.get_conservative_convective_jacobian(U, unit_vector, 'outgoing')
 
@@ -33,6 +38,11 @@ class LaxFriedrich(RiemannSolver):
     aliases = ('lf', )
 
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        
+            .. math::
+                \bm{\tau}_c := (|u_n| + c) \bm{I}
+        """
         unit_vector = bla.as_vector(unit_vector)
 
         u = self.cfg.pde.velocity(U)
@@ -47,6 +57,11 @@ class Roe(RiemannSolver):
     name = "roe"
 
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        
+            .. math::
+                \bm{\tau}_c := |A_n|
+        """
         unit_vector = bla.as_vector(unit_vector)
 
         lambdas = self.cfg.pde.characteristic_velocities(U, unit_vector, "absolute")
@@ -58,6 +73,11 @@ class HLL(RiemannSolver):
     name = "hll"
 
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        
+            .. math::
+                \bm{\tau}_c := \max(u_n + c, 0) \bm{I}
+        """
         unit_vector = bla.as_vector(unit_vector)
 
         u = self.cfg.pde.velocity(U)
@@ -75,13 +95,26 @@ class HLLEM(RiemannSolver):
 
     @configuration(default=1e-8)
     def theta_0(self, value):
-        """ Defines a threshold value used to stabilize contact waves, when the eigenvalue tends to zero.
-
+        r""" Defines a threshold value used to stabilize contact waves, when the eigenvalue tends to zero.
         This can occur if the flow is parallel to the element or domain boundary!
+
+        .. math::
+            \theta_0
         """
         return float(value)
+    
+    theta_0: float
 
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        
+            .. math::
+                \begin{align*}
+                \theta &:= \max\left(\frac{|u_n|}{|u_n| + c}, \theta_0\right), &
+                \Theta &:=  \text{diag}(1, \theta, \ldots, \theta, 1), &
+                \bm{\tau}_c &:= \bm{P} \bm{\Theta} \bm{P}^{-1}
+                \end{align*}
+        """
         unit_vector = bla.as_vector(unit_vector)
 
         u = self.cfg.pde.velocity(U)
@@ -97,4 +130,3 @@ class HLLEM(RiemannSolver):
 
         return s_plus * THETA
 
-    theta_0: float
