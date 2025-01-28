@@ -1,0 +1,395 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partial Differential Equations &mdash; dream 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=2709fde1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{#1}", 1]}}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="Solvers" href="solvers.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            dream
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Solvers:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="solvers.html">Solvers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">PDEs:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Partial Differential Equations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.fem"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.fem</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.mach_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.reynolds_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.prandtl_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.prandtl_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.equation_of_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.equation_of_state</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.dynamic_viscosity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.scaling</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.riemann_solver</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.get_farfield_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.get_farfield_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.get_dimensional_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.get_dimensional_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.get_convective_flux()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.get_diffusive_flux()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.get_local_mach_number()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.get_local_reynolds_number()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.CompressibleFlowConfiguration.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowConfiguration.deviatoric_stress_tensor()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">dream</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Partial Differential Equations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/module/pde.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="partial-differential-equations">
+<h1>Partial Differential Equations<a class="headerlink" href="#partial-differential-equations" title="Link to this heading"></a></h1>
+<p>This class can be used as…</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dream.compressible.</span></span><span class="sig-name descname"><span class="pre">CompressibleFlowConfiguration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration" title="Link to this definition"></a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.fem">
+<span class="sig-name descname"><span class="pre">fem</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ConservativeFiniteElementMethod</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.fem" title="Link to this definition"></a></dt>
+<dd><p>Sets the finite element for the compressible flow solver.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the finite element, defaults to ConservativeFiniteElement</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the finite element</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.mach_number">
+<span class="sig-name descname"><span class="pre">mach_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ngs.Parameter</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.mach_number" title="Link to this definition"></a></dt>
+<dd><p>Sets the ratio of the farfield flow velocity to the farfield speed of sound.</p>
+<div class="math notranslate nohighlight">
+\[\Ma_\infty = \frac{u_\infty}{c_\infty}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the Mach number, defaults to 0.3</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the Mach number</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.reynolds_number">
+<span class="sig-name descname"><span class="pre">reynolds_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ngs.Parameter</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.reynolds_number" title="Link to this definition"></a></dt>
+<dd><p>Sets the ratio of inertial to viscous forces</p>
+<div class="math notranslate nohighlight">
+\[\Re_\infty = \frac{\rho_\infty u_\infty L}{\mu_\infty}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the Reynolds number, defaults to 150</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the Reynolds number</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.prandtl_number">
+<span class="sig-name descname"><span class="pre">prandtl_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ngs.Parameter</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.prandtl_number" title="Link to this definition"></a></dt>
+<dd><p>Sets the ratio of momentum diffusivity to thermal diffusivity</p>
+<div class="math notranslate nohighlight">
+\[\Pr_\infty = \frac{c_p \mu_\infty}{k_\infty}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the Prandtl number, defaults to 0.72</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the Prandtl number</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.equation_of_state">
+<span class="sig-name descname"><span class="pre">equation_of_state</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">IdealGas</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.equation_of_state" title="Link to this definition"></a></dt>
+<dd><p>Sets the equation of state for the compressible flow solver.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the equation of state, defaults to IdealGas</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the equation of state</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.dynamic_viscosity">
+<span class="sig-name descname"><span class="pre">dynamic_viscosity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Constant</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Inviscid</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Sutherland</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.dynamic_viscosity" title="Link to this definition"></a></dt>
+<dd><p>Sets the dynamic viscosity for the compressible flow solver.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the dynamic viscosity, defaults to Inviscid</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the dynamic viscosity</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.scaling">
+<span class="sig-name descname"><span class="pre">scaling</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Aerodynamic</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Acoustic</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Aeroacoustic</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.scaling" title="Link to this definition"></a></dt>
+<dd><p>Sets the dimensional scaling for the compressible flow solver.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the scaling, defaults to Aerodynamic</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the scaling</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.riemann_solver">
+<span class="sig-name descname"><span class="pre">riemann_solver</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">LaxFriedrich</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Roe</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">HLL</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">HLLEM</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.riemann_solver" title="Link to this definition"></a></dt>
+<dd><p>Sets the Riemann solver for the compressible flow solver.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Setter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sets the Riemann solver, defaults to LaxFriedrich</p>
+</dd>
+<dt class="field-even">Getter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Returns the Riemann solver</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.reference_reynolds_number">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_reynolds_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.reference_reynolds_number" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference Reynolds number depending on the scaling in use.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\Re_r = \begin{cases} \Re_\infty &amp; \text{if Aerodynamic} \\
+                      \frac{\Re_\infty}{\Ma_\infty} &amp; \text{if Acoustic} \\
+                      \frac{\Re_\infty (1+\Ma_\infty)}{\Ma_\infty} &amp; \text{if Aeroacoustic} \end{cases}\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the reference Reynolds number</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.get_farfield_state">
+<span class="sig-name descname"><span class="pre">get_farfield_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">flowstate</span></span></span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.get_farfield_state" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield state depending on the scaling in use and the flow direction.</p>
+<dl>
+<dt>Aerodynamic Scaling</dt><dd><div class="math notranslate nohighlight">
+\[\begin{align*}
+    \rho &amp;= 1, &amp;
+    \| \bm{u} \|  &amp;= 1, &amp;
+    c &amp;= \frac{1}{\Ma_\infty}, &amp;
+    T &amp;= \frac{1}{(\gamma - 1)\Ma_\infty^2}, &amp;
+    p &amp;= \frac{1}{\gamma \Ma_\infty^2}.
+\end{align*}\]</div>
+</dd>
+<dt>Acoustic Scaling</dt><dd><div class="math notranslate nohighlight">
+\[\begin{align*}
+    \rho &amp;= 1, &amp;
+    \| \bm{u} \|  &amp;= \Ma_\infty, &amp;
+    c &amp;= 1, &amp;
+    T &amp;= \frac{1}{(\gamma - 1)}, &amp;
+    p &amp;= \frac{1}{\gamma}.
+\end{align*}\]</div>
+</dd>
+<dt>Aeroacoustic Scaling</dt><dd><div class="math notranslate nohighlight">
+\[\begin{align*}
+    \rho &amp;= 1, &amp;
+    \| \bm{u} \|  &amp;= \frac{\Ma_\infty}{1 + \Ma_\infty}, &amp;
+    c &amp;= \frac{1}{1 + \Ma_\infty}, &amp;
+    T &amp;= \frac{1}{(\gamma - 1) ( 1+ \Ma_\infty^2)}, &amp;
+    p &amp;= \frac{1}{\gamma (1+ \Ma_\infty^2)}.
+\end{align*}\]</div>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>direction</strong> – A container containing the flow direction</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.get_dimensional_state">
+<span class="sig-name descname"><span class="pre">get_dimensional_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">flowstate</span></span></span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.get_dimensional_state" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensional state from a given state depending on the scaling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>U</strong> (<em>flowstate</em>) – A dictionary containing the flow quantities</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.get_convective_flux">
+<span class="sig-name descname"><span class="pre">get_convective_flux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.get_convective_flux" title="Link to this definition"></a></dt>
+<dd><p>Returns the conservative convective flux from a given state.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\bm{F} = \begin{pmatrix} \rho \bm{u} \\ \rho \bm{u} \otimes \bm{u} + p \bm{I} \\ \rho H \bm{u} \end{pmatrix}\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>U</strong> (<em>flowstate</em>) – A dictionary containing the flow quantities</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.get_diffusive_flux">
+<span class="sig-name descname"><span class="pre">get_diffusive_flux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.get_diffusive_flux" title="Link to this definition"></a></dt>
+<dd><p>Returns the conservative diffusive flux from given states.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\bm{G} = \begin{pmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \bm{q}\right) \end{pmatrix}\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>U</strong> (<em>flowstate</em>) – A dictionary containing the flow quantities</p></li>
+<li><p><strong>dU</strong> (<em>flowstate</em>) – A dictionary containing the gradients of the flow quantities</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.get_local_mach_number">
+<span class="sig-name descname"><span class="pre">get_local_mach_number</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.get_local_mach_number" title="Link to this definition"></a></dt>
+<dd><p>Returns the local Mach number from a given state.</p>
+<div class="math notranslate nohighlight">
+\[\Ma = \frac{\| \bm{u} \|}{c}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>U</strong> (<em>flowstate</em>) – A dictionary containing the flow quantities</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.get_local_reynolds_number">
+<span class="sig-name descname"><span class="pre">get_local_reynolds_number</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.get_local_reynolds_number" title="Link to this definition"></a></dt>
+<dd><p>Returns the local Reynolds number from a given state.</p>
+<div class="math notranslate nohighlight">
+\[\Re = \frac{\rho \| \bm{u} \|}{\mu}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>U</strong> (<em>flowstate</em>) – A dictionary containing the flow quantities</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.CompressibleFlowConfiguration.deviatoric_stress_tensor">
+<span class="sig-name descname"><span class="pre">deviatoric_stress_tensor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">flowstate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.CompressibleFlowConfiguration.deviatoric_stress_tensor" title="Link to this definition"></a></dt>
+<dd><p>Returns the deviatoric stress tensor from the given states.</p>
+<div class="math notranslate nohighlight">
+\[\bm{\tau} = \frac{2\mu}{\Re_r} \bm{\varepsilon}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>U</strong> (<em>flowstate</em>) – A dictionary containing the flow quantities</p></li>
+<li><p><strong>dU</strong> (<em>flowstate</em>) – A dictionary containing the gradients of the flow quantities</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="solvers.html" class="btn btn-neutral float-left" title="Solvers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Philip Lederer.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
