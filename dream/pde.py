@@ -80,15 +80,20 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
         self.fes: ngs.ProductSpace = fes[0]
 
     def initialize_trial_and_test_functions(self) -> None:
-        self.TnT = {label: (tr, te) for label, tr, te in zip(
-            self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
+
+        if len(self.spaces) > 1:
+            self.TnT = {label: (tr, te) for label, tr, te in zip(
+                self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
+        else:
+            self.TnT = {label: self.fes.TnT() for label in self.spaces}
 
     def initialize_gridfunctions(self) -> None:
         self.gfu = ngs.GridFunction(self.fes)
 
-        self.gfus = {label: self.gfu for label in self.spaces.keys()}
-        for label, gfu in zip(self.spaces.keys(), self.gfu.components):
-            self.gfus[label] = gfu
+        if len(self.spaces) > 1:
+            self.gfus = {label: gfu for label, gfu in zip(self.spaces, self.gfu.components)}
+        else:
+            self.gfus = {label: self.gfu for label in self.spaces}
 
     def initialize_transient_gridfunctions(self) -> None:
         self.transient_gfus = {}
