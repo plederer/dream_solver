@@ -26,11 +26,13 @@ class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                           lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_forms(self, 
+                           blfi: dict[str, ngs.comp.SumOfIntegrals],
+                           blfe: dict[str, ngs.comp.SumOfIntegrals],
+                           lf:   dict[str, ngs.comp.SumOfIntegrals]):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def get_state(self, quantities: dict[str, bool]) -> ngsdict:
+    def get_fields(self, quantities: dict[str, bool]) -> ngsdict:
         raise NotImplementedError("Overload this method in derived class!")
 
     def set_initial_conditions(self) -> None:
@@ -80,24 +82,30 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
         self.fes: ngs.ProductSpace = fes[0]
 
     def initialize_trial_and_test_functions(self) -> None:
-        self.TnT = {label: (tr, te) for label, tr, te in zip(
-            self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
+
+        if len(self.spaces) > 1:
+            self.TnT = {label: (tr, te) for label, tr, te in zip(
+                self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
+        else:
+            self.TnT = {label: self.fes.TnT() for label in self.spaces}
 
     def initialize_gridfunctions(self) -> None:
         self.gfu = ngs.GridFunction(self.fes)
 
-        self.gfus = {label: self.gfu for label in self.spaces.keys()}
-        for label, gfu in zip(self.spaces.keys(), self.gfu.components):
-            self.gfus[label] = gfu
+        if len(self.spaces) > 1:
+            self.gfus = {label: gfu for label, gfu in zip(self.spaces, self.gfu.components)}
+        else:
+            self.gfus = {label: self.gfu for label in self.spaces}
 
     def initialize_transient_gridfunctions(self) -> None:
         self.transient_gfus = {}
         self.fem.add_transient_gridfunctions(self.transient_gfus)
 
     def initialize_symbolic_forms(self) -> None:
-        self.blf = {}
-        self.lf = {}
-        self.fem.add_symbolic_forms(self.blf, self.lf)
+        self.blfi = {}
+        self.blfe = {}
+        self.lf   = {}
+        self.fem.add_symbolic_forms(self.blfi, self.blfe, self.lf)
 
     def initialize_boundary_conditions(self) -> None:
 
@@ -116,28 +124,21 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
 
             self.cfg.time.scheme.set_initial_conditions(self.transient_gfus)
 
-    def get_state(self, **quantities: bool) -> ngsdict:
-        state = self.fem.get_state(quantities)
+    def get_fields(self, **quantities: bool) -> ngsdict:
+        state = self.fem.get_fields(quantities)
 
         for quantity in quantities:
-            logger.info(f"Quantity {quantity} not defined!")
+            logger.info(f"Quantity {quantity} not predefined!")
 
         return state
 
-    def get_drawing_state(self, **quantities: bool) -> ngsdict:
-        self.drawings = self.get_state(**quantities)
-        return self.drawings
+    def draw(self, fields: ngsdict, **kwargs):
+        if is_notebook():
+            from ngsolve.webgui import Draw
+        else:
+            from ngsolve import Draw
 
-    def draw(self, **kwargs):
-
-        if hasattr(self, "drawings"):
-
-            if is_notebook():
-                from ngsolve.webgui import Draw
-            else:
-                from ngsolve import Draw
-
-            self.scenes = [Draw(draw, self.mesh, name, **kwargs) for name, draw in self.drawings.items()]
+        self.scenes = [Draw(draw, self.mesh, name, **kwargs) for name, draw in fields.items()]
 
     def redraw(self, blocking: bool = False):
 
