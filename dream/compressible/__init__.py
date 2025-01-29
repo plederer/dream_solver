@@ -308,15 +308,31 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         return bla.as_matrix((continuity, tau, tau*u - q), dims=(u.dim + 2, u.dim))
 
     def get_local_mach_number(self, U: flowstate):
+        r""" Returns the local Mach number from a given state.
+
+            .. math::
+                \Ma = \frac{\| \bm{u} \|}{c}
+    
+            :param U: A dictionary containing the flow quantities
+            :type U: flowstate
+        """
         u = self.velocity(U)
         c = self.speed_of_sound(U)
         return ngs.sqrt(bla.inner(u, u))/c
 
     def get_local_reynolds_number(self, U: flowstate):
+        r""" Returns the local Reynolds number from a given state.
+
+            .. math::
+                \Re = \frac{\rho \| \bm{u} \|}{\mu}
+    
+            :param U: A dictionary containing the flow quantities
+            :type U: flowstate
+        """
         rho = self.density(U)
         u = self.velocity(U)
         mu = self.viscosity(U)
-        return rho * u / mu
+        return rho * ngs.sqrt(bla.inner(u, u)) / mu
 
     def get_primitive_convective_jacobian(self, U: flowstate, unit_vector: bla.VECTOR, type: str = None):
         lambdas = self.characteristic_velocities(U, unit_vector, type)
@@ -656,7 +672,7 @@ class CompressibleFlowConfiguration(PDEConfiguration):
         r""" Returns the deviatoric stress tensor from the given states. 
 
             .. math::
-                \bm{\tau} = 2 \frac{\mu}{\Re_r} \mat{\varepsilon}
+                \bm{\tau} = \frac{2\mu}{\Re_r} \bm{\varepsilon}
 
             :param U: A dictionary containing the flow quantities
             :type U: flowstate
@@ -744,3 +760,28 @@ class CompressibleFlowConfiguration(PDEConfiguration):
     @equation
     def isentropic_density(self, U: flowstate, Uref: flowstate) -> bla.SCALAR:
         return self.equation_of_state.isentropic_density(U, Uref)
+
+    @equation
+    def pressure_coefficient(self, U: flowstate, Uref: flowstate):
+        return (self.pressure(U) - self.pressure(Uref))/(self.kinetic_energy(Uref))
+
+    @equation
+    def stress_tensor(self, U: flowstate, dU: flowstate = None) -> bla.MATRIX:
+
+        sigma = -self.pressure(U) * ngs.Id(self.mesh.dim)
+        if not self.dynamic_viscosity.is_inviscid:
+            sigma += self.deviatoric_stress_tensor(U, dU)
+
+        return sigma
+
+    @equation
+    def drag_coefficient(
+            self, U: flowstate, dU: flowstate, Uref: flowstate, drag_direction: tuple[float, ...]) -> bla.SCALAR:
+        stress = self.stress_tensor(U, dU) * self.mesh.normal
+        return bla.inner(stress, bla.unit_vector(drag_direction))/(self.kinetic_energy(Uref))
+
+    @equation
+    def lift_coefficient(
+            self, U: flowstate, dU: flowstate, Uref: flowstate, lift_direction: tuple[float, ...]) -> bla.SCALAR:
+        stress = self.stress_tensor(U, dU) * self.mesh.normal
+        return bla.inner(stress, bla.unit_vector(lift_direction))/(self.kinetic_energy(Uref))

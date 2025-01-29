@@ -24,6 +24,10 @@ class MixedMethod(InterfaceConfiguration, is_interface=True):
     cfg: SolverConfiguration
 
     @property
+    def fem(self) -> ConservativeFiniteElementMethod:
+        return self.cfg.pde.fem
+
+    @property
     def Q_TnT(self) -> ngs.CF:
         return self.cfg.pde.TnT['Q']
 
@@ -82,7 +86,7 @@ class StrainHeat(MixedMethod):
             raise TypeError(f"Inviscid configuration does not require mixed method!")
 
         dim = 4*self.mesh.dim - 3
-        order = self.cfg.pde.fem.order
+        order = self.fem.order
 
         Q = ngs.L2(self.mesh, order=order)
         Q = self.cfg.pde.dcs.reduce_psponge_layers_order_elementwise(Q)
@@ -99,16 +103,16 @@ class StrainHeat(MixedMethod):
 
         bonus = self.cfg.optimizations.bonus_int_order
 
-        U, _ = self.cfg.pde.fem.method.U_TnT
-        Uhat, _ = self.cfg.pde.fem.method.Uhat_TnT
+        U, _ = self.fem.method.U_TnT
+        Uhat, _ = self.fem.method.Uhat_TnT
         Q, P = self.Q_TnT
 
-        U = self.cfg.pde.fem.method.get_conservative_state(U)
-        Uhat = self.cfg.pde.fem.method.get_conservative_state(Uhat)
+        U = self.fem.method.get_conservative_fields(U)
+        Uhat = self.fem.method.get_conservative_fields(Uhat)
 
         gradient_P = ngs.grad(P)
-        Q = self.get_mixed_state(Q)
-        P = self.get_mixed_state(P)
+        Q = self.get_mixed_fields(Q)
+        P = self.get_mixed_fields(P)
 
         dev_zeta = P.eps - bla.trace(P.eps) * ngs.Id(self.mesh.dim)/3
         div_dev_zeta = ngs.CF((gradient_P[0, 0] + gradient_P[1, 1], gradient_P[1, 0] + gradient_P[2, 1]))
@@ -132,10 +136,10 @@ class StrainHeat(MixedMethod):
             raise NotImplementedError("StrainHeat method CBC is not implemented for domain dimension 3!")
 
         Q, _ = self.Q_TnT
-        U, _ = self.cfg.pde.fem.method.U_TnT
+        U, _ = self.fem.method.U_TnT
 
-        U = self.cfg.pde.fem.method.get_conservative_state(U)
-        Q = self.get_mixed_state(Q)
+        U = self.fem.method.get_conservative_fields(U)
+        Q = self.get_mixed_fields(Q)
 
         t = self.mesh.tangential
         n = self.mesh.normal
@@ -162,7 +166,7 @@ class StrainHeat(MixedMethod):
 
         return S
 
-    def get_mixed_state(self, Q: ngs.CF):
+    def get_mixed_fields(self, Q: ngs.CF):
 
         dim = self.mesh.dim
 
@@ -288,7 +292,7 @@ class Gradient(MixedMethod):
             raise TypeError(f"Inviscid configuration does not require mixed method!")
 
         dim = self.mesh.dim + 2
-        order = self.cfg.pde.fem.order
+        order = self.fem.order
 
         Q = ngs.VectorL2(self.mesh, order=order)
         Q = self.cfg.pde.dcs.reduce_psponge_layers_order_elementwise(Q)
@@ -301,8 +305,8 @@ class Gradient(MixedMethod):
                               lf:   dict[str, ngs.comp.SumOfIntegrals]) -> None:
 
         Q, P = self.Q_TnT
-        U, _ = self.cfg.pde.fem.method.U_TnT
-        Uhat, _ = self.cfg.pde.fem.method.Uhat_TnT
+        U, _ = self.fem.method.U_TnT
+        Uhat, _ = self.fem.method.Uhat_TnT
 
         blfi['mixed']  = ngs.InnerProduct(Q, P) * ngs.dx
         blfi['mixed'] += ngs.InnerProduct(U, ngs.div(P)) * ngs.dx
@@ -314,7 +318,7 @@ class Gradient(MixedMethod):
                                lf:   dict[str, ngs.comp.SumOfIntegrals]):
         raise NotImplementedError("Initial Conditions not implemented!")
 
-    def get_mixed_state(self, Q: ngs.CoefficientFunction):
+    def get_mixed_fields(self, Q: ngs.CoefficientFunction):
 
         if isinstance(Q, ngs.GridFunction):
             Q = Q.components
@@ -373,7 +377,7 @@ class ConservativeMethod(InterfaceConfiguration, is_interface=True):
 
         blfi['time'] = bla.inner(U_dt, V) * ngs.dx
 
-    def get_conservative_state(self, U: ngs.CoefficientFunction) -> flowstate:
+    def get_conservative_fields(self, U: ngs.CoefficientFunction) -> flowstate:
 
         if isinstance(U, ngs.GridFunction):
             U = U.components
@@ -395,19 +399,24 @@ class ConservativeMethod(InterfaceConfiguration, is_interface=True):
 
         return U_
 
-    def get_state(self, quantities: dict[str, bool]) -> flowstate:
-        U = self.get_conservative_state(self.U_gfu)
+    def get_conservative_gradient_fields(self, U: ngs.CoefficientFunction) -> flowstate:
 
-        draw = flowstate()
-        for symbol, name in U.symbols.items():
-            if name in quantities and quantities[name]:
-                quantities.pop(name)
-                draw[symbol] = getattr(self.cfg.pde, name)(U)
-            elif symbol in quantities and quantities[symbol]:
-                quantities.pop(symbol)
-                draw[symbol] = getattr(self.cfg.pde, name)(U)
+        U_ = self.get_conservative_fields(U)
 
-        return draw
+        if isinstance(U, ngs.GridFunction):
+            dU = ngs.grad(U)
+
+            U_.grad_rho = dU[0, :]
+            U_.grad_rho_u = dU[slice(1, self.mesh.dim + 1), :]
+            U_.grad_rho_E = dU[self.mesh.dim + 1, :]
+
+            U_.grad_u = self.cfg.pde.velocity_gradient(U_, U_)
+            U_.grad_rho_Ek = self.cfg.pde.kinetic_energy_gradient(U_, U_)
+            U_.grad_rho_Ei = self.cfg.pde.inner_energy_gradient(U_, U_)
+            U_.grad_p = self.cfg.pde.pressure_gradient(U_, U_)
+            U_.grad_T = self.cfg.pde.temperature_gradient(U_, U_)
+
+        return U_
 
 
 class DG(ConservativeMethod):
@@ -556,8 +565,8 @@ class HDG(ConservativeMethod):
         U, V = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
-        U = self.get_conservative_state(U)
-        Uhat = self.get_conservative_state(Uhat)
+        U = self.get_conservative_fields(U)
+        Uhat = self.get_conservative_fields(Uhat)
 
         F = self.cfg.pde.get_convective_flux(U)
         Fn = self.get_convective_numerical_flux(U, Uhat, self.mesh.normal)
@@ -579,9 +588,9 @@ class HDG(ConservativeMethod):
         Uhat, Vhat = self.Uhat_TnT
         Q, _ = self.mixed_method.Q_TnT
 
-        U = self.get_conservative_state(U)
-        Uhat = self.get_conservative_state(Uhat)
-        Q = self.cfg.pde.fem.mixed_method.get_mixed_state(Q)
+        U = self.get_conservative_fields(U)
+        Uhat = self.get_conservative_fields(Uhat)
+        Q = self.cfg.pde.fem.mixed_method.get_mixed_fields(Q)
 
         G = self.cfg.pde.get_diffusive_flux(U, Q)
         Gn = self.get_diffusive_numerical_flux(U, Uhat, Q, self.mesh.normal)
@@ -659,7 +668,7 @@ class HDG(ConservativeMethod):
 
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
-        Uhat = self.get_conservative_state(Uhat)
+        Uhat = self.get_conservative_fields(Uhat)
 
         U_infty = ngs.CF(
             (self.cfg.pde.density(bc.state),
@@ -689,7 +698,7 @@ class HDG(ConservativeMethod):
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
-        U = self.get_conservative_state(U)
+        U = self.get_conservative_fields(U)
         U_bc = flowstate(rho=U.rho, rho_u=U.rho_u, rho_Ek=U.rho_Ek, p=bc.state.p)
         U_bc = ngs.CF((self.cfg.pde.density(U_bc), self.cfg.pde.momentum(U_bc), self.cfg.pde.energy(U_bc)))
 
@@ -709,8 +718,8 @@ class HDG(ConservativeMethod):
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
-        U = self.get_conservative_state(U)
-        Uhat = self.get_conservative_state(Uhat)
+        U = self.get_conservative_fields(U)
+        Uhat = self.get_conservative_fields(Uhat)
 
         if bc.target == "farfield":
             U_bc = ngs.CF(
@@ -765,7 +774,7 @@ class HDG(ConservativeMethod):
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
-        U = self.get_conservative_state(U)
+        U = self.get_conservative_fields(U)
 
         rho = self.cfg.pde.density(U)
         rho_u = self.cfg.pde.momentum(U)
@@ -787,7 +796,7 @@ class HDG(ConservativeMethod):
         U, _ = self.U_TnT
         Uhat, Vhat = self.Uhat_TnT
 
-        U = self.get_conservative_state(U)
+        U = self.get_conservative_fields(U)
         U_bc = flowstate(rho=U.rho, rho_u=tuple(0 for _ in range(self.mesh.dim)), rho_Ek=0, T=bc.state.T)
         U_bc = ngs.CF((self.cfg.pde.density(U_bc), self.cfg.pde.momentum(U_bc), self.cfg.pde.inner_energy(U_bc)))
 
@@ -812,9 +821,9 @@ class HDG(ConservativeMethod):
         Uhat, Vhat = self.Uhat_TnT
         Q, _ = self.mixed_method.Q_TnT
 
-        U = self.get_conservative_state(U)
-        Uhat = self.get_conservative_state(Uhat)
-        Q = self.mixed_method.get_mixed_state(Q)
+        U = self.get_conservative_fields(U)
+        Uhat = self.get_conservative_fields(Uhat)
+        Q = self.mixed_method.get_mixed_fields(Q)
 
         tau = self.mixed_method.get_diffusive_stabilisation_matrix(U)
         T_grad = self.cfg.pde.temperature_gradient(U, Q)
@@ -959,9 +968,33 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElement):
         self.method.add_boundary_conditions(blfi, blfe, lf)
         self.method.add_domain_conditions(blfi, blfe, lf)
 
-    def get_state(self, quantities: dict[str, bool]) -> flowstate:
-        U = self.method.get_state(quantities)
-        return U
+    def get_fields(self, quantities: dict[str, bool]) -> flowstate:
+
+        U = self.method.get_conservative_gradient_fields(self.method.U_gfu)
+        if not isinstance(self.mixed_method, Inactive):
+            U.update(self.mixed_method.get_mixed_fields(self.mixed_method.Q_gfu))
+
+        defaults = {'rho': True, 'u': True, 'p': True, 'T': True}
+        defaults.update(quantities)
+
+        fields = flowstate()
+        for symbol, value in defaults.items():
+            if not value:
+                continue
+
+            name = symbol
+            if symbol in U.symbols:
+                name = U.symbols[symbol]
+
+            if name in U:
+                fields[name] = U[name]
+
+                if symbol in quantities:
+                    quantities.pop(symbol)
+                elif name in quantities:
+                    quantities.pop(name)
+
+        return fields
 
     def set_initial_conditions(self) -> None:
 

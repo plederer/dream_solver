@@ -98,9 +98,11 @@ class IdealGas(EquationOfState):
         r"""Returns the density from a given state
 
         .. math::
-            \rho = \frac{\gamma}{\gamma - 1} \frac{p}{T}
-            \rho = \gamma \frac{\rho E_i}{T}
-            \rho = \gamma \frac{p}{c^2}
+            \begin{align*}
+            \rho &= \frac{\gamma}{\gamma - 1} \frac{p}{T}, &
+            \rho &= \gamma \frac{\rho E_i}{T}, &
+            \rho &= \gamma \frac{p}{c^2}
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -125,9 +127,11 @@ class IdealGas(EquationOfState):
         r"""Returns the density from a given state
 
         .. math::
-            p = \frac{\gamma - 1}{\gamma} \rho T
-            p = (\gamma - 1) \rho E_i
-            p = \rho \frac{c^2}{\gamma}
+            \begin{align*}
+            p &= \frac{\gamma - 1}{\gamma} \rho T, &
+            p &= (\gamma - 1) \rho E_i, &
+            p &= \rho \frac{c^2}{\gamma}
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -152,9 +156,11 @@ class IdealGas(EquationOfState):
         r"""Returns the temperature from a given state
 
         .. math::
-            T = \frac{\gamma}{\gamma - 1} \frac{p}{\rho}
-            T = \gamma E_i
-            T = \frac{c^2}{\gamma - 1}
+            \begin{align*}
+            T &= \frac{\gamma}{\gamma - 1} \frac{p}{\rho}, &
+            T &= \gamma E_i, &
+            T &= \frac{c^2}{\gamma - 1}
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -179,8 +185,10 @@ class IdealGas(EquationOfState):
         r"""Returns the inner energy from a given state
 
         .. math::
-            \rho E_i = \frac{p}{\gamma - 1}
-            \rho E_i = \rho \frac{T}{\gamma}
+            \begin{align*}
+            \rho E_i &= \frac{p}{\gamma - 1}, &
+            \rho E_i &= \rho \frac{T}{\gamma}
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -201,8 +209,10 @@ class IdealGas(EquationOfState):
         r"""Returns the specific inner energy from a given state
 
         .. math::
-            E_i = \frac{T}{\gamma}
-            E_i = \frac{p}{\rho (\gamma - 1)}
+            \begin{align*}
+            E_i &= \frac{T}{\gamma}, &
+            E_i &= \frac{p}{\rho (\gamma - 1)}
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -223,8 +233,10 @@ class IdealGas(EquationOfState):
         r"""Returns the speed of sound from a given state
 
         .. math::
-            c = \sqrt(\gamma \frac{p}{\rho})
-            c = \sqrt((\gamma - 1) T)
+            \begin{align*}
+            c &= \sqrt{\gamma \frac{p}{\rho}}, &
+            c &= \sqrt{(\gamma - 1) T}
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -250,8 +262,10 @@ class IdealGas(EquationOfState):
         r"""Returns the density gradient from a given state
 
         .. math::
-            \nabla \rho = \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{T} - p \frac{\nabla T}{T^2} \right]
-            \nabla \rho = \gamma \left[ \frac{ \nabla (\rho E_i)}{T} - \rho E_i \frac{\nabla T}{T^2} \right]
+            \begin{align*}
+            \nabla \rho &= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{T} - p \frac{\nabla T}{T^2} \right], &
+            \nabla \rho &= \gamma \left[ \frac{ \nabla (\rho E_i)}{T} - \rho E_i \frac{\nabla T}{T^2} \right]
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -270,8 +284,10 @@ class IdealGas(EquationOfState):
         r"""Returns the pressure gradient from a given state
 
         .. math::
-            \nabla p = \frac{\gamma - 1}{\gamma} \left[ (\nabla \rho) T + (\nabla T) \rho \right]
-            \nabla p = (\gamma - 1) \nabla \rho E_i
+            \begin{align*}
+            \nabla p &= \frac{\gamma - 1}{\gamma} \left[ (\nabla \rho) T + (\nabla T) \rho \right], &
+            \nabla p &= (\gamma - 1) \nabla \rho E_i
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -290,8 +306,10 @@ class IdealGas(EquationOfState):
         r"""Returns the temperature gradient from a given state
 
         .. math::
-            \nabla T = \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{\rho} - p \frac{\nabla \rho}{\rho^2} \right]
-            \nabla T = \gamma \nabla E_i
+            \begin{align*}
+            \nabla T &= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{\rho} - p \frac{\nabla \rho}{\rho^2} \right], &
+            \nabla T &= \gamma \nabla E_i
+            \end{align*}
         """
 
         gamma = self.heat_capacity_ratio
@@ -369,14 +387,13 @@ class IdealGas(EquationOfState):
 
     def characteristic_amplitudes(self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR,
                                   type_: str = None) -> bla.VECTOR:
-        """ The charachteristic amplitudes are defined as
+        r""" Returns the charachteristic amplitudes
 
             .. math::
-                \mathcal{L} = \Lambda * L_inverse * dV/dn,
-
-        where Lambda is the eigenvalue matrix, L_inverse is the mapping from
-        primitive variables to charachteristic variables and dV/dn is the
-        derivative normal to the boundary.
+                \begin{align*}
+                    \bm{\mathcal{L}} &:= \bm{\Lambda} \bm{P}^{-1} \frac{\partial \bm{U}}{\partial n} = \bm{\Lambda} \bm{L}^{-1} \frac{\partial \bm{V}}{\partial n} = \bm{\Lambda} \frac{\partial \bm{W}}{\partial n},
+                \end{align*}
+    
         """
         velocities = self.characteristic_velocities(U, unit_vector, type_)
         variables = self.characteristic_variables(U, dU, unit_vector)

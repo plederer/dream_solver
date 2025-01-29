@@ -168,7 +168,10 @@ class TimeConfig(InterfaceConfiguration, is_interface=True):
     def is_stationary(self) -> bool:
         return isinstance(self, StationaryConfig)
 
-    def iteration_update(self, it: int):
+    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
+        raise NotImplementedError("Solution Routine not implemented!")
+
+    def solver_iteration_update(self, it: int):
         pass
 
 
@@ -176,16 +179,16 @@ class StationaryConfig(TimeConfig):
 
     name: str = "stationary"
 
-    def solution_routine(self):
+    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
 
-        self.cfg.io.initialize_streams()
-        self.cfg.io.save_pre_routine_streams()
+        with self.cfg.io as io:
+            io.save_pre_time_routine()
 
-        # Solution routine starts here
-        yield None
-        # Solution routine ends here
+            # Solution routine starts here
+            yield None
+            # Solution routine ends here
 
-        self.cfg.io.save_routine_streams()
+            io.save_post_time_routine()
 
 
 class TransientConfig(TimeConfig):
@@ -200,19 +203,22 @@ class TransientConfig(TimeConfig):
     def timer(self, timer):
         return timer
 
-    def solution_routine(self):
+    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
 
-        self.cfg.io.initialize_streams()
-        self.cfg.io.save_pre_routine_streams()
+        with self.cfg.io as io:
+            io.save_pre_time_routine(self.timer.t.Get())
 
-        # Solution routine starts here
-        for it, t in enumerate(self.timer()):
-            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
+            # Solution routine starts here
+            for it, t in enumerate(self.timer()):
+                self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
-            yield t
+                yield t
 
-            self.cfg.io.save_routine_streams(t, it)
-        # Solution routine ends here
+                io.save_in_time_routine(t, it)
+                self.cfg.pde.redraw()
+            # Solution routine ends here
+
+            io.save_post_time_routine(t, it)
 
     scheme: ImplicitEuler | BDF2
     timer: Timer
@@ -243,20 +249,23 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def increment_factor(self, increment_factor):
         return int(increment_factor)
 
-    def solution_routine(self):
+    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
 
-        self.cfg.io.initialize_streams()
-        self.cfg.io.save_pre_routine_streams()
+        with self.cfg.io as io:
+            io.save_pre_time_routine(self.timer.t.Get())
 
-        # Solution routine starts here
-        self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
+            # Solution routine starts here
+            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
-        yield None
-        # Solution routine ends here
+            yield None
+            # Solution routine ends here
+            io.save_in_time_routine(self.timer.t.Get(), it=0)
 
-        self.cfg.io.save_routine_streams()
+            self.cfg.pde.redraw()
 
-    def iteration_update(self, it: int):
+            io.save_post_time_routine(self.timer.t.Get())
+
+    def solver_iteration_update(self, it: int):
         self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
 
         old_time_step = self.timer.step.Get()
@@ -271,6 +280,8 @@ class PseudoTimeSteppingConfig(TimeConfig):
                 self.timer.step = new_time_step
                 logger.info(f"Successfully updated time step at iteration {it}")
                 logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
+
+        self.cfg.pde.redraw()
 
     scheme: ImplicitEuler | BDF2
     timer: Timer

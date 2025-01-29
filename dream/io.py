@@ -2,10 +2,13 @@ from __future__ import annotations
 import typing
 import logging
 import pickle
+import numpy as np
 from pathlib import Path
 
 import ngsolve as ngs
+import dream.bla as bla
 from dream.config import InterfaceConfiguration, UniqueConfiguration, configuration, unique, CONFIG, interface, configuration, ngsdict
+from dream.mesh import get_pattern_from_sequence, get_regions_from_pattern
 from dream._version import acknowledgements, header
 
 if typing.TYPE_CHECKING:
@@ -78,6 +81,17 @@ class stream(configuration):
         return super().__get__(cfg, owner)
 
 
+class sensor(configuration):
+    def __set__(self, cfg: SensorStream, name: str) -> None:
+
+        if self.__name__ not in cfg.data:
+            cfg.data[self.__name__] = {}
+
+        sensor = self.fset(cfg, name)
+        if isinstance(sensor, Sensor):
+            cfg.data[self.__name__][sensor.sensor_name] = sensor
+
+
 class IOFolders(InterfaceConfiguration, is_interface=True):
 
     @path(default=None)
@@ -96,6 +110,10 @@ class IOFolders(InterfaceConfiguration, is_interface=True):
     def settings(self, path):
         return path
 
+    @path(default='sensors')
+    def sensors(self, path):
+        return path
+
     def get_directory_paths(self, pattern: str = "") -> tuple[Path, ...]:
         return tuple(dir for dir in self.root.glob(pattern + "*") if dir.is_dir())
 
@@ -106,6 +124,7 @@ class IOFolders(InterfaceConfiguration, is_interface=True):
     states: Path
     vtk: Path
     settings: Path
+    sensors: Path
 
 
 class SingleFolders(IOFolders):
@@ -128,11 +147,20 @@ class Stream(InterfaceConfiguration, is_interface=True):
             filename = self.name
         return filename
 
-    def initialize(self) -> Stream:
+    def open(self) -> Stream:
         return self
 
-    def save(self, **kwargs) -> None:
-        pass
+    def save_pre_time_routine(self) -> None:
+        raise NotImplementedError("Method 'save_pre_routine' is not implemented!")
+
+    def save_in_time_routine(self, t: float, it: int) -> None:
+        raise NotImplementedError("Method 'save_routine' is not implemented!")
+
+    def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
+        raise NotImplementedError("Method 'save_post_routine' is not implemented!")
+
+    def close(self):
+        return None
 
 
 class MeshStream(Stream):
@@ -146,13 +174,13 @@ class MeshStream(Stream):
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save(self,  **kwargs) -> None:
+    def save_pre_time_routine(self) -> None:
         path = self.path.joinpath(self.filename + ".pickle")
 
         with path.open("wb") as open:
             pickle.dump(self.mesh, open, protocol=pickle.DEFAULT_PROTOCOL)
 
-    def load(self) -> ngs.Mesh:
+    def load_routine(self) -> ngs.Mesh:
         file = self.path.joinpath(self.filename + '.pickle')
         with file.open("rb") as openfile:
             return pickle.load(openfile)
@@ -181,7 +209,7 @@ class SettingsStream(Stream):
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save(self, **kwargs):
+    def save_pre_time_routine(self):
         if self.pickle:
             self.save_to_pickle()
         if self.txt:
@@ -265,7 +293,7 @@ class VTKStream(Stream):
     def fields(self, fields: dict[str, ngs.CF]):
         if fields is None:
             fields = {}
-        return fields
+        return ngsdict(**fields)
 
     @property
     def path(self) -> Path:
@@ -274,7 +302,7 @@ class VTKStream(Stream):
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def initialize(self) -> VTKStream:
+    def open(self) -> VTKStream:
 
         if not self.fields:
             raise ValueError("No fields to save!")
@@ -292,9 +320,23 @@ class VTKStream(Stream):
 
         return self
 
-    def save(self,  t: float | None = None, it: int = 0, **kwargs) -> None:
+    def save_pre_time_routine(self, t: float | None = None) -> None:
+        if t is None:
+            t = -1
+        self.writer.Do(t, drawelems=self.drawelems)
+
+    def save_in_time_routine(self,  t: float, it: int) -> None:
         if it % self.rate == 0:
             self.writer.Do(t, drawelems=self.drawelems)
+
+    def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
+        if t is None:
+            self.writer.Do(-1, drawelems=self.drawelems)
+        elif not it % self.rate == 0:
+            self.writer.Do(t, drawelems=self.drawelems)
+
+    def close(self) -> None:
+        del self.writer
 
     rate: int
     subdivision: int
@@ -302,9 +344,7 @@ class VTKStream(Stream):
     fields: ngsdict
 
 
-class StateStream(Stream):
-
-    name: str = "state"
+class FieldStream(Stream, is_interface=True):
 
     @configuration(default=1)
     def rate(self, i: int):
@@ -321,15 +361,12 @@ class StateStream(Stream):
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save(self, t: float | None = None, it: int = 0, **kwargs):
+    def save_pre_time_routine(self, t: float | None = None) -> None:
+        self.save_in_time_routine(t, it=0)
 
-        if it % self.rate == 0:
-
-            filename = self.filename
-            if t is not None:
-                filename = f"{filename}_{t}"
-
-            self.save_gridfunction(self.cfg.pde.gfu, filename)
+    def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
+        if t is None or not it % self.rate == 0:
+            self.save_in_time_routine(t, it=0)
 
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
@@ -349,46 +386,74 @@ class StateStream(Stream):
 
         gfu.Load(str(file))
 
-    def load_gridfunction_sequence(self, t: float, filename: str | None = None) -> None:
-
-        if filename is None:
-            filename = self.filename
-
-        self.load_gridfunction(self.cfg.pde.gfu, f"{filename}_{t}")
-
     rate: int
 
 
-class TimeStateStream(StateStream):
+class GridfunctionStream(FieldStream):
 
-    name: str = "time_state"
+    name: str = "gfu"
 
-    def save(self, t: float, it: int = 0, **kwargs):
+    def save_in_time_routine(self, t: float | None = None, it: int = 0):
 
         if it % self.rate == 0:
-            self.save_gridfunction(t)
 
-    def save_gridfunction(self, t: float, filename: str | None = None) -> None:
-
-        if filename is None:
             filename = self.filename
+            if t is not None:
+                filename = f"{filename}_{t}"
 
-        for fes, gfus in self.cfg.pde.transient_gfus.items():
+            self.save_gridfunction(self.cfg.pde.gfu, filename)
 
-            for level, gfu in gfus.items():
+    def load_routine(self, t: float | None = None):
 
-                super().save_gridfunction(gfu, f"{filename}_{t}_{fes}_{level}")
+        filename = self.filename
+        if t is not None:
+            filename = f"{filename}_{t}"
 
-    def load_gridfunction(self, t: float, filename: str | None = None) -> None:
+        self.load_gridfunction(self.cfg.pde.gfu, filename)
 
-        if filename is None:
-            filename = self.filename
+    def load_transient_routine(self, fields: ngsdict = None, sleep: float = 0) -> typing.Generator[float, None, None]:
+
+        if self.cfg.time.is_stationary:
+            raise ValueError("Transient routine is not available in stationary mode!")
+
+        import time
+
+        if fields is not None:
+            self.cfg.pde.draw(fields)
+
+        logger.info(f"Loading gridfunction from '{self.filename}'")
+        for t in self.cfg.time.timer.start(stride=self.rate):
+            self.load_routine(t)
+
+            self.cfg.pde.redraw()
+            logger.info(f"file: {self.filename} | t: {t}")
+
+            yield t
+
+            time.sleep(sleep)
+
+
+class TransientGridfunctionStream(FieldStream):
+
+    name: str = "gfu_dt"
+
+    def save_in_time_routine(self, t: float, it: int):
+
+        if it % self.rate == 0:
+
+            for fes, gfus in self.cfg.pde.transient_gfus.items():
+
+                for level, gfu in gfus.items():
+
+                    self.save_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
+
+    def load_time_levels(self, t: float) -> None:
 
         for fes, gfu in self.cfg.pde.transient_gfus.items():
 
             for level, gfu in gfu.items():
 
-                super().load_gridfunction(gfu, f"{filename}_{t}_{fes}_{level}")
+                self.load_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
 
 
 class LogStream(Stream):
@@ -448,9 +513,6 @@ class LogStream(Stream):
             path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def save(self, **kwargs) -> None:
-        pass
-
     def __del__(self):
         if hasattr(self, 'terminal_handler'):
             self.logger.removeHandler(self.terminal_handler)
@@ -458,10 +520,340 @@ class LogStream(Stream):
             self.logger.removeHandler(self.file_handler)
 
 
+class SensorStream(Stream):
+
+    name: str = "sensor"
+
+    @sensor(default=None)
+    def point(self, name: str):
+        if isinstance(name, str):
+            return PointSensor(sensor_name=name)
+        return None
+
+    @sensor(default=None)
+    def domain(self, name: str):
+        if isinstance(name, str):
+            return DomainSensor(sensor_name=name)
+        return None
+
+    @sensor(default=None)
+    def domain_L2(self, name: str):
+        if isinstance(name, str):
+            return DomainL2Sensor(sensor_name=name)
+        return None
+
+    @sensor(default=None)
+    def boundary(self, name: str):
+        if isinstance(name, str):
+            return BoundarySensor(sensor_name=name)
+        return None
+
+    @sensor(default=None)
+    def boundary_L2(self, name: str):
+        if isinstance(name, str):
+            return BoundaryL2Sensor(sensor_name=name)
+        return None
+
+    @configuration(default='w')
+    def mode(self, mode: str):
+        return mode
+
+    @configuration(default=True)
+    def to_csv(self, activate: bool):
+        return activate
+
+    @property
+    def path(self) -> Path:
+        path = self.cfg.io.folders.sensors
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def open(self) -> SensorStream:
+        self.sensors: tuple[Sensor] = tuple(sensor_ for config in self.get_configurations(sensor)
+                                            for sensor_ in self[config.__name__].values())
+
+        for instance in self.sensors:
+            instance.cfg = self.cfg
+            instance.mesh = self.mesh
+            instance.open()
+
+        if self.to_csv:
+            self.open_csv_writers()
+
+        return self
+
+    def open_csv_writers(self):
+        import csv
+
+        self.csv = {}
+        for sensor in self.sensors:
+            file = self.path.joinpath(sensor.sensor_name + ".csv").open(self.mode)
+            writer = csv.writer(file)
+
+            if self.mode == "w":
+                for name, value in self.get_header(sensor).items():
+                    writer.writerow([name, *value])
+
+            self.csv[sensor.sensor_name] = (file, writer)
+
+    def get_header(self, sensor: Sensor) -> dict[str, list[str]]:
+        header = sensor.get_header()
+
+        for value in header.values():
+            if len(value) != len(header['field']):
+                raise ValueError("Header fields are not consistent!")
+
+        if not self.cfg.time.is_stationary:
+            header['t'] = [' ']*len(header['field'])
+
+        return header
+
+    def save_pre_time_routine(self, t: float | None = None) -> None:
+
+        for sensor, data in self.measure():
+
+            if t is not None:
+                data = [t, *data]
+
+            if self.to_csv:
+                self.csv[sensor.sensor_name][1].writerow(data)
+
+    def save_in_time_routine(self,  t: float, it: int) -> None:
+        for sensor, data in self.measure():
+            if it % sensor.rate == 0:
+                if self.to_csv:
+                    self.csv[sensor.sensor_name][1].writerow([t, *data])
+
+    def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
+        for sensor, data in self.measure():
+            if t is None:
+                if self.to_csv:
+                    self.csv[sensor.sensor_name][1].writerow(data)
+            elif not it % sensor.rate == 0:
+                if self.to_csv:
+                    self.csv[sensor.sensor_name][1].writerow([t, *data])
+
+    def load_as_dataframe(self, sensor: Sensor | str, header: tuple = [0, 1, 2, 3], index_col: int = [0], **pd_kwargs):
+        import pandas as pd
+
+        if isinstance(sensor, Sensor):
+            sensor = sensor.sensor_name
+
+        return pd.read_csv(self.path.joinpath(sensor + ".csv"), header=header, index_col=index_col, **pd_kwargs)
+
+    def measure(self) -> typing.Generator[tuple[Sensor, np.ndarray], None, None]:
+        for sensor in self.sensors:
+            yield sensor, np.concatenate([measurement for measurement in sensor.measure()])
+
+    def close(self):
+        if hasattr(self, 'csv'):
+            for file, _ in self.csv.values():
+                file.close()
+            del self.csv
+
+    point: dict[str, PointSensor]
+    domain: dict[str, DomainSensor]
+    domain_L2: dict[str, DomainL2Sensor]
+    boundary: dict[str, BoundarySensor]
+    boundary_L2: dict[str, BoundaryL2Sensor]
+    to_csv: bool
+
+
+class Sensor(UniqueConfiguration):
+
+    @configuration(default=None)
+    def sensor_name(self, name: str):
+        return name
+
+    @configuration(default=1)
+    def rate(self, i: int):
+        i = int(i)
+        if i <= 0:
+            raise ValueError("Saving frequency must be greater than 0, otherwise consider deactivating the vtk writer!")
+        return i
+
+    @configuration(default=None)
+    def fields(self, fields: dict[str, ngs.CF]):
+        if fields is None:
+            fields = {}
+        return ngsdict(**fields)
+
+    def open(self, fields: dict[str, ngs.CF] | None = None):
+
+        if fields is None:
+            fields = self.fields
+
+        if not fields:
+            raise ValueError("No fields to evaluate!")
+
+        # Create single compound field for concurrent evaluation
+        self._fields = fields
+        self._field = ngs.CF(tuple(fields.values()))
+
+    def measure(self) -> typing.Generator[np.ndarray, None, None]:
+        raise NotImplementedError("Method 'evaluate' is not implemented!")
+
+    def get_header(self):
+        header = {'field': [], 'component': []}
+
+        for field, cf in self._fields.items():
+            component = self.get_components_name(cf)
+            header['field'].extend([field]*cf.dim)
+            header['component'].extend(component)
+
+        return header
+
+    def get_components_name(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+        if bla.is_scalar(cf):
+            return bla.SCALAR_COMPONENT
+        elif bla.is_vector(cf) and cf.dim <= 3:
+            return bla.VECTOR_COMPONENT[:cf.dim]
+        elif bla.is_matrix(cf) and cf.dim <= 9:
+            if tuple(cf.dims) == (2, 2):
+                return (bla.MATRIX_COMPONENT[0], bla.MATRIX_COMPONENT[1], bla.MATRIX_COMPONENT[3], bla.MATRIX_COMPONENT[4])
+            return bla.MATRIX_COMPONENT
+        else:
+            return tuple(range(cf.dim))
+
+    def close(self):
+        del self._field
+
+    sensor_name: str
+    rate: int
+    fields: ngsdict
+
+
+class RegionSensor(Sensor):
+
+    @configuration(default=5)
+    def integration_order(self, order: int):
+        return order
+
+    @configuration(default=None)
+    def regions(self, regions: tuple[str, ...]):
+        return regions
+
+    def get_header(self):
+        header = {'region': [region for region in self._regions for _ in range(self._field.dim)]}
+        for key, value in super().get_header().items():
+            header[key] = value*len(self._regions)
+        return header
+
+    def measure(self) -> typing.Generator[np.ndarray, None, None]:
+        for region in self._regions.values():
+            yield np.array(ngs.Integrate(self._field, self.mesh, order=self.integration_order, definedon=region))
+
+    def set_regions(self, expected: tuple[str], fregion: typing.Callable[[str], ngs.Region]) -> None:
+
+        if self.regions is None:
+            self._regions = {get_pattern_from_sequence(expected): None}
+
+        elif isinstance(self.regions, str):
+            regions = get_regions_from_pattern(expected, self.regions)
+
+            for miss in set(self.regions.split('|')).difference(regions):
+                logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted in sensor {self.sensor_name}!")
+
+            self.regions = get_pattern_from_sequence(regions)
+            self._regions = {self.regions: fregion(self.regions)}
+
+        elif isinstance(self.regions, typing.Sequence):
+            regions = tuple(region for region in self.regions if region in expected)
+
+            for miss in set(self.regions).difference(regions):
+                logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted in sensor {self.sensor_name}!")
+
+            self.regions = regions
+            self._regions = {domain: fregion(domain) for domain in self.regions}
+        else:
+            raise ValueError("Domains must be None, a string or a sequence of strings!")
+
+    l2_norm: bool
+    integration_order: int
+
+
+class DomainSensor(RegionSensor):
+
+    name: str = "domain"
+
+    def open(self, fields: dict[str, ngs.CF] | None = None):
+        super().open(fields)
+        self.set_regions(self.mesh.GetMaterials(), self.mesh.Materials)
+
+
+class DomainL2Sensor(DomainSensor):
+
+    name: str = "domain_L2"
+
+    def open(self, fields: dict[str, ngs.CF] | None = None):
+        fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
+        super().open(fields)
+
+    def measure(self) -> typing.Generator[np.ndarray, None, None]:
+        for array in super().measure():
+            yield np.sqrt(array)
+
+    def get_components_name(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+        return ('L2',)
+
+
+class BoundarySensor(RegionSensor):
+
+    name: str = "boundary"
+
+    def open(self, fields: dict[str, ngs.CF] | None = None):
+        super().open(fields)
+
+        self._field = ngs.BoundaryFromVolumeCF(self._field)
+        self.set_regions(self.mesh.GetBoundaries(), self.mesh.Boundaries)
+
+
+class BoundaryL2Sensor(BoundarySensor):
+
+    name: str = "boundary_L2"
+
+    def open(self, fields: dict[str, ngs.CF] | None = None):
+        fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
+        self.field_header = tuple((field, 'L2') for field in fields)
+        super().open(fields)
+
+    def measure(self) -> typing.Generator[np.ndarray, None, None]:
+        for array in super().measure():
+            yield np.sqrt(array)
+
+    def get_components_name(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+        return ('L2',)
+
+
+class PointSensor(Sensor):
+
+    @configuration(default=())
+    def points(self, points: tuple[tuple[float, float, float], ...]):
+        return points
+
+    def open(self, fields: dict[str, ngs.CF] | None = None):
+
+        if isinstance(self.points, str):
+            self.points = tuple(set(self.mesh[v].point for el in self.mesh.Boundaries(
+                self.points).Elements() for v in el.vertices))
+
+        super().open(fields)
+
+    def measure(self) -> typing.Generator[np.ndarray, None, None]:
+        for point in self.points:
+            yield np.atleast_1d(self._field(self.mesh(*point)))
+
+    def get_header(self):
+        header = {'point': [point for point in self.points for _ in range(self._field.dim)]}
+        for key, value in super().get_header().items():
+            header[key] = value*len(self.points)
+        return header
+
+
 class IOConfiguration(UniqueConfiguration):
 
     cfg: SolverConfiguration
-    name: str = "io"
 
     @stream(default=True)
     def log(self, activate: bool):
@@ -472,14 +864,14 @@ class IOConfiguration(UniqueConfiguration):
         return MeshStream(cfg=self.cfg, mesh=self.mesh)
 
     @stream(default=False)
-    def state(self, activate: bool):
-        return StateStream(cfg=self.cfg, mesh=self.mesh)
+    def gfu(self, activate: bool):
+        return GridfunctionStream(cfg=self.cfg, mesh=self.mesh)
 
     @stream(default=False)
-    def time_state(self, activate: bool):
+    def transient_gfu(self, activate: bool):
         if self.cfg.time.is_stationary:
             raise ValueError("TimeStateStream is not available in stationary mode!")
-        return TimeStateStream(cfg=self.cfg, mesh=self.mesh)
+        return TransientGridfunctionStream(cfg=self.cfg, mesh=self.mesh)
 
     @stream(default=False)
     def settings(self, activate: bool):
@@ -489,44 +881,56 @@ class IOConfiguration(UniqueConfiguration):
     def vtk(self, activate: bool):
         return VTKStream(cfg=self.cfg, mesh=self.mesh)
 
+    @stream(default=False)
+    def sensor(self, activate: bool):
+        return SensorStream(cfg=self.cfg, mesh=self.mesh)
+
     @interface(default=SingleFolders)
     def folders(self, folders: IOFolders):
         return folders
 
-    def initialize_streams(self):
-        self.pre_routine_streams = [writer.initialize() for writer in self.values()
-                                    if isinstance(writer, (MeshStream, SettingsStream))]
-        self.routine_streams = [writer.initialize() for writer in self.values()
-                                if isinstance(writer, (VTKStream, StateStream, TimeStateStream))]
+    def open(self):
 
-    def save_pre_routine_streams(self):
-        for stream in self.pre_routine_streams:
-            stream.save()
+        self.single_streams = []
+        self.file_streams = []
 
-    def save_routine_streams(self, t: float | None = None, it: int = 0):
-        for stream in self.routine_streams:
-            stream.save(t, it)
+        for stream in self.values():
+            if isinstance(stream, (MeshStream, SettingsStream)):
+                self.single_streams.append(stream.open())
+            elif isinstance(stream, (VTKStream, GridfunctionStream, TransientGridfunctionStream, SensorStream)):
+                self.file_streams.append(stream.open())
 
-    def load_gridfunction_routine(
-            self, filename: str, rate: int = 1, sleep_time: float = 0) -> typing.Generator[
-            float, None, None]:
-        import time
+    def save_pre_time_routine(self, t: float | None = None):
+        for stream in self.single_streams:
+            stream.save_pre_time_routine(t)
 
-        handler = StateStream(cfg=self.cfg, mesh=self.mesh, rate=rate)
+        for stream in self.file_streams:
+            stream.save_pre_time_routine(t)
 
-        self.cfg.pde.draw()
+    def save_in_time_routine(self, t: float, it: int):
+        for stream in self.file_streams:
+            stream.save_in_time_routine(t, it)
 
-        for t in self.cfg.time.timer.start(stride=handler.rate):
-            handler.load_gridfunction_sequence(t, filename)
-            self.cfg.pde.redraw()
-            time.sleep(sleep_time)
+    def save_post_time_routine(self, t: float | None = None, it: int = 0):
+        for stream in self.file_streams:
+            stream.save_post_time_routine(t, it)
 
-            yield t
+    def close(self):
+        for stream in self.file_streams:
+            stream.close()
+
+    def __enter__(self):
+        self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
     log: LogStream
     ngsmesh: MeshStream
-    state: StateStream
-    time_state: TimeStateStream
+    gfu: GridfunctionStream
+    transient_gfu: TransientGridfunctionStream
     settings: SettingsStream
     vtk: VTKStream
+    sensor: SensorStream
     folders: SingleFolders | BenchmarkFolders
