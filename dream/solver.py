@@ -102,7 +102,8 @@ class NewtonsMethod(NonlinearMethod):
         self.gfu = self.cfg.pde.gfu
         self.inverse = self.cfg.solver.inverse
 
-        self.blf = self.cfg.solver.blf
+        # Notice, the blf form is based on the implicit bilinear form in the solver.
+        self.blf = self.cfg.solver.blfi
         self.lf = self.cfg.solver.lf
 
         self.residual = self.gfu.vec.CreateVector()
@@ -154,17 +155,30 @@ class Solver(InterfaceConfiguration, is_interface=True):
         condense = self.cfg.optimizations.static_condensation
         compile = self.cfg.optimizations.compile
 
-        self.blf = ngs.BilinearForm(self.fes, condense=condense)
-        self.lf = ngs.LinearForm(self.fes)
+        self.blfi = ngs.BilinearForm(self.fes, condense=condense)
+        self.blfe = ngs.BilinearForm(self.fes)
+        self.lf   = ngs.LinearForm(self.fes)
 
-        for name, cf in self.cfg.pde.blf.items():
+        # Implicit bilinear form. 
+        for name, cf in self.cfg.pde.blfi.items():
             logger.debug(f"Adding {name} to the BilinearForm!")
 
             if compile.realcompile:
-                self.blf += cf.Compile(**compile)
+                self.blfi += cf.Compile(**compile)
             else:
-                self.blf += cf
+                self.blfi += cf
 
+
+        # Explicit bilinear form.
+        for name, cf in self.cfg.pde.blfe.items():
+            logger.debug(f"Adding {name} to the BilinearForm!")
+
+            if compile.realcompile:
+                self.blfe += cf.Compile(**compile)
+            else:
+                self.blfe += cf
+
+        # Linear form.
         for name, cf in self.cfg.pde.lf.items():
             logger.debug(f"Adding {name} to the LinearForm!")
 
@@ -172,6 +186,8 @@ class Solver(InterfaceConfiguration, is_interface=True):
                 self.lf += cf.Compile(**compile)
             else:
                 self.lf += cf
+
+
 
     inverse: Direct
 

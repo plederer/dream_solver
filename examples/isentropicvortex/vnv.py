@@ -150,43 +150,35 @@ def ProcessVTKData(IO, PDE, Uexact):
     gamma = PDE.equation_of_state.heat_capacity_ratio
 
     # Extract the usual suspects in the numerical solution.
-    IO.vtk.fields = PDE.get_state(rho=True, \
-                                    u=True, \
-                                    p=True, \
-                                    T=True, \
-                                    c=True)
+    fields = PDE.get_fields(rho=True, \
+                              u=True, \
+                              p=True, \
+                              T=True, \
+                              c=True)
 
-    # Extract the Mach number.
-    mach = PDE.get_local_mach_number(IO.vtk.fields)
-    
+    # Get the local Mach number.
+    fields["mach"] = PDE.get_local_mach_number( fields )
+
     # Compute the specific entropy, s = ln(p/rho^gamma).
-    s = log( PDE.get_state(p=True).p/PDE.get_state(rho=True).rho**gamma )
+    fields["entropy"] = log( fields["pressure"]/fields["density"]**gamma )
 
     # Compute the difference between the analytic and numerical solution.
-    dR   = Uexact.rho - PDE.get_state(rho=True).rho
-    dV   = Uexact.u   - PDE.get_state(u=True).u
-    dP   = Uexact.p   - PDE.get_state(p=True).p
-
-    # Include the pointwise error.
-    IO.vtk.fields['diff[density]']   = dR
-    IO.vtk.fields['diff[velocity]']  = dV
-    IO.vtk.fields['diff[pressure]']  = dP
+    fields["Diff[density]"]  = Uexact.rho - fields["density"] 
+    fields["Diff[velocity]"] = Uexact.u   - fields["velocity"] 
+    fields["Diff[pressure]"] = Uexact.p   - fields["pressure"] 
     
-    # Include the Mach number of the numerical solution.
-    IO.vtk.fields['Mach']            = mach
-    # Include the modified specific entropy.
-    IO.vtk.fields['Entropy']         = s
+    # Save the exact solution.
+    fields["Exact[density]"]  = Uexact.rho
+    fields["Exact[velocity]"] = Uexact.u
+    fields["Exact[pressure]"] = Uexact.p
+    fields["Exact[entropy]"]  = log(Uexact.p/Uexact.rho**gamma)
 
-    # Include the analytical primitive variables.
-    IO.vtk.fields['Exact[Density]']  = Uexact.rho
-    IO.vtk.fields['Exact[Velocity]'] = Uexact.u
-    IO.vtk.fields['Exact[Pressure]'] = Uexact.p
+    # Compute the ratio between the numerical and exact entropy.
+    fields["Ratio[entropy]"]   = fields["entropy"]/fields["Exact[entropy]"]
 
-    # Note, you can check that you didn't screw the IC
-    # by making sure the analytic specific entropy is constant
-    # (e.g. uncomment below).
-    #sexact = log( Uexact.p/Uexact.rho**gamma )
-    #IO.vtk.fields['Exact[Entropy]'] = sexact
+    # Pass the fields to the VTK functions for writing.
+    IO.vtk.fields = fields
+
 
 
 
