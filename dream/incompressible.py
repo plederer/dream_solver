@@ -194,13 +194,15 @@ class TaylorHood(IncompressibleFiniteElement):
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         gfus['u'] = self.cfg.time.scheme.get_transient_gridfunctions(self.u_gfu)
 
-    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                            lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_forms(self, blfi: dict[str, ngs.comp.SumOfIntegrals],
+                           blfe: dict[str, ngs.comp.SumOfIntegrals],
+                           lf: dict[str, ngs.comp.SumOfIntegrals]):
 
-        self.add_stokes_system(blf, lf)
+        self.add_stokes_form(blfi, blfe, lf)
 
-    def add_stokes_system(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                          lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_stokes_form(self, blfi: dict[str, ngs.comp.SumOfIntegrals],
+                        blfe: dict[str, ngs.comp.SumOfIntegrals],
+                        lf: dict[str, ngs.comp.SumOfIntegrals]):
 
         bonus = self.cfg.optimizations.bonus_int_order
 
@@ -208,11 +210,11 @@ class TaylorHood(IncompressibleFiniteElement):
         u = self.get_incompressible_state(u)
         v = self.get_incompressible_state(v)
 
-        blf['stokes'] = ngs.InnerProduct(u.tau, v.eps) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['stokes'] += (-ngs.div(u.u) * v.p - ngs.div(v.u) * u.p) * ngs.dx
+        blfi['stokes'] = ngs.InnerProduct(u.tau, v.eps) * ngs.dx(bonus_intorder=bonus.vol)
+        blfi['stokes'] += (-ngs.div(u.u) * v.p - ngs.div(v.u) * u.p) * ngs.dx
 
         if not self.cfg.pde.bcs.has_condition(Outflow):
-            blf['stokes'] += -1e-8 * u.p * v.p * ngs.dx
+            blfi['stokes'] += -1e-8 * u.p * v.p * ngs.dx
 
     def get_incompressible_state(self, u: ngs.CF) -> flowstate:
 
