@@ -102,7 +102,8 @@ class NewtonsMethod(NonlinearMethod):
         self.gfu = self.cfg.pde.gfu
         self.inverse = self.cfg.solver.inverse
 
-        self.blf = self.cfg.solver.blf
+        # Take the implicit BilinearForm
+        self.blf = self.cfg.solver.blfi
         self.lf = self.cfg.solver.lf
 
         self.residual = self.gfu.vec.CreateVector()
@@ -154,16 +155,25 @@ class Solver(InterfaceConfiguration, is_interface=True):
         condense = self.cfg.optimizations.static_condensation
         compile = self.cfg.optimizations.compile
 
-        self.blf = ngs.BilinearForm(self.fes, condense=condense)
+        self.blfi = ngs.BilinearForm(self.fes, name="implicit", condense=condense)
+        self.blfe = ngs.BilinearForm(self.fes, name="explicit", non_assemble=True)
         self.lf = ngs.LinearForm(self.fes)
 
-        for name, cf in self.cfg.pde.blf.items():
-            logger.debug(f"Adding {name} to the BilinearForm!")
+        for name, cf in self.cfg.pde.blfi.items():
+            logger.debug(f"Adding {name} to the implcit BilinearForm!")
 
             if compile.realcompile:
-                self.blf += cf.Compile(**compile)
+                self.blfi += cf.Compile(**compile)
             else:
-                self.blf += cf
+                self.blfi += cf
+
+        for name, cf in self.cfg.pde.blfe.items():
+            logger.debug(f"Adding {name} to the explicit BilinearForm!")
+
+            if compile.realcompile:
+                self.blfe += cf.Compile(**compile)
+            else:
+                self.blfe += cf
 
         for name, cf in self.cfg.pde.lf.items():
             logger.debug(f"Adding {name} to the LinearForm!")
@@ -182,10 +192,10 @@ class LinearSolver(Solver):
 
     def solve(self):
 
-        self.blf.Assemble()
+        self.blfi.Assemble()
 
         if hasattr(self, 'dirichlet'):
-            self.dirichlet.data = self.blf.mat * self.gfu.vec
+            self.dirichlet.data = self.blfi.mat * self.gfu.vec
 
         for t in self.cfg.time.start_solution_routine():
             self.lf.Assemble()
@@ -193,7 +203,7 @@ class LinearSolver(Solver):
             if hasattr(self, 'dirichlet'):
                 self.lf.vec.data -= self.proj * self.dirichlet
 
-            self.cfg.pde.gfu.vec.data += self.inverse.get_inverse(self.blf, self.cfg.pde.fes) * self.lf.vec
+            self.cfg.pde.gfu.vec.data += self.inverse.get_inverse(self.blfi, self.cfg.pde.fes) * self.lf.vec
 
     def set_dirichlet_vector(self):
 

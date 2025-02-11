@@ -26,7 +26,9 @@ class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+    def add_symbolic_forms(self, 
+                           blfi: dict[str, ngs.comp.SumOfIntegrals],
+                           blfe: dict[str, ngs.comp.SumOfIntegrals],
                            lf: dict[str, ngs.comp.SumOfIntegrals]):
         raise NotImplementedError("Overload this method in derived class!")
 
@@ -100,9 +102,10 @@ class PDEConfiguration(InterfaceConfiguration, is_interface=True):
         self.fem.add_transient_gridfunctions(self.transient_gfus)
 
     def initialize_symbolic_forms(self) -> None:
-        self.blf = {}
+        self.blfi = {}
+        self.blfe = {}
         self.lf = {}
-        self.fem.add_symbolic_forms(self.blf, self.lf)
+        self.fem.add_symbolic_forms(self.blfi, self.blfe, self.lf)
 
     def initialize_boundary_conditions(self) -> None:
 
