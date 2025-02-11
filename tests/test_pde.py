@@ -65,5 +65,5 @@ class TestPDEConfiguration(unittest.TestCase):
         self.pde.initialize_trial_and_test_functions()
         self.pde.initialize_symbolic_forms()
 
-        self.assertIn('test', self.pde.blf)
+        self.assertIn('test', self.pde.blfi)
         self.assertIn('test', self.pde.lf)

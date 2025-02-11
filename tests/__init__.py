@@ -68,11 +68,12 @@ class DummyFiniteElementMethod(FiniteElementMethod):
         gfus['Uhat'] = {'n+1': ngs.GridFunction(self.cfg.pde.spaces['Uhat']),
                         'n': ngs.GridFunction(self.cfg.pde.spaces['Uhat'])}
 
-    def add_symbolic_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+    def add_symbolic_forms(self, blfi: dict[str, ngs.comp.SumOfIntegrals],
+                           blfe: dict[str, ngs.comp.SumOfIntegrals],
                            lf: dict[str, ngs.comp.SumOfIntegrals]):
         u, v = self.cfg.pde.TnT['U']
 
-        blf['test'] = u * v * ngs.dx
+        blfi['test'] = u * v * ngs.dx
         lf['test'] = v * ngs.dx
 
     def get_fields(self, quantities: dict[str, bool]):
