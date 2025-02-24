@@ -109,6 +109,33 @@ class TimeSchemes(InterfaceConfiguration, is_interface=True):
         raise NotImplementedError()
 
 
+
+class ExplicitMethod(TimeSchemes):
+
+    name: str = "explicit_method"
+
+    time_levels = ('n', 'n+1')
+
+    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return gfus['n+1']/self.dt
+
+    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return gfus['n+1']
+
+    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return gfus['n']
+
+    def get_time_step(self) -> ngs.CF:
+        return self.dt
+
+    def get_normalized_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return self.get_explicit_terms(gfus)
+
+    def get_normalized_time_step(self) -> ngs.CF:
+        return self.dt
+
+
+
 class ImplicitEuler(TimeSchemes):
 
     name: str = "implicit_euler"

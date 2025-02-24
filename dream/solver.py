@@ -8,7 +8,7 @@ from math import isnan
 from .compressible import CompressibleFlowConfiguration
 from .mesh import is_mesh_periodic
 from .config import UniqueConfiguration, InterfaceConfiguration, interface, configuration, unique
-from .time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
+from .time import ExplicitMethod, StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
 from .io import IOConfiguration
 
 logger = logging.getLogger(__name__)
@@ -187,8 +187,6 @@ class Solver(InterfaceConfiguration, is_interface=True):
             else:
                 self.lf += cf
 
-
-
     inverse: Direct
 
 
@@ -196,35 +194,115 @@ class LinearSolver(Solver):
 
     name: str = "linear"
 
-    def solve(self):
+    def AllocateRKStageData(self):
 
-        self.blf.Assemble()
+        #Us[nStage];
+        #for i in range(nStage):
+        #    Us[i] = new ...
+        self.RKnStage = 3
+        #self.Us = [self.cfg.pde.gfu.vec.CreateVector() for _ in range(self.RKnStage)]
+        self.RKa = [1.0, 0.75, 1.0/3.0]
+        self.RKb = [1.0, 0.25, 2.0/3.0]
+        self.RKc = [0.0, 1.00, 0.5]
 
-        if hasattr(self, 'dirichlet'):
-            self.dirichlet.data = self.blf.mat * self.gfu.vec
+        # Number of tentative solutions to store is one for an SSP-RK3.
+        self.Us = self.cfg.pde.gfu.vec.CreateVector()
+
+        #Us = []
+        #for iStage in range(nStage):
+        #    Us.append( self.cfg.pde.gfu.vec.CreateVector() )
+    
+        #Us[0] --- Us[nStage-1]
+        
+
+    def solve(self): 
+
+        self.AllocateRKStageData()
+
+        self.blfi.Assemble()
+        minv = self.cfg.solver.inverse.get_inverse(self.blfi, self.cfg.pde.fes)
+
+        print( self.cfg.time.scheme.name == 'implicit_euler' )
+        if not isinstance( self.cfg.time.scheme, ExplicitMethod ):
+            raise TypeError("banana")
+
+        print( self.cfg.time )
 
         for t in self.cfg.time.start_solution_routine():
-            self.lf.Assemble()
+            print( t )
 
-            if hasattr(self, 'dirichlet'):
-                self.lf.vec.data -= self.proj * self.dirichlet
+            # Extract the current time step.
+            dt = self.cfg.time.timer.step
 
-            self.cfg.pde.gfu.vec.data += self.inverse.get_inverse(self.blf, self.cfg.pde.fes) * self.lf.vec
+            # Extract the solution at the known time: t^n.
+            Un = self.cfg.pde.gfu 
 
-    def set_dirichlet_vector(self):
+            #self.rhs = self.cfg.pde.gfu.vec.CreateVector()
+            #
+            #self.blfe.Apply( Un.vec, self.rhs )
 
-        periodic = self.cfg.pde.bcs.get_periodic_boundaries(True)
-        dofs = ~self.fes.FreeDofs() & ~self.fes.GetDofs(self.cfg.mesh.Boundaries(periodic))
+            ## NOTE, can be assembled once.
+            ##self.blfi.Assemble()
+            ## NOTE, can be precomputed once.
+            ##minv = self.cfg.solver.inverse.get_inverse(self.blfi, self.cfg.pde.fes)
+            #
+            #Un.vec.data += minv * self.rhs 
 
-        if any(dofs):
-            self.proj = ngs.Projector(dofs, False)   # dirichlet mask
-            self.dirichlet = self.gfu.vec.CreateVector()
-            self.dirichlet[:] = 0
+            
 
-    def initialize(self):
-        super().initialize()
-        self.gfu = self.cfg.pde.gfu
-        self.set_dirichlet_vector()
+            # TESTING
+            #self.Us[0].data = minv * self.rhs
+            #self.Us[1].data = Un.vec
+            #Un.vec.data = 0.1*self.Us[0] + 0.2*self.Us[1] 
+            #self.blfe.Apply(self.Us[1], self.rhs)
+
+            self.Us.data  = self.cfg.pde.gfu.vec
+            self.res = self.cfg.pde.gfu.vec.CreateVector()
+
+            for iStage in range(self.RKnStage):
+
+                alpha = self.RKa[iStage]
+                beta  = self.RKb[iStage]
+                oma   = 1.0 - alpha 
+                #bdt   = beta * dt
+                bdt   = beta # The dt is already in the "minv"
+
+                self.blfe.Apply( Un.vec, self.res )
+                self.res.data = minv * self.res
+
+                Un.vec.data = oma*Un.vec + alpha*self.Us + bdt*self.res
+
+
+    # CHANGED
+    #def solve(self):
+
+    #    self.blf.Assemble()
+
+    #    if hasattr(self, 'dirichlet'):
+    #        self.dirichlet.data = self.blf.mat * self.gfu.vec
+
+    #    for t in self.cfg.time.start_solution_routine():
+    #        self.lf.Assemble()
+
+    #        if hasattr(self, 'dirichlet'):
+    #            self.lf.vec.data -= self.proj * self.dirichlet
+
+    #        self.cfg.pde.gfu.vec.data += self.inverse.get_inverse(self.blf, self.cfg.pde.fes) * self.lf.vec
+
+    #def set_dirichlet_vector(self):
+
+    #    periodic = self.cfg.pde.bcs.get_periodic_boundaries(True)
+    #    dofs = ~self.fes.FreeDofs() & ~self.fes.GetDofs(self.cfg.mesh.Boundaries(periodic))
+
+    #    if any(dofs):
+    #        self.proj = ngs.Projector(dofs, False)   # dirichlet mask
+    #        self.dirichlet = self.gfu.vec.CreateVector()
+    #        self.dirichlet[:] = 0
+
+    #def initialize(self):
+    #    super().initialize()
+    #    self.gfu = self.cfg.pde.gfu
+    #    self.set_dirichlet_vector()
 
 
 class NonlinearSolver(Solver):

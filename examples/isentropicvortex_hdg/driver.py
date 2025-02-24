@@ -87,7 +87,7 @@ PDE.fem.mixed_method = "inactive"
 # # # # # # # # # # # # # #
 
 TEMPORAL.scheme = "implicit_euler"
-TEMPORAL.timer.interval = (0, 5.0)
+TEMPORAL.timer.interval = (0, 1.0)
 TEMPORAL.timer.step = 0.01
 
 

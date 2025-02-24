@@ -442,45 +442,116 @@ class DG(ConservativeMethod):
                                    blfe: dict[str, ngs.comp.SumOfIntegrals],
                                    lf:   dict[str, ngs.comp.SumOfIntegrals]):
 
+        # Extract the bonus integration order, if specified.
         bonus = self.cfg.optimizations.bonus_int_order
 
+        # Obtain the relevant test and trial functions. Notice, the solution "U"
+        # is assumed to be an unknown in the bilinear form, despite being explicit 
+        # in time. This works, because we invoke the "Apply" function when solving. 
         U, V = self.U_TnT
 
-        # not needed?
-        #Uj = self.get_conservative_state(U.Other())
-        
-        # Get the current/known solution at t^n.
-        U_n = self.get_conservative_state(self.U_gfu_transient["n"])
+        # Get a mask that is nonzero (unity) for only the internal faces.
+        mask = self.get_domain_boundary_mask()
 
-        # Get the flux at the current/known solution, i.e. F( U(t^n) ).
-        F = self.cfg.pde.get_convective_flux(U_n)
+        # Current/owned solution.
+        Ui = self.get_conservative_fields(U)
+
+        # Neighboring solution.
+        Uj = self.get_conservative_fields(U.Other())
+        
+        # Compute the flux of the solution on the volume elements.
+        F = self.cfg.pde.get_convective_flux(Ui)
        
         # Compute the flux on the surface of an element, in the normal direction.
-        Fn = self.get_convective_numerical_flux(U_n, U_n, self.mesh.normal)
+        Fn = self.get_convective_numerical_flux(Ui, Uj, self.mesh.normal)
 
-        lf['convection']  =  bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
-        lf['convection'] += -bla.inner(Fn, V) * ngs*dx(element_boundary=True, bonus_intorder=bonus.bnd)
-
-        #blfe['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
-        #blfe['convection'] += bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-        #blfe['convection'] += -mask * bla.inner(Fn, Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-
+        # Assemble the explicit bilinear form, keeping in mind this is placed on the RHS.
+        blfe['convection'] =   bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
+        blfe['convection'] += -mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
         
-
     def get_convective_numerical_flux(self, Ui: flowstate, Uj: flowstate, unit_vector: bla.VECTOR):
+       
+        # Extract the normal, taken w.r.t. the ith solution.
+        n = bla.as_vector(unit_vector)
+
+        # NOTE
+        # For now, hardcode the local lax friedrich (Rusanov) version.
+        Fi = self.cfg.pde.get_convective_flux(Ui) 
+        Fj = self.cfg.pde.get_convective_flux(Uj)
+
+        # Compute the normal velocity.
+        vni = bla.inner( self.cfg.pde.velocity(Ui), n )
+        vnj = bla.inner( self.cfg.pde.velocity(Uj), n )
+
+        # Extract the speed of sound.
+        ci = self.cfg.pde.speed_of_sound(Ui)
+        cj = self.cfg.pde.speed_of_sound(Uj)
+
+        # Compute the largest eigenvalues.
+        lmbi = bla.abs( vni ) + ci
+        lmbj = bla.abs( vnj ) + cj
+
+        # Deduce the largest eigenvalue w.r.t. the 2 solutions.
+        lmb_max = bla.max( lmbi, lmbj )
+
+        # Assemble the numerical flux.
+        fs = 0.5*( (Fi + Fj)*n - lmb_max*(Uj.U - Ui.U) )
         
-        unit_vector = bla.as_vector(unit_vector)
-
-        # DEBUGGING
-        raise TypeError("testing...")
-        
-        tau = self.cfg.pde.riemann_solver.get_convective_stabilisation_matrix(Uhat, unit_vector)
-
-        return self.cfg.pde.get_convective_flux(Uhat) * unit_vector + tau * (U.U - Uhat.U)
+        # Return the numerical flux.
+        return fs
 
 
+    def get_domain_boundary_mask(self) -> ngs.GridFunction:
+        """ 
+        Returns a Gridfunction that is 0 on the domain boundaries and 1 on the domain interior.
+        """
+
+        fes = ngs.FacetFESpace(self.mesh, order=0)
+        mask = ngs.GridFunction(fes, name="mask")
+        mask.vec[:] = 0
+
+        bnd_dofs = fes.GetDofs(self.mesh.Boundaries(self.cfg.pde.bcs.get_domain_boundaries(True)))
+        mask.vec[~bnd_dofs] = 1
+
+        return mask
 
 
+    def add_boundary_conditions(self, 
+                                blfi: dict[str, ngs.comp.SumOfIntegrals], 
+                                blfe: dict[str, ngs.comp.SumOfIntegrals], 
+                                lf:   dict[str, ngs.comp.SumOfIntegrals]):
+
+        bnds = self.cfg.pde.bcs.to_pattern()
+
+        for bnd, bc in bnds.items():
+
+            logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
+
+            # TODO 
+            # For now, we only implement periodic conditions.
+            if isinstance(bc, Periodic):
+                continue
+
+            else:
+                raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
+
+
+    def add_domain_conditions(self, 
+                              blfi: dict[str, ngs.comp.SumOfIntegrals],
+                              blfe: dict[str, ngs.comp.SumOfIntegrals], 
+                              lf:   dict[str, ngs.comp.SumOfIntegrals]):
+
+        doms = self.cfg.pde.dcs.to_pattern()
+
+        for dom, dc in doms.items():
+
+            logger.debug(f"Adding domain condition {dc} on domain {dom}.")
+
+            if isinstance(dc, Initial):
+                continue
+
+            else:
+                raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
 
 
