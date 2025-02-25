@@ -76,7 +76,7 @@ class quantity:
         del state[self.name]
 
 
-class ngsdict(typing.MutableMapping, dict):
+class ngsdict(typing.MutableMapping):
 
     symbols: dict[str, str] = {}
 
@@ -298,7 +298,7 @@ class interface(unique):
             value = self.fset(cfg, cfg.data[self.__name__])
 
 
-class InterfaceTree(typing.MutableMapping, dict):
+class InterfaceTree(typing.MutableMapping):
 
     def __init__(self, root: UniqueConfiguration):
         self.root = root
@@ -336,7 +336,7 @@ class InterfaceTree(typing.MutableMapping, dict):
         return len(self.leafs)
 
 
-class UniqueConfiguration(typing.MutableMapping, dict):
+class UniqueConfiguration(typing.MutableMapping):
 
     name: str
     mesh: ngs.Mesh
@@ -407,7 +407,7 @@ class UniqueConfiguration(typing.MutableMapping, dict):
 
         cfgs = cls.get_configurations(configuration)
         if hasattr(cls, "cfgs"):
-            cfgs = cls.cfgs + cfgs
+            cfgs = cfgs + cls.cfgs
         cls.cfgs = cfgs
 
         if not hasattr(cls, "name"):
@@ -456,18 +456,20 @@ class InterfaceConfiguration(UniqueConfiguration):
     cfgs: list[configuration]
     aliases: tuple[str]
 
-    def __init_subclass__(cls, is_interface: bool = False) -> None:
+    def __init_subclass__(cls, is_interface: bool = False, skip: bool = False) -> None:
 
-        if is_interface:
-            cls.tree = InterfaceTree(cls)
-            cls.aliases = ()
+        if not skip:
 
-        else:
-            for name in [cls.name, *cls.aliases]:
-                name = name.lower()
-                if name in cls.tree:
-                    raise ValueError(f"Concrete Class of type {cls.tree.root} with name {name} already included!")
-                cls.tree[name] = cls
+            if is_interface:
+                cls.tree = InterfaceTree(cls)
+                cls.aliases = ()
+
+            else:
+                for name in [cls.name, *cls.aliases]:
+                    name = name.lower()
+                    if name in cls.tree:
+                        raise ValueError(f"Concrete Class of type {cls.tree.root} with name {name} already included!")
+                    cls.tree[name] = cls
 
         super().__init_subclass__()
 

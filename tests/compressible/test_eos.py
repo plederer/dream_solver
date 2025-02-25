@@ -10,10 +10,10 @@ from tests.compressible.setup import cfg, mip
 class TestIdealGas(unittest.TestCase):
 
     def setUp(self):
-        cfg.pde.equation_of_state = "ideal"
-        cfg.pde.equation_of_state.heat_capacity_ratio = 1.4
+        cfg.equation_of_state = "ideal"
+        cfg.equation_of_state.heat_capacity_ratio = 1.4
 
-        self.eos = cfg.pde.equation_of_state
+        self.eos = cfg.equation_of_state
 
     def test_density(self):
 

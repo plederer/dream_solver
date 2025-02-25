@@ -7,7 +7,14 @@ from pathlib import Path
 
 import ngsolve as ngs
 import dream.bla as bla
-from dream.config import InterfaceConfiguration, UniqueConfiguration, configuration, unique, CONFIG, interface, configuration, ngsdict
+from dream.config import (InterfaceConfiguration,
+                          UniqueConfiguration,
+                          configuration,
+                          CONFIG,
+                          interface,
+                          configuration,
+                          ngsdict,
+                          is_notebook)
 from dream.mesh import get_pattern_from_sequence, get_regions_from_pattern
 from dream._version import acknowledgements, header
 
@@ -344,7 +351,9 @@ class VTKStream(Stream):
     fields: ngsdict
 
 
-class FieldStream(Stream, is_interface=True):
+class GridfunctionStream(Stream):
+
+    name = "gfu"
 
     @configuration(default=1)
     def rate(self, i: int):
@@ -354,28 +363,19 @@ class FieldStream(Stream, is_interface=True):
                 "Saving/loading rate must be greater than 0, otherwise consider deactivating the statestream!")
         return i
 
+    @configuration(default=100)
+    def time_level_rate(self, i: int):
+        i = int(i)
+        if i <= 0:
+            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the statestream!")
+        return i
+
     @property
     def path(self) -> Path:
         path = self.cfg.io.folders.states
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
         return path
-
-    def save_pre_time_routine(self, t: float | None = None) -> None:
-        self.save_in_time_routine(t, it=0)
-
-    def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
-        if t is None or not it % self.rate == 0:
-            self.save_in_time_routine(t, it=0)
-
-    def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
-
-        if filename is None:
-            filename = self.filename
-
-        file = self.path.joinpath(filename + ".ngs")
-
-        gfu.Save(str(file))
 
     def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
@@ -386,74 +386,76 @@ class FieldStream(Stream, is_interface=True):
 
         gfu.Load(str(file))
 
-    rate: int
-
-
-class GridfunctionStream(FieldStream):
-
-    name: str = "gfu"
-
-    def save_in_time_routine(self, t: float | None = None, it: int = 0):
-
-        if it % self.rate == 0:
-
-            filename = self.filename
-            if t is not None:
-                filename = f"{filename}_{t}"
-
-            self.save_gridfunction(self.cfg.pde.gfu, filename)
-
     def load_routine(self, t: float | None = None):
 
         filename = self.filename
         if t is not None:
             filename = f"{filename}_{t}"
 
-        self.load_gridfunction(self.cfg.pde.gfu, filename)
+        self.load_gridfunction(self.cfg.gfu, filename)
 
-    def load_transient_routine(self, fields: ngsdict = None, sleep: float = 0) -> typing.Generator[float, None, None]:
+    def load_transient_routine(self, sleep: float = 0) -> typing.Generator[float, None, None]:
 
         if self.cfg.time.is_stationary:
             raise ValueError("Transient routine is not available in stationary mode!")
 
         import time
 
-        if fields is not None:
-            self.cfg.pde.draw(fields)
-
         logger.info(f"Loading gridfunction from '{self.filename}'")
         for t in self.cfg.time.timer.start(stride=self.rate):
             self.load_routine(t)
 
-            self.cfg.pde.redraw()
+            self.cfg.io.redraw()
             logger.info(f"file: {self.filename} | t: {t}")
 
             yield t
 
             time.sleep(sleep)
 
-
-class TransientGridfunctionStream(FieldStream):
-
-    name: str = "gfu_dt"
-
-    def save_in_time_routine(self, t: float, it: int):
-
-        if it % self.rate == 0:
-
-            for fes, gfus in self.cfg.pde.transient_gfus.items():
-
-                for level, gfu in gfus.items():
-
-                    self.save_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
-
     def load_time_levels(self, t: float) -> None:
 
-        for fes, gfu in self.cfg.pde.transient_gfus.items():
+        if self.cfg.time.is_stationary:
+            raise ValueError("Load time levels is not available in stationary mode!")
+
+        for fes, gfu in self.cfg.time.scheme.gfus.items():
 
             for level, gfu in gfu.items():
 
                 self.load_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
+
+    def save_in_time_routine(self, t: float | None = None, it: int = 0):
+
+        filename = self.filename
+        if t is not None:
+            filename = f"{filename}_{t}"
+
+            if it % self.time_level_rate == 0:
+
+                for fes, gfus in self.cfg.time.scheme.gfus.items():
+                    for level, gfu in gfus.items():
+                        self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
+
+        if it % self.rate == 0:
+            self.save_gridfunction(self.cfg.gfu, filename)
+
+    def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
+
+        if filename is None:
+            filename = self.filename
+
+        file = self.path.joinpath(filename + ".ngs")
+
+        gfu.Save(str(file))
+
+    def save_pre_time_routine(self, t: float | None = None) -> None:
+        self.save_in_time_routine(t, it=0)
+
+    def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
+        if t is None or not it % self.rate == 0:
+            self.save_in_time_routine(t, it=0)
+
+    rate: int
+    time_level_rate: int
 
 
 class LogStream(Stream):
@@ -853,6 +855,8 @@ class PointSensor(Sensor):
 
 class IOConfiguration(UniqueConfiguration):
 
+    name = "io"
+
     cfg: SolverConfiguration
 
     @stream(default=True)
@@ -866,12 +870,6 @@ class IOConfiguration(UniqueConfiguration):
     @stream(default=False)
     def gfu(self, activate: bool):
         return GridfunctionStream(cfg=self.cfg, mesh=self.mesh)
-
-    @stream(default=False)
-    def transient_gfu(self, activate: bool):
-        if self.cfg.time.is_stationary:
-            raise ValueError("TimeStateStream is not available in stationary mode!")
-        return TransientGridfunctionStream(cfg=self.cfg, mesh=self.mesh)
 
     @stream(default=False)
     def settings(self, activate: bool):
@@ -889,6 +887,23 @@ class IOConfiguration(UniqueConfiguration):
     def folders(self, folders: IOFolders):
         return folders
 
+    def draw(self, fields: ngsdict, **kwargs):
+        if is_notebook():
+            from ngsolve.webgui import Draw
+        else:
+            from ngsolve import Draw
+
+        self.scenes = [Draw(draw, self.mesh, name, **kwargs) for name, draw in fields.items()]
+
+    def redraw(self, blocking: bool = False):
+
+        if hasattr(self, "scenes"):
+
+            for scene in self.scenes:
+                if scene is not None:
+                    scene.Redraw()
+            ngs.Redraw(blocking)
+
     def open(self):
 
         self.single_streams = []
@@ -897,7 +912,7 @@ class IOConfiguration(UniqueConfiguration):
         for stream in self.values():
             if isinstance(stream, (MeshStream, SettingsStream)):
                 self.single_streams.append(stream.open())
-            elif isinstance(stream, (VTKStream, GridfunctionStream, TransientGridfunctionStream, SensorStream)):
+            elif isinstance(stream, (VTKStream, GridfunctionStream, SensorStream)):
                 self.file_streams.append(stream.open())
 
     def save_pre_time_routine(self, t: float | None = None):
@@ -929,7 +944,6 @@ class IOConfiguration(UniqueConfiguration):
     log: LogStream
     ngsmesh: MeshStream
     gfu: GridfunctionStream
-    transient_gfu: TransientGridfunctionStream
     settings: SettingsStream
     vtk: VTKStream
     sensor: SensorStream

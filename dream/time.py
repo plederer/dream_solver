@@ -74,90 +74,134 @@ class TimeSchemes(InterfaceConfiguration, is_interface=True):
     def dt(self) -> ngs.Parameter:
         return self.cfg.time.timer.step
 
-    def get_transient_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+        raise NotImplementedError()
+
+    def assemble(self) -> None:
+        raise NotImplementedError()
+
+    def initialize(self):
+
+        self.dx = self.cfg.fem.get_temporal_integrators()
+        self.spaces = {}
+        self.TnT = {}
+        self.gfus = {}
+
+        for variable in self.dx:
+            self.spaces[variable] = self.cfg.spaces[variable]
+            self.TnT[variable] = self.cfg.TnT[variable]
+            self.gfus[variable] = self.initialize_level_gridfunctions(self.cfg.gfus[variable])
+
+    def initialize_level_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
         gfus = [ngs.GridFunction(gfu.space) for _ in self.time_levels[:-1]] + [gfu]
         return {level: gfu for level, gfu in zip(self.time_levels, gfus)}
 
-    def update_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
-
-        for gfu in gfus.values():
-            for old, new in zip(self.time_levels[:-1], self.time_levels[1:]):
-                gfu[old].vec.data = gfu[new].vec
-
-    def set_initial_conditions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
-
-        for gfu in gfus.values():
+    def set_initial_conditions(self):
+        for gfu in self.gfus.values():
             for old in list(gfu.values())[:-1]:
                 old.vec.data = gfu['n+1'].vec
 
-    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+    def solve_current_time_level(self)-> typing.Generator[int | None, None, None]:
         raise NotImplementedError()
 
-    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+    def update_gridfunctions(self):
+        for gfu in self.gfus.values():
+            for old, new in zip(self.time_levels[:-1], self.time_levels[1:]):
+                gfu[old].vec.data = gfu[new].vec
+
+
+class ImplicitSchemes(TimeSchemes, skip=True):
+
+    def assemble(self) -> None:
+
+        condense = self.cfg.optimizations.static_condensation
+        compile = self.cfg.optimizations.compile
+
+        self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
+        self.lf = ngs.LinearForm(self.cfg.fes)
+
+        for name, cf in self.cfg.blf.items():
+            logger.debug(f"Adding {name} to the BilinearForm!")
+
+            if compile.realcompile:
+                self.blf += cf.Compile(**compile)
+            else:
+                self.blf += cf
+
+        for name, cf in self.cfg.lf.items():
+            logger.debug(f"Adding {name} to the LinearForm!")
+
+            if compile.realcompile:
+                self.lf += cf.Compile(**compile)
+            else:
+                self.lf += cf
+
+        self.cfg.nonlinear_solver.initialize(self.blf, self.lf, self.cfg.gfu)
+
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+
+        u, v = self.TnT[variable]
+        gfus = self.gfus[variable].copy()
+        gfus['n+1'] = u
+
+        blf[f'time'] = ngs.InnerProduct(self.get_time_derivative(gfus), v) * self.dx[variable]
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         raise NotImplementedError()
 
-    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
         raise NotImplementedError()
 
-    def get_time_step(self) -> ngs.CF:
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
         raise NotImplementedError()
 
-    def get_normalized_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        raise NotImplementedError()
-
-    def get_normalized_time_step(self) -> ngs.CF:
-        raise NotImplementedError()
+    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
+        for it in self.cfg.nonlinear_solver.solve(t):
+            yield it
 
 
-class ImplicitEuler(TimeSchemes):
+class ImplicitEuler(ImplicitSchemes):
 
     name: str = "implicit_euler"
     aliases = ("ie", )
-
     time_levels = ('n', 'n+1')
 
-    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return (gfus['n+1'] - gfus['n'])/self.dt
 
-    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return gfus['n+1']
-
-    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
         return gfus['n']
 
-    def get_time_step(self) -> ngs.CF:
-        return self.dt
-
-    def get_normalized_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return self.get_explicit_terms(gfus)
-
-    def get_normalized_time_step(self) -> ngs.CF:
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
         return self.dt
 
 
-class BDF2(TimeSchemes):
+class BDF2(ImplicitSchemes):
 
     name: str = "bdf2"
 
     time_levels = ('n-1', 'n', 'n+1')
 
-    def get_discrete_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return (3*gfus['n+1'] - 4*gfus['n'] + gfus['n-1'])/(2*self.dt)
 
-    def get_implicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return 3 * gfus['n+1']
-
-    def get_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
+        if normalized:
+            return 4/3*gfus['n'] - 1/3*gfus['n-1']
         return 4 * gfus['n'] - gfus['n-1']
 
-    def get_time_step(self):
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        if normalized:
+            return 2/3*self.dt
         return 2*self.dt
-
-    def get_normalized_explicit_terms(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return 4/3*gfus['n'] - 1/3*gfus['n-1']
-
-    def get_normalized_time_step(self):
-        return 2/3*self.dt
 
 
 class TimeConfig(InterfaceConfiguration, is_interface=True):
@@ -168,23 +212,62 @@ class TimeConfig(InterfaceConfiguration, is_interface=True):
     def is_stationary(self) -> bool:
         return isinstance(self, StationaryConfig)
 
-    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
-        raise NotImplementedError("Solution Routine not implemented!")
+    def assemble(self) -> None:
+        raise NotImplementedError("Symbolic Forms not implemented!")
 
-    def solver_iteration_update(self, it: int):
+    def add_symbolic_temporal_forms(
+            self, blf: dict[str, ngs.comp.SumOfIntegrals],
+            lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
         pass
+
+    def initialize(self):
+        pass
+
+    def set_initial_conditions(self):
+        self.cfg.fem.set_initial_conditions()
+
+    def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
+        raise NotImplementedError("Solution Routine not implemented!")
 
 
 class StationaryConfig(TimeConfig):
 
     name: str = "stationary"
 
-    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
+    def assemble(self) -> None:
+
+        condense = self.cfg.optimizations.static_condensation
+        compile = self.cfg.optimizations.compile
+
+        self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
+        self.lf = ngs.LinearForm(self.cfg.fes)
+
+        for name, cf in self.cfg.blf.items():
+            logger.debug(f"Adding {name} to the BilinearForm!")
+
+            if compile.realcompile:
+                self.blf += cf.Compile(**compile)
+            else:
+                self.blf += cf
+
+        for name, cf in self.cfg.lf.items():
+            logger.debug(f"Adding {name} to the LinearForm!")
+
+            if compile.realcompile:
+                self.lf += cf.Compile(**compile)
+            else:
+                self.lf += cf
+
+    def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
+
+        if reassemble:
+            self.assemble()
 
         with self.cfg.io as io:
             io.save_pre_time_routine()
 
             # Solution routine starts here
+            self.solve()
             yield None
             # Solution routine ends here
 
@@ -203,19 +286,41 @@ class TransientConfig(TimeConfig):
     def timer(self, timer):
         return timer
 
-    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
+    def assemble(self):
+        self.scheme.assemble()
+
+    def add_symbolic_temporal_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]):
+        self.cfg.fem.add_symbolic_temporal_forms(blf, lf)
+
+    def initialize(self):
+        super().initialize()
+        self.scheme.initialize()
+
+    def set_initial_conditions(self):
+        super().set_initial_conditions()
+        self.scheme.set_initial_conditions()
+
+    def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
+
+        if reassemble:
+            self.assemble()
 
         with self.cfg.io as io:
             io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
             for it, t in enumerate(self.timer()):
-                self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
+
+                for _ in self.scheme.solve_current_time_level(t):
+                    continue
+
+                self.scheme.update_gridfunctions()
 
                 yield t
 
                 io.save_in_time_routine(t, it)
-                self.cfg.pde.redraw()
+                io.redraw()
             # Solution routine ends here
 
             io.save_post_time_routine(t, it)
@@ -249,25 +354,41 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def increment_factor(self, increment_factor):
         return int(increment_factor)
 
-    def start_solution_routine(self) -> typing.Generator[float | None, None, None]:
+    def add_symbolic_temporal_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]):
+        self.cfg.fem.add_symbolic_temporal_forms(blf, lf)
+
+    def assemble(self):
+        self.scheme.assemble()
+
+    def initialize(self):
+        super().initialize()
+        self.scheme.initialize()
+
+    def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
+
+        if reassemble:
+            self.scheme.assemble()
 
         with self.cfg.io as io:
             io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
-            self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
+            for it in self.scheme.solve_current_time_level():
+                self.scheme.update_gridfunctions()
+                self.solver_iteration_update(it)
+                io.redraw()
 
             yield None
+
             # Solution routine ends here
             io.save_in_time_routine(self.timer.t.Get(), it=0)
 
-            self.cfg.pde.redraw()
+            io.redraw()
 
             io.save_post_time_routine(self.timer.t.Get())
 
     def solver_iteration_update(self, it: int):
-        self.scheme.update_transient_gridfunctions(self.cfg.pde.transient_gfus)
-
         old_time_step = self.timer.step.Get()
 
         if self.max_time_step > old_time_step:
@@ -281,7 +402,9 @@ class PseudoTimeSteppingConfig(TimeConfig):
                 logger.info(f"Successfully updated time step at iteration {it}")
                 logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
 
-        self.cfg.pde.redraw()
+    def set_initial_conditions(self):
+        super().set_initial_conditions()
+        self.scheme.set_initial_conditions()
 
     scheme: ImplicitEuler | BDF2
     timer: Timer

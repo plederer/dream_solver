@@ -16,69 +16,65 @@ Literature:
       Fundamentals of Aerodynamics, 6th edition
       New York, NY: McGraw-Hill Education, 2017.
 """
+# ------- Import Modules ------- #
 from ngsolve import *
-from dream import *
-from dream.compressible import InviscidWall, FarField, Initial, flowstate
 from dream.mesh import get_cylinder_omesh
+from dream.compressible import CompressibleFlowSolver, InviscidWall, FarField, Initial, flowstate
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)
 
-# Define Geometry
+# ------- Define Geometry and Mesh ------- #
 ri = 1
 ro = ri * 30
 mesh = get_cylinder_omesh(ri, ro, 28, 12, geom=1.8)
 
-# Define Flow Parameters
-cfg = SolverConfiguration(mesh)
-cfg.pde = "compressible"
-cfg.pde.fem = 'conservative'
-cfg.pde.scaling = "acoustic"
-cfg.pde.riemann_solver = "hllem"
-cfg.pde.mach_number = 0.001
-cfg.pde.equation_of_state.heat_capacity_ratio = 1.4
-cfg.pde.fem.order = 5
+# ------- Set Configuration ------- #
+cfg = CompressibleFlowSolver(mesh)
+cfg.fem = 'conservative'
+cfg.scaling = "acoustic"
+cfg.riemann_solver = "hllem"
+cfg.mach_number = 0.001
+cfg.equation_of_state.heat_capacity_ratio = 1.4
+cfg.fem.order = 5
 
-cfg.solver = "nonlinear"
-cfg.solver.method = "newton"
-cfg.solver.max_iterations = 300
-cfg.solver.inverse = "direct"
-cfg.solver.inverse.solver = "pardiso"
-cfg.solver.convergence_criterion = 1e-12
+cfg.nonlinear_solver = "pardiso"
+cfg.nonlinear_solver.method = "newton"
+cfg.nonlinear_solver.max_iterations = 300
+cfg.nonlinear_solver.convergence_criterion = 1e-12
 
 cfg.time = "pseudo_time_stepping"
 cfg.time.timer.step = 0.001
 cfg.time.max_time_step = 10
 
-
 cfg.optimizations.static_condensation = True
 
+# ------- Curve Mesh ------- #
+mesh.Curve(cfg.fem.order)
 
-mesh.Curve(cfg.pde.fem.order)
-Uinf = cfg.pde.get_farfield_state((1, 0))
+# ------- Setup Boundary Conditions and Domain Conditions ------- #
+Uinf = cfg.get_farfield_state((1, 0))
+cfg.bcs['left|right'] = FarField(state=Uinf)
+cfg.bcs['cylinder'] = InviscidWall()
+cfg.dcs['default'] = Initial(state=Uinf)
 
-# Define Boundary Conditions and Domain Conditions
-cfg.pde.bcs['left|right'] = FarField(state=Uinf)
-cfg.pde.bcs['cylinder'] = InviscidWall()
-cfg.pde.dcs['default'] = Initial(state=Uinf)
+# ------- Setup Spaces and Gridfunctions ------- #
+cfg.initialize()
 
-
-# Setup Spaces and Gridfunctions
-cfg.pde.initialize_system()
-
-fields = cfg.pde.get_fields()
-# cfg.pde.draw(fields, autoscale=False, min=-1e-4, max=1e-4)
+# ------- Setup Outputs ------- #
+fields = cfg.get_fields()
+cfg.io.draw(fields, autoscale=False, min=-1e-4, max=1e-4)
 
 cfg.io.sensor = True
 cfg.io.sensor.point = "pressure_coefficient"
 cfg.io.sensor.point["pressure_coefficient"].points = 'cylinder'
-cfg.io.sensor.point["pressure_coefficient"].fields = flowstate(c_p=cfg.pde.pressure_coefficient(fields, Uinf))
+cfg.io.sensor.point["pressure_coefficient"].fields = flowstate(c_p=cfg.pressure_coefficient(fields, Uinf))
 
-cfg.solver.initialize()
+# ------- Solve System ------- #
 with TaskManager():
-    cfg.solver.solve()
+    cfg.solve()
 
-# Postprocess
+# ------- Postprocess Results ------- #
 try:
     import pandas as pd
     import matplotlib.pyplot as plt
@@ -89,20 +85,20 @@ except ImportError:
 df = cfg.io.sensor.load_as_dataframe('pressure_coefficient')
 df.sort_index(axis=1, inplace=True)
 
-# Extract Coords and Pressure Coefficient
+# ------- Extract Coords and Pressure Coefficient ------- #
 coords = np.array([eval(point) for point in df.columns.levels[0]])
 cp_h = df.iloc[-1].to_numpy()
 
-# Calculate Angle and Sort
+# ------- Calculate Angle and Sort ------- #
 phi_h = np.angle(coords[:, 0] + 1j*coords[:, 1])
 cp_h = cp_h[np.argsort(phi_h)]
 phi_h.sort()
 
-# Exact solution
+# ------- Exact solution ------- #
 phi = np.linspace(-np.pi, np.pi, 100)
 cp = 1 - 4 * np.sin(phi)**2
 
-# Draw
+# ------- Draw ------- #
 fig = plt.figure(figsize=(5, 5), dpi=100)
 ax = fig.subplots(1, 1)
 ax.plot(phi, cp, color='k')

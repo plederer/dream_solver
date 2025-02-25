@@ -3,15 +3,23 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import quantity, configuration, ngsdict
-from dream.pde import FiniteElementMethod
-from dream.mesh import Condition
+from dream.solver import FiniteElementMethod
+from dream.mesh import (Condition,
+                        Periodic,
+                        Initial,
+                        Force,
+                        Perturbation,
+                        SpongeLayer,
+                        PSpongeLayer,
+                        GridDeformation
+                        )
 
 
 class CompressibleFiniteElement(FiniteElementMethod, is_interface=True):
 
     @property
     def gfu(self) -> ngs.GridFunction:
-        return self.cfg.pde.gfu
+        return self.cfg.gfu
 
     def set_boundary_conditions(self) -> None:
         """ Boundary conditions for compressible flows are set weakly. Therefore we do nothing here."""
@@ -234,9 +242,15 @@ class AdiabaticWall(Condition):
     name = "adiabatic_wall"
 
 
+BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, Periodic]
+
+
 # ------- Domain Conditions ------- #
 
 
 class PML(Condition):
 
     name = "pml"
+
+
+DCS = [PML, Force, Perturbation, Initial, GridDeformation, PSpongeLayer, SpongeLayer]
