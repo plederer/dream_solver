@@ -14,5 +14,5 @@ cfg.equation_of_state= "ideal"
 cfg.equation_of_state.heat_capacity_ratio= 1.4
 cfg.dynamic_viscosity= "inviscid"
 cfg.scaling= "aerodynamic"
-cfg.scaling.reference_values= {'length': 1.0, 'density': 1.293, 'velocity': 1.0, 'speed_of_sound': 343.0, 'temperature': 293.15, 'pressure': 101325.0}
+cfg.scaling.dimensionful_values= {'length': 1.0, 'density': 1.293, 'velocity': 1.0, 'speed_of_sound': 343.0, 'temperature': 293.15, 'pressure': 101325.0}
 cfg.riemann_solver= "lax_friedrich"

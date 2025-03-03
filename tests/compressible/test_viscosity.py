@@ -54,14 +54,14 @@ class TestSutherland(unittest.TestCase):
         state = flowstate(temperature=1)
 
         cfg.scaling = "aerodynamic"
-        cfg.scaling.reference_values.T = 1
+        cfg.scaling.dimensionful_values.T = 1
         self.assertAlmostEqual(self.mu.viscosity(state)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
         cfg.scaling = "acoustic"
-        cfg.scaling.reference_values.T = 1
+        cfg.scaling.dimensionful_values.T = 1
         self.assertAlmostEqual(self.mu.viscosity(state)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
         cfg.scaling = "aeroacoustic"
-        cfg.scaling.reference_values.T = 1
+        cfg.scaling.dimensionful_values.T = 1
         self.assertAlmostEqual(self.mu.viscosity(state)(mip), (1.6)**(3/2) * (2/1.6)/(1+1/1.6))
 

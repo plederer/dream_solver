@@ -27,26 +27,37 @@ class CompressibleFiniteElement(FiniteElementMethod, is_interface=True):
 
 
 class flowstate(ngsdict):
-    rho = quantity('density')
-    u = quantity('velocity')
-    rho_u = quantity('momentum')
-    p = quantity('pressure')
-    T = quantity('temperature')
-    rho_E = quantity('energy')
-    E = quantity('specific_energy')
-    rho_Ei = quantity('inner_energy')
-    Ei = quantity('specific_inner_energy')
-    rho_Ek = quantity('kinetic_energy')
-    Ek = quantity('specific_kinetic_energy')
-    rho_H = quantity('enthalpy')
-    H = quantity('specific_enthalpy')
-    c = quantity('speed_of_sound')
-    grad_rho = quantity('density_gradient')
-    grad_u = quantity('velocity_gradient')
-    grad_rho_u = quantity('momentum_gradient')
-    grad_p = quantity('pressure_gradient')
-    grad_T = quantity('temperature_gradient')
-    grad_rho_E = quantity('energy_gradient')
+    """ Mutable mapping for flow quantities.
+
+        Literal mathematical symbols as key names are converted to their respective quantities,
+        if predefined. Values are converted to NGSolve CoefficientFunctions.
+
+        >>> state = flowstate(rho=1.0, velocity=(1.0, 0.0))
+        >>> state
+        {'density': CoefficientFunction((1.0)), 'velocity': CoefficientFunction((1.0, 0.0))}
+        >>> state['density'] = 5.0
+        {'density': CoefficientFunction((5.0)), 'velocity': CoefficientFunction((1.0, 0.0))}
+    """
+    rho = quantity('density', r"\rho")
+    u = quantity('velocity', r"\bm{u}")
+    rho_u = quantity('momentum', r"\rho \bm{u}")
+    p = quantity('pressure', r"p")
+    T = quantity('temperature', r"T")
+    rho_E = quantity('energy', r"\rho E")
+    E = quantity('specific_energy', r"E")
+    rho_Ei = quantity('inner_energy', r"\rho E_i")
+    Ei = quantity('specific_inner_energy', r"E_i")
+    rho_Ek = quantity('kinetic_energy', r"\rho E_k")
+    Ek = quantity('specific_kinetic_energy', r"E_k")
+    rho_H = quantity('enthalpy', r"\rho H")
+    H = quantity('specific_enthalpy', r"H")
+    c = quantity('speed_of_sound', r"c")
+    grad_rho = quantity('density_gradient', r"\nabla \rho")
+    grad_u = quantity('velocity_gradient', r"\nabla \bm{u}")
+    grad_rho_u = quantity('momentum_gradient', r"\nabla (\rho \bm{u})")
+    grad_p = quantity('pressure_gradient', r"\nabla p")
+    grad_T = quantity('temperature_gradient', r"\nabla T")
+    grad_rho_E = quantity('energy_gradient', r"\nabla (\rho E)")
     grad_E = quantity('specific_energy_gradient')
     grad_rho_Ei = quantity('inner_energy_gradient')
     grad_Ei = quantity('specific_inner_energy_gradient')
@@ -55,10 +66,10 @@ class flowstate(ngsdict):
     grad_rho_H = quantity('enthalpy_gradient')
     grad_H = quantity('specific_enthalpy_gradient')
     grad_c = quantity('speed_of_sound_gradient')
-    eps = quantity('strain_rate_tensor')
+    eps = quantity('strain_rate_tensor', r"\bm{\varepsilon}")
 
 
-class referencestate(ngsdict):
+class dimensionfulstate(ngsdict):
     L = quantity("length")
     rho = quantity("density")
     rho_u = quantity("momentum")

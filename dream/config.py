@@ -46,7 +46,6 @@ def equation(func):
     return state
 
 
-class quantity:
     """
     Variable is a descriptor that mimics a physical quantity.
 
@@ -55,13 +54,18 @@ class quantity:
     tensor dimensions.
     """
 
-    __slots__ = ('symbol', 'name')
+class quantity:
+
+
+    __slots__ = ('symbol', 'name', '__doc__')
 
     def __set_name__(self, owner, symbol: str):
         self.symbol = symbol
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, symbol: str = None) -> None:
         self.name = name
+        if symbol is not None:
+            self.__doc__ = f"{name} :math:`{symbol}`"
 
     def __get__(self, state: ngsdict, objtype) -> ngs.CF:
         if state is None:

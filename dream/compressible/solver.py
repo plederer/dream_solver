@@ -6,12 +6,12 @@ import ngsolve as ngs
 from dream import bla
 from dream.config import parameter, interface, equation
 from dream.mesh import (BoundaryConditions, DomainConditions)
-from dream.solver import SolverConfiguration, FiniteElementMethod
+from dream.solver import SolverConfiguration
 
 from .eos import IdealGas
 from .viscosity import Inviscid, Constant, Sutherland
 from .scaling import Aerodynamic, Aeroacoustic, Acoustic
-from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM
+from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind
 from .config import flowstate, BCS, DCS
 from .formulations import ConservativeFiniteElementMethod
 
@@ -28,7 +28,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **kwargs)
 
     @interface(default=ConservativeFiniteElementMethod)
-    def fem(self, fem: ConservativeFiniteElementMethod):
+    def fem(self, fem) -> ConservativeFiniteElementMethod:
         r""" Sets the finite element for the compressible flow solver. 
 
             :setter: Sets the finite element, defaults to ConservativeFiniteElement
@@ -37,11 +37,11 @@ class CompressibleFlowSolver(SolverConfiguration):
         return fem
 
     @parameter(default=0.3)
-    def mach_number(self, mach_number: ngs.Parameter):
+    def mach_number(self, mach_number: float) -> ngs.Parameter:
         r""" Sets the ratio of the farfield flow velocity to the farfield speed of sound.
 
             .. math::
-                \Ma_\infty = \frac{u_\infty}{c_\infty}
+                \Ma_\infty = \frac{|\bm{u}_\infty|}{c_\infty}
 
             :setter: Sets the Mach number, defaults to 0.3
             :getter: Returns the Mach number
@@ -53,11 +53,11 @@ class CompressibleFlowSolver(SolverConfiguration):
         return mach_number
 
     @parameter(default=150)
-    def reynolds_number(self, reynolds_number: ngs.Parameter):
+    def reynolds_number(self, reynolds_number: float) -> ngs.Parameter:
         r""" Sets the ratio of inertial to viscous forces 
 
             .. math::
-                \Re_\infty = \frac{\rho_\infty u_\infty L}{\mu_\infty}
+                \Re_\infty = \frac{\rho_\infty |\bm{u}_\infty| L}{\mu_\infty}
 
             :setter: Sets the Reynolds number, defaults to 150
             :getter: Returns the Reynolds number
@@ -73,7 +73,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             raise ValueError("Inviscid solver configuration: Reynolds number not applicable")
 
     @parameter(default=0.72)
-    def prandtl_number(self, prandtl_number: float):
+    def prandtl_number(self, prandtl_number: float) -> ngs.Parameter:
         r""" Sets the ratio of momentum diffusivity to thermal diffusivity 
 
             .. math::
@@ -93,7 +93,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             raise ValueError("Inviscid solver configuration: Prandtl number not applicable")
 
     @interface(default=IdealGas)
-    def equation_of_state(self, equation_of_state):
+    def equation_of_state(self, equation_of_state) -> IdealGas:
         r""" Sets the equation of state for the compressible flow solver. 
 
             :setter: Sets the equation of state, defaults to IdealGas
@@ -102,7 +102,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return equation_of_state
 
     @interface(default=Inviscid)
-    def dynamic_viscosity(self, dynamic_viscosity):
+    def dynamic_viscosity(self, dynamic_viscosity) -> Inviscid | Constant | Sutherland:
         r""" Sets the dynamic viscosity for the compressible flow solver.
 
             :setter: Sets the dynamic viscosity, defaults to Inviscid
@@ -111,7 +111,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return dynamic_viscosity
 
     @interface(default=Aerodynamic)
-    def scaling(self, scaling):
+    def scaling(self, scaling) -> Aerodynamic | Acoustic | Aeroacoustic:
         r""" Sets the dimensional scaling for the compressible flow solver.
 
             :setter: Sets the scaling, defaults to Aerodynamic
@@ -120,7 +120,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return scaling
 
     @interface(default=LaxFriedrich)
-    def riemann_solver(self, riemann_solver: LaxFriedrich):
+    def riemann_solver(self, riemann_solver) -> LaxFriedrich | Roe | HLL | HLLEM | Upwind:
         r""" Sets the Riemann solver for the compressible flow solver.
 
             :setter: Sets the Riemann solver, defaults to LaxFriedrich
@@ -133,22 +133,9 @@ class CompressibleFlowSolver(SolverConfiguration):
     reynolds_number: ngs.Parameter
     prandtl_number: ngs.Parameter
     equation_of_state: IdealGas
-    dynamic_viscosity: Constant | Inviscid | Sutherland
+    dynamic_viscosity: Inviscid | Constant | Sutherland
     scaling: Aerodynamic | Acoustic | Aeroacoustic
     riemann_solver: LaxFriedrich | Roe | HLL | HLLEM
-
-    @property
-    def reference_reynolds_number(self) -> ngs.CF:
-        r""" Returns the reference Reynolds number depending on the scaling in use. 
-
-            .. math:: 
-                \Re_r = \begin{cases} \Re_\infty & \text{if Aerodynamic} \\
-                                      \frac{\Re_\infty}{\Ma_\infty} & \text{if Acoustic} \\
-                                      \frac{\Re_\infty (1+\Ma_\infty)}{\Ma_\infty} & \text{if Aeroacoustic} \end{cases}
-
-            :getter: Returns the reference Reynolds number
-        """
-        return self.reynolds_number/self.scaling.velocity_magnitude(self.mach_number)
 
     def get_farfield_state(self, direction: tuple[float, ...]) -> flowstate:
         r""" Returns the dimensionless farfield state depending on the scaling in use and the flow direction. 
@@ -157,7 +144,7 @@ class CompressibleFlowSolver(SolverConfiguration):
                 .. math:: 
                     \begin{align*}
                         \rho &= 1, &
-                        \| \bm{u} \|  &= 1, &
+                        | \bm{u} |  &= 1, &
                         c &= \frac{1}{\Ma_\infty}, &
                         T &= \frac{1}{(\gamma - 1)\Ma_\infty^2}, &
                         p &= \frac{1}{\gamma \Ma_\infty^2}.
@@ -167,7 +154,7 @@ class CompressibleFlowSolver(SolverConfiguration):
                 .. math::
                     \begin{align*}
                         \rho &= 1, &
-                        \| \bm{u} \|  &= \Ma_\infty, &
+                        | \bm{u} |  &= \Ma_\infty, &
                         c &= 1, &
                         T &= \frac{1}{(\gamma - 1)}, &
                         p &= \frac{1}{\gamma}.
@@ -177,13 +164,14 @@ class CompressibleFlowSolver(SolverConfiguration):
                 .. math::
                     \begin{align*}
                         \rho &= 1, &
-                        \| \bm{u} \|  &= \frac{\Ma_\infty}{1 + \Ma_\infty}, &
+                        | \bm{u} |  &= \frac{\Ma_\infty}{1 + \Ma_\infty}, &
                         c &= \frac{1}{1 + \Ma_\infty}, &
                         T &= \frac{1}{(\gamma - 1) ( 1+ \Ma_\infty^2)}, &
                         p &= \frac{1}{\gamma (1+ \Ma_\infty^2)}.
                     \end{align*}
 
             :param direction: A container containing the flow direction
+            :type direction: tuple[float, ...]
         """
 
         Ma = self.mach_number
@@ -206,14 +194,14 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         return INF
 
-    def get_dimensional_state(self, U: flowstate) -> flowstate:
-        r""" Returns the dimensional state from a given state depending on the scaling. 
+    def get_dimensionful_state(self, U: flowstate) -> flowstate:
+        r""" Returns the dimensionful state from a given state depending on the scaling. 
 
             :param U: A dictionary containing the flow quantities
             :type U: flowstate
         """
 
-        REF = self.scaling.reference_values
+        REF = self.scaling.dimensionful_values
         DIM = flowstate()
         for key, value in U.items():
             if key in REF:
@@ -263,8 +251,8 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Returns the local Mach number from a given state.
 
             .. math::
-                \Ma = \frac{\| \bm{u} \|}{c}
-    
+                \Ma = \frac{| \bm{u} |}{c}
+
             :param U: A dictionary containing the flow quantities
             :type U: flowstate
         """
@@ -276,8 +264,8 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Returns the local Reynolds number from a given state.
 
             .. math::
-                \Re = \frac{\rho \| \bm{u} \|}{\mu}
-    
+                \Re = \frac{\rho | \bm{u} |}{\mu}
+
             :param U: A dictionary containing the flow quantities
             :type U: flowstate
         """
@@ -327,8 +315,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         Linv = self.characteristic_from_primitive(U, unit_vector)
         return L * matrix * Linv
 
-    def transform_characteristic_to_conservative(
-            self, matrix: bla.MATRIX, U: flowstate, unit_vector: bla.VECTOR):
+    def transform_characteristic_to_conservative(self, matrix: bla.MATRIX, U: flowstate, unit_vector: bla.VECTOR):
         P = self.conservative_from_characteristic(U, unit_vector)
         Pinv = self.characteristic_from_conservative(U, unit_vector)
         return P * matrix * Pinv
@@ -633,7 +620,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         """
 
         mu = self.viscosity(U)
-        Re = self.reference_reynolds_number
+        Re = self.scaling.reference_reynolds_number
         eps = self.strain_rate_tensor(dU)
 
         if all((mu, eps)):
@@ -648,7 +635,7 @@ class CompressibleFlowSolver(SolverConfiguration):
     def heat_flux(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
 
         k = self.viscosity(U)
-        Re = self.reference_reynolds_number
+        Re = self.scaling.reference_reynolds_number
         Pr = self.prandtl_number
 
         if all((k, dU.grad_T)):

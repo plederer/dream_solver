@@ -25,8 +25,8 @@ class Upwind(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
-            .. math::
-                \bm{\tau}_c := \bm{A}_n^+
+        .. math::
+            \bm{\tau}_c := \bm{A}_n^+
         """
         unit_vector = bla.as_vector(unit_vector)
         return self.cfg.get_conservative_convective_jacobian(U, unit_vector, 'outgoing')
@@ -40,8 +40,12 @@ class LaxFriedrich(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
-            .. math::
-                \bm{\tau}_c := (|u_n| + c) \bm{I}
+        .. math::
+            \bm{\tau}_c := (|u_n| + c) \bm{I}
+
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -59,8 +63,12 @@ class Roe(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
-            .. math::
-                \bm{\tau}_c := |A_n|
+        .. math::
+            \bm{\tau}_c := |A_n|
+
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -75,8 +83,12 @@ class HLL(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
-            .. math::
-                \bm{\tau}_c := \max(u_n + c, 0) \bm{I}
+        .. math::
+            \bm{\tau}_c := \max(u_n + c, 0) \bm{I}
+            
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -100,6 +112,10 @@ class HLLEM(RiemannSolver):
 
         .. math::
             \theta_0
+
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         return float(value)
     
@@ -108,12 +124,16 @@ class HLLEM(RiemannSolver):
     def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
-            .. math::
-                \begin{align*}
-                \theta &:= \max\left(\frac{|u_n|}{|u_n| + c}, \theta_0\right), &
-                \Theta &:=  \text{diag}(1, \theta, \ldots, \theta, 1), &
-                \bm{\tau}_c &:= \bm{P} \bm{\Theta} \bm{P}^{-1}
-                \end{align*}
+        .. math::
+            \begin{align*}
+            \theta &:= \max\left(\frac{|u_n|}{|u_n| + c}, \theta_0\right), &
+            \Theta &:=  \text{diag}(1, \theta, \ldots, \theta, 1), &
+            \bm{\tau}_c &:= \bm{P} \bm{\Theta} \bm{P}^{-1}
+            \end{align*}
+
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         unit_vector = bla.as_vector(unit_vector)
 
