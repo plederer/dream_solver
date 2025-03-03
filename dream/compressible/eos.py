@@ -5,83 +5,83 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import InterfaceConfiguration, parameter
-from dream.compressible.config import flowstate
+from dream.compressible.config import flowfields
 
 logger = logging.getLogger(__name__)
 
 
 class EquationOfState(InterfaceConfiguration, is_interface=True):
 
-    def density(self, U: flowstate) -> ngs.CF:
+    def density(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def pressure(self, U: flowstate) -> ngs.CF:
+    def pressure(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def temperature(self, U: flowstate) -> ngs.CF:
+    def temperature(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def inner_energy(self, U: flowstate) -> ngs.CF:
+    def inner_energy(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def specific_inner_energy(self, U: flowstate) -> ngs.CF:
+    def specific_inner_energy(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def speed_of_sound(self, U: flowstate) -> ngs.CF:
+    def speed_of_sound(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def density_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
+    def density_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def pressure_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
+    def pressure_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def temperature_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
+    def temperature_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
     def characteristic_velocities(
-            self, U: flowstate, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
+            self, U: flowfields, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
         raise NotImplementedError()
 
     def characteristic_variables(
-            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR) -> bla.VECTOR:
+            self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR) -> bla.VECTOR:
         raise NotImplementedError()
 
     def characteristic_amplitudes(
-            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
+            self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
         raise NotImplementedError()
 
-    def primitive_from_conservative(self, U: flowstate) -> bla.MATRIX:
+    def primitive_from_conservative(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def primitive_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
+    def primitive_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
+    def primitive_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_from_primitive(self, U: flowstate) -> bla.MATRIX:
+    def conservative_from_primitive(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def conservative_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
+    def conservative_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
+    def conservative_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def characteristic_from_primitive(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_primitive(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def characteristic_from_conservative(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_conservative(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def isentropic_density(self, U: flowstate, Uref: flowstate) -> ngs.CF:
+    def isentropic_density(self, U: flowfields, Uref: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
 
@@ -96,8 +96,8 @@ class IdealGas(EquationOfState):
 
     heat_capacity_ratio: ngs.Parameter
 
-    def density(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the density from a given state
+    def density(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the density from given fields
 
         .. math::
             \begin{align*}
@@ -125,8 +125,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def pressure(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the density from a given state
+    def pressure(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the density from given fields
 
         .. math::
             \begin{align*}
@@ -154,8 +154,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def temperature(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the temperature from a given state
+    def temperature(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the temperature from given fields
 
         .. math::
             \begin{align*}
@@ -183,8 +183,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def inner_energy(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the inner energy from a given state
+    def inner_energy(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the inner energy from given fields
 
         .. math::
             \begin{align*}
@@ -207,8 +207,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def specific_inner_energy(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the specific inner energy from a given state
+    def specific_inner_energy(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the specific inner energy from given fields
 
         .. math::
             \begin{align*}
@@ -231,8 +231,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def speed_of_sound(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the speed of sound from a given state
+    def speed_of_sound(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the speed of sound from given fields
 
         .. math::
             \begin{align*}
@@ -260,8 +260,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def density_gradient(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
-        r"""Returns the density gradient from a given state
+    def density_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+        r"""Returns the density gradient from given fields
 
         .. math::
             \begin{align*}
@@ -282,8 +282,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning density gradient from temperature and inner energy.")
             return gamma * (dU.grad_rho_Ei/U.T - U.rho_Ei * dU.grad_T/U.T**2)
 
-    def pressure_gradient(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
-        r"""Returns the pressure gradient from a given state
+    def pressure_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+        r"""Returns the pressure gradient from given fields
 
         .. math::
             \begin{align*}
@@ -304,8 +304,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning pressure gradient from inner energy gradient.")
             return (gamma - 1) * dU.grad_rho_Ei
 
-    def temperature_gradient(self, U: flowstate,  dU: flowstate) -> bla.VECTOR:
-        r"""Returns the temperature gradient from a given state
+    def temperature_gradient(self, U: flowfields,  dU: flowfields) -> bla.VECTOR:
+        r"""Returns the temperature gradient from given fields
 
         .. math::
             \begin{align*}
@@ -326,7 +326,7 @@ class IdealGas(EquationOfState):
             logger.debug("Returning temperature gradient from specific inner energy gradient.")
             return gamma * dU.grad_Ei
 
-    def characteristic_velocities(self, U: flowstate, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
+    def characteristic_velocities(self, U: flowfields, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
 
         unit_vector = bla.as_vector(unit_vector)
 
@@ -363,7 +363,7 @@ class IdealGas(EquationOfState):
             return bla.as_vector([lam_m_c] + U.u.dim * [lam] + [lam_p_c])
 
     def characteristic_variables(
-            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR) -> bla.VECTOR:
+            self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR) -> bla.VECTOR:
 
         unit_vector = bla.as_vector(unit_vector)
 
@@ -387,7 +387,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_vector(char)
 
-    def characteristic_amplitudes(self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR,
+    def characteristic_amplitudes(self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR,
                                   type_: str = None) -> bla.VECTOR:
         r""" Returns the charachteristic amplitudes
 
@@ -403,7 +403,7 @@ class IdealGas(EquationOfState):
         if all((velocities, variables)):
             return bla.as_vector([vel * var for vel, var in zip(velocities, variables)])
 
-    def conservative_from_primitive(self, U: flowstate) -> bla.MATRIX:
+    def conservative_from_primitive(self, U: flowfields) -> bla.MATRIX:
         r"""
         The :math:`\bm{M}` matrix transforms primitive variables to conservative variables
 
@@ -440,7 +440,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(M, dims=(dim, dim))
 
-    def primitive_from_conservative(self, U: flowstate) -> bla.MATRIX:
+    def primitive_from_conservative(self, U: flowfields) -> bla.MATRIX:
         r"""
         The :math:`\bm{M}^{-1}`  matrix transforms conservative variables to primitive variables
 
@@ -479,7 +479,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(Minv, dims=(dim, dim))
 
-    def primitive_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def primitive_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r"""
         The :math:`\bm{L}_n` matrix transforms characteristic variables to primitive variables
 
@@ -512,7 +512,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(L, dims=(dim, dim))
 
-    def characteristic_from_primitive(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_primitive(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r"""
         The :math:`\bm{L}^{-1}_n` matrix transforms primitive variables to charactersitic variables
 
@@ -545,7 +545,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(Linv, dims=(dim, dim))
     
-    def primitive_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
+    def primitive_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
 
         if all((U.u, U.rho, U.c)):
             dim = U.u.dim + 2
@@ -563,7 +563,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(A, dims=(dim, dim))
 
-    def primitive_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
+    def primitive_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
 
         if all((U.u, U.rho, U.c)):
             dim = U.u.dim + 2
@@ -581,7 +581,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(B, dims=(dim, dim))
 
-    def conservative_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def conservative_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r"""
         The :math:`\bm{P}_n` matrix transforms characteristic variables to conservative variables
 
@@ -624,7 +624,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(P, dims=(dim, dim))
 
-    def characteristic_from_conservative(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_conservative(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r"""
         The :math:`\bm{P}^{-1}_n` matrix transforms conservative variables to characteristic variables
 
@@ -660,7 +660,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(Pinv, dims=(dim, dim))
 
-    def conservative_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
+    def conservative_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
         r""" Convective flux Jacobian :math:`\bm{A}` in x-direction
 
         .. math::
@@ -697,7 +697,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(A, dims=(dim, dim))
 
-    def conservative_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
+    def conservative_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
         r""" Convective flux Jacobian :math:`\bm{B}` in y-direction
 
         .. math::
@@ -741,8 +741,8 @@ class IdealGas(EquationOfState):
 
 
 
-    def isentropic_density(self, U: flowstate, Uref: flowstate) -> ngs.CF:
-        r"""Returns the isentropic density from a given state
+    def isentropic_density(self, U: flowfields, Uref: flowfields) -> ngs.CF:
+        r"""Returns the isentropic density from given fields
 
         .. math::
             \rho = \rho_{ref} (\frac{T}{T_{ref}})^{\frac{1}{\gamma - 1}}

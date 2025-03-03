@@ -1,7 +1,7 @@
 from __future__ import annotations
 import unittest
 
-from dream.compressible import flowstate
+from dream.compressible import flowfields
 from tests.compressible.setup import cfg, mip
 
 class TestInviscid(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestInviscid(unittest.TestCase):
 
     def test_viscosity(self):
         with self.assertRaises(TypeError):
-            self.mu.viscosity(flowstate())
+            self.mu.viscosity(flowfields())
 
 
 class TestConstant(unittest.TestCase):
@@ -28,8 +28,8 @@ class TestConstant(unittest.TestCase):
         self.assertFalse(self.mu.is_inviscid)
 
     def test_viscosity(self):
-        state = flowstate()
-        self.assertAlmostEqual(self.mu.viscosity(state), 1)
+        fields = flowfields()
+        self.assertAlmostEqual(self.mu.viscosity(fields), 1)
 
 
 class TestSutherland(unittest.TestCase):
@@ -48,20 +48,20 @@ class TestSutherland(unittest.TestCase):
 
     def test_viscosity(self):
 
-        state = flowstate()
-        self.assertIs(self.mu.viscosity(state), None)
+        fields = flowfields()
+        self.assertIs(self.mu.viscosity(fields), None)
 
-        state = flowstate(temperature=1)
+        fields = flowfields(temperature=1)
 
         cfg.scaling = "aerodynamic"
         cfg.scaling.dimensionful_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(state)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
+        self.assertAlmostEqual(self.mu.viscosity(fields)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
         cfg.scaling = "acoustic"
         cfg.scaling.dimensionful_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(state)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
+        self.assertAlmostEqual(self.mu.viscosity(fields)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
         cfg.scaling = "aeroacoustic"
         cfg.scaling.dimensionful_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(state)(mip), (1.6)**(3/2) * (2/1.6)/(1+1/1.6))
+        self.assertAlmostEqual(self.mu.viscosity(fields)(mip), (1.6)**(3/2) * (2/1.6)/(1+1/1.6))
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing
 
 from dream.config import InterfaceConfiguration, configuration
-from dream.compressible.config import flowstate
+from dream.compressible.config import flowfields
 
 if typing.TYPE_CHECKING:
     from .solver import CompressibleFlowSolver
@@ -16,7 +16,7 @@ class DynamicViscosity(InterfaceConfiguration, is_interface=True):
     def is_inviscid(self) -> bool:
         return isinstance(self, Inviscid)
 
-    def viscosity(self, U: flowstate):
+    def viscosity(self, U: flowfields):
         raise NotImplementedError()
 
 
@@ -25,7 +25,7 @@ class Inviscid(DynamicViscosity):
     name: str = "inviscid"
     aliases = ('euler', )
 
-    def viscosity(self, U: flowstate):
+    def viscosity(self, U: flowfields):
         raise TypeError("Inviscid Setting! Dynamic Viscosity not defined!")
 
 
@@ -33,7 +33,7 @@ class Constant(DynamicViscosity):
 
     name: str = "constant"
 
-    def viscosity(self, U: flowstate):
+    def viscosity(self, U: flowfields):
         return 1
 
 
@@ -49,11 +49,11 @@ class Sutherland(DynamicViscosity):
     def measurement_viscosity(self, value: float) -> float:
         return value
 
-    def viscosity(self, U: flowstate):
+    def viscosity(self, U: flowfields):
 
         if U.T is not None:
 
-            INF = flowstate(rho=self.cfg.scaling.density(), c=self.cfg.scaling.speed_of_sound(self.cfg.mach_number))
+            INF = flowfields(rho=self.cfg.scaling.density(), c=self.cfg.scaling.speed_of_sound(self.cfg.mach_number))
             INF.T = self.cfg.temperature(INF)
 
             T0 = self.measurement_temperature/self.cfg.scaling.dimensionful_values.T * INF.T

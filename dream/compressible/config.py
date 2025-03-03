@@ -26,16 +26,16 @@ class CompressibleFiniteElement(FiniteElementMethod, is_interface=True):
         pass
 
 
-class flowstate(ngsdict):
+class flowfields(ngsdict):
     """ Mutable mapping for flow quantities.
 
         Literal mathematical symbols as key names are converted to their respective quantities,
         if predefined. Values are converted to NGSolve CoefficientFunctions.
 
-        >>> state = flowstate(rho=1.0, velocity=(1.0, 0.0))
-        >>> state
+        >>> fields = flowfields(rho=1.0, velocity=(1.0, 0.0))
+        >>> fields
         {'density': CoefficientFunction((1.0)), 'velocity': CoefficientFunction((1.0, 0.0))}
-        >>> state['density'] = 5.0
+        >>> fields['density'] = 5.0
         {'density': CoefficientFunction((5.0)), 'velocity': CoefficientFunction((1.0, 0.0))}
     """
     rho = quantity('density', r"\rho")
@@ -69,7 +69,7 @@ class flowstate(ngsdict):
     eps = quantity('strain_rate_tensor', r"\bm{\varepsilon}")
 
 
-class dimensionfulstate(ngsdict):
+class dimensionfulfields(ngsdict):
     L = quantity("length")
     rho = quantity("density")
     rho_u = quantity("momentum")
@@ -84,21 +84,21 @@ class FarField(Condition):
     name = "farfield"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            state = flowstate(**state)
-        return state
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("Farfield state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("Farfield fields not set!")
 
     @configuration(default=True)
     def identity_jacobian(self, use_identity_jacobian: bool):
         return bool(use_identity_jacobian)
 
-    state: flowstate
+    fields: flowfields
 
 
 class Outflow(Condition):
@@ -106,20 +106,20 @@ class Outflow(Condition):
     name = "outflow"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            if bla.is_scalar(state):
-                state = flowstate(p=state)
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            if bla.is_scalar(fields):
+                fields = flowfields(p=fields)
             else:
-                state = flowstate(**state)
-        return state
+                fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("Outflow state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("Outflow fields not set!")
 
-    state: flowstate
+    fields: flowfields
 
 
 class CBC(Condition):
@@ -127,15 +127,15 @@ class CBC(Condition):
     name = "cbc"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            state = flowstate(**state)
-        return state
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("CBC state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("CBC fields not set!")
 
     @configuration(default="farfield")
     def target(self, target: str):
@@ -175,7 +175,7 @@ class CBC(Condition):
 
         return factors
 
-    state: flowstate
+    fields: flowfields
     target: str
     relaxation_factor: dict
     tangential_relaxation: ngs.CF
@@ -232,20 +232,20 @@ class IsothermalWall(Condition):
     name = "isothermal_wall"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            if bla.is_scalar(state):
-                state = flowstate(T=state)
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            if bla.is_scalar(fields):
+                fields = flowfields(T=fields)
             else:
-                state = flowstate(**state)
-        return state
+                fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("Isothermal Wall state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("Isothermal Wall fields not set!")
 
-    state: flowstate
+    fields: flowfields
 
 
 class AdiabaticWall(Condition):

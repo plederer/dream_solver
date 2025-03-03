@@ -4,7 +4,7 @@ import numpy.testing as nptest
 from tests import simplex
 import ngsolve as ngs
 
-from dream.compressible.config import flowstate
+from dream.compressible.config import flowfields
 from tests.compressible.setup import cfg, mip
 
 

@@ -19,7 +19,7 @@ Literature:
 # ------- Import Modules ------- #
 from ngsolve import *
 from dream.mesh import get_cylinder_omesh
-from dream.compressible import CompressibleFlowSolver, InviscidWall, FarField, Initial, flowstate
+from dream.compressible import CompressibleFlowSolver, InviscidWall, FarField, Initial, flowfields
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)
@@ -54,9 +54,9 @@ mesh.Curve(cfg.fem.order)
 
 # ------- Setup Boundary Conditions and Domain Conditions ------- #
 Uinf = cfg.get_farfield_state((1, 0))
-cfg.bcs['left|right'] = FarField(state=Uinf)
+cfg.bcs['left|right'] = FarField(fields=Uinf)
 cfg.bcs['cylinder'] = InviscidWall()
-cfg.dcs['default'] = Initial(state=Uinf)
+cfg.dcs['default'] = Initial(fields=Uinf)
 
 # ------- Setup Spaces and Gridfunctions ------- #
 cfg.initialize()
@@ -68,7 +68,7 @@ cfg.io.draw(fields, autoscale=False, min=-1e-4, max=1e-4)
 cfg.io.sensor = True
 cfg.io.sensor.point = "pressure_coefficient"
 cfg.io.sensor.point["pressure_coefficient"].points = 'cylinder'
-cfg.io.sensor.point["pressure_coefficient"].fields = flowstate(c_p=cfg.pressure_coefficient(fields, Uinf))
+cfg.io.sensor.point["pressure_coefficient"].fields = flowfields(c_p=cfg.pressure_coefficient(fields, Uinf))
 
 # ------- Solve System ------- #
 with TaskManager():

@@ -34,16 +34,16 @@ def equation(func):
     """
 
     @functools.wraps(func)
-    def state(self, *args: ngsdict, **kwargs):
+    def fields(self, *args: ngsdict, **kwargs):
 
         quantity = func(self, *args, **kwargs)
 
         if quantity is None:
-            raise ValueError(f"Can not determine {func.__name__} from given state!")
+            raise ValueError(f"Can not determine {func.__name__} from given fields!")
 
         return quantity
 
-    return state
+    return fields
 
 
     """
@@ -67,17 +67,17 @@ class quantity:
         if symbol is not None:
             self.__doc__ = f"{name} :math:`{symbol}`"
 
-    def __get__(self, state: ngsdict, objtype) -> ngs.CF:
-        if state is None:
+    def __get__(self, fields: ngsdict, objtype) -> ngs.CF:
+        if fields is None:
             return self
-        return state.get(self.name, None)
+        return fields.get(self.name, None)
 
-    def __set__(self, state: ngsdict, value) -> None:
+    def __set__(self, fields: ngsdict, value) -> None:
         if value is not None:
-            state[self.name] = value
+            fields[self.name] = value
 
-    def __delete__(self, state: ngsdict):
-        del state[self.name]
+    def __delete__(self, fields: ngsdict):
+        del fields[self.name]
 
 
 class ngsdict(typing.MutableMapping):
@@ -85,7 +85,7 @@ class ngsdict(typing.MutableMapping):
     symbols: dict[str, str] = {}
 
     def to_py(self) -> dict:
-        """ Returns the current state represented by pure python objects. 
+        """ Returns the current fields represented by pure python objects. 
         """
         mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
         return {key: value(mesh()) for key, value in self.items()}

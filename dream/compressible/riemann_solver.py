@@ -4,7 +4,7 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import InterfaceConfiguration, configuration
-from dream.compressible.config import flowstate
+from dream.compressible.config import flowfields
 
 if typing.TYPE_CHECKING:
     from .solver import CompressibleFlowSolver
@@ -14,7 +14,7 @@ class RiemannSolver(InterfaceConfiguration, is_interface=True):
 
     cfg: CompressibleFlowSolver
 
-    def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         NotImplementedError()
 
 
@@ -22,7 +22,7 @@ class Upwind(RiemannSolver):
 
     name = "upwind"
 
-    def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -37,7 +37,7 @@ class LaxFriedrich(RiemannSolver):
     name = "lax_friedrich"
     aliases = ('lf', )
 
-    def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -60,7 +60,7 @@ class Roe(RiemannSolver):
 
     name = "roe"
 
-    def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -80,7 +80,7 @@ class HLL(RiemannSolver):
 
     name = "hll"
 
-    def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -121,7 +121,7 @@ class HLLEM(RiemannSolver):
     
     theta_0: float
 
-    def get_convective_stabilisation_matrix(self, U: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> ngs.CF:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::

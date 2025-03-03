@@ -3,7 +3,7 @@ from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
 from ngsolve.meshes import MakeStructured2DMesh
-from dream.compressible import flowstate, FarField, Initial, CompressibleFlowSolver
+from dream.compressible import flowfields, FarField, Initial, CompressibleFlowSolver
 
 ngsglobals.msg_level = 0
 SetNumThreads(4)
@@ -87,14 +87,14 @@ Rv = 0.1
 r = sqrt(x**2 + y**2)
 p_0 = Uinf.p * (1 + Gamma * exp(-r**2/Rv**2))
 rho_0 = Uinf.rho * (1 + Gamma * exp(-r**2/Rv**2))
-initial = Initial(state=flowstate(rho=rho_0, u=Uinf.u, p=p_0))
+initial = Initial(fields=flowfields(rho=rho_0, u=Uinf.u, p=p_0))
 cfg.dcs['default'] = initial
 
-cfg.bcs['left|right'] = FarField(state=Uinf)
+cfg.bcs['left|right'] = FarField(fields=Uinf)
 if periodic:
     cfg.bcs['top|bottom'] = "periodic"
 else:
-    cfg.bcs['top|bottom'] = FarField(state=Uinf)
+    cfg.bcs['top|bottom'] = FarField(fields=Uinf)
 
 # ------- Setup Spaces and Gridfunctions ------- #
 cfg.initialize()

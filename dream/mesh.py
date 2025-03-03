@@ -266,15 +266,15 @@ class Initial(Condition):
     name = "initial"
 
     @configuration(default=None)
-    def state(self, state) -> ngsdict:
-        return state
+    def fields(self, fields) -> ngsdict:
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
             raise ValueError("Initial State not set!")
 
-    state: ngsdict
+    fields: ngsdict
 
 
 class Perturbation(Condition):
@@ -287,15 +287,15 @@ class Force(Condition):
     name = "force"
 
     @configuration(default=None)
-    def state(self, state) -> ngsdict:
-        return state
+    def fields(self, fields) -> ngsdict:
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
             raise ValueError("Force State not set!")
 
-    state: ngsdict
+    fields: ngsdict
 
 
 class Buffer(Condition):

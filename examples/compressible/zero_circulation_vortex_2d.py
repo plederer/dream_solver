@@ -2,7 +2,7 @@
 # ------- Import Modules ------- #
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
-from dream.compressible import CompressibleFlowSolver, flowstate, FarField, Initial, Outflow, GRCBC, NSCBC
+from dream.compressible import CompressibleFlowSolver, flowfields, FarField, Initial, Outflow, GRCBC, NSCBC
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)
@@ -62,16 +62,16 @@ p_0 = Uinf.p * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(gamma/(
 rho_0 = Uinf.rho * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(1/(gamma - 1))
 p_00 = Uinf.p * (1 - (gamma - 1)/2 * Mt**2 * exp(1))**(gamma/(gamma - 1))
 
-# cfg.bcs['right'] = Outflow(state=Uinf)
+# cfg.bcs['right'] = Outflow(fields=Uinf)
 # cfg.bcs['top|bottom'] = "inviscid_wall"
-cfg.bcs['right'] = GRCBC(state=Uinf,
+cfg.bcs['right'] = GRCBC(fields=Uinf,
                          target="outflow",
                          relaxation_factor=0.1,
                          tangential_relaxation=cfg.mach_number,
                          is_viscous_fluxes=False)
-cfg.bcs['left|top|bottom'] = FarField(state=Uinf)
+cfg.bcs['left|top|bottom'] = FarField(fields=Uinf)
 
-initial = Initial(state=flowstate(rho=rho_0, u=u_0, p=p_0))
+initial = Initial(fields=flowfields(rho=rho_0, u=u_0, p=p_0))
 cfg.dcs['default'] = initial
 
 # ------- Setup Spaces and Gridfunctions ------- #

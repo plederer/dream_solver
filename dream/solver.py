@@ -405,12 +405,12 @@ class SolverConfiguration(InterfaceConfiguration, is_interface=True):
         self.time.add_symbolic_temporal_forms(self.blf, self.lf)
 
     def get_fields(self, **quantities: bool) -> ngsdict:
-        state = self.fem.get_fields(quantities)
+        fields = self.fem.get_fields(quantities)
 
         for quantity in quantities:
             logger.info(f"Quantity {quantity} not predefined!")
 
-        return state
+        return fields
 
     def set_boundary_conditions(self) -> None:
         if self.mesh.is_periodic and not self.bcs.has_condition(Periodic):
