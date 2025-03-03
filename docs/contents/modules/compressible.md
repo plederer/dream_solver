@@ -67,6 +67,6 @@ by applying a proper scaling, see
 
 ### Utils
 ```{eval-rst}
-    .. autoclass:: dream.compressible.config.flowstate
+    .. autoclass:: dream.compressible.config.flowfields
         :members:
 ``` 
