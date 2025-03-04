@@ -198,7 +198,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Returns the dimensionful fields from given fields depending on the scaling. 
 
             :param U: A dictionary containing the flow quantities
-            :type U: flowstate
+            :type U: flowfields
         """
 
         REF = self.scaling.dimensionful_values
@@ -216,7 +216,7 @@ class CompressibleFlowSolver(SolverConfiguration):
                 \bm{F} = \begin{pmatrix} \rho \bm{u} \\ \rho \bm{u} \otimes \bm{u} + p \bm{I} \\ \rho H \bm{u} \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
-            :type U: flowstate
+            :type U: flowfields
         """
         rho = self.density(U)
         rho_u = self.momentum(U)
@@ -235,9 +235,9 @@ class CompressibleFlowSolver(SolverConfiguration):
                 \bm{G} = \begin{pmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \bm{q}\right) \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
-            :type U: flowstate
+            :type U: flowfields
             :param dU: A dictionary containing the gradients of the flow quantities
-            :type dU: flowstate
+            :type dU: flowfields
         """
         u = self.velocity(U)
         tau = self.deviatoric_stress_tensor(U, dU)
@@ -254,7 +254,7 @@ class CompressibleFlowSolver(SolverConfiguration):
                 \Ma = \frac{| \bm{u} |}{c}
 
             :param U: A dictionary containing the flow quantities
-            :type U: flowstate
+            :type U: flowfields
         """
         u = self.velocity(U)
         c = self.speed_of_sound(U)
@@ -267,7 +267,7 @@ class CompressibleFlowSolver(SolverConfiguration):
                 \Re = \frac{\rho | \bm{u} |}{\mu}
 
             :param U: A dictionary containing the flow quantities
-            :type U: flowstate
+            :type U: flowfields
         """
         rho = self.density(U)
         u = self.velocity(U)
@@ -614,9 +614,9 @@ class CompressibleFlowSolver(SolverConfiguration):
                 \bm{\tau} = \frac{2\mu}{\Re_r} \bm{\varepsilon}
 
             :param U: A dictionary containing the flow quantities
-            :type U: flowstate
+            :type U: flowfields
             :param dU: A dictionary containing the gradients of the flow quantities
-            :type dU: flowstate
+            :type dU: flowfields
         """
 
         mu = self.viscosity(U)
