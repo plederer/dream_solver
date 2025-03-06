@@ -1,5 +1,5 @@
 from dream import *
-from dream.compressible import flowstate, Initial
+from dream.compressible import Initial, flowfields
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
@@ -9,7 +9,7 @@ from ngsolve.meshes import MakeStructured2DMesh
 # Class containing all the parameters to define an isentropic vortex. 
 # For reference, see Spiegel et al (2015).
 class IsentropicVortexParam:
-    def __init__(self, PDE, lx, ly):
+    def __init__(self, cfg, lx, ly):
        
         # Store the domain dimensions.
         self.lx     = lx
@@ -21,7 +21,7 @@ class IsentropicVortexParam:
         self.y0     = ly/2.0
 
         # Vortex parameters, found in Spiegel et al. (2015). 
-        self.theta  = 45.0  # flow angle [deg]. 
+        self.theta  = 45.0 # flow angle [deg]. 
         self.Tinf   = 1.0  # background temperature.
         self.Pinf   = 1.0  # background pressure.
         self.Rinf   = 1.0  # background density.
@@ -40,24 +40,24 @@ class IsentropicVortexParam:
         self.vinf   = self.Minf*sin( self.theta )
 
         # Store gamma here, so we do not pass it around constantly.
-        self.gamma  = PDE.equation_of_state.heat_capacity_ratio
+        self.gamma  = cfg.equation_of_state.heat_capacity_ratio
 
 
 # Function that defines the initial state of the solution.
-def InitialCondition(PDE, TEMPORAL, lx, ly):
+def InitialCondition(cfg, TEMPORAL, lx, ly):
   
     # Extract the starting time.
     t0 = TEMPORAL.timer.interval[0] 
 
     # Return the analytic solution at time: t0.
-    return AnalyticSolution(PDE, t0, lx, ly)
+    return AnalyticSolution(cfg, t0, lx, ly)
 
 
 # Function that creates a time-dependant analytic solution.
-def AnalyticSolution(PDE, t, lx, ly):
+def AnalyticSolution(cfg, t, lx, ly):
 
     # Extract the vortex parameters.
-    vparam = IsentropicVortexParam(PDE, lx, ly)
+    vparam = IsentropicVortexParam(cfg, lx, ly)
    
     # Generate an array of 4x3 vortices. If you need something different, modify it.
     # In this case, the 4x3 array of vortices assumes:
@@ -89,7 +89,7 @@ def AnalyticSolution(PDE, t, lx, ly):
     p = ovg*(1.0 + dT)**govgm1 
 
     # Return the analytic expression of the vortices.
-    return flowstate( rho=r, u=(u, v), p=p )
+    return flowfields( rho=r, u=(u, v), p=p )
 
 
 # Function that generates a single isentropic perturbations in the velocity and temperature.
@@ -144,20 +144,20 @@ def GeneratePerturbation(vparam, t, ni, nj):
     
 
 # Function that process the information to be included in the VTK file.
-def ProcessVTKData(IO, PDE, Uexact):
+def ProcessVTKData(IO, cfg, Uexact):
 
     # Abbreviation for the specific heat ratio.
-    gamma = PDE.equation_of_state.heat_capacity_ratio
+    gamma = cfg.equation_of_state.heat_capacity_ratio
 
     # Extract the usual suspects in the numerical solution.
-    fields = PDE.get_fields(rho=True, \
+    fields = cfg.get_fields(rho=True, \
                               u=True, \
                               p=True, \
                               T=True, \
                               c=True)
 
     # Get the local Mach number.
-    fields["mach"] = PDE.get_local_mach_number( fields )
+    fields["mach"] = cfg.get_local_mach_number( fields )
 
     # Compute the specific entropy, s = ln(p/rho^gamma).
     fields["entropy"] = log( fields["pressure"]/fields["density"]**gamma )

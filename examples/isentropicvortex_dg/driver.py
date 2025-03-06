@@ -1,5 +1,5 @@
 from dream import *
-from dream.compressible import flowstate, Initial
+from dream.compressible import Initial, CompressibleFlowSolver
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
@@ -34,10 +34,7 @@ mesh = CreateSimpleGrid(nElem1D, xLength, yLength)
 # # # # # # # # # # # #
 
 # Base configuration.
-cfg = SolverConfiguration(mesh)
-cfg.pde = "compressible"
-cfg.time = "transient"
-cfg.solver = "linear"
+cfg = CompressibleFlowSolver(mesh)
 
 # Number of threads.
 nThread = 2
@@ -52,58 +49,54 @@ nSubdiv = 3
 # Set the number of threads.
 SetNumThreads(nThread)
 
-# Abbreviations.
-IO = cfg.io
-PDE = cfg.pde
-SOLVER = cfg.solver
-TEMPORAL = cfg.time
-OPTIMIZATION = cfg.optimizations
 
 
 # # # # # # # # # # # #
 # Physical parameters.
 # # # # # # # # # # # #
 
-PDE.dynamic_viscosity = "inviscid"
-PDE.equation_of_state = "ideal"
-PDE.equation_of_state.heat_capacity_ratio = 1.4
-PDE.scaling = "acoustic"
+cfg.dynamic_viscosity = "inviscid"
+cfg.equation_of_state = "ideal"
+cfg.equation_of_state.heat_capacity_ratio = 1.4
+cfg.scaling = "acoustic"
 
 
 # # # # # # # # # # # # #
 # Spatial discretization.
 # # # # # # # # # # # # #
 
-PDE.riemann_solver = "lax_friedrich"
-PDE.fem = "conservative"
-PDE.fem.order = nPoly
-PDE.fem.method = "dg"
-PDE.fem.mixed_method = "inactive"
+cfg.riemann_solver = "lax_friedrich"
+cfg.fem = "conservative"
+cfg.fem.order = nPoly
+cfg.fem.method = "dg"
+cfg.fem.mixed_method = "inactive"
 
 
 # # # # # # # # # # # # # #
 # Temporal discretization.
 # # # # # # # # # # # # # #
 
-#TEMPORAL.scheme = "implicit_euler"
-TEMPORAL.scheme = "explicit_method"
+cfg.time = "transient"
+TEMPORAL = cfg.time
+#TEMPORAL.scheme = "explicit_euler"
+TEMPORAL.scheme = "ssprk3"
+#TEMPORAL.scheme = "crk4"
 TEMPORAL.timer.interval = (0, 5.0)
-TEMPORAL.timer.step = 0.01
+TEMPORAL.timer.step = 0.025
 
 
 # # # # # # # # # # #
 # Solution strategy.
 # # # # # # # # # # #
 
-SOLVER.method = "linear"
-SOLVER.inverse = "direct"
-SOLVER.inverse.solver = "pardiso"
+cfg.linear_solver = "pardiso"
 
 
 # # # # # # # # # # #
 # Optimization flags.
 # # # # # # # # # # #
 
+OPTIMIZATION = cfg.optimizations
 OPTIMIZATION.static_condensation = False
 OPTIMIZATION.compile.realcompile = False
 
@@ -116,20 +109,20 @@ OPTIMIZATION.compile.realcompile = False
 # # # # # # # # # # #
 
 # Obtain the initial condition.
-Uic = InitialCondition(PDE, TEMPORAL, xLength, yLength)
+Uic = InitialCondition(cfg, TEMPORAL, xLength, yLength)
 
 # Define the initial solution state.
-initial = Initial(state=Uic)
+initial = Initial(fields=Uic)
 
 
 # # # # # # # # # # # # # # # # #
 # Boundary and domain conditions.
 # # # # # # # # # # # # # # # # #
 
-# PDE.bcs['left|top|bottom|right'] = FarField(state=Uinf)
-PDE.bcs['left|right'] = "periodic"
-PDE.bcs['top|bottom'] = "periodic"
-PDE.dcs['internal'] = initial
+# cfg.bcs['left|top|bottom|right'] = FarField(state=Uinf)
+cfg.bcs['left|right'] = "periodic"
+cfg.bcs['top|bottom'] = "periodic"
+cfg.dcs['internal'] = initial
 
 
 # # # # # # # # # # # #
@@ -137,18 +130,19 @@ PDE.dcs['internal'] = initial
 # # # # # # # # # # # #
 
 # Set the spaces and associated grid functions.
-PDE.initialize_system()
+cfg.initialize()
 
 # Get the analytic solution, function of time.
-Uexact = AnalyticSolution(PDE, TEMPORAL.timer.t, xLength, yLength)
+Uexact = AnalyticSolution(cfg, TEMPORAL.timer.t, xLength, yLength)
 
 # Write output VTK file.
+IO = cfg.io
 IO.vtk = True
 IO.vtk.rate = 50
 IO.vtk.subdivision = nSubdiv
 
 # VTK Visualization data.
-ProcessVTKData(IO, PDE, Uexact)
+ProcessVTKData(IO, cfg, Uexact)
 
 
 # # # # # # # # # # #
@@ -156,9 +150,8 @@ ProcessVTKData(IO, PDE, Uexact)
 # # # # # # # # # # #
 
 # This passes all our configuration to NGSolve to solve.
-SOLVER.initialize()
 with TaskManager():
-    SOLVER.solve()
+    cfg.solve()
 
 
 

@@ -34,19 +34,18 @@ def equation(func):
     """
 
     @functools.wraps(func)
-    def state(self, *args: ngsdict, **kwargs):
+    def fields(self, *args: ngsdict, **kwargs):
 
         quantity = func(self, *args, **kwargs)
 
         if quantity is None:
-            raise ValueError(f"Can not determine {func.__name__} from given state!")
+            raise ValueError(f"Can not determine {func.__name__} from given fields!")
 
         return quantity
 
-    return state
+    return fields
 
 
-class quantity:
     """
     Variable is a descriptor that mimics a physical quantity.
 
@@ -55,33 +54,38 @@ class quantity:
     tensor dimensions.
     """
 
-    __slots__ = ('symbol', 'name')
+class quantity:
+
+
+    __slots__ = ('symbol', 'name', '__doc__')
 
     def __set_name__(self, owner, symbol: str):
         self.symbol = symbol
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, symbol: str = None) -> None:
         self.name = name
+        if symbol is not None:
+            self.__doc__ = f"{name} :math:`{symbol}`"
 
-    def __get__(self, state: ngsdict, objtype) -> ngs.CF:
-        if state is None:
+    def __get__(self, fields: ngsdict, objtype) -> ngs.CF:
+        if fields is None:
             return self
-        return state.get(self.name, None)
+        return fields.get(self.name, None)
 
-    def __set__(self, state: ngsdict, value) -> None:
+    def __set__(self, fields: ngsdict, value) -> None:
         if value is not None:
-            state[self.name] = value
+            fields[self.name] = value
 
-    def __delete__(self, state: ngsdict):
-        del state[self.name]
+    def __delete__(self, fields: ngsdict):
+        del fields[self.name]
 
 
-class ngsdict(typing.MutableMapping, dict):
+class ngsdict(typing.MutableMapping):
 
     symbols: dict[str, str] = {}
 
     def to_py(self) -> dict:
-        """ Returns the current state represented by pure python objects. 
+        """ Returns the current fields represented by pure python objects. 
         """
         mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
         return {key: value(mesh()) for key, value in self.items()}
@@ -313,7 +317,7 @@ class interface(unique):
             value = self.fset(cfg, cfg.data[item])
 
 
-class InterfaceTree(typing.MutableMapping, dict):
+class InterfaceTree(typing.MutableMapping):
 
     def __init__(self, root: UniqueConfiguration):
         self.root = root
@@ -351,7 +355,7 @@ class InterfaceTree(typing.MutableMapping, dict):
         return len(self.leafs)
 
 
-class UniqueConfiguration(typing.MutableMapping, dict):
+class UniqueConfiguration(typing.MutableMapping):
 
     name: str
     mesh: ngs.Mesh
@@ -422,7 +426,7 @@ class UniqueConfiguration(typing.MutableMapping, dict):
 
         cfgs = cls.get_configurations(configuration)
         if hasattr(cls, "cfgs"):
-            cfgs = cls.cfgs + cfgs
+            cfgs = cfgs + cls.cfgs
         cls.cfgs = cfgs
 
         if not hasattr(cls, "name"):
@@ -471,18 +475,20 @@ class InterfaceConfiguration(UniqueConfiguration):
     cfgs: list[configuration]
     aliases: tuple[str]
 
-    def __init_subclass__(cls, is_interface: bool = False) -> None:
+    def __init_subclass__(cls, is_interface: bool = False, skip: bool = False) -> None:
 
-        if is_interface:
-            cls.tree = InterfaceTree(cls)
-            cls.aliases = ()
+        if not skip:
 
-        else:
-            for name in [cls.name, *cls.aliases]:
-                name = name.lower()
-                if name in cls.tree:
-                    raise ValueError(f"Concrete Class of type {cls.tree.root} with name {name} already included!")
-                cls.tree[name] = cls
+            if is_interface:
+                cls.tree = InterfaceTree(cls)
+                cls.aliases = ()
+
+            else:
+                for name in [cls.name, *cls.aliases]:
+                    name = name.lower()
+                    if name in cls.tree:
+                        raise ValueError(f"Concrete Class of type {cls.tree.root} with name {name} already included!")
+                    cls.tree[name] = cls
 
         super().__init_subclass__()
 

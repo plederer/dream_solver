@@ -2,6 +2,13 @@
 <VTKFile type ="Collection" version="1.0" byte_order="LittleEndian">
 <Collection>
 <DataSet timestep="0" file="vtk.vtu"/>
-<DataSet timestep="0.01" file="vtk_step00001.vtu"/>
+<DataSet timestep="0.025" file="vtk_step00001.vtu"/>
+<DataSet timestep="1.275" file="vtk_step00002.vtu"/>
+<DataSet timestep="2.525" file="vtk_step00003.vtu"/>
+<DataSet timestep="3.775" file="vtk_step00004.vtu"/>
+<DataSet timestep="5.025" file="vtk_step00005.vtu"/>
+<DataSet timestep="6.275" file="vtk_step00006.vtu"/>
+<DataSet timestep="7.525" file="vtk_step00007.vtu"/>
+<DataSet timestep="8" file="vtk_step00008.vtu"/>
 </Collection>
 </VTKFile>

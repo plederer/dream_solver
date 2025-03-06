@@ -5,15 +5,14 @@ import ngsolve as ngs
 import numpy as np
 from pathlib import Path
 
-from tests import simplex
-from dream.solver import SolverConfiguration
-from dream.io import MeshStream, VTKStream, GridfunctionStream, TransientGridfunctionStream, SettingsStream, SensorStream
+from tests import simplex, DummySolverConfiguration
+from dream.io import MeshStream, VTKStream, GridfunctionStream, SettingsStream, SensorStream
 
 
 class TestMeshStream(unittest.TestCase):
 
     def setUp(self) -> None:
-        cfg = SolverConfiguration(mesh=simplex())
+        cfg = DummySolverConfiguration(mesh=simplex())
         self.handler = MeshStream(cfg=cfg, mesh=cfg.mesh)
 
     def test_initialize(self):
@@ -46,7 +45,7 @@ class TestMeshStream(unittest.TestCase):
 class TestVTKStream(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.cfg = SolverConfiguration(mesh=simplex())
+        self.cfg = DummySolverConfiguration(mesh=simplex())
         self.handler = VTKStream(cfg=self.cfg, mesh=self.cfg.mesh)
         self.handler.fields = {'u': ngs.CoefficientFunction(1)}
 
@@ -136,11 +135,11 @@ class TestVTKStream(unittest.TestCase):
 class TestGridfunctionStream(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.cfg = SolverConfiguration(mesh=simplex(), pde="dummy")
+        self.cfg = DummySolverConfiguration(mesh=simplex(), pde="dummy")
         self.cfg.time = "transient"
         self.cfg.time.timer.step = 1
-        self.cfg.pde.initialize_system()
-        self.cfg.pde.gfu.vec[:] = 1
+        self.cfg.initialize()
+        self.cfg.gfu.vec[:] = 1
 
         self.handler = GridfunctionStream(cfg=self.cfg, mesh=self.cfg.mesh)
 
@@ -157,6 +156,7 @@ class TestGridfunctionStream(unittest.TestCase):
         self.assertTrue(path.exists())
 
         self.cfg.time = "transient"
+        self.cfg.time.initialize()
         self.handler.save_pre_time_routine(0.0)
 
         path = self.handler.path.joinpath(f"gfu_0.0.ngs")
@@ -172,7 +172,7 @@ class TestGridfunctionStream(unittest.TestCase):
 
         gfu = ngs.GridFunction(ngs.L2(self.cfg.mesh, order=0)**2)
         gfu.Load(str(path))
-        np.testing.assert_array_equal(gfu.vec, self.cfg.pde.gfu.vec)
+        np.testing.assert_array_equal(gfu.vec, self.cfg.gfu.vec)
 
     def test_saving_rate_in_time_routine(self):
         self.handler.open()
@@ -206,11 +206,11 @@ class TestGridfunctionStream(unittest.TestCase):
 
         self.handler.open()
 
-        self.handler.save_gridfunction(self.cfg.pde.gfu, 'test')
+        self.handler.save_gridfunction(self.cfg.gfu, 'test')
         self.assertTrue(path.exists())
 
         self.handler.load_gridfunction(gfu, 'test')
-        np.testing.assert_array_equal(gfu.vec, self.cfg.pde.gfu.vec)
+        np.testing.assert_array_equal(gfu.vec, self.cfg.gfu.vec)
 
     def test_load_transient_routine(self):
 
@@ -218,50 +218,35 @@ class TestGridfunctionStream(unittest.TestCase):
         self.handler.open()
 
         for t in self.cfg.time.timer.start(True):
-            self.cfg.pde.gfu.vec[:] = t
+            self.cfg.gfu.vec[:] = t
             self.handler.save_in_time_routine(t)
 
         gfu = ngs.GridFunction(ngs.L2(self.cfg.mesh, order=0)**2)
         for t in self.handler.load_transient_routine():
             gfu.vec[:] = t
-            np.testing.assert_array_equal(gfu.vec, self.cfg.pde.gfu.vec)
-
-    def tearDown(self):
-        for path in self.handler.path.iterdir():
-            path.unlink()
-        self.handler.path.rmdir()
-
-
-class TestTransientGridfunctionStream(unittest.TestCase):
-
-    def setUp(self) -> None:
-        self.cfg = SolverConfiguration(mesh=simplex(), pde="dummy")
-        self.cfg.time = "transient"
-        self.cfg.pde.initialize_system()
-
-        self.handler = TransientGridfunctionStream(cfg=self.cfg, mesh=self.cfg.mesh)
+            np.testing.assert_array_equal(gfu.vec, self.cfg.gfu.vec)
 
     def test_save_and_load_gridfunction(self):
 
         self.handler.open()
         self.handler.filename = 'test'
 
-        for fes in self.cfg.pde.transient_gfus:
-            for level in self.cfg.pde.transient_gfus[fes]:
-                gfu = self.cfg.pde.transient_gfus[fes][level]
+        for fes in self.cfg.time.scheme.gfus:
+            for level in self.cfg.time.scheme.gfus[fes]:
+                gfu = self.cfg.time.scheme.gfus[fes][level]
                 gfu.vec[:] = 1
 
         self.handler.save_in_time_routine(0.0, it=0)
-        for fes in self.cfg.pde.transient_gfus:
-            for level in self.cfg.pde.transient_gfus[fes]:
+        for fes in self.cfg.time.scheme.gfus:
+            for level in self.cfg.time.scheme.gfus[fes]:
                 self.assertTrue(self.handler.path.joinpath(f"test_0.0_{fes}_{level}.ngs").exists())
 
         self.handler.load_time_levels(0.0)
-        for fes in self.cfg.pde.transient_gfus:
-            for level in self.cfg.pde.transient_gfus[fes]:
+        for fes in self.cfg.time.scheme.gfus:
+            for level in self.cfg.time.scheme.gfus[fes]:
                 np.testing.assert_array_equal(
-                    self.cfg.pde.transient_gfus[fes][level].vec, np.ones_like(
-                        self.cfg.pde.transient_gfus[fes][level].vec))
+                    self.cfg.time.scheme.gfus[fes][level].vec, np.ones_like(
+                        self.cfg.time.scheme.gfus[fes][level].vec))
 
     def tearDown(self):
         for path in self.handler.path.iterdir():
@@ -272,7 +257,7 @@ class TestTransientGridfunctionStream(unittest.TestCase):
 class TestSettingsStream(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.cfg = SolverConfiguration(mesh=simplex(), pde="dummy")
+        self.cfg = DummySolverConfiguration(mesh=simplex(), pde="dummy")
         self.handler = SettingsStream(cfg=self.cfg, mesh=self.cfg.mesh)
 
     def test_initialize(self):
@@ -293,7 +278,7 @@ class TestSettingsStream(unittest.TestCase):
 class TestSensorStream(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.cfg = SolverConfiguration(mesh=simplex(), pde="dummy")
+        self.cfg = DummySolverConfiguration(mesh=simplex(), pde="dummy")
         self.cfg.io.sensor = True
         self.handler = self.cfg.io.sensor
         self.handler.to_csv = True

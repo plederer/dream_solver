@@ -1,10 +1,62 @@
-# Compressible Navier-Stokes equations
+The fundamental equations describing the motion of an unsteady, viscous and compressible flow in a space-time cylinder
+$\Omega \times (0, t_{end}] \in \mathbb{R}^{d+1}$ with non-empty bounded $d$-dimensional spatial domain $\Omega$, with
+boundary $\partial \Omega$, and final time $t_{end}$, are specified by the Navier-Stokes equations. In terms of
+conservative variables, $\vec{U} = \begin{pmatrix} \rho, & \rho \vec{u}, & \rho E \end{pmatrix}^\T$, with density $\rho$, velocity $\vec{u}$, and total specific energy $E$,
+this system can be expressed in dimensionless form as
 
-We consider the following quantities 
+$$
+\pdt{\vec{U}} + \div(\mat{F}(\vec{U}) - \mat{G}(\vec{U}, \grad \vec{U})) = \vec{0} \quad \text{in} \quad \Omega \times (0, t_{end}],
+$$
+
+by applying a proper scaling, see 
+<!-- 
+$$
+        \rhoref & := \rho^*_\infty, \qquad & \uref & := |\VEL^*_\infty|, \qquad & \Tref & := \theta^*_\infty (\gamma - 1) \Ma^2_\infty,  \qquad &  & \text{(aerodynamic)} \\
+        \label{eq::acoustic-scaling}
+        \rhoref & := \rho^*_\infty, \qquad & \uref & := c^*_\infty, \qquad      & \Tref & := \theta^*_\infty (\gamma - 1), \qquad               &  & \text{(acoustic)}
+$$
+
+depending on the flow regime under consideration, where $\theta$ and $c$ denote the temperature and speed of sound, respectively.
+With the Mach number $\Mainf$, the Reynolds number $\Reinf$ and the Prandtl number $\Prinf$ defined as
+\begin{align*}
+    \Mainf & := \frac{|\VEL^*_\infty|}{c^*_\infty}, & \Reinf & := \frac{\uref \rho^*_\infty L^*}{\mu^*_\infty}, & \Prinf & := \frac{\mu^*_\infty c_p}{\kappa^*_\infty},
+\end{align*}
+the convective and the viscous fluxes are given by
+\begin{align*}
+    \F(\CVEC)              & = \begin{pmatrix}
+                                   \rho \VEL^\T                  \\[0.8ex]
+                                   \rho \VEL \otimes \VEL + p \I \\[0.8ex]
+                                   \rho H \VEL^\T
+                               \end{pmatrix},      &
+    \G(\CVEC, \grad \CVEC) & = \frac{1}{\Reinf}\begin{pmatrix}
+                                                   \vec{0}^\T \\[0.8ex]
+                                                   \TAU       \\[0.8ex]
+                                                   (\TAU \VEL - \frac{\HEAT}{\Prinf})^\T
+                                               \end{pmatrix},
+\end{align*}
+respectively, where $p$ denotes the pressure, $H = E + p/\rho$ the total specific enthalpy,
+$\TAU$ the deviatoric stress tensor, $\HEAT$ the heat flux, $\mu$ the dynamic viscosity,
+$c_p$ the specific heat capacity, $\kappa$ the thermal conductivity and $L$ a characteristic length.
+Assuming ideal gas conditions, Newtonian fluid and Fourier's law, the necessary
+constitutive relations to close the system of equations \eqref{eq::Navier-Stokes} are
+\begin{subequations}
+    \begin{align}
+        \gamma p & = \rho (\gamma - 1) \theta,                                                         \\
+        \TAU     & = 2 \left[ \frac{\grad \VEL + (\grad \VEL)^\T}{2} - \frac{1}{3} \div(\VEL) \right], \\
+        \HEAT    & = -\grad \theta,
+    \end{align}
+\end{subequations}
+with heat capacity ratio $\gamma=1.4$ for air. In this setting the isentropic speed of sound $c$
+is defined as
+$$
+    c = \sqrt{\gamma \frac{p}{\rho}} = \sqrt{(\gamma - 1) \theta}.
+$$ -->
+
+<!-- We consider the following quantities 
 
 * $\rho$ ... density
 * $p$ ... pressure
-* $\VEL = (u_x, u_y, u_z)$ ...velocity
+* $\vec{u} = (u_x, u_y, u_z)$ ...velocity
 * $E$ ...total energy
 * $\HEAT$ ...heat flux
 
@@ -13,9 +65,9 @@ and aim to solve
 
 $$
     \begin{align*}
-    \pdt{\rho} + \div{(\rho \VEL)} &= 0, \\
-    \pdt{(\rho \VEL)} + \div{(\rho \VEL \otimes \VEL)} &= \div{\TAU} -\grad{p} + \rho \vec{f}, \\
-    \pdt{(\rho E)} + \div{(\rho E \VEL)} &= \div{(\TAU \VEL)} - \div{(p \VEL)} + \rho \vec{f} \cdot \VEL - \div{\HEAT}.
+    \pdt{\rho} + \div{(\rho \vec{u})} &= 0, \\
+    \pdt{(\rho \vec{u})} + \div{(\rho \vec{u} \otimes \vec{u})} &= \div{\TAU} -\grad{p} + \rho \vec{f}, \\
+    \pdt{(\rho E)} + \div{(\rho E \vec{u})} &= \div{(\TAU \vec{u})} - \div{(p \vec{u})} + \rho \vec{f} \cdot \vec{u} - \div{\HEAT}.
     \end{align*}
 $$
 
@@ -23,7 +75,7 @@ We define the specific energy $E$ as the sum of the specific kinetic energy $E_k
 
 $$
     \begin{align*}
-    E &= E_i + E_k =  E_i + \tfrac{1}{2} |\VEL|^2
+    E &= E_i + E_k =  E_i + \tfrac{1}{2} |\vec{u}|^2
     \end{align*}
 $$
 
@@ -50,7 +102,7 @@ As for the deviatoric stress tensor $\TAU$ we assume a Newtonian relationship be
 
 $$
     \begin{align*}
-    \TAU &= 2 \mu(T) \EPS = 2 \mu(T) \left[ \frac{\grad{\VEL} + (\grad{\VEL})^{\T}}{2}  - \frac{1}{3} \div \VEL \I \right],
+    \TAU &= 2 \mu(T) \EPS = 2 \mu(T) \left[ \frac{\grad{\vec{u}} + (\grad{\vec{u}})^{\T}}{2}  - \frac{1}{3} \div \vec{u} \I \right],
     \end{align*}
 $$
 
@@ -114,7 +166,7 @@ At this point it is possible to define dimensionless variables
 \begin{align*}
 \dl{x} &= \frac{x}{\Lref}, &  
 \dl{t} &= \frac{t \uref}{\Lref}, & 
-\dl{\VEL} &= \frac{\VEL}{\uref}, \\
+\dl{\vec{u}} &= \frac{\vec{u}}{\uref}, \\
 \dl{\rho} &= \frac{\rho}{\rhoref}, & 
 \dl{p} &= \frac{p}{\rhoref \uref^2}, &
 \dl{T} &= \frac{T}{\Tref}, \\
@@ -140,46 +192,46 @@ Note, that for air one usually sets $\Pr_\infty = 0.72$, as the Prandtl number i
 ### Derivation
 * **Continuity Equation**
   \begin{align*}
-  \pdt{\rho} + \div{(\rho \VEL)} &= 0, \\
-  \frac{\rhoref \uref}{\Lref} \pdtdl{\dl{\rho}} + \frac{\rhoref \uref}{\Lref} \dl{\div}(\dl{\rho} \dl{\VEL}) &= 0, \\
-  \pdtdl{\dl{\rho}} + \dl{\div}(\dl{\rho} \dl{\VEL}) &= 0.
+  \pdt{\rho} + \div{(\rho \vec{u})} &= 0, \\
+  \frac{\rhoref \uref}{\Lref} \pdtdl{\dl{\rho}} + \frac{\rhoref \uref}{\Lref} \dl{\div}(\dl{\rho} \dl{\vec{u}}) &= 0, \\
+  \pdtdl{\dl{\rho}} + \dl{\div}(\dl{\rho} \dl{\vec{u}}) &= 0.
   \end{align*}
   
 
 * **Momentum Equation**
   \begin{align*}
-  \pdt{(\rho \VEL)} + \div{(\rho \VEL \otimes \VEL + p \I)} &= \div{\TAU} + \rho \vec{f}, \\
-  \frac{\rhoref \uref^2}{\Lref}  \pdtdl{(\dl{\rho} \dl{\VEL})} + 
-  \frac{\rhoref \uref^2}{\Lref} \dl{\div}(\dl{\rho} \dl{\VEL} \otimes \dl{\VEL} + \dl{p} \I) &= 
+  \pdt{(\rho \vec{u})} + \div{(\rho \vec{u} \otimes \vec{u} + p \I)} &= \div{\TAU} + \rho \vec{f}, \\
+  \frac{\rhoref \uref^2}{\Lref}  \pdtdl{(\dl{\rho} \dl{\vec{u}})} + 
+  \frac{\rhoref \uref^2}{\Lref} \dl{\div}(\dl{\rho} \dl{\vec{u}} \otimes \dl{\vec{u}} + \dl{p} \I) &= 
   \frac{\muref \uref}{\Lref^2} \dl{\div}\dl{\TAU} + 
   \rhoref g \dl{\rho} \dl{\vec{f}}, \\
-  \pdtdl{(\dl{\rho} \dl{\VEL})} + 
-  \dl{\div}(\dl{\rho} \dl{\VEL} \otimes \dl{\VEL} + \dl{p} \I) &= 
+  \pdtdl{(\dl{\rho} \dl{\vec{u}})} + 
+  \dl{\div}(\dl{\rho} \dl{\vec{u}} \otimes \dl{\vec{u}} + \dl{p} \I) &= 
   \frac{\muref}{\Lref \rhoref \uref} \dl{\div}\dl{\TAU} + \frac{g \Lref}{\uref^2} \dl{\rho} \dl{\vec{f}}, \\
-  \pdtdl{(\dl{\rho} \dl{\VEL})} + 
-  \dl{\div}(\dl{\rho} \dl{\VEL} \otimes \dl{\VEL} + \dl{p} \I) &= 
+  \pdtdl{(\dl{\rho} \dl{\vec{u}})} + 
+  \dl{\div}(\dl{\rho} \dl{\vec{u}} \otimes \dl{\vec{u}} + \dl{p} \I) &= 
   \frac{1}{\Re_{\text{ref}}} \dl{\div}\dl{\TAU} + \frac{1}{\Fr^2_{\text{ref}}} \dl{\rho} \dl{\vec{f}}.
   \end{align*}
   
 
 * **Energy Equation**
   \begin{align*}
-  \pdt{(\rho E)} + \div{([\rho E + p] \VEL)} &= \div{(\TAU \VEL)} - \div{\HEAT} + \rho \vec{f} \cdot \VEL , \\
+  \pdt{(\rho E)} + \div{([\rho E + p] \vec{u})} &= \div{(\TAU \vec{u})} - \div{\HEAT} + \rho \vec{f} \cdot \vec{u} , \\
   \frac{\rhoref \uref^3}{\Lref}\pdtdl{(\dl{\rho} \dl{E})} + 
-  \frac{\rhoref \uref^3}{\Lref} \dl{\div}([\dl{\rho} \dl{E} + \dl{p}] \dl{\VEL}) &= 
-  \frac{\muref \uref^2}{\Lref^2}\dl{\div}(\dl{\TAU}) \dl{\VEL} -  
+  \frac{\rhoref \uref^3}{\Lref} \dl{\div}([\dl{\rho} \dl{E} + \dl{p}] \dl{\vec{u}}) &= 
+  \frac{\muref \uref^2}{\Lref^2}\dl{\div}(\dl{\TAU}) \dl{\vec{u}} -  
   \frac{\Tref \kref}{\Lref^2} \frac{\muref}{\muref} \dl{\div}{\dl{\HEAT}} + 
-  \rhoref g \uref \dl{\rho} \dl{\vec{f}} \cdot \dl{\VEL} , \\
+  \rhoref g \uref \dl{\rho} \dl{\vec{f}} \cdot \dl{\vec{u}} , \\
   \pdtdl{(\dl{\rho} \dl{E})} + 
-  \dl{\div}([\dl{\rho} \dl{E} + \dl{p}] \dl{\VEL}) &= 
-  \frac{\muref}{\Lref \rhoref \uref} \dl{\div}(\dl{\TAU} \dl{\VEL}) - 
+  \dl{\div}([\dl{\rho} \dl{E} + \dl{p}] \dl{\vec{u}}) &= 
+  \frac{\muref}{\Lref \rhoref \uref} \dl{\div}(\dl{\TAU} \dl{\vec{u}}) - 
   \frac{\muref}{\rhoref \uref \Lref} \frac{\Tref \kref}{\uref^2 \muref} \dl{\div}{\dl{\HEAT}} + 
-  \frac{g \Lref}{\uref^2} \dl{\rho} \dl{\vec{f}} \cdot \dl{\VEL}, \\
+  \frac{g \Lref}{\uref^2} \dl{\rho} \dl{\vec{f}} \cdot \dl{\vec{u}}, \\
   \pdtdl{(\dl{\rho} \dl{E})} + 
-  \dl{\div}([\dl{\rho} \dl{E} + \dl{p}] \dl{\VEL}) &= 
-  \frac{1}{\Re_{\text{ref}}}\dl{\div}(\dl{\TAU} \dl{\VEL}) -
+  \dl{\div}([\dl{\rho} \dl{E} + \dl{p}] \dl{\vec{u}}) &= 
+  \frac{1}{\Re_{\text{ref}}}\dl{\div}(\dl{\TAU} \dl{\vec{u}}) -
   \frac{1}{\Re_{\text{ref}} \Pr_{\text{ref}}} \dl{\div}\dl{\HEAT} + 
-  \frac{1}{\Fr^2_{\text{ref}}} \dl{\rho} \dl{\vec{f}} \cdot \dl{\VEL}.
+  \frac{1}{\Fr^2_{\text{ref}}} \dl{\rho} \dl{\vec{f}} \cdot \dl{\vec{u}}.
   \end{align*}
   
 
@@ -237,4 +289,4 @@ Note, that for air one usually sets $\Pr_\infty = 0.72$, as the Prandtl number i
    \begin{align*}
     \Re_{\text{ref}} &= \frac{\Re_{\infty}}{\Ma_\infty} (1 + \Ma_\infty) & \Pr_{\text{ref}} &= \Pr_{\infty}.
    \end{align*}
-   
+    -->

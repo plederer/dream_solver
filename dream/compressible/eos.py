@@ -5,83 +5,83 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import InterfaceConfiguration, parameter
-from dream.compressible.config import flowstate
+from dream.compressible.config import flowfields
 
 logger = logging.getLogger(__name__)
 
 
 class EquationOfState(InterfaceConfiguration, is_interface=True):
 
-    def density(self, U: flowstate) -> ngs.CF:
+    def density(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def pressure(self, U: flowstate) -> ngs.CF:
+    def pressure(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def temperature(self, U: flowstate) -> ngs.CF:
+    def temperature(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def inner_energy(self, U: flowstate) -> ngs.CF:
+    def inner_energy(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def specific_inner_energy(self, U: flowstate) -> ngs.CF:
+    def specific_inner_energy(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def speed_of_sound(self, U: flowstate) -> ngs.CF:
+    def speed_of_sound(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def density_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
+    def density_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def pressure_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
+    def pressure_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
-    def temperature_gradient(self, U: flowstate, dU: flowstate) -> ngs.CF:
+    def temperature_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
     def characteristic_velocities(
-            self, U: flowstate, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
+            self, U: flowfields, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
         raise NotImplementedError()
 
     def characteristic_variables(
-            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR) -> bla.VECTOR:
+            self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR) -> bla.VECTOR:
         raise NotImplementedError()
 
     def characteristic_amplitudes(
-            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
+            self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR, type_: str = None) -> bla.VECTOR:
         raise NotImplementedError()
 
-    def primitive_from_conservative(self, U: flowstate) -> bla.MATRIX:
+    def primitive_from_conservative(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def primitive_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
+    def primitive_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def primitive_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
+    def primitive_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_from_primitive(self, U: flowstate) -> bla.MATRIX:
+    def conservative_from_primitive(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def conservative_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
+    def conservative_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def conservative_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
+    def conservative_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def characteristic_from_primitive(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_primitive(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def characteristic_from_conservative(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_conservative(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         raise NotImplementedError()
 
-    def isentropic_density(self, U: flowstate, Uref: flowstate) -> ngs.CF:
+    def isentropic_density(self, U: flowfields, Uref: flowfields) -> ngs.CF:
         raise NotImplementedError()
 
 
@@ -94,8 +94,10 @@ class IdealGas(EquationOfState):
     def heat_capacity_ratio(self, heat_capacity_ratio: float):
         return heat_capacity_ratio
 
-    def density(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the density from a given state
+    heat_capacity_ratio: ngs.Parameter
+
+    def density(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the density from given fields
 
         .. math::
             \begin{align*}
@@ -123,8 +125,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def pressure(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the density from a given state
+    def pressure(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the density from given fields
 
         .. math::
             \begin{align*}
@@ -152,8 +154,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def temperature(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the temperature from a given state
+    def temperature(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the temperature from given fields
 
         .. math::
             \begin{align*}
@@ -181,8 +183,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def inner_energy(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the inner energy from a given state
+    def inner_energy(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the inner energy from given fields
 
         .. math::
             \begin{align*}
@@ -205,8 +207,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def specific_inner_energy(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the specific inner energy from a given state
+    def specific_inner_energy(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the specific inner energy from given fields
 
         .. math::
             \begin{align*}
@@ -229,8 +231,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def speed_of_sound(self, U: flowstate) -> bla.SCALAR:
-        r"""Returns the speed of sound from a given state
+    def speed_of_sound(self, U: flowfields) -> bla.SCALAR:
+        r"""Returns the speed of sound from given fields
 
         .. math::
             \begin{align*}
@@ -258,8 +260,8 @@ class IdealGas(EquationOfState):
 
         return None
 
-    def density_gradient(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
-        r"""Returns the density gradient from a given state
+    def density_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+        r"""Returns the density gradient from given fields
 
         .. math::
             \begin{align*}
@@ -280,8 +282,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning density gradient from temperature and inner energy.")
             return gamma * (dU.grad_rho_Ei/U.T - U.rho_Ei * dU.grad_T/U.T**2)
 
-    def pressure_gradient(self, U: flowstate, dU: flowstate) -> bla.VECTOR:
-        r"""Returns the pressure gradient from a given state
+    def pressure_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+        r"""Returns the pressure gradient from given fields
 
         .. math::
             \begin{align*}
@@ -302,8 +304,8 @@ class IdealGas(EquationOfState):
             logger.debug("Returning pressure gradient from inner energy gradient.")
             return (gamma - 1) * dU.grad_rho_Ei
 
-    def temperature_gradient(self, U: flowstate,  dU: flowstate) -> bla.VECTOR:
-        r"""Returns the temperature gradient from a given state
+    def temperature_gradient(self, U: flowfields,  dU: flowfields) -> bla.VECTOR:
+        r"""Returns the temperature gradient from given fields
 
         .. math::
             \begin{align*}
@@ -324,7 +326,7 @@ class IdealGas(EquationOfState):
             logger.debug("Returning temperature gradient from specific inner energy gradient.")
             return gamma * dU.grad_Ei
 
-    def characteristic_velocities(self, U: flowstate, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
+    def characteristic_velocities(self, U: flowfields, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
 
         unit_vector = bla.as_vector(unit_vector)
 
@@ -361,7 +363,7 @@ class IdealGas(EquationOfState):
             return bla.as_vector([lam_m_c] + U.u.dim * [lam] + [lam_p_c])
 
     def characteristic_variables(
-            self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR) -> bla.VECTOR:
+            self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR) -> bla.VECTOR:
 
         unit_vector = bla.as_vector(unit_vector)
 
@@ -385,15 +387,15 @@ class IdealGas(EquationOfState):
 
             return bla.as_vector(char)
 
-    def characteristic_amplitudes(self, U: flowstate, dU: flowstate, unit_vector: bla.VECTOR,
+    def characteristic_amplitudes(self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR,
                                   type_: str = None) -> bla.VECTOR:
         r""" Returns the charachteristic amplitudes
 
             .. math::
                 \begin{align*}
-                    \bm{\mathcal{L}} &:= \bm{\Lambda} \bm{P}^{-1} \frac{\partial \bm{U}}{\partial n} = \bm{\Lambda} \bm{L}^{-1} \frac{\partial \bm{V}}{\partial n} = \bm{\Lambda} \frac{\partial \bm{W}}{\partial n},
+                    \bm{\mathcal{L}} &:= \bm{\Lambda} \bm{P}_n^{-1} \frac{\partial \bm{U}}{\partial n} = \bm{\Lambda} \bm{L}_n^{-1} \frac{\partial \bm{V}}{\partial n} = \bm{\Lambda} \frac{\partial \bm{W}}{\partial n},
                 \end{align*}
-    
+
         """
         velocities = self.characteristic_velocities(U, unit_vector, type_)
         variables = self.characteristic_variables(U, dU, unit_vector)
@@ -401,18 +403,61 @@ class IdealGas(EquationOfState):
         if all((velocities, variables)):
             return bla.as_vector([vel * var for vel, var in zip(velocities, variables)])
 
-    def primitive_from_conservative(self, U: flowstate) -> bla.MATRIX:
+    def conservative_from_primitive(self, U: flowfields) -> bla.MATRIX:
+        r"""
+        The :math:`\bm{M}` matrix transforms primitive variables to conservative variables
+
+        .. math::
+            \begin{align*}
+             \bm{M} &:=
+            \begin{pmatrix}
+                        1 & 0 & 0 & 0 \\
+                        u_x & \rho & 0 & 0 \\
+                        u_y & 0 & \rho & 0 \\
+                        \frac{|u|^2}{2} & \rho u_x & \rho u_y & \frac{1}{\gamma - 1}
+            \end{pmatrix}
+            \qquad [1, E16.2.10]
+            \end{align*}
+
+        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
+               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
         """
-        The M inverse matrix transforms conservative variables to primitive variables
+        gamma = self.heat_capacity_ratio
 
-        Equation E16.2.11, page 149
+        if all((U.rho, U.u)):
+            dim = U.u.dim + 2
 
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
+            if dim == 4:
+
+                ux, uy = U.u
+
+                M = (1, 0, 0, 0,
+                     ux, U.rho, 0, 0,
+                     uy, 0, U.rho, 0,
+                     0.5*bla.inner(U.u, U.u), U.rho*ux, U.rho*uy, 1/(gamma - 1))
+            else:
+                raise NotImplementedError()
+
+            return bla.as_matrix(M, dims=(dim, dim))
+
+    def primitive_from_conservative(self, U: flowfields) -> bla.MATRIX:
+        r"""
+        The :math:`\bm{M}^{-1}`  matrix transforms conservative variables to primitive variables
+
+        .. math::
+            \begin{align*}
+             \bm{M}^{-1} &:=
+            \begin{pmatrix}
+                        1 & 0 & 0 & 0 \\
+                        -\frac{u_x}{\rho} & \frac{1}{\rho} & 0 & 0 \\
+                        -\frac{u_y}{\rho} & 0 & \frac{1}{\rho} & 0 \\
+                        (\gamma - 1)\frac{|u|^2}{2}  & -(\gamma - 1) u_x & -(\gamma - 1) u_y & \gamma - 1
+            \end{pmatrix}
+            \qquad [1, E16.2.11]
+            \end{align*}
+
+        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
+               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
         """
         gamma = self.heat_capacity_ratio
 
@@ -434,18 +479,21 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(Minv, dims=(dim, dim))
 
-    def primitive_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        """
-        The L matrix transforms characteristic variables to primitive variables
+    def primitive_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r"""
+        The :math:`\bm{L}_n` matrix transforms characteristic variables to primitive variables
 
-        Equation E16.5.2, page 183
+        .. math::
+            \begin{align*}
+            \bm{L}_n &:=
+            \begin{pmatrix}
+            \frac{0.5}{c^2} & \frac{1}{c^2} & 0 & \frac{0.5}{c^2} \\
+            -\frac{n_x}{2c\rho} & 0 & n_y & \frac{n_x}{2c\rho} \\
+            -\frac{n_y}{2c\rho} & 0 & -n_x & \frac{n_y}{2c\rho} \\
+            0.5 & 0 & 0 & 0.5
+            \end{pmatrix}
+            \end{align*}
 
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -464,7 +512,40 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(L, dims=(dim, dim))
 
-    def primitive_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
+    def characteristic_from_primitive(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r"""
+        The :math:`\bm{L}^{-1}_n` matrix transforms primitive variables to charactersitic variables
+
+        .. math::
+            \begin{align*}
+            \bm{L}^{-1}_n &:=
+            \begin{pmatrix}
+            0    & -\rho c n_x & -\rho c n_y & 1 \\
+            c^2 & 0             & 0             & -1 \\
+            0   & n_y           & -n_x          & 0 \\
+            0   & \rho c n_x  & \rho c n_y  & 1
+            \end{pmatrix}
+            \end{align*}
+        """
+        unit_vector = bla.as_vector(unit_vector)
+
+        if all((U.rho, U.c)):
+            dim = unit_vector.dim + 2
+
+            if dim == 4:
+                d0, d1 = unit_vector
+
+                Linv = (0, -U.rho*U.c*d0, -U.rho*U.c*d1, 1,
+                        U.c**2, 0, 0, -1,
+                        0, d1, -d0, 0,
+                        0, U.rho*U.c*d0, U.rho*U.c*d1, 1)
+
+            else:
+                return NotImplementedError()
+
+            return bla.as_matrix(Linv, dims=(dim, dim))
+    
+    def primitive_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
 
         if all((U.u, U.rho, U.c)):
             dim = U.u.dim + 2
@@ -482,7 +563,7 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(A, dims=(dim, dim))
 
-    def primitive_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
+    def primitive_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
 
         if all((U.u, U.rho, U.c)):
             dim = U.u.dim + 2
@@ -500,49 +581,20 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(B, dims=(dim, dim))
 
-    def conservative_from_primitive(self, U: flowstate) -> bla.MATRIX:
-        """
-        The M matrix transforms primitive variables to conservative variables
+    def conservative_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r"""
+        The :math:`\bm{P}_n` matrix transforms characteristic variables to conservative variables
 
-        Equation E16.2.10, page 149
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
-        """
-        gamma = self.heat_capacity_ratio
-
-        if all((U.rho, U.u)):
-            dim = U.u.dim + 2
-
-            if dim == 4:
-
-                ux, uy = U.u
-
-                M = (1, 0, 0, 0,
-                     ux, U.rho, 0, 0,
-                     uy, 0, U.rho, 0,
-                     0.5*bla.inner(U.u, U.u), U.rho*ux, U.rho*uy, 1/(gamma - 1))
-            else:
-                raise NotImplementedError()
-
-            return bla.as_matrix(M, dims=(dim, dim))
-
-    def conservative_from_characteristic(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        """
-        The P matrix transforms characteristic variables to conservative variables
-
-        Equation E16.5.3, page 183
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
+        .. math::
+            \begin{align*}
+            \bm{P}_n &:= \bm{M} \bm{L}_n =
+            \begin{pmatrix}
+            \frac{1}{2 c^{2}}                                                      & \frac{1}{c^{2}}         & 0                           & \frac{1}{2 c^{2}}                                                      \\
+            - \frac{n_{x}}{2 c} + \frac{u}{2 c^{2}}                                & \frac{u}{c^{2}}         & \rho n_{y}                  & \frac{n_{x}}{2 c} + \frac{u}{2 c^{2}}                                  \\
+            - \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                & \frac{v}{c^{2}}         & - \rho n_{x}                & \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                  \\
+            \frac{1}{2(\gamma - 1)} - \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}} & \frac{|\bm{u}|^2}{2c^{2}} & \rho u n_{y} - \rho v n_{x} & \frac{1}{2(\gamma - 1)} + \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}}
+            \end{pmatrix}
+            \end{align*}
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -572,119 +624,20 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(P, dims=(dim, dim))
 
-    def conservative_convective_jacobian_x(self, U: flowstate) -> bla.MATRIX:
-        r""" First Jacobian of the convective fluxes 
+    def characteristic_from_conservative(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+        r"""
+        The :math:`\bm{P}^{-1}_n` matrix transforms conservative variables to characteristic variables
 
         .. math::
-            A = \partial f_c / \partial U
-
-        Equation E16.5.3, page 144
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
-
-        """
-
-        gamma = self.heat_capacity_ratio
-
-        if all((U.u, U.E)):
-            dim = U.u.dim + 2
-
-            if dim == 4:
-                ux, uy = U.u
-
-                A = (0, 1, 0, 0,
-                     (gamma - 3)/2 * ux**2 + (gamma - 1)/2 * uy**2, (3 - gamma) * ux, -(gamma - 1) * uy, gamma - 1,
-                     -ux*uy, uy, ux, 0,
-                     -gamma*ux*U.E + (gamma - 1)*ux*bla.inner(U.u, U.u), gamma*U.E - (gamma - 1)/2 * (uy**2 + 3*ux**2), -(gamma - 1)*ux*uy, gamma*ux)
-
-            else:
-                raise NotImplementedError()
-
-            return bla.as_matrix(A, dims=(dim, dim))
-
-    def conservative_convective_jacobian_y(self, U: flowstate) -> bla.MATRIX:
-        r""" Second Jacobian of the convective fluxes 
-
-        .. math::
-            B = \partial g_c / \partial U
-
-        Equation E16.5.3, page 144
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
-        """
-
-        gamma = self.heat_capacity_ratio
-
-        if all((U.u, U.E)):
-            dim = U.u.dim + 2
-
-            if dim == 4:
-                ux, uy = U.u
-
-                B = (
-                    0, 0, 1, 0, -ux * uy, uy, ux, 0, (gamma - 3) / 2 * uy ** 2 + (gamma - 1) / 2 * ux ** 2, -(gamma - 1) * ux,
-                    (3 - gamma) * uy, gamma - 1, -gamma * uy * U.E + (gamma - 1) * uy * bla.inner(U.u, U.u), -(gamma - 1) * ux * uy, gamma * U.E -
-                    (gamma - 1) / 2 * (ux ** 2 + 3 * uy ** 2),
-                    gamma * uy)
-
-            else:
-                raise NotImplementedError()
-
-            return bla.as_matrix(B, dims=(dim, dim))
-
-    def characteristic_from_primitive(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        """
-        The L inverse matrix transforms primitive variables to charactersitic variables
-
-        Equation E16.5.1, page 182
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
-        """
-        unit_vector = bla.as_vector(unit_vector)
-
-        if all((U.rho, U.c)):
-            dim = unit_vector.dim + 2
-
-            if dim == 4:
-                d0, d1 = unit_vector
-
-                Linv = (0, -U.rho*U.c*d0, -U.rho*U.c*d1, 1,
-                        U.c**2, 0, 0, -1,
-                        0, d1, -d0, 0,
-                        0, U.rho*U.c*d0, U.rho*U.c*d1, 1)
-
-            else:
-                return NotImplementedError()
-
-            return bla.as_matrix(Linv, dims=(dim, dim))
-
-    def characteristic_from_conservative(self, U: flowstate, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        """
-        The P inverse matrix transforms conservative variables to characteristic variables
-
-        Equation E16.5.4, page 183
-
-        Literature:
-        [1] - C. Hirsch,
-              Numerical Computation of Internal and External Flows Volume 2:
-              Computational Methods for Inviscid and Viscous Flows,
-              Vrije Universiteit Brussel, Brussels, Belgium
-              ISBN: 978-0-471-92452-4
+            \begin{align*}
+            \bm{P}^{-1}_n &:= \bm{M}^{-1} \bm{L}^{-1}_n =
+            \begin{pmatrix}
+            c u_{n} + \frac{\gamma - 1}{2}|\bm{u}|^2        & - c n_{x} + u (1 - \gamma) & - c n_{y} + v (1 - \gamma) & \gamma - 1 \\
+            c^{2} - \frac{\gamma - 1}{2}|\bm{u}|^2          & - u (1 - \gamma)           & - v (1 - \gamma)           & 1 - \gamma \\
+            - \frac{u n_{y}}{\rho} + \frac{v n_{x}}{\rho} & \frac{n_{y}}{\rho}         & - \frac{n_{x}}{\rho}       & 0          \\
+            - c u_{n} + \frac{\gamma - 1}{2}|\bm{u}|^2      & c n_{x} + u (1 - \gamma)   & c n_{y} + v (1 - \gamma)   & \gamma - 1
+            \end{pmatrix}
+            \end{align*}
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -707,8 +660,89 @@ class IdealGas(EquationOfState):
 
             return bla.as_matrix(Pinv, dims=(dim, dim))
 
-    def isentropic_density(self, U: flowstate, Uref: flowstate) -> ngs.CF:
-        r"""Returns the isentropic density from a given state
+    def conservative_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
+        r""" Convective flux Jacobian :math:`\bm{A}` in x-direction
+
+        .. math::
+            \begin{align*}
+            \bm{A} &:= 
+            \begin{pmatrix}
+                0 & 1 & 0 & 0 \\
+               \frac{\gamma - 3}{2} u_x^2 + \frac{\gamma - 1}{2} u_y^2 & (3 - \gamma) u_x & -(\gamma - 1) u_y & \gamma - 1\\
+                     -u_x u_y & u_y & u_x & 0 \\
+                     -\gamma u_x E + (\gamma - 1) u_x |\bm{u}|^2 & \gamma E - \frac{\gamma - 1}{2} (u_y^2 + 3 u_x^2)&  -(\gamma - 1) u_x u_y & \gamma u_x
+            \end{pmatrix}
+            \qquad [1, E16.5.3]
+            \end{align*}
+
+        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
+               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
+        """
+
+        gamma = self.heat_capacity_ratio
+
+        if all((U.u, U.E)):
+            dim = U.u.dim + 2
+
+            if dim == 4:
+                ux, uy = U.u
+
+                A = (0, 1, 0, 0,
+                     (gamma - 3)/2 * ux**2 + (gamma - 1)/2 * uy**2, (3 - gamma) * ux, -(gamma - 1) * uy, gamma - 1,
+                     -ux*uy, uy, ux, 0,
+                     -gamma*ux*U.E + (gamma - 1)*ux*bla.inner(U.u, U.u), gamma*U.E - (gamma - 1)/2 * (uy**2 + 3*ux**2), -(gamma - 1)*ux*uy, gamma*ux)
+
+            else:
+                raise NotImplementedError()
+
+            return bla.as_matrix(A, dims=(dim, dim))
+
+    def conservative_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
+        r""" Convective flux Jacobian :math:`\bm{B}` in y-direction
+
+        .. math::
+            \begin{align*}
+            \bm{B} &:= 
+            \begin{pmatrix}
+                0 & 0 & 1 & 0 \\
+                  -u_x u_y & u_y & u_x&  0 \\ 
+                  \frac{\gamma - 3}{2} u_y^2 + \frac{\gamma - 1}{2} u_x^2& -(\gamma - 1) u_x&
+                (3 - \gamma) u_y & \gamma - 1 \\ 
+                -\gamma u_y E + (\gamma - 1) u_y |\bm{u}|^2 & -(\gamma - 1) u_x u_y & \gamma E -
+                \frac{\gamma - 1}{2} (u_x^2 + 3 u_y^2) & \gamma u_y
+            \end{pmatrix}
+            \qquad [1, E16.5.3]
+            \end{align*}
+
+        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
+               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
+        """
+
+        gamma = self.heat_capacity_ratio
+
+        if all((U.u, U.E)):
+            dim = U.u.dim + 2
+
+            if dim == 4:
+                ux, uy = U.u
+
+                B = (
+                    0, 0, 1, 0, -ux * uy, uy, ux, 0, (gamma - 3) / 2 * uy ** 2 + (gamma - 1) / 2 * ux ** 2, -(gamma - 1) * ux,
+                    (3 - gamma) * uy, gamma - 1, -gamma * uy * U.E + (gamma - 1) * uy * bla.inner(U.u, U.u), -(gamma - 1) * ux * uy, gamma * U.E -
+                    (gamma - 1) / 2 * (ux ** 2 + 3 * uy ** 2),
+                    gamma * uy)
+
+            else:
+                raise NotImplementedError()
+
+            return bla.as_matrix(B, dims=(dim, dim))
+
+
+
+
+
+    def isentropic_density(self, U: flowfields, Uref: flowfields) -> ngs.CF:
+        r"""Returns the isentropic density from given fields
 
         .. math::
             \rho = \rho_{ref} (\frac{T}{T_{ref}})^{\frac{1}{\gamma - 1}}
@@ -723,5 +757,3 @@ class IdealGas(EquationOfState):
             return Uref.rho * (U.T/Uref.T)**(1/(self.heat_capacity_ratio - 1))
 
         return None
-
-    heat_capacity_ratio: ngs.Parameter
