@@ -44,10 +44,11 @@ cfg.nonlinear_solver.max_iterations = 300
 cfg.nonlinear_solver.convergence_criterion = 1e-12
 
 cfg.time = "pseudo_time_stepping"
+cfg.time.scheme = "bdf2"
 cfg.time.timer.step = 0.001
 cfg.time.max_time_step = 10
 
-cfg.optimizations.static_condensation = True
+cfg.optimizations.static_condensation = False
 
 # ------- Curve Mesh ------- #
 mesh.Curve(cfg.fem.order)

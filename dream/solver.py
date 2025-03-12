@@ -229,6 +229,14 @@ class DirectNonlinearSolver(NonlinearSolver, skip=True):
         self.gfu = gfu
         self.fes = gfu.space
         self.blf = blf
+        
+
+        ## NOTE
+        ## This needs to change, such that DIRK can be applicable here. Just redefine lf to a vector, called rhs.
+        ## Also, do a check on whether this is None (nullptr) or not, to avoid the risk of having vector memory allocated maybe?
+        #if isinstance(lf, ngs.LinearForm):
+        #    lf = lf.vec
+            
         self.lf = lf
         self.residual = gfu.vec.CreateVector()
         self.temporary = gfu.vec.CreateVector()

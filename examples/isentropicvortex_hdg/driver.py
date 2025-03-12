@@ -67,7 +67,8 @@ cfg.mach_number = 1.0
 # Spatial discretization.
 # # # # # # # # # # # # #
 
-cfg.riemann_solver = "lax_friedrich"
+#cfg.riemann_solver = "lax_friedrich"
+cfg.riemann_solver = "upwind"
 cfg.fem = "conservative"
 cfg.fem.order = nPoly
 cfg.fem.method = "hdg"
@@ -80,9 +81,9 @@ cfg.fem.mixed_method = "inactive"
 
 cfg.time = "transient"
 TEMPORAL = cfg.time
-TEMPORAL.scheme = "implicit_euler"
-TEMPORAL.timer.interval = (0, 1.0)
-TEMPORAL.timer.step = 0.01
+TEMPORAL.scheme = "bdf2"
+TEMPORAL.timer.interval = (0, 25.0)
+TEMPORAL.timer.step = 0.125
 
 
 # # # # # # # # # # #
@@ -93,7 +94,7 @@ cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
 cfg.nonlinear_solver.method.damping_factor = 1
 cfg.nonlinear_solver.max_iterations = 10
-cfg.nonlinear_solver.convergence_criterion = 1e-10
+cfg.nonlinear_solver.convergence_criterion = 1e-8
 
 
 # # # # # # # # # # #
@@ -101,7 +102,7 @@ cfg.nonlinear_solver.convergence_criterion = 1e-10
 # # # # # # # # # # #
 
 OPTIMIZATION = cfg.optimizations
-OPTIMIZATION.static_condensation = True
+OPTIMIZATION.static_condensation = False
 OPTIMIZATION.compile.realcompile = False
 
 
@@ -139,7 +140,7 @@ Uexact = AnalyticSolution(cfg, TEMPORAL.timer.t, xLength, yLength)
 # Write output VTK file.
 IO = cfg.io
 IO.vtk = True
-IO.vtk.rate = 100
+IO.vtk.rate = 20
 IO.vtk.subdivision = nSubdiv
 
 # VTK Visualization data.

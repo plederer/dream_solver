@@ -242,7 +242,7 @@ class SSPRK3(ExplicitSchemes):
         # Number of stages.
         self.RKnStage = 3
        
-        # Reserve space for the old time step (at t^n).
+        # Reserve space for the solution at the old time step (at t^n).
         self.U0 = self.cfg.gfu.vec.CreateVector()
 
         # Define the SSP-RK3 coefficients.
@@ -434,6 +434,185 @@ class BDF2(ImplicitSchemes):
             return 2/3*self.dt
         return 2*self.dt
 
+
+
+class SDIRK3(TimeSchemes):
+    """
+    ..math::
+        
+    """
+
+    name: str = "sdirk3"
+
+    time_levels = ('n', 'n+1')
+
+    def assemble(self) -> None:
+
+        condense = self.cfg.optimizations.static_condensation
+        compile = self.cfg.optimizations.compile
+
+       
+        self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
+        self.blfs = ngs.BilinearForm(self.cfg.fes)
+        self.lf = ngs.LinearForm(self.cfg.fes)
+        self.mass = ngs.BilinearForm(self.cfg.fes)
+        
+        # Reserve space for additional vectors.
+        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.res = self.cfg.gfu.vec.CreateVector()
+        self.dz  = self.cfg.gfu.vec.CreateVector()
+        self.usol = self.cfg.gfu.vec.CreateVector()
+        self.ubar = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.cfg.gfu.vec.CreateVector()
+        self.x2 = self.cfg.gfu.vec.CreateVector()
+
+        # Check that a mass matrix is indeed defined in the bilinear form dictionary.
+        if "mass" not in self.cfg.blf:
+            raise ValueError("Could not find a mass matrix definition in the bilinear form.")
+
+        # Step 1: precompute the weighted mass matrix. Note, this is scaled by 1/(a_ii*dt).
+        if compile.realcompile:
+            self.mass += self.cfg.blf["mass"].Compile(**compile)
+        else:
+            self.mass += self.cfg.blf["mass"]
+
+        self.mass.Assemble()
+
+        # NOTE,
+        # Unlike in a standarad DG scheme, here, using an HDG, the spatial discretization
+        # is defined on the left-hand side. So, to proceed with the assumption that we
+        # have a system like: U_t = R(U, Uhat), we need to negate the terms in self.cfg.blf.
+
+        for name, cf in self.cfg.blf.items():
+            logger.debug(f"Adding {name} to the BilinearForm!")
+
+            if compile.realcompile:
+                self.blf += cf.Compile(**compile)
+            else:
+                self.blf += cf
+
+            # Not elegant, but let's add other bilinear form, which does not need a mass item.
+            if name != "mass":
+                if compile.realcompile:
+                    self.blfs += cf.Compile(**compile)
+                else:
+                    self.blfs += cf
+
+
+        for name, cf in self.cfg.lf.items():
+            logger.debug(f"Adding {name} to the LinearForm!")
+
+            if compile.realcompile:
+                self.lf += cf.Compile(**compile)
+            else:
+                self.lf += cf
+      
+
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+
+        u, v = self.TnT[variable]
+        gfus = self.gfus[variable].copy()
+        gfus['n+1'] = u
+       
+        # Coefficients of the 3rd order SDIRK.
+        self.aii =  0.4358665215
+        self.a21 =  0.2820667392
+        self.a31 =  1.2084966490
+        self.a32 = -0.6443631710
+        
+        # Abbreviation.
+        ovadt = 1.0/(self.aii*self.dt)
+
+        # Add the scaled mass matrix.
+        blf['mass'] = ngs.InnerProduct( ovadt*u, v ) * self.dx[variable]
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
+        return gfus['n']
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        return self.dt
+
+    def NewtonSolverSDIRK(self, res, dz, B, usol, ubar):
+
+        # Max iterations in the Newton solver.
+        maxIter = 10
+        # Min tolerance to admit a solution.
+        tol = 1.0e-8
+
+        # Solve our nonlinear system iteratively using Newton's.
+        for k in range(maxIter):
+
+            # This substitutes our symbolic variables with their respective values.
+            B.Apply(usol, res)
+
+            # Add the remaining contributions that constitute the rhs residual.
+            res.data -= ubar
+
+            # Then, we linearize about the current state: gfu.vec.
+            B.AssembleLinearization(usol)
+
+            # This inverts: A*dz=res, to find the perturbed state: dz.
+            dz.data = B.mat.Inverse()*res
+            
+            # Finally, we assemble our solution from our perturbation.
+            usol.data -= dz
+          
+            # Error checking.
+            err = ngs.sqrt( ngs.InnerProduct(dz,res) )
+            
+            # Exit condition.
+            if( err < tol ):
+                break
+
+        # Display the error.
+        #print( f"{err:.8e}" )
+
+
+    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
+
+        # How the steps look like (needs scaling and fixing ofc).
+
+        # Initial vector: M*U^n.
+        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+       
+        # Abbreviations.
+        a21 = -self.a21 / self.aii
+        a31 = -self.a31 / self.aii
+        a32 = -self.a32 / self.aii
+
+        # Stage: 1.
+        self.usol.data = self.cfg.gfu.vec
+
+        self.NewtonSolverSDIRK(self.res, self.dz, self.blf, self.usol, self.mu0)        
+        #self.y1.data = usol
+
+        ## Stage: 2.
+        self.blfs.Apply( self.usol, self.x1 )
+
+        self.ubar.data = self.mu0 + a21 * self.x1
+        self.NewtonSolverSDIRK(self.res, self.dz, self.blf, self.usol, self.ubar)
+
+        #self.y2.data = usol
+
+        # Stage: 3.
+        self.blfs.Apply( self.usol, self.x2 )
+        
+        self.ubar.data = self.mu0 + a31 * self.x1 + a32 * self.x2
+        self.NewtonSolverSDIRK(self.res, self.dz, self.blf, self.usol, self.ubar)
+
+        #self.y3.data = usol
+
+        # NOTE, this assumes that the integrator is stiffly-accurate (L-stable).
+        self.cfg.gfu.vec.data = self.usol
+        print("time: ", t)
+        yield None
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
