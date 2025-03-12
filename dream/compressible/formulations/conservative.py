@@ -52,7 +52,7 @@ class MixedMethod(InterfaceConfiguration, is_interface=True):
         return ngs.CF(tuple(0 for _ in range(self.mesh.dim + 2)))
 
     def get_diffusive_stabilisation_matrix(self, U: flowfields) -> bla.MATRIX:
-        Re = self.cfg.reference_reynolds_number
+        Re = self.cfg.scaling.reference_reynolds_number
         Pr = self.cfg.prandtl_number
         mu = self.cfg.viscosity(U)
 
@@ -227,7 +227,7 @@ class StrainHeat(MixedMethod):
         if self.mesh.dim == 3:
             raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
 
-        Re = self.cfg.reference_reynolds_number
+        Re = self.cfg.scaling.reference_reynolds_number
         Pr = self.cfg.prandtl_number
         mu = self.cfg.viscosity(U)
 
@@ -247,7 +247,7 @@ class StrainHeat(MixedMethod):
         if self.mesh.dim == 3:
             raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
 
-        Re = self.cfg.reference_reynolds_number
+        Re = self.cfg.scaling.reference_reynolds_number
         Pr = self.cfg.prandtl_number
         mu = self.cfg.viscosity(U)
 
