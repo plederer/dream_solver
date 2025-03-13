@@ -66,5 +66,5 @@ class TestSolverConfiguration(unittest.TestCase):
         self.cfg.initialize_trial_and_test_functions()
         self.cfg.initialize_symbolic_forms()
 
-        self.assertIn('test', self.cfg.blf)
-        self.assertIn('test', self.cfg.lf)
+        self.assertIn('test', self.cfg.blf['U'])
+        self.assertIn('test', self.cfg.lf['U'])

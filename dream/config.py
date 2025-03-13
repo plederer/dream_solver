@@ -8,6 +8,9 @@ import ngsolve as ngs
 
 logger = logging.getLogger(__name__)
 
+# ------ Aliases ------ #
+Integrals: typing.TypeAlias = dict[str, dict[str, ngs.comp.SumOfIntegrals]]
+
 # ------ Helper Functions ------ #
 
 

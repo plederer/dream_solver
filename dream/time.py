@@ -6,7 +6,7 @@ import ngsolve as ngs
 import logging
 import typing
 
-from dream.config import UniqueConfiguration, InterfaceConfiguration, parameter, configuration, interface, unique
+from dream.config import UniqueConfiguration, InterfaceConfiguration, parameter, configuration, interface, unique, Integrals
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
@@ -74,11 +74,27 @@ class TimeSchemes(InterfaceConfiguration, is_interface=True):
     def dt(self) -> ngs.Parameter:
         return self.cfg.time.timer.step
 
-    def add_symbolic_temporal_forms(self,
-                                    variable: str,
-                                    blf: dict[str, ngs.comp.SumOfIntegrals],
-                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+    def add_symbolic_temporal_forms(self, space: str, blf: Integrals, lf: Integrals) -> None:
         raise NotImplementedError()
+
+    def add_sum_of_integrals(self, form: ngs.LinearForm | ngs.BilinearForm, integrals: Integrals, *
+                             pass_terms: tuple[str, ...]) -> None:
+
+        compile = self.cfg.optimizations.compile
+
+        for space in integrals:
+
+            for term, cf in integrals[space].items():
+
+                if term in pass_terms:
+                    continue
+
+                logger.debug(f"Adding {term}!")
+
+                if compile.realcompile:
+                    form += cf.Compile(**compile)
+                else:
+                    form += cf
 
     def assemble(self) -> None:
         raise NotImplementedError()
@@ -104,7 +120,7 @@ class TimeSchemes(InterfaceConfiguration, is_interface=True):
             for old in list(gfu.values())[:-1]:
                 old.vec.data = gfu['n+1'].vec
 
-    def solve_current_time_level(self)-> typing.Generator[int | None, None, None]:
+    def solve_current_time_level(self) -> typing.Generator[int | None, None, None]:
         raise NotImplementedError()
 
     def update_gridfunctions(self):
@@ -118,39 +134,22 @@ class ImplicitSchemes(TimeSchemes, skip=True):
     def assemble(self) -> None:
 
         condense = self.cfg.optimizations.static_condensation
-        compile = self.cfg.optimizations.compile
 
         self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
         self.lf = ngs.LinearForm(self.cfg.fes)
 
-        for name, cf in self.cfg.blf.items():
-            logger.debug(f"Adding {name} to the BilinearForm!")
-
-            if compile.realcompile:
-                self.blf += cf.Compile(**compile)
-            else:
-                self.blf += cf
-
-        for name, cf in self.cfg.lf.items():
-            logger.debug(f"Adding {name} to the LinearForm!")
-
-            if compile.realcompile:
-                self.lf += cf.Compile(**compile)
-            else:
-                self.lf += cf
+        self.add_sum_of_integrals(self.blf, self.cfg.blf)
+        self.add_sum_of_integrals(self.lf, self.cfg.lf)
 
         self.cfg.nonlinear_solver.initialize(self.blf, self.lf, self.cfg.gfu)
 
-    def add_symbolic_temporal_forms(self,
-                                    variable: str,
-                                    blf: dict[str, ngs.comp.SumOfIntegrals],
-                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+    def add_symbolic_temporal_forms(self, space: str, blf: Integrals, lf: Integrals) -> None:
 
-        u, v = self.TnT[variable]
-        gfus = self.gfus[variable].copy()
+        u, v = self.TnT[space]
+        gfus = self.gfus[space].copy()
         gfus['n+1'] = u
 
-        blf[f'time'] = ngs.InnerProduct(self.get_time_derivative(gfus), v) * self.dx[variable]
+        blf[space][f'time'] = ngs.InnerProduct(self.get_time_derivative(gfus), v) * self.dx[space]
 
     def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         raise NotImplementedError()
@@ -161,7 +160,7 @@ class ImplicitSchemes(TimeSchemes, skip=True):
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         raise NotImplementedError()
 
-    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
+    def solve_current_time_level(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
         for it in self.cfg.nonlinear_solver.solve(t):
             yield it
 
@@ -215,9 +214,7 @@ class TimeConfig(InterfaceConfiguration, is_interface=True):
     def assemble(self) -> None:
         raise NotImplementedError("Symbolic Forms not implemented!")
 
-    def add_symbolic_temporal_forms(
-            self, blf: dict[str, ngs.comp.SumOfIntegrals],
-            lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+    def add_symbolic_temporal_forms(self, blf, lf) -> None:
         pass
 
     def initialize(self):
@@ -289,8 +286,7 @@ class TransientConfig(TimeConfig):
     def assemble(self):
         self.scheme.assemble()
 
-    def add_symbolic_temporal_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                                    lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals):
         self.cfg.fem.add_symbolic_temporal_forms(blf, lf)
 
     def initialize(self):
@@ -354,8 +350,7 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def increment_factor(self, increment_factor):
         return int(increment_factor)
 
-    def add_symbolic_temporal_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                                    lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals):
         self.cfg.fem.add_symbolic_temporal_forms(blf, lf)
 
     def assemble(self):

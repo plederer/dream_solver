@@ -4,7 +4,7 @@ import ngsolve as ngs
 
 from dream.config import interface
 from dream.solver import SolverConfiguration, FiniteElementMethod
-from dream.mesh import BoundaryConditions, DomainConditions 
+from dream.mesh import BoundaryConditions, DomainConditions
 
 
 def unit_square(maxh=0.25, periodic: bool = False) -> ngs.Mesh:
@@ -66,12 +66,11 @@ class DummyFiniteElementMethod(FiniteElementMethod):
     def get_temporal_integrators(self):
         return {'U': ngs.dx, 'Uhat': ngs.dx}
 
-    def add_symbolic_spatial_forms(self, blf: dict[str, ngs.comp.SumOfIntegrals],
-                           lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_spatial_forms(self, blf, lf):
         u, v = self.cfg.TnT['U']
 
-        blf['test'] = u * v * ngs.dx
-        lf['test'] = v * ngs.dx
+        blf['U']['test'] = u * v * ngs.dx
+        lf['U']['test'] = v * ngs.dx
 
     def add_symbolic_temporal_forms(self, blf, lf):
         pass
