@@ -21,7 +21,7 @@ class IsentropicVortexParam:
         self.y0     = ly/2.0
 
         # Vortex parameters, found in Spiegel et al. (2015). 
-        self.theta  = 15.0 # flow angle [deg]. 
+        self.theta  = 45.0 # flow angle [deg]. 
         self.Tinf   = 1.0  # background temperature.
         self.Pinf   = 1.0  # background pressure.
         self.Rinf   = 1.0  # background density.

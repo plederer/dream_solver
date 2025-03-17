@@ -19,7 +19,7 @@ ngsglobals.msg_level = 0
 # # # # # # # # # #
 
 # Number of elements per dimension.
-nElem1D = 10
+nElem1D = 1
 
 # Dimension of the rectangular domain.
 xLength = 10.0
@@ -60,7 +60,7 @@ cfg.dynamic_viscosity = "inviscid"
 cfg.equation_of_state = "ideal"
 cfg.equation_of_state.heat_capacity_ratio = 1.4
 cfg.scaling = "acoustic"
-cfg.mach_number = 1.0
+cfg.mach_number = 0.5
 
 
 # # # # # # # # # # # # #
@@ -81,20 +81,27 @@ cfg.fem.mixed_method = "inactive"
 
 cfg.time = "transient"
 TEMPORAL = cfg.time
-TEMPORAL.scheme = "bdf2"
-TEMPORAL.timer.interval = (0, 25.0)
-TEMPORAL.timer.step = 0.125
+TEMPORAL.scheme = "dirk34_ldd"
+#TEMPORAL.scheme = "dirk43_wso2"
+#TEMPORAL.scheme = "sdirk22"
+#TEMPORAL.scheme = "sdirk54"
+#TEMPORAL.scheme = "sdirk33"
+#TEMPORAL.scheme = "bdf2"
+#TEMPORAL.scheme = "implicit_euler"
+TEMPORAL.timer.interval = (0, 1.0)
+TEMPORAL.timer.step = 0.5
 
 
 # # # # # # # # # # #
 # Solution strategy.
 # # # # # # # # # # #
 
+cfg.linear_solver = "pardiso"
 cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
 cfg.nonlinear_solver.method.damping_factor = 1
 cfg.nonlinear_solver.max_iterations = 10
-cfg.nonlinear_solver.convergence_criterion = 1e-8
+cfg.nonlinear_solver.convergence_criterion = 1e-10
 
 
 # # # # # # # # # # #
@@ -102,7 +109,7 @@ cfg.nonlinear_solver.convergence_criterion = 1e-8
 # # # # # # # # # # #
 
 OPTIMIZATION = cfg.optimizations
-OPTIMIZATION.static_condensation = False
+OPTIMIZATION.static_condensation = True
 OPTIMIZATION.compile.realcompile = False
 
 
@@ -113,9 +120,6 @@ OPTIMIZATION.compile.realcompile = False
 # Obtain the initial condition.
 Uic = InitialCondition(cfg, TEMPORAL, xLength, yLength)
 
-# Define the initial solution state.
-initial = Initial(fields=Uic)
-
 
 # # # # # # # # # # # # # # # # #
 # Boundary and domain conditions.
@@ -124,8 +128,7 @@ initial = Initial(fields=Uic)
 # cfg.bcs['left|top|bottom|right'] = FarField(state=Uinf)
 cfg.bcs['left|right'] = "periodic"
 cfg.bcs['top|bottom'] = "periodic"
-cfg.dcs['internal'] = initial
-
+cfg.dcs['internal'] = Initial(fields=Uic)
 
 # # # # # # # # # # # #
 # Output/Visualization.
@@ -140,7 +143,7 @@ Uexact = AnalyticSolution(cfg, TEMPORAL.timer.t, xLength, yLength)
 # Write output VTK file.
 IO = cfg.io
 IO.vtk = True
-IO.vtk.rate = 20
+IO.vtk.rate = 1
 IO.vtk.subdivision = nSubdiv
 
 # VTK Visualization data.

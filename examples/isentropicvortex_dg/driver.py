@@ -37,7 +37,7 @@ mesh = CreateSimpleGrid(nElem1D, xLength, yLength)
 cfg = CompressibleFlowSolver(mesh)
 
 # Number of threads.
-nThread = 2
+nThread = 4
 
 # Polynomial order of the FEM implementation.
 nPoly = 3
@@ -81,8 +81,8 @@ TEMPORAL = cfg.time
 #TEMPORAL.scheme = "explicit_euler"
 TEMPORAL.scheme = "ssprk3"
 #TEMPORAL.scheme = "crk4"
-TEMPORAL.timer.interval = (0, 5.0)
-TEMPORAL.timer.step = 0.025
+TEMPORAL.timer.interval = (0, 50.0)
+TEMPORAL.timer.step = 0.01
 
 
 # # # # # # # # # # #
@@ -138,7 +138,7 @@ Uexact = AnalyticSolution(cfg, TEMPORAL.timer.t, xLength, yLength)
 # Write output VTK file.
 IO = cfg.io
 IO.vtk = True
-IO.vtk.rate = 50
+IO.vtk.rate = 1000
 IO.vtk.subdivision = nSubdiv
 
 # VTK Visualization data.

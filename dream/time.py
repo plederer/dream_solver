@@ -352,7 +352,7 @@ class ImplicitSchemes(TimeSchemes, skip=True):
         compile = self.cfg.optimizations.compile
 
         self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
-        self.lf = ngs.LinearForm(self.cfg.fes)
+        
 
         for name, cf in self.cfg.blf.items():
             logger.debug(f"Adding {name} to the BilinearForm!")
@@ -362,15 +362,17 @@ class ImplicitSchemes(TimeSchemes, skip=True):
             else:
                 self.blf += cf
 
-        for name, cf in self.cfg.lf.items():
-            logger.debug(f"Adding {name} to the LinearForm!")
+        if self.cfg.lf:
+            self.lf = ngs.LinearForm(self.cfg.fes)
+            for name, cf in self.cfg.lf.items():
+                logger.debug(f"Adding {name} to the LinearForm!")
 
-            if compile.realcompile:
-                self.lf += cf.Compile(**compile)
-            else:
-                self.lf += cf
-
-        self.cfg.nonlinear_solver.initialize(self.blf, self.lf, self.cfg.gfu)
+                if compile.realcompile:
+                    self.lf += cf.Compile(**compile)
+                else:
+                    self.lf += cf
+        self.bsvec = None
+        self.cfg.nonlinear_solver.initialize(self.blf, self.bsvec, self.cfg.gfu)
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -421,67 +423,83 @@ class BDF2(ImplicitSchemes):
     time_levels = ('n-1', 'n', 'n+1')
 
     def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        return (3*gfus['n+1'] - 4*gfus['n'] + gfus['n-1'])/(2*self.dt)
+        return (3.0*gfus['n+1'] - 4.0*gfus['n'] + gfus['n-1'])/(2.0*self.dt)
 
     def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
         gfus = self.gfus[variable]
         if normalized:
-            return 4/3*gfus['n'] - 1/3*gfus['n-1']
-        return 4 * gfus['n'] - gfus['n-1']
+            return (4.0/3.0)*gfus['n'] - (1.0/3.0)*gfus['n-1']
+        return 4.0*gfus['n'] - gfus['n-1']
 
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         if normalized:
-            return 2/3*self.dt
-        return 2*self.dt
+            return (2.0/3.0)*self.dt
+        return 2.0*self.dt
 
 
+class DIRKSchemes(TimeSchemes, skip=True):
+    r""" All DIRK-type schemes are solving the following HDG problem:
+          PDE: M * u_t + f(u,uhat) = 0,
+           AE:           g(u,uhat) = 0.
 
-class SDIRK3(TimeSchemes):
+         RK update is: 
+            u^{n+1} = u^{n} - dt * sum_{i=1}^{s} b_{i}  * M^{-1} * f(z_i).
+         where,
+          PDE:  y_i = u^{n} - dt * sum_{j=1}^{i} a_{ij} * M^{-1} * f(z_j),
+           AE:    0 = g(z_i).
+        Note, 
+           z = (y,yhat), are the stage values. Also, we do not explicitly need uhat^{n+1}.
+
+        The residual is defined as R_i = (r_i, rhat_i), as such:
+           r_i = M_i * y_i - M_i * u^{n} + (1/a_{ii}) * sum_{j=1}^{i-1} * f(z_j) + f(z_i),
+        rhat_i = g(z_i).
+
+        where, 
+          M_i = ( 1/(dt*a_{ii}) ) * M.
+
+        Thus, the linearized SOE is based on: 
+          N_{i}^{k} * dz_{i}^{k} = -R_{i}( z_{i}^{k} ),
+          where the iteration matrix, 
+            N_{i}^{k} = dR/dz_i ( z_{i}^{k} ),
+                      = { M_i + df/dy_i, df/dyhat_i }
+                        {       dg/dy_i, dg/dyhat_i }.
+
+        Implementation is based on the two bilinear forms:
+
+         blf:  { M_i * y_i + f(y_i,yhat_i) }
+               {             g(y_i,yhat_i) }  ... needed for iteration matrix + rhs.
+
+         blfs: {             f(y_i,yhat_i) }
+               {             g(y_i,yhat_i) }  ... needed for rhs only.
+
+         ... and the (weighted) mass matrix: M_i. 
+
+         This way, 
+          1) the iteration matrix N_{i}^{k} is based on blf.
+          2) blfs, which depends on the known data from previous stages, is needed for the rhs only.
     """
-    ..math::
-        
-    """
-
-    name: str = "sdirk3"
-
-    time_levels = ('n', 'n+1')
 
     def assemble(self) -> None:
 
         condense = self.cfg.optimizations.static_condensation
         compile = self.cfg.optimizations.compile
 
-       
         self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
-        self.blfs = ngs.BilinearForm(self.cfg.fes)
+        self.blfs = ngs.BilinearForm(self.cfg.fes, condense=condense)
+        self.mass = ngs.BilinearForm(self.cfg.fes, symmetric=True)
         self.lf = ngs.LinearForm(self.cfg.fes)
-        self.mass = ngs.BilinearForm(self.cfg.fes)
-        
-        # Reserve space for additional vectors.
-        self.mu0 = self.cfg.gfu.vec.CreateVector()
-        self.res = self.cfg.gfu.vec.CreateVector()
-        self.dz  = self.cfg.gfu.vec.CreateVector()
-        self.usol = self.cfg.gfu.vec.CreateVector()
-        self.ubar = self.cfg.gfu.vec.CreateVector()
-        self.x1 = self.cfg.gfu.vec.CreateVector()
-        self.x2 = self.cfg.gfu.vec.CreateVector()
 
-        # Check that a mass matrix is indeed defined in the bilinear form dictionary.
+        # Check that a mass matrix is defined in the bilinear form dictionary.
         if "mass" not in self.cfg.blf:
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
-        # Step 1: precompute the weighted mass matrix. Note, this is scaled by 1/(a_ii*dt).
+        # Precompute the weighted mass matrix. Note, this is potentially weighted by 1/(dt*aii).
         if compile.realcompile:
             self.mass += self.cfg.blf["mass"].Compile(**compile)
         else:
             self.mass += self.cfg.blf["mass"]
 
         self.mass.Assemble()
-
-        # NOTE,
-        # Unlike in a standarad DG scheme, here, using an HDG, the spatial discretization
-        # is defined on the left-hand side. So, to proceed with the assumption that we
-        # have a system like: U_t = R(U, Uhat), we need to negate the terms in self.cfg.blf.
 
         for name, cf in self.cfg.blf.items():
             logger.debug(f"Adding {name} to the BilinearForm!")
@@ -492,22 +510,88 @@ class SDIRK3(TimeSchemes):
                 self.blf += cf
 
             # Not elegant, but let's add other bilinear form, which does not need a mass item.
+            # TODO: change the algebraic transmissibility contraits to separate items in blf,
+            # such that we can isolate them here (instead of redundantly computing g(u,uhat) = 0.
             if name != "mass":
                 if compile.realcompile:
                     self.blfs += cf.Compile(**compile)
                 else:
                     self.blfs += cf
+        
+        if self.cfg.lf:
+            for name, cf in self.cfg.lf.items():
+                logger.debug(f"Adding {name} to the LinearForm!")
+
+                if compile.realcompile:
+                    self.lf += cf.Compile(**compile)
+                else:
+                    self.lf += cf
 
 
-        for name, cf in self.cfg.lf.items():
-            logger.debug(f"Adding {name} to the LinearForm!")
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+        raise NotImplementedError()
 
-            if compile.realcompile:
-                self.lf += cf.Compile(**compile)
-            else:
-                self.lf += cf
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        raise NotImplementedError()
+
+    def update_solution(self, t: float):
+        raise NotImplementedError()
+
+    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
+        self.update_solution(t)
+        yield None
+
+
+class SDIRK22(DIRKSchemes):
+    r""" Updates the solution via a 2-stage 2nd-order (L-stable) 
+         singly diagonal implicit Runge-Kutta (SDIRK).
+         Taken from Section 2.6 in [1]. 
+    
+    [1] Ascher, Uri M., Steven J. Ruuth, and Raymond J. Spiteri. 
+        "Implicit-explicit Runge-Kutta methods for time-dependent partial differential equations." 
+        Applied Numerical Mathematics 25.2-3 (1997): 151-167. 
+    """
+    
+    name: str = "sdirk22"
+    time_levels = ('n', 'n+1')
+
+    def initialize_butcher_tableau(self):
+        
+        alpha = ngs.sqrt(2.0)/2.0
+
+        self.aii = 1.0 - alpha 
+        self.a21 = alpha 
+       
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c1  = 1.0 - alpha
+        self.c2  = 1.0 
+
+        # This is possible, because the method is L-stable.
+        self.b1  = self.a21
+        self.b2  = self.aii
+
+
+    def assemble(self) -> None:
+
+        # Call the parent's assemble, in case additional checks need be done first.
+        super().assemble()
+ 
+        # Reserve space for additional vectors.
+        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.ubar = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.cfg.gfu.vec.CreateVector()
+
+        self.cfg.nonlinear_solver.initialize(self.blf, self.ubar, self.cfg.gfu)
       
-
     def add_symbolic_temporal_forms(self,
                                     variable: str,
                                     blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -517,12 +601,9 @@ class SDIRK3(TimeSchemes):
         gfus = self.gfus[variable].copy()
         gfus['n+1'] = u
        
-        # Coefficients of the 3rd order SDIRK.
-        self.aii =  0.4358665215
-        self.a21 =  0.2820667392
-        self.a31 =  1.2084966490
-        self.a32 = -0.6443631710
-        
+        # This initializes the coefficients for this scheme.
+        self.initialize_butcher_tableau()
+
         # Abbreviation.
         ovadt = 1.0/(self.aii*self.dt)
 
@@ -539,80 +620,628 @@ class SDIRK3(TimeSchemes):
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         return self.dt
 
-    def NewtonSolverSDIRK(self, res, dz, B, usol, ubar):
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
+            pass
 
-        # Max iterations in the Newton solver.
-        maxIter = 10
-        # Min tolerance to admit a solution.
-        tol = 1.0e-8
-
-        # Solve our nonlinear system iteratively using Newton's.
-        for k in range(maxIter):
-
-            # This substitutes our symbolic variables with their respective values.
-            B.Apply(usol, res)
-
-            # Add the remaining contributions that constitute the rhs residual.
-            res.data -= ubar
-
-            # Then, we linearize about the current state: gfu.vec.
-            B.AssembleLinearization(usol)
-
-            # This inverts: A*dz=res, to find the perturbed state: dz.
-            dz.data = B.mat.Inverse()*res
-            
-            # Finally, we assemble our solution from our perturbation.
-            usol.data -= dz
-          
-            # Error checking.
-            err = ngs.sqrt( ngs.InnerProduct(dz,res) )
-            
-            # Exit condition.
-            if( err < tol ):
-                break
-
-        # Display the error.
-        #print( f"{err:.8e}" )
-
-
-    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
-
-        # How the steps look like (needs scaling and fixing ofc).
-
+    def update_solution(self, t: float):
+ 
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+
+        # Abbreviations.
+        a21 = -self.a21 / self.aii
+        
+        # Stage: 1.
+        self.ubar.data = self.mu0
+        self.solve_stage(t) 
+
+        # Stage: 2.
+        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.ubar.data = self.mu0      \
+                       + a21 * self.x1
+        self.solve_stage(t)
+
+        # NOTE,
+        # No need to explicitly update the gfu, since the last stage 
+        # corresponds to the value at time: t^{n+1}.
+
+
+
+
+class SDIRK33(DIRKSchemes):
+    r""" Updates the solution via a 3-stage 3rd-order (L-stable) 
+         singly diagonal implicit Runge-Kutta (SDIRK).
+         Taken from Section 2.7 in [1]. 
+    
+    [1] Ascher, Uri M., Steven J. Ruuth, and Raymond J. Spiteri. 
+        "Implicit-explicit Runge-Kutta methods for time-dependent partial differential equations." 
+        Applied Numerical Mathematics 25.2-3 (1997): 151-167. 
+    """
+
+    name: str = "sdirk33"
+    time_levels = ('n', 'n+1')
+
+    def initialize_butcher_tableau(self):
+
+        self.aii =  0.4358665215
+        self.a21 =  0.2820667392
+        self.a31 =  1.2084966490
+        self.a32 = -0.6443631710
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c1  =  0.4358665215 
+        self.c2  =  0.7179332608
+        self.c3  =  1.0
+
+        # This is possible, because the method is L-stable.
+        self.b1  = self.a31
+        self.b2  = self.a32
+        self.b3  = self.aii
+
+    def assemble(self) -> None:
+
+        # Call the parent's assemble, in case additional checks need be done first.
+        super().assemble()
+ 
+        # Reserve space for additional vectors.
+        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.ubar = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.cfg.gfu.vec.CreateVector()
+        self.x2 = self.cfg.gfu.vec.CreateVector()
+
+        self.cfg.nonlinear_solver.initialize(self.blf, self.ubar, self.cfg.gfu)
+      
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+
+        u, v = self.TnT[variable]
+        gfus = self.gfus[variable].copy()
+        gfus['n+1'] = u
+ 
+        # This initializes the coefficients for this scheme.      
+        self.initialize_butcher_tableau()
        
+        # Abbreviation.
+        ovadt = 1.0/(self.aii*self.dt)
+
+        # Add the scaled mass matrix.
+        blf['mass'] = ngs.InnerProduct( ovadt*u, v ) * self.dx[variable]
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
+        return gfus['n']
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        return self.dt
+
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
+            pass
+
+    def update_solution(self, t: float):
+ 
+        # Initial vector: M*U^n.
+        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+
         # Abbreviations.
         a21 = -self.a21 / self.aii
         a31 = -self.a31 / self.aii
         a32 = -self.a32 / self.aii
 
         # Stage: 1.
-        self.usol.data = self.cfg.gfu.vec
-
-        self.NewtonSolverSDIRK(self.res, self.dz, self.blf, self.usol, self.mu0)        
-        #self.y1.data = usol
+        self.ubar.data = self.mu0
+        self.solve_stage(t) 
 
         ## Stage: 2.
-        self.blfs.Apply( self.usol, self.x1 )
-
+        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
         self.ubar.data = self.mu0 + a21 * self.x1
-        self.NewtonSolverSDIRK(self.res, self.dz, self.blf, self.usol, self.ubar)
-
-        #self.y2.data = usol
+        self.solve_stage(t)
 
         # Stage: 3.
-        self.blfs.Apply( self.usol, self.x2 )
-        
+        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
         self.ubar.data = self.mu0 + a31 * self.x1 + a32 * self.x2
-        self.NewtonSolverSDIRK(self.res, self.dz, self.blf, self.usol, self.ubar)
+        self.solve_stage(t)
 
-        #self.y3.data = usol
+        # NOTE,
+        # No need to explicitly update the gfu, since the last stage 
+        # corresponds to the value at time: t^{n+1}.
 
-        # NOTE, this assumes that the integrator is stiffly-accurate (L-stable).
-        self.cfg.gfu.vec.data = self.usol
-        print("time: ", t)
-        yield None
+
+
+class SDIRK54(DIRKSchemes):
+    r""" Updates the solution via a 5-stage 4th-order (L-stable) 
+         singly diagonal implicit Runge-Kutta (SDIRK).
+         Taken from Table 6.5 in [1]. 
+    
+    [1] Wanner, Gerhard, and Ernst Hairer. 
+        "Solving ordinary differential equations II."
+        Vol. 375. New York: Springer Berlin Heidelberg, 1996. 
+    """
+    
+    name: str = "sdirk54"
+    time_levels = ('n', 'n+1')
+
+    def initialize_butcher_tableau(self):
+
+        self.aii =    1.0/4.0
+        
+        self.a21 =    1.0/2.0 
+        
+        self.a31 =   17.0/50.0 
+        self.a32 =   -1.0/25.0
+        
+        self.a41 =  371.0/1360.0
+        self.a42 = -137.0/2720.0
+        self.a43 =   15.0/544.0
+        
+        self.a51 =   25.0/24.0
+        self.a52 =  -49.0/48.0
+        self.a53 =  125.0/16.0
+        self.a54 =  -85.0/12.0
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c1  =  1.0/4.0
+        self.c2  =  3.0/4.0
+        self.c3  = 11.0/20.0
+        self.c4  =  1.0/2.0
+        self.c5  =  1.0
+
+        # This is possible, because the method is L-stable.
+        self.b1  = self.a51
+        self.b2  = self.a52
+        self.b3  = self.a53
+        self.b4  = self.a54
+        self.b5  = self.aii
+
+
+    def assemble(self) -> None:
+
+        # Call the parent's assemble, in case additional checks need be done first.
+        super().assemble()
+ 
+        # Reserve space for additional vectors.
+        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.ubar = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.cfg.gfu.vec.CreateVector()
+        self.x2 = self.cfg.gfu.vec.CreateVector()
+        self.x3 = self.cfg.gfu.vec.CreateVector()
+        self.x4 = self.cfg.gfu.vec.CreateVector()
+
+        self.cfg.nonlinear_solver.initialize(self.blf, self.ubar, self.cfg.gfu)
+      
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+
+        u, v = self.TnT[variable]
+        gfus = self.gfus[variable].copy()
+        gfus['n+1'] = u
+        
+        # This initializes the coefficients for this scheme.
+        self.initialize_butcher_tableau()
+
+        # Abbreviation.
+        ovadt = 1.0/(self.aii*self.dt)
+
+        # Add the scaled mass matrix.
+        blf['mass'] = ngs.InnerProduct( ovadt*u, v ) * self.dx[variable]
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
+        return gfus['n']
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        return self.dt
+
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
+            pass
+
+    def update_solution(self, t: float):
+ 
+        # Initial vector: M*U^n.
+        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+
+        # Abbreviations.
+        a21 = -self.a21 / self.aii
+        
+        a31 = -self.a31 / self.aii
+        a32 = -self.a32 / self.aii
+
+        a41 = -self.a41 / self.aii
+        a42 = -self.a42 / self.aii
+        a43 = -self.a43 / self.aii
+
+        a51 = -self.a51 / self.aii
+        a52 = -self.a52 / self.aii
+        a53 = -self.a53 / self.aii
+        a54 = -self.a54 / self.aii
+
+        # Stage: 1.
+        self.ubar.data = self.mu0
+        self.solve_stage(t) 
+
+        ## Stage: 2.
+        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.ubar.data = self.mu0      \
+                       + a21 * self.x1
+        self.solve_stage(t)
+
+        # Stage: 3.
+        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.ubar.data = self.mu0      \
+                       + a31 * self.x1 \
+                       + a32 * self.x2
+        self.solve_stage(t)
+
+        # Stage: 4.
+        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+        self.ubar.data = self.mu0      \
+                       + a41 * self.x1 \
+                       + a42 * self.x2 \
+                       + a43 * self.x3
+        self.solve_stage(t)
+
+        # Stage: 5.
+        self.blfs.Apply( self.cfg.gfu.vec, self.x4 )
+        self.ubar.data = self.mu0      \
+                       + a51 * self.x1 \
+                       + a52 * self.x2 \
+                       + a53 * self.x3 \
+                       + a54 * self.x4
+        self.solve_stage(t)
+
+        # NOTE,
+        # No need to explicitly update the gfu, since the last stage 
+        # corresponds to the value at time: t^{n+1}.
+
+
+
+class dirk43_wso2(DIRKSchemes):
+    r""" Updates the solution via a 4-stage 3rd-order (L-stable) 
+         diagonal implicit Runge-Kutta (DIRK) with a weak stage order (WSO) of 3.
+         Taken from Section 3 in [1]. 
+   
+    [1] Ketcheson, David I., et al. 
+        "DIRK schemes with high weak stage order." 
+        Spectral and High Order Methods for Partial Differential Equations (2020): 453.
+    """
+    name: str = "dirk43_wso2"
+    time_levels = ('n', 'n+1')
+
+    def initialize_butcher_tableau(self):
+
+        self.a11 =  0.01900072890
+        
+        self.a21 =  0.40434605601
+        self.a22 =  0.38435717512
+        
+        self.a31 =  0.06487908412
+        self.a32 = -0.16389640295
+        self.a33 =  0.51545231222
+
+        self.a41 =  0.02343549374
+        self.a42 = -0.41207877888
+        self.a43 =  0.96661161281
+        self.a44 =  0.42203167233
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c1  = self.a11 
+        self.c2  = self.a21 + self.a22 
+        self.c3  = self.a31 + self.a32 + self.a33 
+        self.c4  = 1.0
+
+        # This is possible, because the method is L-stable.
+        self.b1  = self.a41
+        self.b2  = self.a42
+        self.b3  = self.a43
+        self.b4  = self.a44
+
+    def assemble(self) -> None:
+
+        # Call the parent's assemble, in case additional checks need be done first.
+        super().assemble()
+ 
+        # Reserve space for additional vectors.
+        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.ubar = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.cfg.gfu.vec.CreateVector()
+        self.x2 = self.cfg.gfu.vec.CreateVector()
+        self.x3 = self.cfg.gfu.vec.CreateVector()
+        
+        self.cfg.nonlinear_solver.initialize(self.blf, self.ubar, self.cfg.gfu)
+      
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+
+        u, v = self.TnT[variable]
+        gfus = self.gfus[variable].copy()
+        gfus['n+1'] = u
+       
+        # This initializes the coefficients for this scheme.
+        self.initialize_butcher_tableau()
+
+        # Create a variable parameter, for the diagonal coefficients a_{ii}.
+        self.aii = ngs.Parameter(1.0)
+
+        # Abbreviation.
+        ovadt = 1.0/(self.aii*self.dt)
+
+        # Add the scaled mass matrix.
+        blf['mass'] = ngs.InnerProduct( ovadt*u, v ) * self.dx[variable]
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
+        return gfus['n']
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        return self.dt
+
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
+            pass
+
+    def update_solution(self, t: float):
+ 
+        # Initial vector: M*U^n.
+        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+
+        
+        # Stage: 1.
+        self.aii.Set( self.a11 )
+        ovaii = 1.0 / self.aii.Get()
+        
+        self.ubar.data = ovaii * self.mu0
+        self.solve_stage(t) 
+
+        # Stage: 2.
+        self.aii.Set( self.a22 )
+        ovaii =  1.0 / self.aii.Get()
+        a21 = -ovaii * self.a21
+        
+        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.ubar.data = ovaii * self.mu0 \
+                       +   a21 * self.x1
+        self.solve_stage(t)
+
+        # Stage: 3.
+        self.aii.Set( self.a33 )
+        ovaii =  1.0 / self.aii.Get()
+        a31 = -self.a31 * ovaii
+        a32 = -self.a32 * ovaii
+        
+        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.ubar.data = ovaii * self.mu0 \
+                       +   a31 * self.x1  \
+                       +   a32 * self.x2
+        self.solve_stage(t)
+
+        # Stage: 4.
+        self.aii.Set( self.a44 )
+        ovaii =  1.0 / self.aii.Get()
+        a41 = -ovaii * self.a41 
+        a42 = -ovaii * self.a42 
+        a43 = -ovaii * self.a43 
+        
+        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+        self.ubar.data = ovaii * self.mu0 \
+                       +   a41 * self.x1  \
+                       +   a42 * self.x2  \
+                       +   a43 * self.x3
+        self.solve_stage(t)
+
+        # NOTE,
+        # No need to explicitly update the gfu, since the last stage 
+        # corresponds to the value at time: t^{n+1}.
+
+
+
+class dirk34_ldd(DIRKSchemes):
+    r""" Updates the solution via a 3-stage 4th-order (A-stable) 
+         diagonal implicit Runge-Kutta (DIRK) with low-dispersion and dissipation.
+         Taken from Table 1 in [1]. 
+   
+    [1] Nazari, Farshid, Abdolmajid Mohammadian, and Martin Charron. 
+        "High-order low-dissipation low-dispersion diagonally implicit Runge–Kutta schemes."
+        Journal of Computational Physics 286 (2015): 38-48. 
+    """
+   
+    name: str = "dirk34_ldd"
+    time_levels = ('n', 'n+1')
+
+    def initialize_butcher_tableau(self):
+
+        #self.a11 =  0.675592332328701
+        #
+        #self.a21 =  1.351242940337120
+        #self.a22 = -0.851207182169909 
+        #
+        #self.a31 =  1.351467284887694
+        #self.a32 = -1.702697002012658
+        #self.a33 =  0.675614858562624
+
+        ## Time stamps for the stage values between t = [n,n+1].
+        #self.c1  = self.a11 
+        #self.c2  = self.a21 + self.a22 
+        #self.c3  = self.a31 + self.a32 + self.a33 
+
+        ## NOTE, this is not L-stable.
+        #self.b1  =  1.351467260320785
+        #self.b2  = -1.702414526538024
+        #self.b3  =  1.350947266217122
+
+
+
+        # DEBUGGING
+        # uncomment the above and delete this, once debugging is done.
+        aii =  0.4358665215
+        
+        self.a11 =  aii
+        self.a21 =  0.2820667392 
+        self.a22 =  aii
+        self.a31 =  1.2084966490
+        self.a32 = -0.6443631710
+        self.a33 =  aii
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c1  =  0.4358665215 
+        self.c2  =  0.7179332608
+        self.c3  =  1.0
+        # This is possible, because the method is L-stable.
+        self.b1  = self.a31
+        self.b2  = self.a32
+        self.b3  = aii
+
+
+
+
+    def assemble(self) -> None:
+
+        # Call the parent's assemble, in case additional checks need be done first.
+        super().assemble()
+ 
+        # Reserve space for additional vectors.
+        self.u0  = self.cfg.gfu.vec.CreateVector()
+        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.ubar = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.cfg.gfu.vec.CreateVector()
+        self.x2 = self.cfg.gfu.vec.CreateVector()
+        self.x3 = self.cfg.gfu.vec.CreateVector()
+        
+        self.minv = ngs.BilinearForm(self.cfg.fes)
+        self.minv = self.cfg.linear_solver.inverse(self.mass, self.cfg.fes)
+
+        self.cfg.nonlinear_solver.initialize(self.blf, self.ubar, self.cfg.gfu)
+      
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+
+        u, v = self.TnT[variable]
+        gfus = self.gfus[variable].copy()
+        gfus['n+1'] = u
+       
+        # This initializes the coefficients for this scheme.
+        self.initialize_butcher_tableau()
+
+        # Create a variable parameter, for the diagonal coefficients a_{ii}.
+        self.aii = ngs.Parameter(1.0)
+
+        # Abbreviation.
+        ovadt = 1.0/(self.aii*self.dt)
+
+        # Add the scaled mass matrix.
+        blf['mass'] = ngs.InnerProduct( ovadt*u, v ) * self.dx[variable]
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
+        return gfus['n']
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        return self.dt
+
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
+            pass
+
+    def update_solution(self, t: float):
+ 
+        # Book-keep the initial solution at U^n.
+        self.u0.data  = self.cfg.gfu.vec
+
+        # Initial vector: M*U^n.
+        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+
+        
+        # Stage: 1.
+        self.aii.Set( self.a11 )
+        ovaii = 1.0 / self.aii.Get()
+        
+        self.ubar.data = ovaii * self.mu0
+        self.solve_stage(t) 
+        
+        # Stage: 2.
+        self.aii.Set( self.a22 )
+        ovaii =  1.0 / self.aii.Get()
+        a21 = -ovaii * self.a21
+        
+        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.ubar.data = ovaii * self.mu0 \
+                       +   a21 * self.x1
+        self.solve_stage(t)
+
+        # Stage: 3.
+        self.aii.Set( self.a33 )
+        ovaii =  1.0 / self.aii.Get()
+        a31 = -self.a31 * ovaii
+        a32 = -self.a32 * ovaii
+        
+        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.ubar.data = ovaii * self.mu0 \
+                       +   a31 * self.x1  \
+                       +   a32 * self.x2
+        self.solve_stage(t)
+
+        # Spatial term evaluated at stage 3.
+        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+
+        # Need to explicitly update the solution. 
+        # NOTE, the facet variables are not updated (not needed for now)!
+        #self.cfg.gfu.vec.data = self.u0           \
+        #                      - self.minv *       \
+        #                      ( self.b1 * self.x1 \
+        #                      + self.b2 * self.x2 \
+        #                      + self.b3 * self.x3 )
+        
+        self.cfg.gfu.vec.data = self.u0 - self.minv*( self.b1*self.x1 + self.b2*self.x2 + self.b3*self.x3 )
+        print( "------------------------------------------------------------" )
+        #print( self.x2 )
+        print( "unew" )
+        print( self.cfg.gfu.vec )
+        print("u0") 
+        print( self.u0 )
+        print( self.minv )
+        
+
+        # NOTE, we are in debug mode. Here's what we are doing or where we are:
+        # 1) we noticed that the IC, u0, always has nan on some of its facets (regardless of the time scheme, even bdf2)
+        # 2) we are testing an sdirk33, but using Set/Get ngs.Parameter in this class. Results should be identical to 
+        #    the standard SDIRK33 we have running.
+        # 3) pardiso print(minv) does not work. We suspect that minv is doing something weird, because if we do not 
+        #    explicitly update the solution (line 1219), all works exactly the same as sdirk33.
+        # 4) something weird happens, because the first few steps it works, then suddenly it blows up due to nan!?
+        # 5) another possible source for this error is that we may have "weird" uhat^{n+1} values, which renders
+        #    the inverse of the linearized matrix diverge!?
+        # 
+        # ... possible fix: 
+        # implement a bilinear form with u being the grid function (known), taken as u^{n+1}. And solve for 
+        # the uhat^{n+1} variable by linearizing and solving this (possibly) nonlinear system. Example:
+        #  blfuhat.Apply( self.cfg.gfu.vec, rhs )
+        #  blfuhat.AssembleLinearization( self.cfg.gfu.vec )
+        #  duhat = blfuhat.mat.Inverse() * rhs
+        #  somehow update only the facet variables using duhat...
+
+        # FIXME
+
+
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
