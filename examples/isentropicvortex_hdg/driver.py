@@ -19,7 +19,7 @@ ngsglobals.msg_level = 0
 # # # # # # # # # #
 
 # Number of elements per dimension.
-nElem1D = 1
+nElem1D = 10
 
 # Dimension of the rectangular domain.
 xLength = 10.0
@@ -41,7 +41,7 @@ cfg = CompressibleFlowSolver(mesh)
 nThread = 4
 
 # Polynomial order of the FEM implementation.
-nPoly = 3
+nPoly = 4
 
 # Number of subdivisions, for visualization.
 nSubdiv = 3
@@ -81,14 +81,14 @@ cfg.fem.mixed_method = "inactive"
 
 cfg.time = "transient"
 TEMPORAL = cfg.time
-TEMPORAL.scheme = "dirk34_ldd"
+#TEMPORAL.scheme = "dirk34_ldd"
 #TEMPORAL.scheme = "dirk43_wso2"
 #TEMPORAL.scheme = "sdirk22"
+TEMPORAL.scheme = "sdirk33"
 #TEMPORAL.scheme = "sdirk54"
-#TEMPORAL.scheme = "sdirk33"
 #TEMPORAL.scheme = "bdf2"
 #TEMPORAL.scheme = "implicit_euler"
-TEMPORAL.timer.interval = (0, 1.0)
+TEMPORAL.timer.interval = (0, 5.0)
 TEMPORAL.timer.step = 0.5
 
 

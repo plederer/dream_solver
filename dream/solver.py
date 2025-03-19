@@ -6,7 +6,7 @@ import typing
 from math import isnan
 
 from .mesh import is_mesh_periodic, Periodic, Initial, BoundaryConditions, DomainConditions
-from .config import is_notebook, UniqueConfiguration, InterfaceConfiguration, interface, configuration, unique, ngsdict
+from .config import is_notebook, UniqueConfiguration, InterfaceConfiguration, interface, configuration, unique, ngsdict, Integrals
 from .time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
 from .io import IOConfiguration
 
@@ -282,14 +282,10 @@ class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
     def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def add_symbolic_spatial_forms(self,
-                                   blf: dict[str, ngs.comp.SumOfIntegrals],
-                                   lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def add_symbolic_temporal_forms(self,
-                                    blf: dict[str, ngs.comp.SumOfIntegrals],
-                                    lf: dict[str, ngs.comp.SumOfIntegrals]):
+    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals):
         raise NotImplementedError("Overload this method in derived class!")
 
     def get_temporal_integrators(self) -> dict[str, ngs.comp.DifferentialSymbol]:
@@ -404,8 +400,8 @@ class SolverConfiguration(InterfaceConfiguration, is_interface=True):
             self.gfus = {label: self.gfu for label in self.spaces}
 
     def initialize_symbolic_forms(self) -> None:
-        self.blf = {}
-        self.lf = {}
+        self.blf: Integrals = {label: {} for label in self.spaces}
+        self.lf: Integrals = {label: {} for label in self.spaces}
 
         self.fem.add_symbolic_spatial_forms(self.blf, self.lf)
         self.time.add_symbolic_temporal_forms(self.blf, self.lf)
