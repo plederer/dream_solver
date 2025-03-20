@@ -267,28 +267,42 @@ class unique(configuration):
                 self.update_subconfigurations_recursively(cfg)
 
 
+# This is an interface class, which is used to abstract class definitions
+# such as: pde, solver, time... etc.
 class interface(unique):
 
     default: type[InterfaceConfiguration]
 
     def __set__(self, cfg: CONFIG, value) -> None:
 
+        # Explicitly extract the configuration item we are interested in.
+        # For example, this could be 'pde', 'solver', 'time', etc.
+        item = self.__name__
+
+        # First, check if the input is an actual configuration file.
         if isinstance(value, self.default.tree.root):
-            value.cfg = cfg.cfg
-            value.mesh = cfg.mesh
-            self.update_subconfigurations_recursively(value)
+            value.cfg  = cfg.cfg   # Re-assign the correct cfg instance.
+            value.mesh = cfg.mesh  # Re-assign the original mesh instance.
+            self.update_subconfigurations_recursively(value) 
 
             # Set subconfiguration in parent configuration after all subconfigurations are updated
-            cfg.data[self.__name__] = value
+            cfg.data[item] = value
 
+        # Second, check if the input is of type string, e.g. 'compressible'.
         elif isinstance(value, str):
+            
+            # If the value has a different configuration than what already exists 
+            # in cfg.data[item], modify the latter.
             cfg_ = self.default.tree[value]
-            if not isinstance(cfg.data[self.__name__], cfg_):
-                cfg.data[self.__name__] = cfg_(cfg=cfg.cfg, mesh=cfg.mesh)
+            if not isinstance(cfg.data[item], cfg_):
+                cfg.data[item] = cfg_(cfg=cfg.cfg, mesh=cfg.mesh)
 
+        # Third, check if the input is a dictionary.
         elif isinstance(value, dict):
-            cfg.data[self.__name__].update(**value)
+            # Update the values corresonding to this item.
+            cfg.data[item].update(**value)
 
+        # Otherwise, Houston, we have a problem.
         else:
             msg = f""" Can not set variable of type {type(value)}!
 
@@ -301,8 +315,9 @@ class interface(unique):
             """
             raise TypeError(msg)
 
+        # Call the fset function, e.g. 'pde', 'solver', if they're defined.
         if self.fset is not None:
-            value = self.fset(cfg, cfg.data[self.__name__])
+            value = self.fset(cfg, cfg.data[item])
 
 
 class InterfaceTree(typing.MutableMapping):

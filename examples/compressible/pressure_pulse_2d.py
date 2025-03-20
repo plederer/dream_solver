@@ -42,7 +42,7 @@ cfg = CompressibleFlowSolver(mesh)
 cfg.dynamic_viscosity = "inviscid"
 cfg.equation_of_state = "ideal"
 cfg.equation_of_state.heat_capacity_ratio = 1.4
-cfg.scaling = "acoustic"
+cfg.scaling = "aerodynamic"
 cfg.mach_number = 0.03
 cfg.riemann_solver = "lf"
 
