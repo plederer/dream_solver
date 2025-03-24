@@ -152,7 +152,7 @@ def test(name: str = ""):
     return wraps
 
 @test(name)
-def grcbc_farfield_outflow():
+def grcbc_farfield_inflow_and_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
     solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
@@ -160,7 +160,7 @@ def grcbc_farfield_outflow():
     return solver
 
 @test(name)
-def grcbc_pressure_outflow():
+def grcbc_farfield_inflow_and_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'inflow')
     solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(velocity=0.01, pressure=0.01)), 'planar')
@@ -168,7 +168,7 @@ def grcbc_pressure_outflow():
     return solver
 
 @test(name)
-def nscbc_pressure_outflow():
+def nscbc_farfield_inflow_and_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc"), 'inflow')
     solver.boundary_conditions.set(bcs.CBC(farfield, "nscbc"), 'planar')
@@ -176,21 +176,21 @@ def nscbc_pressure_outflow():
     return solver
 
 @test(name)
-def farfield_boundary():
+def farfield_inflow_and_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), 'outflow|inflow|planar')
     return solver
 
 @test(name)
-def outflow_boundary():
+def farfield_inflow_and_pressure_outflow():
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.FarField(farfield, Qform=True), 'inflow|planar')
     solver.boundary_conditions.set(bcs.Outflow(farfield.pressure), 'outflow')
     return solver
 
 if __name__ == "__main__":
-    grcbc_farfield_outflow()
-    grcbc_pressure_outflow()
-    nscbc_pressure_outflow()
-    farfield_boundary()
-    outflow_boundary()
+    grcbc_farfield_inflow_and_outflow()
+    grcbc_farfield_inflow_and_pressure_outflow()
+    nscbc_farfield_inflow_and_pressure_outflow()
+    farfield_inflow_and_outflow()
+    farfield_inflow_and_pressure_outflow()

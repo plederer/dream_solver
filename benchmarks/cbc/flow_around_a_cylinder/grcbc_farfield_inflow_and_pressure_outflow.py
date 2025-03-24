@@ -4,4 +4,4 @@ from main import *
 
 
 if __name__ == '__main__':
-    outflow_boundary()
+    grcbc_farfield_inflow_and_pressure_outflow()

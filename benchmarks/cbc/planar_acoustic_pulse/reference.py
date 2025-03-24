@@ -22,8 +22,8 @@ mesh = Mesh(OCCGeometry(geo, dim=2).GenerateMesh(maxh=maxh))
 
 
 @test(name)
-def grcbc_farfield_reference():
-    """ Exact solution for pressure pulse! """
+def reference():
+    """ Reference solution for pressure pulse! """
 
     solver = CompressibleHDGSolver(mesh, cfg, tree)
     solver.boundary_conditions.set(bcs.CBC(farfield, sigma=State(pressure=1e-5, velocity=1e-5)), "inflow|outflow")
@@ -34,4 +34,4 @@ def grcbc_farfield_reference():
 
 
 if __name__ == '__main__':
-    grcbc_farfield_reference()
+    reference()

@@ -4,4 +4,4 @@ from main import *
 
 
 if __name__ == '__main__':
-    farfield_boundary()
+    farfield_inflow_and_pressure_outflow()

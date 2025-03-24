@@ -4,4 +4,4 @@ from main import *
 
 
 if __name__ == '__main__':
-    nscbc_pressure_outflow()
+    nscbc_farfield_inflow_and_pressure_outflow()

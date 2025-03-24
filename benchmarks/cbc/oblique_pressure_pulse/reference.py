@@ -15,7 +15,7 @@ mesh = Mesh(OCCGeometry(Glue([face, outer]), dim=2).GenerateMesh(grading=0.15))
 mesh.Curve(cfg.order)
 
 @test(name)
-def grcbc_reference():
+def reference():
     """ Exact solution for pressure pulse! """
 
     solver = CompressibleHDGSolver(mesh, cfg, tree)
@@ -30,4 +30,4 @@ def grcbc_reference():
 
 if __name__ == '__main__':
 
-    grcbc_reference()
+    reference()

@@ -203,7 +203,7 @@ def standard_outflow():
     return solver
 
 
-def exact_solution():
+def exact():
 
     tree.directory_name = f"Ma{cfg.Mach_number.Get()}/Mat{Mt}/dt{cfg.time.step.Get()}"
     tree.state_directory_name = "exact"
@@ -239,7 +239,7 @@ def exact_solution():
 
 if __name__ == '__main__':
 
-    exact_solution()
+    exact()
 
     standard_farfield()
     standard_outflow()
