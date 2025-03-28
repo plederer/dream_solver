@@ -1127,9 +1127,182 @@ class DIRK34_LDD(DIRKSchemes):
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
-# # # # # # # # # #
-# TODO: FINISH ME!
-# # # # # # # # # #
+class IMEXSchemes(TimeSchemes, skip=True):
+
+    def assemble(self) -> None:
+
+        condense = self.cfg.optimizations.static_condensation
+        compile = self.cfg.optimizations.compile
+
+        # NOTE, we assume that self.lf is not needed here (for efficiency).
+        self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
+        self.blfs = ngs.BilinearForm(self.cfg.fes, condense=condense)       
+        self.mass = ngs.BilinearForm(self.cfg.fes, symmetric=True)
+        self.rhs = self.cfg.gfu.vec.CreateVector()
+        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        
+        # Check that a mass matrix is defined in the bilinear form dictionary.
+        if "mass" not in self.cfg.blf['U']:
+            raise ValueError("Could not find a mass matrix definition in the bilinear form.")
+
+        # Precompute the weighted mass matrix, with weights: 1/(dt*aii).
+        if compile.realcompile:
+            self.mass += self.cfg.blf['U']['mass'].Compile(**compile)
+        else:
+            self.mass += self.cfg.blf['U']['mass']
+        
+        # Assemble the mass matrix once.
+        self.mass.Assemble()
+
+
+        # FIXME, these have to be carefully done, as they are based on the operator splitting assumed.
+        #
+        ## Add both spatial and mass-matrix terms in blf.
+        #self.add_sum_of_integrals(self.blf, self.cfg.blf)
+        ## Skip the mass matrix contribution in blfs and only use the space for "U".
+        #self.add_sum_of_integrals(self.blfs, self.cfg.blf, 'mass', fespace='U')
+
+        # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
+        self.cfg.nonlinear_solver.initialize(self.blf, self.rhs, self.cfg.gfu)
+
+
+
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+        raise NotImplementedError()
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        raise NotImplementedError()
+
+    def update_solution(self, t: float):
+        raise NotImplementedError()
+
+    def get_current_level(self, variable: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[variable]
+        return gfus['n']
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        return self.dt
+
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
+            pass
+
+    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
+        self.update_solution(t)
+        yield None
+
+
+
+class IMEX_test(IMEXSchemes):
+ 
+    name: str = "imex_test"
+    time_levels = ('n', 'n+1')
+
+    def initialize_butcher_tableau(self):
+        
+        # Implicit RK coefficients.
+        self.aii =  0.5
+        self.a21 =  1.0/6.0
+        self.a31 = -0.5
+        self.a32 =  0.5
+        self.a41 =  1.5
+        self.a42 = -1.5
+        self.a43 =  0.5
+
+        self.b1  = self.a41
+        self.b2  = self.a42
+        self.b3  = self.a43
+        self.b4  = self.aii
+
+        self.c1  = 0.5
+        self.c2  = 2.0/3.0
+        self.c3  = 0.5
+        self.c4  = 1.0
+
+        # Explicit RK coefficients.
+        self.ae21 =   1.0/2.0
+        self.ae31 =  11.0/18.0
+        self.ae32 =   1.0/18.0
+        self.ae41 =   5.0/6.0
+        self.ae42 =  -5.0/6.0
+        self.ae43 =   1.0/2.0
+        self.ae51 =   1.0/4.0
+        self.ae52 =   7.0/4.0
+        self.ae53 =   3.0/4.0
+        self.ae54 =  -7.0/4.0
+
+        self.be1  = self.ae51
+        self.be2  = self.ae52
+        self.be3  = self.ae53
+        self.be4  = self.ae54
+
+        self.ce2  = self.c1
+        self.ce3  = self.c2
+        self.ce4  = self.c3
+        self.ce5  = self.c4        
+
+    def assemble(self) -> None:
+
+        # Call the parent's assemble, in case additional checks need be done first.
+        super().assemble()
+
+        # Reserve space for additional vectors.
+        self.u0 = self.cfg.gfu.vec.CreateVector() 
+        self.x1 = self.cfg.gfu.vec.CreateVector()
+        self.x2 = self.cfg.gfu.vec.CreateVector()
+        self.x3 = self.cfg.gfu.vec.CreateVector()
+       
+
+    def add_symbolic_temporal_forms(self,
+                                    variable: str,
+                                    blf: dict[str, ngs.comp.SumOfIntegrals],
+                                    lf: dict[str, ngs.comp.SumOfIntegrals]) -> None:
+
+        u, v = self.TnT[variable]
+        gfus = self.gfus[variable].copy()
+        gfus['n+1'] = u
+       
+        # This initializes the coefficients for this scheme.
+        self.initialize_butcher_tableau()
+
+        # Abbreviation.
+        ovadt = 1.0/(self.dt)
+
+        # Add the scaled mass matrix.
+        blf[variable]['mass'] = ngs.InnerProduct( ovadt*u, v ) * self.dx[variable]
+
+    def update_solution(self, t: float):
+ 
+        # Book-keep the initial solution at U^n.
+        self.u0.data  = self.cfg.gfu.vec
+
+        # Initial vector: M*U^n.
+        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+
+        # TODO: finish this... 
+        
+        ## Stage: 1.
+        #self.aii.Set( self.a11 )
+        #ovaii = 1.0 / self.aii.Get()
+        #
+        #self.rhs.data = ovaii * self.mu0
+        #self.solve_stage(t) 
+        #
+        ## Stage: 2.
+        #self.aii.Set( self.a22 )
+        #ovaii =  1.0 / self.aii.Get()
+        #a21 = -ovaii * self.a21
+        #
+        #self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        #self.rhs.data = ovaii * self.mu0 \
+        #              +   a21 * self.x1
+        #self.solve_stage(t)
+
+ 
+
 
 
 
