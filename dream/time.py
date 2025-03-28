@@ -93,8 +93,7 @@ class TimeSchemes(InterfaceConfiguration, is_interface=True):
         
         for space in spaces:
             if space not in integrals:
-                logger.warning(f"Space '{space}' not found in integrals. Skipping.")
-                continue 
+                raise KeyError(f"Error: '{space}' not found in integrals.")
 
             for term, cf in integrals[space].items():
                 if term in pass_terms:
