@@ -3,42 +3,61 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import quantity, configuration, ngsdict
-from dream.pde import FiniteElementMethod
-from dream.mesh import Condition
+from dream.solver import FiniteElementMethod
+from dream.mesh import (Condition,
+                        Periodic,
+                        Initial,
+                        Force,
+                        Perturbation,
+                        SpongeLayer,
+                        PSpongeLayer,
+                        GridDeformation
+                        )
 
 
 class CompressibleFiniteElement(FiniteElementMethod, is_interface=True):
 
     @property
     def gfu(self) -> ngs.GridFunction:
-        return self.cfg.pde.gfu
+        return self.cfg.gfu
 
     def set_boundary_conditions(self) -> None:
         """ Boundary conditions for compressible flows are set weakly. Therefore we do nothing here."""
         pass
 
 
-class flowstate(ngsdict):
-    rho = quantity('density')
-    u = quantity('velocity')
-    rho_u = quantity('momentum')
-    p = quantity('pressure')
-    T = quantity('temperature')
-    rho_E = quantity('energy')
-    E = quantity('specific_energy')
-    rho_Ei = quantity('inner_energy')
-    Ei = quantity('specific_inner_energy')
-    rho_Ek = quantity('kinetic_energy')
-    Ek = quantity('specific_kinetic_energy')
-    rho_H = quantity('enthalpy')
-    H = quantity('specific_enthalpy')
-    c = quantity('speed_of_sound')
-    grad_rho = quantity('density_gradient')
-    grad_u = quantity('velocity_gradient')
-    grad_rho_u = quantity('momentum_gradient')
-    grad_p = quantity('pressure_gradient')
-    grad_T = quantity('temperature_gradient')
-    grad_rho_E = quantity('energy_gradient')
+class flowfields(ngsdict):
+    """ Mutable mapping for flow quantities.
+
+        Literal mathematical symbols as key names are converted to their respective quantities,
+        if predefined. Values are converted to NGSolve CoefficientFunctions.
+
+        >>> fields = flowfields(rho=1.0, velocity=(1.0, 0.0))
+        >>> fields
+        {'density': CoefficientFunction((1.0)), 'velocity': CoefficientFunction((1.0, 0.0))}
+        >>> fields['density'] = 5.0
+        {'density': CoefficientFunction((5.0)), 'velocity': CoefficientFunction((1.0, 0.0))}
+    """
+    rho = quantity('density', r"\rho")
+    u = quantity('velocity', r"\bm{u}")
+    rho_u = quantity('momentum', r"\rho \bm{u}")
+    p = quantity('pressure', r"p")
+    T = quantity('temperature', r"T")
+    rho_E = quantity('energy', r"\rho E")
+    E = quantity('specific_energy', r"E")
+    rho_Ei = quantity('inner_energy', r"\rho E_i")
+    Ei = quantity('specific_inner_energy', r"E_i")
+    rho_Ek = quantity('kinetic_energy', r"\rho E_k")
+    Ek = quantity('specific_kinetic_energy', r"E_k")
+    rho_H = quantity('enthalpy', r"\rho H")
+    H = quantity('specific_enthalpy', r"H")
+    c = quantity('speed_of_sound', r"c")
+    grad_rho = quantity('density_gradient', r"\nabla \rho")
+    grad_u = quantity('velocity_gradient', r"\nabla \bm{u}")
+    grad_rho_u = quantity('momentum_gradient', r"\nabla (\rho \bm{u})")
+    grad_p = quantity('pressure_gradient', r"\nabla p")
+    grad_T = quantity('temperature_gradient', r"\nabla T")
+    grad_rho_E = quantity('energy_gradient', r"\nabla (\rho E)")
     grad_E = quantity('specific_energy_gradient')
     grad_rho_Ei = quantity('inner_energy_gradient')
     grad_Ei = quantity('specific_inner_energy_gradient')
@@ -47,10 +66,10 @@ class flowstate(ngsdict):
     grad_rho_H = quantity('enthalpy_gradient')
     grad_H = quantity('specific_enthalpy_gradient')
     grad_c = quantity('speed_of_sound_gradient')
-    eps = quantity('strain_rate_tensor')
+    eps = quantity('strain_rate_tensor', r"\bm{\varepsilon}")
 
 
-class referencestate(ngsdict):
+class dimensionfulfields(ngsdict):
     L = quantity("length")
     rho = quantity("density")
     rho_u = quantity("momentum")
@@ -65,21 +84,21 @@ class FarField(Condition):
     name = "farfield"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            state = flowstate(**state)
-        return state
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("Farfield state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("Farfield fields not set!")
 
     @configuration(default=True)
     def identity_jacobian(self, use_identity_jacobian: bool):
         return bool(use_identity_jacobian)
 
-    state: flowstate
+    fields: flowfields
 
 
 class Outflow(Condition):
@@ -87,20 +106,20 @@ class Outflow(Condition):
     name = "outflow"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            if bla.is_scalar(state):
-                state = flowstate(p=state)
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            if bla.is_scalar(fields):
+                fields = flowfields(p=fields)
             else:
-                state = flowstate(**state)
-        return state
+                fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("Outflow state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("Outflow fields not set!")
 
-    state: flowstate
+    fields: flowfields
 
 
 class CBC(Condition):
@@ -108,15 +127,15 @@ class CBC(Condition):
     name = "cbc"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            state = flowstate(**state)
-        return state
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("CBC state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("CBC fields not set!")
 
     @configuration(default="farfield")
     def target(self, target: str):
@@ -156,7 +175,7 @@ class CBC(Condition):
 
         return factors
 
-    state: flowstate
+    fields: flowfields
     target: str
     relaxation_factor: dict
     tangential_relaxation: ngs.CF
@@ -213,25 +232,28 @@ class IsothermalWall(Condition):
     name = "isothermal_wall"
 
     @configuration(default=None)
-    def state(self, state) -> flowstate:
-        if state is not None:
-            if bla.is_scalar(state):
-                state = flowstate(T=state)
+    def fields(self, fields) -> flowfields:
+        if fields is not None:
+            if bla.is_scalar(fields):
+                fields = flowfields(T=fields)
             else:
-                state = flowstate(**state)
-        return state
+                fields = flowfields(**fields)
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("Isothermal Wall state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("Isothermal Wall fields not set!")
 
-    state: flowstate
+    fields: flowfields
 
 
 class AdiabaticWall(Condition):
 
     name = "adiabatic_wall"
+
+
+BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, Periodic]
 
 
 # ------- Domain Conditions ------- #
@@ -240,3 +262,6 @@ class AdiabaticWall(Condition):
 class PML(Condition):
 
     name = "pml"
+
+
+DCS = [PML, Force, Perturbation, Initial, GridDeformation, PSpongeLayer, SpongeLayer]

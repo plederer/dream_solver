@@ -5,9 +5,8 @@ import typing
 
 from math import isnan
 
-from .compressible import CompressibleFlowConfiguration
-from .mesh import is_mesh_periodic
-from .config import UniqueConfiguration, InterfaceConfiguration, interface, configuration, unique
+from .mesh import is_mesh_periodic, Periodic, Initial, BoundaryConditions, DomainConditions
+from .config import is_notebook, UniqueConfiguration, InterfaceConfiguration, interface, configuration, unique, ngsdict, Integrals
 from .time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
 from .io import IOConfiguration
 
@@ -36,240 +35,6 @@ class BonusIntegrationOrder(UniqueConfiguration):
     bnd: int
     bbnd: int
     bbbnd: int
-
-
-class Inverse(InterfaceConfiguration, is_interface=True):
-
-    cfg: SolverConfiguration
-
-    def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, pre: ngs.BilinearForm = None):
-        NotImplementedError()
-
-
-class Direct(Inverse):
-
-    name: str = "direct"
-
-    @configuration(default="umfpack")
-    def solver(self, solver: str):
-        return solver
-
-    def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, pre: ngs.BilinearForm = None):
-        return blf.mat.Inverse(fes.FreeDofs(blf.condense), inverse=self.solver)
-
-    solver: str
-
-
-class NonlinearMethod(InterfaceConfiguration, is_interface=True):
-
-    cfg: SolverConfiguration
-
-    def reset_status(self):
-        self.is_converged = False
-        self.is_nan = False
-
-    def set_solution_routine_attributes(self):
-        raise NotImplementedError()
-
-    def solve_update_step(self):
-        raise NotImplementedError()
-
-    def update_solution(self):
-        raise NotImplementedError()
-
-    def set_iteration_error(self, it: int | None = None, t: float | None = None):
-        raise NotImplementedError()
-
-    def log_iteration_error(self, error: float, it: int | None = None, t: float | None = None):
-        msg = f"residual: {error:8e}"
-        if it is not None:
-            msg += f" | iteration: {it}"
-        if t is not None:
-            msg += f" | t: {t}"
-        logger.info(msg)
-
-
-class NewtonsMethod(NonlinearMethod):
-
-    name: str = "newton"
-
-    @configuration(default=1)
-    def damping_factor(self, damping_factor: float):
-        return float(damping_factor)
-
-    def set_solution_routine_attributes(self):
-        self.fes = self.cfg.pde.fes
-        self.gfu = self.cfg.pde.gfu
-        self.inverse = self.cfg.solver.inverse
-
-        # Take the implicit BilinearForm
-        self.blf = self.cfg.solver.blfi
-        self.lf = self.cfg.solver.lf
-
-        self.residual = self.gfu.vec.CreateVector()
-        self.temporary = self.gfu.vec.CreateVector()
-
-    def solve_update_step(self):
-
-        self.blf.Apply(self.gfu.vec, self.residual)
-        self.residual.data -= self.lf.vec
-        self.blf.AssembleLinearization(self.gfu.vec)
-
-        inv = self.cfg.solver.inverse.get_inverse(self.blf, self.fes)
-        if self.blf.condense:
-            self.residual.data += self.blf.harmonic_extension_trans * self.residual
-            self.temporary.data = inv * self.residual
-            self.temporary.data += self.blf.harmonic_extension * self.temporary
-            self.temporary.data += self.blf.inner_solve * self.residual
-        else:
-            self.temporary.data = inv * self.residual
-
-    def update_solution(self):
-        self.gfu.vec.data -= self.damping_factor * self.temporary
-
-    def set_iteration_error(self, it: int | None = None, t: float | None = None):
-        error = ngs.sqrt(ngs.InnerProduct(self.temporary, self.residual)**2)
-
-        self.is_converged = error < self.cfg.solver.convergence_criterion
-        self.log_iteration_error(error, it, t)
-        self.error = error
-
-        if isnan(error):
-            self.is_nan = True
-            logger.error("Solution process diverged!")
-
-    damping_factor: float
-
-
-class Solver(InterfaceConfiguration, is_interface=True):
-
-    cfg: SolverConfiguration
-
-    @interface(default=Direct)
-    def inverse(self, inverse: Inverse):
-        return inverse
-
-    def initialize(self):
-
-        self.fes = self.cfg.pde.fes
-        condense = self.cfg.optimizations.static_condensation
-        compile = self.cfg.optimizations.compile
-
-        self.blfi = ngs.BilinearForm(self.fes, name="implicit", condense=condense)
-        self.blfe = ngs.BilinearForm(self.fes, name="explicit", non_assemble=True)
-        self.lf = ngs.LinearForm(self.fes)
-
-        for name, cf in self.cfg.pde.blfi.items():
-            logger.debug(f"Adding {name} to the implcit BilinearForm!")
-
-            if compile.realcompile:
-                self.blfi += cf.Compile(**compile)
-            else:
-                self.blfi += cf
-
-        for name, cf in self.cfg.pde.blfe.items():
-            logger.debug(f"Adding {name} to the explicit BilinearForm!")
-
-            if compile.realcompile:
-                self.blfe += cf.Compile(**compile)
-            else:
-                self.blfe += cf
-
-        for name, cf in self.cfg.pde.lf.items():
-            logger.debug(f"Adding {name} to the LinearForm!")
-
-            if compile.realcompile:
-                self.lf += cf.Compile(**compile)
-            else:
-                self.lf += cf
-
-    inverse: Direct
-
-
-class LinearSolver(Solver):
-
-    name: str = "linear"
-
-    def solve(self):
-
-        self.blfi.Assemble()
-
-        if hasattr(self, 'dirichlet'):
-            self.dirichlet.data = self.blfi.mat * self.gfu.vec
-
-        for t in self.cfg.time.start_solution_routine():
-            self.lf.Assemble()
-
-            if hasattr(self, 'dirichlet'):
-                self.lf.vec.data -= self.proj * self.dirichlet
-
-            self.cfg.pde.gfu.vec.data += self.inverse.get_inverse(self.blfi, self.cfg.pde.fes) * self.lf.vec
-
-    def set_dirichlet_vector(self):
-
-        periodic = self.cfg.pde.bcs.get_periodic_boundaries(True)
-        dofs = ~self.fes.FreeDofs() & ~self.fes.GetDofs(self.cfg.mesh.Boundaries(periodic))
-
-        if any(dofs):
-            self.proj = ngs.Projector(dofs, False)   # dirichlet mask
-            self.dirichlet = self.gfu.vec.CreateVector()
-            self.dirichlet[:] = 0
-
-    def initialize(self):
-        super().initialize()
-        self.gfu = self.cfg.pde.gfu
-        self.set_dirichlet_vector()
-
-
-class NonlinearSolver(Solver):
-
-    name: str = "nonlinear"
-
-    @interface(default=NewtonsMethod)
-    def method(self, method: NonlinearMethod):
-        return method
-
-    @configuration(default=10)
-    def max_iterations(self, max_iterations: int):
-        return int(max_iterations)
-
-    @configuration(default=1e-8)
-    def convergence_criterion(self, convergence_criterion: float):
-        if convergence_criterion <= 0:
-            raise ValueError("Convergence Criterion must be greater zero!")
-        return float(convergence_criterion)
-
-    def initialize(self):
-        super().initialize()
-        self.method.set_solution_routine_attributes()
-
-    def solve(self):
-
-        for t in self.cfg.time.start_solution_routine():
-
-            self.method.reset_status()
-
-            for it in range(self.max_iterations):
-
-                self.cfg.time.solver_iteration_update(it)
-
-                self.method.solve_update_step()
-                self.method.set_iteration_error(it, t)
-
-                if self.method.is_nan:
-                    break
-
-                self.method.update_solution()
-
-                if self.method.is_converged:
-                    break
-
-            if self.method.is_nan:
-                break
-
-    method: NonlinearMethod
-    max_iterations: int
-    convergence_criterion: float
 
 
 class Compile(UniqueConfiguration):
@@ -310,30 +75,268 @@ class Optimizations(UniqueConfiguration):
     bonus_int_order: BonusIntegrationOrder
 
 
-class SolverConfiguration(UniqueConfiguration):
+class Solver(InterfaceConfiguration, is_interface=True):
 
-    name: str = 'cfg'
+    cfg: SolverConfiguration
 
-    def __init__(self, mesh: ngs.Mesh, **kwargs) -> None:
+    def inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
+        raise NotImplementedError()
+
+    def initialize(self, blf: ngs.BilinearForm, lf: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
+        ...
+
+    def log_iteration_error(self, it: int | None = None, t: float | None = None):
+        msg = f"residual: {self.error:8e}"
+        if it is not None:
+            msg += f" | iteration: {it}"
+        if t is not None:
+            msg += f" | t: {t}"
+        logger.info(msg)
+
+    def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
+        raise NotImplementedError()
+
+
+# ------- Linear Solvers ------- #
+
+
+class LinearSolver(Solver, is_interface=True):
+
+    cfg: SolverConfiguration
+
+
+class DirectLinearSolver(LinearSolver, skip=True):
+
+    def inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
+        if freedofs is None:
+            freedofs = fes.FreeDofs(blf.condense)
+        return blf.mat.Inverse(freedofs, inverse=self.name)
+
+
+class UmfpackLinearSolver(DirectLinearSolver):
+
+    name = "umfpack"
+
+
+class PardisoLinearSolver(DirectLinearSolver):
+
+    name = "pardiso"
+
+
+# ------- Nonlinear Solvers ------- #
+
+
+class NonlinearMethod(InterfaceConfiguration, is_interface=True):
+
+    cfg: SolverConfiguration
+
+    def initialize(self, gfu: ngs.GridFunction, du):
+        self.gfu = gfu
+        self.du = du
+
+    def update_solution(self):
+        raise NotImplementedError()
+
+
+class NewtonsMethod(NonlinearMethod):
+
+    name: str = "newton"
+
+    @configuration(default=1)
+    def damping_factor(self, damping_factor: float):
+        return float(damping_factor)
+
+    def update_solution(self):
+        self.gfu.vec.data -= self.damping_factor * self.du
+
+    damping_factor: float
+
+
+class NonlinearSolver(Solver, is_interface=True):
+
+    cfg: SolverConfiguration
+
+    @interface(default=NewtonsMethod)
+    def method(self, method: NonlinearMethod):
+        return method
+
+    @configuration(default=10)
+    def max_iterations(self, max_iterations: int):
+        return int(max_iterations)
+
+    @configuration(default=1e-8)
+    def convergence_criterion(self, convergence_criterion: float):
+        if convergence_criterion <= 0:
+            raise ValueError("Convergence Criterion must be greater zero!")
+        return float(convergence_criterion)
+
+    def log_iteration_error(self, it: int | None = None, t: float | None = None):
+        msg = f"residual: {self.error:8e}"
+        if it is not None:
+            msg += f" | iteration: {it}"
+        if t is not None:
+            msg += f" | t: {t}"
+        logger.info(msg)
+
+    def reset_status(self):
+        self.is_converged = False
+        self.is_nan = False
+
+    def set_iteration_error(self, du: ngs.BaseVector, residual: ngs.BaseVector):
+        error = ngs.sqrt(ngs.InnerProduct(du, residual)**2)
+
+        self.is_converged = error < self.convergence_criterion
+        self.error = error
+
+        if isnan(error):
+            self.is_nan = True
+            logger.error("Solution process diverged!")
+
+    def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
+
+        self.reset_status()
+
+        for it in range(self.max_iterations):
+            yield it
+
+            self.solve_update_step()
+            self.log_iteration_error(it, t)
+
+            if self.is_nan:
+                break
+
+            self.method.update_solution()
+
+            if self.is_converged:
+                break
+
+    def solve_update_step(self):
+        raise NotImplementedError()
+
+    method: NonlinearMethod
+    max_iterations: int
+    convergence_criterion: float
+
+
+class DirectNonlinearSolver(NonlinearSolver, skip=True):
+
+    def inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
+        if freedofs is None:
+            freedofs = fes.FreeDofs(blf.condense)
+        return blf.mat.Inverse(freedofs=freedofs, inverse=self.name)
+
+    def initialize(self, blf: ngs.BilinearForm, rhs: ngs.BaseVector, gfu: ngs.GridFunction, **kwargs):
+      
+        if not isinstance(rhs, ngs.BaseVector) and rhs is not None:
+            raise TypeError("Input rhs must be of type either ngs.BaseVector or None.")
+      
+        self.gfu = gfu
+        self.fes = gfu.space
+        self.blf = blf
+        self.rhs = rhs
+
+        self.residual = gfu.vec.CreateVector()
+        self.temporary = gfu.vec.CreateVector()
+
+        self.method.initialize(self.gfu, self.temporary)
+
+    def solve_update_step(self):
+
+        self.blf.Apply(self.gfu.vec, self.residual)
+        if self.rhs is not None:
+            self.residual.data -= self.rhs
+        self.blf.AssembleLinearization(self.gfu.vec)
+
+        inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.name)
+        if self.blf.condense:
+            self.residual.data += self.blf.harmonic_extension_trans * self.residual
+            self.temporary.data = inv * self.residual
+            self.temporary.data += self.blf.harmonic_extension * self.temporary
+            self.temporary.data += self.blf.inner_solve * self.residual
+        else:
+            self.temporary.data = inv * self.residual
+
+        self.set_iteration_error(self.temporary, self.residual)
+
+
+class UmfpackNonlinearSolver(DirectNonlinearSolver):
+
+    name = "umfpack"
+
+
+class PardisoNonlinearSolver(DirectNonlinearSolver):
+
+    name = "pardiso"
+
+# ------- Finite Element Method ------- #
+
+
+class FiniteElementMethod(InterfaceConfiguration, is_interface=True):
+
+    cfg: SolverConfiguration
+
+    @configuration(default=2)
+    def order(self, order):
+        return int(order)
+
+    def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def get_temporal_integrators(self) -> dict[str, ngs.comp.DifferentialSymbol]:
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def get_fields(self, quantities: dict[str, bool]) -> ngsdict:
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def set_initial_conditions(self) -> None:
+        if not self.cfg.dcs.has_condition(Initial):
+            logger.debug("No initial conditions set!")
+            return None
+
+    def set_boundary_conditions(self) -> None:
+        raise NotImplementedError("Overload this method in derived class!")
+
+    order: int
+
+
+# ------- Solver Configuration ------- #
+
+
+class SolverConfiguration(InterfaceConfiguration, is_interface=True):
+
+    def __init__(self, mesh: ngs.Mesh, bcs: BoundaryConditions, dcs: DomainConditions, **kwargs) -> None:
         self.mesh = mesh
         self.mesh.normal = ngs.specialcf.normal(mesh.dim)
         self.mesh.tangential = ngs.specialcf.tangential(mesh.dim)
         self.mesh.meshsize = ngs.specialcf.mesh_size
         self.mesh.is_periodic = is_mesh_periodic(mesh)
 
+        self.bcs = bcs
+        self.dcs = dcs
+
         super().__init__(cfg=self, mesh=self.mesh, **kwargs)
 
-    @interface(default=CompressibleFlowConfiguration)
-    def pde(self, pde):
-        return pde
-
-    @interface(default=LinearSolver)
-    def solver(self, solver: Solver):
-        return solver
+    @property
+    def fem(self) -> FiniteElementMethod:
+        raise NotImplementedError("Overload this configuration in derived class!")
 
     @interface(default=StationaryConfig)
     def time(self, time):
         return time
+
+    @interface(default=UmfpackLinearSolver)
+    def linear_solver(self, solver: LinearSolver):
+        return solver
+
+    @interface(default=UmfpackNonlinearSolver)
+    def nonlinear_solver(self, solver: NonlinearSolver):
+        return solver
 
     @unique(default=Optimizations)
     def optimizations(self, optimizations):
@@ -354,6 +357,73 @@ class SolverConfiguration(UniqueConfiguration):
 
         return info
 
+    def initialize(self) -> None:
+        self.initialize_finite_element_spaces()
+        self.initialize_trial_and_test_functions()
+        self.initialize_gridfunctions()
+        self.set_boundary_conditions()
+
+        self.time.initialize()
+        self.time.set_initial_conditions()
+
+        self.initialize_symbolic_forms()
+
+    def initialize_finite_element_spaces(self) -> None:
+
+        self.spaces = {}
+        self.fem.add_finite_element_spaces(self.spaces)
+
+        if not self.spaces:
+            raise ValueError("Spaces container is empty!")
+
+        fes = list(self.spaces.values())
+
+        for space in fes[1:]:
+            fes[0] *= space
+
+        self.fes: ngs.ProductSpace = fes[0]
+
+    def initialize_trial_and_test_functions(self) -> None:
+
+        if len(self.spaces) > 1:
+            self.TnT = {label: (tr, te) for label, tr, te in zip(
+                self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
+        else:
+            self.TnT = {label: self.fes.TnT() for label in self.spaces}
+
+    def initialize_gridfunctions(self) -> None:
+        self.gfu = ngs.GridFunction(self.fes)
+
+        if len(self.spaces) > 1:
+            self.gfus = {label: gfu for label, gfu in zip(self.spaces, self.gfu.components)}
+        else:
+            self.gfus = {label: self.gfu for label in self.spaces}
+
+    def initialize_symbolic_forms(self) -> None:
+        self.blf: Integrals = {label: {} for label in self.spaces}
+        self.lf: Integrals = {label: {} for label in self.spaces}
+
+        self.fem.add_symbolic_spatial_forms(self.blf, self.lf)
+        self.time.add_symbolic_temporal_forms(self.blf, self.lf)
+
+    def get_fields(self, **quantities: bool) -> ngsdict:
+        fields = self.fem.get_fields(quantities)
+
+        for quantity in quantities:
+            logger.info(f"Quantity {quantity} not predefined!")
+
+        return fields
+
+    def set_boundary_conditions(self) -> None:
+        if self.mesh.is_periodic and not self.bcs.has_condition(Periodic):
+            raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
+
+        self.fem.set_boundary_conditions()
+
+    def set_grid_deformation(self):
+        grid_deformation = self.dcs.get_grid_deformation_function()
+        self.mesh.SetDeformation(grid_deformation)
+
     def set_solver_documentation(self, doc: str):
         if isinstance(doc, str):
             ...
@@ -364,12 +434,16 @@ class SolverConfiguration(UniqueConfiguration):
 
         self.doc = doc
 
-    def set_grid_deformation(self):
-        grid_deformation = self.pde.dcs.get_grid_deformation_function()
-        self.mesh.SetDeformation(grid_deformation)
+    def solve(self, reassemble: bool = True):
+        for t in self.time.start_solution_routine(reassemble):
+            pass
 
-    solver: LinearSolver | NonlinearSolver
-    pde: CompressibleFlowConfiguration
+
     time: StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
+    linear_solver: DirectLinearSolver
+    nonlinear_solver: DirectNonlinearSolver
     optimizations: Optimizations
     io: IOConfiguration
+
+    bcs: BoundaryConditions
+    dcs: DomainConditions

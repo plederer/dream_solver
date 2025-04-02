@@ -2,15 +2,6 @@ import os
 import sys
 sys.path.append(os.path.abspath('../'))
 sys.path.append(os.path.abspath('.'))
-from dream import SolverConfiguration
-from dream.config import configuration
-import sphinx_rtd_theme
-
-# sys.path.insert(0, os.path.abspath(os.path.join("..", "..")))
-
-# print(sys.path)
-
-# from configuration import SolverConfiguration
 
 
 # Configuration file for the Sphinx documentation builder.
@@ -29,10 +20,15 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.mathjax', "myst_parser", 'sphinx.ext.autodoc']
+extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc', "myst_parser", 'sphinx_rtd_theme']
 
 templates_path = ['_templates']
 exclude_patterns = ['build', 'Thumbs.db', '.DS_Store']
+
+add_module_names = False
+autodoc_member_order = 'bysource'
+highlight_language = 'python3'
+pygments_style = "default"
 
 mathjax3_config = {
     # "loader": {"load": ['[tex]/color']},
@@ -56,11 +52,15 @@ mathjax3_config = {
             "skw": ["{{\\rm skw} (#1) }", 1],
             "vec": ["{\\bm{#1}}", 1],
             "mat": ["{#1}", 1],
+            "pdt": ["{\\frac{\\partial #1}{\\partial t}}", 1],
+            "pdx":["{\\frac{\\partial #1}{\\partial x}}", 1],
+            "pdy":["{\\frac{\\partial #1}{\\partial y}}", 1],
+            "pdz":["{\\frac{\\partial #1}{\\partial z}}", 1],
         }
     }
 }
 
-myst_enable_extensions = ["amsmath", "dollarmath"]
+myst_enable_extensions = ["amsmath", "dollarmath","fieldlist"]
 suppress_warnings = ["myst.header"]
 
 # -- Options for HTML output -------------------------------------------------
@@ -68,7 +68,28 @@ suppress_warnings = ["myst.header"]
 
 
 html_theme = 'sphinx_rtd_theme'
+html_theme_options = {
+    # 'logo_only': False,
+    # 'prev_next_buttons_location': 'bottom',
+    # 'style_external_links': False,
+    # 'vcs_pageview_mode': '',
+    # 'style_nav_header_background': 'white',
+    # 'flyout_display': 'hidden',
+    # 'version_selector': True,
+    # 'language_selector': True,
+    # Toc options
+    'collapse_navigation': False,
+    'sticky_navigation': True,
+    'navigation_depth': 4,
+    'includehidden': True,
+    'titles_only': False,
+}
 html_static_path = ['_static']
+
+rst_prolog ="""
+.. role:: py(code)
+  :language: python3
+"""
 
 # def test_autodoc_process_bases(app, what, name, obj, options, signature, return_annotation):
 #     if isinstance(obj, configuration):

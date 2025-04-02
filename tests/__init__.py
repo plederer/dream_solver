@@ -1,9 +1,10 @@
 from __future__ import annotations
 import netgen.occ as occ
 import ngsolve as ngs
-from dream.pde import PDEConfiguration, FiniteElementMethod
+
 from dream.config import interface
-from dream.solver import SolverConfiguration
+from dream.solver import SolverConfiguration, FiniteElementMethod
+from dream.mesh import BoundaryConditions, DomainConditions
 
 
 def unit_square(maxh=0.25, periodic: bool = False) -> ngs.Mesh:
@@ -62,19 +63,17 @@ class DummyFiniteElementMethod(FiniteElementMethod):
         spaces['U'] = ngs.L2(self.mesh, order=0)
         spaces['Uhat'] = ngs.L2(self.mesh, order=0)
 
-    def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
-        gfus['U'] = {'n+1': ngs.GridFunction(self.cfg.pde.spaces['U']),
-                     'n': ngs.GridFunction(self.cfg.pde.spaces['U'])}
-        gfus['Uhat'] = {'n+1': ngs.GridFunction(self.cfg.pde.spaces['Uhat']),
-                        'n': ngs.GridFunction(self.cfg.pde.spaces['Uhat'])}
+    def get_temporal_integrators(self):
+        return {'U': ngs.dx, 'Uhat': ngs.dx}
 
-    def add_symbolic_forms(self, blfi: dict[str, ngs.comp.SumOfIntegrals],
-                           blfe: dict[str, ngs.comp.SumOfIntegrals],
-                           lf: dict[str, ngs.comp.SumOfIntegrals]):
-        u, v = self.cfg.pde.TnT['U']
+    def add_symbolic_spatial_forms(self, blf, lf):
+        u, v = self.cfg.TnT['U']
 
-        blfi['test'] = u * v * ngs.dx
-        lf['test'] = v * ngs.dx
+        blf['U']['test'] = u * v * ngs.dx
+        lf['U']['test'] = v * ngs.dx
+
+    def add_symbolic_temporal_forms(self, blf, lf):
+        pass
 
     def get_fields(self, quantities: dict[str, bool]):
         pass
@@ -86,9 +85,14 @@ class DummyFiniteElementMethod(FiniteElementMethod):
         pass
 
 
-class DummyPDE(PDEConfiguration):
+class DummySolverConfiguration(SolverConfiguration):
 
     name: str = 'dummy'
+
+    def __init__(self, mesh, **kwargs):
+        bcs = BoundaryConditions(mesh, [])
+        dcs = DomainConditions(mesh, [])
+        super().__init__(mesh, bcs, dcs, **kwargs)
 
     @interface(default=DummyFiniteElementMethod)
     def fem(self, fem):

@@ -266,15 +266,15 @@ class Initial(Condition):
     name = "initial"
 
     @configuration(default=None)
-    def state(self, state) -> ngsdict:
-        return state
+    def fields(self, fields) -> ngsdict:
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
             raise ValueError("Initial State not set!")
 
-    state: ngsdict
+    fields: ngsdict
 
 
 class Perturbation(Condition):
@@ -287,15 +287,15 @@ class Force(Condition):
     name = "force"
 
     @configuration(default=None)
-    def state(self, state) -> ngsdict:
-        return state
+    def fields(self, fields) -> ngsdict:
+        return fields
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
             raise ValueError("Force State not set!")
 
-    state: ngsdict
+    fields: ngsdict
 
 
 class Buffer(Condition):
@@ -479,19 +479,10 @@ class Periodic(Condition):
 
 class Conditions(UserDict):
 
-    conditions: dict[str, Condition] = {}
-
-    @classmethod
-    def register_condition(cls, condition: Condition) -> None:
-        cls.conditions[condition.name] = condition
-
-    def __init_subclass__(cls) -> None:
-        cls.conditions = {}
-        return super().__init_subclass__()
-
-    def __init__(self, regions: list[str], mesh: ngs.Mesh) -> None:
+    def __init__(self, regions: list[str], mesh: ngs.Mesh, options: list[Condition]) -> None:
         self.data = {region: [] for region in regions}
         self.mesh = mesh
+        self.options = {option.name: option for option in options}
 
     def get_region(self, *condition_types, as_pattern=False) -> str | list[str]:
         reg = [name for name, cond in self.items() if any(isinstance(c, condition_types) for c in cond)]
@@ -502,7 +493,7 @@ class Conditions(UserDict):
     def has_condition(self, condition_type: Condition | str) -> bool:
 
         if isinstance(condition_type, str):
-            condition_type = self.conditions[condition_type]
+            condition_type = self.options[condition_type]
 
         for container in self.values():
             if any(isinstance(condition, condition_type) for condition in container):
@@ -513,7 +504,7 @@ class Conditions(UserDict):
     def to_pattern(self, condition_type: Condition | str = Condition) -> dict[str, Condition]:
 
         if isinstance(condition_type, str):
-            condition_type = self.conditions[condition_type]
+            condition_type = self.options[condition_type]
 
         pattern = {}
         unique_conditions = set([condition for conditions in self.values()
@@ -531,11 +522,11 @@ class Conditions(UserDict):
     def __setitem__(self, pattern: str, condition: Condition) -> None:
 
         if isinstance(condition, str):
-            if condition not in self.conditions:
+            if condition not in self.options:
                 msg = f""" Can not set condition '{condition}'!
-                           Valid alternatives are: {self.conditions}"""
+                           Valid alternatives are: {self.options}"""
                 raise ValueError(msg)
-            condition = self.conditions[condition]()
+            condition = self.options[condition]()
 
         elif not isinstance(condition, Condition):
             raise TypeError(f"Condition must be instance of '{Condition}'")
@@ -565,8 +556,8 @@ class Conditions(UserDict):
 
 class BoundaryConditions(Conditions):
 
-    def __init__(self, mesh: ngs.Mesh) -> None:
-        super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh)
+    def __init__(self, mesh: ngs.Mesh, options: list[Condition]) -> None:
+        super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh, options)
 
     def get_periodic_boundaries(self, as_pattern: bool = False) -> str | list[str]:
         return self.get_region(Periodic, as_pattern=as_pattern)
@@ -588,8 +579,8 @@ class BoundaryConditions(Conditions):
 
 class DomainConditions(Conditions):
 
-    def __init__(self, mesh: ngs.Mesh) -> None:
-        super().__init__(list(dict.fromkeys(mesh.GetMaterials())), mesh)
+    def __init__(self, mesh: ngs.Mesh, options: list[Condition]) -> None:
+        super().__init__(list(dict.fromkeys(mesh.GetMaterials())), mesh, options)
 
     def get_psponge_layers(self) -> dict[str, PSpongeLayer]:
         return {region: dc for region, dcs in self.items() for dc in dcs if isinstance(dc, PSpongeLayer)}

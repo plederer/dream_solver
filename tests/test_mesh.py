@@ -18,7 +18,7 @@ class TestBoundaryConditions(unittest.TestCase):
     def setUp(self) -> None:
         geo = WorkPlane().LineTo(1, 0, "a").LineTo(1, 1, "a").LineTo(0, 1, "b").LineTo(0, 0, "c").Face()
         mesh = ngs.Mesh(OCCGeometry(geo, dim=2).GenerateMesh(maxh=1))
-        self.bcs = BoundaryConditions(mesh)
+        self.bcs = BoundaryConditions(mesh, options=[Periodic])
 
     def test_label_uniqueness(self):
         self.assertTupleEqual(tuple(self.bcs), ("a", "b", "c"))
@@ -39,8 +39,6 @@ class TestBoundaryConditions(unittest.TestCase):
         self.assertDictEqual(self.bcs.data, {"a": [a], "b": [a], "c": [b]})
 
     def test_set_pattern(self):
-        self.bcs.register_condition(Periodic)
-
         self.bcs['d'] = "periodic"
         self.assertDictEqual(self.bcs.data, {'a': [], 'b': [], 'c': []})
 
@@ -89,8 +87,8 @@ class TestBoundaryConditions(unittest.TestCase):
 class TestDomainConditions(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.dcs = DomainConditions(square)
-        self.pcs = DomainConditions(circle)
+        self.dcs = DomainConditions(square, options=[SpongeLayer, GridDeformation])
+        self.pcs = DomainConditions(circle, options=[SpongeLayer, GridDeformation])
 
     def test_domains(self):
         self.assertSequenceEqual(("layer_0", "layer_1", "layer_2", "layer_3"), sorted(self.dcs))

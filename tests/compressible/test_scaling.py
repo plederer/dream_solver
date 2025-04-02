@@ -6,8 +6,8 @@ from tests.compressible.setup import cfg, mip
 class TestAerodynamic(unittest.TestCase):
 
     def setUp(self) -> None:
-        cfg.pde.scaling = "aerodynamic"
-        self.scaling = cfg.pde.scaling
+        cfg.scaling = "aerodynamic"
+        self.scaling = cfg.scaling
 
     def test_velocity_magnitude(self):
         self.assertAlmostEqual(self.scaling.velocity_magnitude(0.1), 1)
@@ -22,8 +22,8 @@ class TestAerodynamic(unittest.TestCase):
 class TestAcoustic(unittest.TestCase):
 
     def setUp(self) -> None:
-        cfg.pde.scaling = "acoustic"
-        self.scaling = cfg.pde.scaling
+        cfg.scaling = "acoustic"
+        self.scaling = cfg.scaling
 
 
     def test_velocity_magnitude(self):
@@ -36,8 +36,8 @@ class TestAcoustic(unittest.TestCase):
 class TestAeroacoustic(unittest.TestCase):
 
     def setUp(self) -> None:
-        cfg.pde.scaling = "aeroacoustic"
-        self.scaling = cfg.pde.scaling
+        cfg.scaling = "aeroacoustic"
+        self.scaling = cfg.scaling
 
 
     def test_velocity_magnitude(self):
