@@ -14,15 +14,19 @@ class RiemannSolver(InterfaceConfiguration, is_interface=True):
 
     cfg: CompressibleFlowSolver
 
-    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         NotImplementedError()
+
+    def get_convective_numerical_flux_dg(self, Ui: flowstate, Uj: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+        NotImplementedError()
+
 
 
 class Upwind(RiemannSolver):
 
     name = "upwind"
 
-    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -31,13 +35,17 @@ class Upwind(RiemannSolver):
         unit_vector = bla.as_vector(unit_vector)
         return self.cfg.get_conservative_convective_jacobian(U, unit_vector, 'outgoing')
 
+    def get_convective_numerical_flux_dg(self, Ui: flowstate, Uj: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+        raise ValueError("FVS solver in a standard DG has not been implemented (yet).")
+
+
 
 class LaxFriedrich(RiemannSolver):
 
     name = "lax_friedrich"
     aliases = ('lf', )
 
-    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -55,12 +63,43 @@ class LaxFriedrich(RiemannSolver):
         lambda_max = bla.abs(bla.inner(u, unit_vector)) + c
         return lambda_max * ngs.Id(unit_vector.dim + 2)
 
+    def get_convective_numerical_flux_dg(self, Ui: flowstate, Uj: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+       
+        # Extract the normal, taken w.r.t. the ith solution.
+        n = bla.as_vector(unit_vector)
+
+        # For now, hardcode the local lax friedrich (Rusanov) version.
+        Fi = self.cfg.get_convective_flux(Ui) 
+        Fj = self.cfg.get_convective_flux(Uj)
+
+        # Compute the normal velocity.
+        vni = bla.inner( self.cfg.velocity(Ui), n )
+        vnj = bla.inner( self.cfg.velocity(Uj), n )
+
+        # Extract the speed of sound.
+        ci = self.cfg.speed_of_sound(Ui)
+        cj = self.cfg.speed_of_sound(Uj)
+
+        # Compute the largest eigenvalues.
+        lmbi = bla.abs( vni ) + ci
+        lmbj = bla.abs( vnj ) + cj
+
+        # Deduce the largest eigenvalue w.r.t. the 2 solutions.
+        lmb_max = bla.max( lmbi, lmbj )
+
+        # Assemble the numerical flux.
+        fs = 0.5*( (Fi + Fj)*n - lmb_max*(Uj.U - Ui.U) )
+       
+        # Return the numerical flux.
+        return fs
+
+
 
 class Roe(RiemannSolver):
 
     name = "roe"
 
-    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -76,11 +115,16 @@ class Roe(RiemannSolver):
         return self.cfg.transform_characteristic_to_conservative(bla.diagonal(lambdas), U, unit_vector)
 
 
+    def get_convective_numerical_flux_dg(self, Ui: flowstate, Uj: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+        raise ValueError("Roe solver in a standard DG has not been implemented (yet).")
+
+
+
 class HLL(RiemannSolver):
 
     name = "hll"
 
-    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -99,6 +143,10 @@ class HLL(RiemannSolver):
         s_plus = bla.max(un + c)
 
         return s_plus * ngs.Id(unit_vector.dim + 2)
+
+    def get_convective_numerical_flux_dg(self, Ui: flowstate, Uj: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+        raise ValueError("HLL solver in a standard DG has not been implemented (yet).")
+
 
 
 class HLLEM(RiemannSolver):
@@ -121,7 +169,7 @@ class HLLEM(RiemannSolver):
     
     theta_0: float
 
-    def get_convective_stabilisation_matrix(self, U: flowfields, unit_vector: bla.VECTOR) -> ngs.CF:
+    def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> ngs.CF:
         r""" Returns the convective stabilisation matrix for the upwind scheme.
         
         .. math::
@@ -149,4 +197,8 @@ class HLLEM(RiemannSolver):
         THETA = self.cfg.transform_characteristic_to_conservative(THETA, U, unit_vector)
 
         return s_plus * THETA
+
+    def get_convective_numerical_flux_dg(self, Ui: flowstate, Uj: flowstate, unit_vector: bla.VECTOR) -> ngs.CF:
+        raise ValueError("HLLEM solver in a standard DG has not been implemented (yet).")
+
 

@@ -225,11 +225,16 @@ class DirectNonlinearSolver(NonlinearSolver, skip=True):
             freedofs = fes.FreeDofs(blf.condense)
         return blf.mat.Inverse(freedofs=freedofs, inverse=self.name)
 
-    def initialize(self, blf: ngs.BilinearForm, lf: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
+    def initialize(self, blf: ngs.BilinearForm, rhs: ngs.BaseVector, gfu: ngs.GridFunction, **kwargs):
+      
+        if not isinstance(rhs, ngs.BaseVector) and rhs is not None:
+            raise TypeError("Input rhs must be of type either ngs.BaseVector or None.")
+      
         self.gfu = gfu
         self.fes = gfu.space
         self.blf = blf
-        self.lf = lf
+        self.rhs = rhs
+
         self.residual = gfu.vec.CreateVector()
         self.temporary = gfu.vec.CreateVector()
 
@@ -238,7 +243,8 @@ class DirectNonlinearSolver(NonlinearSolver, skip=True):
     def solve_update_step(self):
 
         self.blf.Apply(self.gfu.vec, self.residual)
-        self.residual.data -= self.lf.vec
+        if self.rhs is not None:
+            self.residual.data -= self.rhs
         self.blf.AssembleLinearization(self.gfu.vec)
 
         inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.name)
@@ -431,6 +437,7 @@ class SolverConfiguration(InterfaceConfiguration, is_interface=True):
     def solve(self, reassemble: bool = True):
         for t in self.time.start_solution_routine(reassemble):
             pass
+
 
     time: StationaryConfig | TransientConfig | PseudoTimeSteppingConfig
     linear_solver: DirectLinearSolver
