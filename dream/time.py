@@ -1170,32 +1170,38 @@ class StationaryConfig(TimeConfig):
         self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
         self.lf = ngs.LinearForm(self.cfg.fes)
 
-        for name, cf in self.cfg.blf.items():
-            logger.debug(f"Adding {name} to the BilinearForm!")
+        for space in self.cfg.blf:
+            for name, cf in self.cfg.blf[space].items():
+                logger.debug(f"Adding {name} to the BilinearForm!")
 
-            if compile.realcompile:
-                self.blf += cf.Compile(**compile)
-            else:
-                self.blf += cf
+                if compile.realcompile:
+                    self.blf += cf.Compile(**compile)
+                else:
+                    self.blf += cf
 
-        for name, cf in self.cfg.lf.items():
-            logger.debug(f"Adding {name} to the LinearForm!")
+        for space in self.cfg.lf:
+            for name, cf in self.cfg.lf[space].items():
+                logger.debug(f"Adding {name} to the LinearForm!")
 
-            if compile.realcompile:
-                self.lf += cf.Compile(**compile)
-            else:
-                self.lf += cf
+                if compile.realcompile:
+                    self.lf += cf.Compile(**compile)
+                else:
+                    self.lf += cf
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
         if reassemble:
             self.assemble()
 
+        self.cfg.linear_solver.initialize(self.blf, self.lf, self.cfg.gfu)
+
         with self.cfg.io as io:
             io.save_pre_time_routine()
 
             # Solution routine starts here
-            self.solve()
+            for _ in self.cfg.linear_solver.solve():
+                continue
+    
             yield None
             # Solution routine ends here
 

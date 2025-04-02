@@ -1,4 +1,3 @@
-# %%
 from __future__ import annotations
 
 import logging
@@ -8,14 +7,14 @@ import ngsolve as ngs
 from dream import bla
 from dream.config import (configuration,
                           parameter,
-                          unique,
                           interface,
-                          UniqueConfiguration,
                           InterfaceConfiguration,
                           ngsdict,
                           quantity,
-                          equation)
-from dream.pde import PDEConfiguration, FiniteElementMethod
+                          equation,
+                          Integrals)
+
+from dream.solver import FiniteElementMethod, SolverConfiguration
 from dream.mesh import (BoundaryConditions,
                         DomainConditions,
                         Condition,
@@ -31,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Define a specific dict for the flow state
 
 
-class flowstate(ngsdict):
+class flowfields(ngsdict):
 
     u = quantity('velocity')
     p = quantity('pressure')
@@ -41,7 +40,6 @@ class flowstate(ngsdict):
     g = quantity('gravity')
     f = quantity('force')
 
-# %%
 # Define a boundary conditions
 
 
@@ -50,18 +48,18 @@ class Inflow(Condition):
     name: str = "inflow"
 
     @configuration(default=None)
-    def state(self, state):
-        if state is None:
-            return state
-        elif bla.is_vector(state):
-            return flowstate(u=state)
+    def fields(self, fields):
+        if fields is None:
+            return fields
+        elif bla.is_vector(fields):
+            return flowfields(u=fields)
         else:
-            return flowstate(**state)
+            return flowfields(**fields)
 
-    @state.getter_check
-    def state(self) -> None:
-        if self.data['state'] is None:
-            raise ValueError("Inflow state not set!")
+    @fields.getter_check
+    def fields(self) -> None:
+        if self.data['fields'] is None:
+            raise ValueError("Inflow fields not set!")
 
 
 class Outflow(Condition):
@@ -74,39 +72,24 @@ class Wall(Condition):
     name: str = "wall"
 
 
-class IncompressibleBoundaryConditions(BoundaryConditions):
-    ...
+BCS = [Inflow, Outflow, Wall, Periodic]
+DCS = [Force, Initial]
 
-
-# Assign conditions
-IncompressibleBoundaryConditions.register_condition(Periodic)
-IncompressibleBoundaryConditions.register_condition(Inflow)
-IncompressibleBoundaryConditions.register_condition(Outflow)
-IncompressibleBoundaryConditions.register_condition(Wall)
-
-
-class IncompressibleDomainConditions(DomainConditions):
-    ...
-
-
-IncompressibleDomainConditions.register_condition(Force)
-IncompressibleDomainConditions.register_condition(Initial)
-
-# %%
-# Define properties like viscosity
 
 
 class DynamicViscosity(InterfaceConfiguration, is_interface=True):
+
+    cfg: IncompressibleSolver
 
     @property
     def is_linear(self):
         return isinstance(self, Constant)
 
-    def shear_rate(self, u: flowstate):
-        eps = self.cfg.pde.strain_rate_tensor(u)
+    def shear_rate(self, u: flowfields):
+        eps = self.cfg.strain_rate_tensor(u)
         return 2*ngs.sqrt(ngs.InnerProduct(eps, eps))
 
-    def viscosity(self, u: flowstate):
+    def viscosity(self, u: flowfields):
         raise NotImplementedError()
 
 
@@ -114,7 +97,7 @@ class Constant(DynamicViscosity):
 
     name: str = "constant"
 
-    def viscosity(self, u: flowstate):
+    def viscosity(self, u: flowfields):
         return 1.0
 
 
@@ -135,117 +118,115 @@ class Powerlaw(DynamicViscosity):
     def viscosity_ratio(self, K):
         return K
 
-    def viscosity(self, u: flowstate):
+    def viscosity(self, u: flowfields):
         return self.viscosity_ratio * self.shear_rate(u)**(self.powerlaw_exponent - 1)
 
 
-# %%
 # Define Finite Elements
 
 class IncompressibleFiniteElement(FiniteElementMethod, is_interface=True):
 
-    @property
-    def u_TnT(self):
-        return self.cfg.pde.TnT['u']
+    cfg: IncompressibleSolver
 
     @property
-    def p_TnT(self):
-        return self.cfg.pde.TnT['u']
-
+    def TnT(self):
+        return self.cfg.TnT
+    
     @property
-    def u_gfu(self):
-        return self.cfg.pde.gfus['u']
+    def gfu(self):
+        return self.cfg.gfus
 
-    def get_incompressible_state(self, u: ngs.CF) -> flowstate:
+    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
+        self.add_symbolic_stokes_form(blf, lf)
+        
+    def add_symbolic_stokes_form(self, blf, lf):
+        raise NotImplementedError("Overload in subclass")
+    
+    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
         raise NotImplementedError()
 
     def get_fields(self, quantities: dict[str, bool]) -> ngsdict:
-        u = self.get_incompressible_state(self.cfg.pde.gfu)
+        u = self.get_incompressible_state(self.cfg.gfu)
 
-        state = flowstate()
+        state = flowfields()
         for symbol, name in u.symbols.items():
             if name in quantities and quantities[name]:
                 quantities.pop(name)
-                state[symbol] = getattr(self.cfg.pde, name)(u)
+                state[symbol] = getattr(self.cfg, name)(u)
             elif symbol in quantities and quantities[symbol]:
                 quantities.pop(symbol)
-                state[symbol] = getattr(self.cfg.pde, name)(u)
+                state[symbol] = getattr(self.cfg, name)(u)
 
         return state
+    
+    def set_initial_conditions(self):
+        ...
+
+    def set_boundary_conditions(self):
+        ...
 
 
 class TaylorHood(IncompressibleFiniteElement):
 
     name: str = "taylor-hood"
-    aliases = ('th')
+    aliases = ('th',)
 
     def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
 
-        dirichlet = self.cfg.pde.bcs.get_region(Wall, Inflow, as_pattern=True)
-        U_space = ngs.VectorH1(self.mesh, order=self.order, dirichlet=dirichlet)
-        P_space = ngs.H1(self.mesh, order=self.order-1)
+        dirichlet = self.cfg.bcs.get_region(Wall, Inflow, as_pattern=True)
+        U = ngs.VectorH1(self.mesh, order=self.order, dirichlet=dirichlet)
+        P = ngs.H1(self.mesh, order=self.order-1)
 
-        if self.cfg.pde.bcs.has_condition(Periodic):
-            U_space = ngs.Periodic(U_space)
+        if self.cfg.bcs.has_condition(Periodic):
+            U = ngs.Periodic(U)
 
-        spaces['u'] = U_space
-        spaces['p'] = P_space
+        spaces['u'] = U
+        spaces['p'] = P
 
     def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
         gfus['u'] = self.cfg.time.scheme.get_transient_gridfunctions(self.u_gfu)
 
-    def add_symbolic_forms(self, blfi: dict[str, ngs.comp.SumOfIntegrals],
-                           blfe: dict[str, ngs.comp.SumOfIntegrals],
-                           lf: dict[str, ngs.comp.SumOfIntegrals]):
-
-        self.add_stokes_form(blfi, blfe, lf)
-
-    def add_stokes_form(self, blfi: dict[str, ngs.comp.SumOfIntegrals],
-                        blfe: dict[str, ngs.comp.SumOfIntegrals],
-                        lf: dict[str, ngs.comp.SumOfIntegrals]):
-
+    def add_symbolic_stokes_form(self, blf: Integrals, lf: Integrals):
         bonus = self.cfg.optimizations.bonus_int_order
 
-        u, v = self.cfg.pde.fes.TnT()
-        u = self.get_incompressible_state(u)
-        v = self.get_incompressible_state(v)
+        u, v = self.TnT['u']
+        p, q = self.TnT['p']
 
-        blfi['stokes'] = ngs.InnerProduct(u.tau, v.eps) * ngs.dx(bonus_intorder=bonus.vol)
-        blfi['stokes'] += (-ngs.div(u.u) * v.p - ngs.div(v.u) * u.p) * ngs.dx
+        U = self.get_incompressible_state([u, p])
+        V = self.get_incompressible_state([v, q])
 
-        if not self.cfg.pde.bcs.has_condition(Outflow):
-            blfi['stokes'] += -1e-8 * u.p * v.p * ngs.dx
+        blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['u']['stokes'] += -ngs.div(V.u) * U.p * ngs.dx
+        blf['p']['stokes'] =  -ngs.div(U.u) * V.p * ngs.dx
 
-    def get_incompressible_state(self, u: ngs.CF) -> flowstate:
+        if not self.cfg.bcs.has_condition(Outflow):
+            blf['p']['stokes'] += -1e-8 * U.p * V.p * ngs.dx
+
+    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
 
         if isinstance(u, ngs.GridFunction):
             u = u.components
 
-        state = flowstate(u=u[0], p=u[1])
+        state = flowfields(u=u[0], p=u[1])
         state.grad_u = ngs.Grad(state.u)
-        state.eps = self.cfg.pde.strain_rate_tensor(state)
-        state.tau = self.cfg.pde.deviatoric_stress_tensor(state)
+        state.eps = self.cfg.strain_rate_tensor(state)
+        state.tau = self.cfg.deviatoric_stress_tensor(state)
 
         return state
 
-    def set_initial_conditions(self) -> None:
-        raise NotImplementedError()
-
     def set_boundary_conditions(self) -> None:
-        u = self.mesh.BoundaryCF({dom: bc.state.u for dom, bc in self.cfg.pde.bcs.to_pattern(Inflow).items()})
-        self.u_gfu.Set(u, ngs.BND)
+        u = self.mesh.BoundaryCF({dom: bc.fields.u for dom, bc in self.cfg.bcs.to_pattern(Inflow).items()})
+        self.gfu['u'].Set(u, ngs.BND)
 
 
-class IncompressibleFlowConfiguration(PDEConfiguration):
+# Define Solver
 
-    name = "incompressible"
+class IncompressibleSolver(SolverConfiguration):
 
-    def __init__(self, cfg=None, mesh=None, **kwargs):
-        super().__init__(cfg, mesh, **kwargs)
-
-        if mesh is not None:
-            self.bcs = IncompressibleBoundaryConditions(self.mesh)
-            self.dcs = IncompressibleDomainConditions(self.mesh)
+    def __init__(self, mesh=None, **kwargs):
+        bcs = BoundaryConditions(mesh, BCS)
+        dcs = DomainConditions(mesh, DCS)
+        super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **kwargs)
 
     @interface(default=TaylorHood)
     def fem(self, fem: TaylorHood):
@@ -266,29 +247,33 @@ class IncompressibleFlowConfiguration(PDEConfiguration):
             :getter: Returns the dynamic viscosity
         """
         return dynamic_viscosity
+    
+    @configuration(default=False)
+    def convection(self, convection: bool):
+        return convection
 
     fem: TaylorHood
     reynolds_number: ngs.Parameter
-    dynamic_viscosity: Constant
+    dynamic_viscosity: Constant | Powerlaw
 
     @equation
-    def velocity(self, u: flowstate):
+    def velocity(self, u: flowfields):
         if u.u is not None:
             return u.u
 
     @equation
-    def pressure(self, u: flowstate):
+    def pressure(self, u: flowfields):
         if u.p is not None:
             return u.p
 
     @equation
-    def viscosity(self, u: flowstate):
+    def viscosity(self, u: flowfields):
         return self.dynamic_viscosity.viscosity(u)
 
     @equation
-    def deviatoric_stress_tensor(self, u: flowstate):
+    def deviatoric_stress_tensor(self, u: flowfields):
 
-        Re = self.cfg.pde.reynolds_number
+        Re = self.reynolds_number
 
         mu = self.viscosity(u)
         strain = self.strain_rate_tensor(u)
@@ -296,7 +281,7 @@ class IncompressibleFlowConfiguration(PDEConfiguration):
         return 2 * mu/Re * strain
 
     @equation
-    def strain_rate_tensor(self, u: flowstate):
+    def strain_rate_tensor(self, u: flowfields):
         if u.eps is not None:
             return u.eps
         elif u.grad_u is not None:
