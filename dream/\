@@ -87,7 +87,7 @@ class TimeSchemes(InterfaceConfiguration, is_interface=True):
                              fespace: str = None) -> None:
     
         compile = self.cfg.optimizations.compile
-        
+
         # Determine which spaces to iterate over.
         spaces = [fespace] if fespace else integrals.keys()
         
@@ -100,12 +100,12 @@ class TimeSchemes(InterfaceConfiguration, is_interface=True):
                 if term in pass_terms:
                     logger.debug(f"Skipping {term}!")
                     # DEBUGGING
-                    print( "  skipped: ", term, "[", space, "]" )
+                    print( "skipped: ", term )
                     continue
 
                 logger.debug(f"Adding {term}!")
                 # DEBUGGING
-                print( "    added: ", term, "[", space, "]" )
+                print( "added: ", term )
 
                 if compile.realcompile:
                     form += cf.Compile(**compile)
@@ -555,8 +555,8 @@ class DIRKSchemes(TimeSchemes, skip=True):
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         return self.dt
 
-    def solve_stage(self, t, s):
-        for it in self.cfg.nonlinear_solver.solve(t, s):
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
             pass
 
     def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
@@ -627,12 +627,12 @@ class SDIRK22(DIRKSchemes):
         
         # Stage: 1.
         self.rhs.data = self.mu0
-        self.solve_stage(t, 1) 
+        self.solve_stage(t) 
 
         # Stage: 2.
         self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
         self.rhs.data = self.mu0 + a21 * self.x1
-        self.solve_stage(t, 2)
+        self.solve_stage(t)
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -707,17 +707,17 @@ class SDIRK33(DIRKSchemes):
 
         # Stage: 1.
         self.rhs.data = self.mu0
-        self.solve_stage(t, 1) 
+        self.solve_stage(t) 
 
         ## Stage: 2.
         self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
         self.rhs.data = self.mu0 + a21 * self.x1
-        self.solve_stage(t, 2)
+        self.solve_stage(t)
 
         # Stage: 3.
         self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
         self.rhs.data = self.mu0 + a31 * self.x1 + a32 * self.x2
-        self.solve_stage(t, 3)
+        self.solve_stage(t)
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -819,20 +819,20 @@ class SDIRK54(DIRKSchemes):
 
         # Stage: 1.
         self.rhs.data = self.mu0
-        self.solve_stage(t, 1) 
+        self.solve_stage(t) 
 
         ## Stage: 2.
         self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
         self.rhs.data = self.mu0      \
                       + a21 * self.x1
-        self.solve_stage(t, 2)
+        self.solve_stage(t)
 
         # Stage: 3.
         self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
         self.rhs.data = self.mu0      \
                       + a31 * self.x1 \
                       + a32 * self.x2
-        self.solve_stage(t, 3)
+        self.solve_stage(t)
 
         # Stage: 4.
         self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
@@ -840,7 +840,7 @@ class SDIRK54(DIRKSchemes):
                       + a41 * self.x1 \
                       + a42 * self.x2 \
                       + a43 * self.x3
-        self.solve_stage(t, 4)
+        self.solve_stage(t)
 
         # Stage: 5.
         self.blfs.Apply( self.cfg.gfu.vec, self.x4 )
@@ -849,7 +849,7 @@ class SDIRK54(DIRKSchemes):
                       + a52 * self.x2 \
                       + a53 * self.x3 \
                       + a54 * self.x4
-        self.solve_stage(t, 5)
+        self.solve_stage(t)
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -937,7 +937,7 @@ class DIRK43_WSO2(DIRKSchemes):
         ovaii = 1.0 / self.aii.Get()
         
         self.rhs.data = ovaii * self.mu0
-        self.solve_stage(t, 1) 
+        self.solve_stage(t) 
 
         # Stage: 2.
         self.aii.Set( self.a22 )
@@ -947,7 +947,7 @@ class DIRK43_WSO2(DIRKSchemes):
         self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
         self.rhs.data = ovaii * self.mu0 \
                       +   a21 * self.x1
-        self.solve_stage(t, 2)
+        self.solve_stage(t)
 
         # Stage: 3.
         self.aii.Set( self.a33 )
@@ -959,7 +959,7 @@ class DIRK43_WSO2(DIRKSchemes):
         self.rhs.data = ovaii * self.mu0 \
                       +   a31 * self.x1  \
                       +   a32 * self.x2
-        self.solve_stage(t, 3)
+        self.solve_stage(t)
 
         # Stage: 4.
         self.aii.Set( self.a44 )
@@ -973,7 +973,7 @@ class DIRK43_WSO2(DIRKSchemes):
                       +   a41 * self.x1  \
                       +   a42 * self.x2  \
                       +   a43 * self.x3
-        self.solve_stage(t, 4)
+        self.solve_stage(t)
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -1081,7 +1081,7 @@ class DIRK34_LDD(DIRKSchemes):
         ovaii = 1.0 / self.aii.Get()
         
         self.rhs.data = ovaii * self.mu0
-        self.solve_stage(t, 1) 
+        self.solve_stage(t) 
         
         # Stage: 2.
         self.aii.Set( self.a22 )
@@ -1091,7 +1091,7 @@ class DIRK34_LDD(DIRKSchemes):
         self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
         self.rhs.data = ovaii * self.mu0 \
                       +   a21 * self.x1
-        self.solve_stage(t, 2)
+        self.solve_stage(t)
 
         # Stage: 3.
         self.aii.Set( self.a33 )
@@ -1103,7 +1103,7 @@ class DIRK34_LDD(DIRKSchemes):
         self.rhs.data = ovaii * self.mu0 \
                       +   a31 * self.x1  \
                       +   a32 * self.x2
-        self.solve_stage(t, 3)
+        self.solve_stage(t)
 
         # Spatial term evaluated at stage 3.
         self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
@@ -1140,8 +1140,7 @@ class IMEXRKSchemes(TimeSchemes, skip=True):
 
         # NOTE, we assume that self.lf is not needed here (for efficiency).
         self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
-        self.blfs = ngs.BilinearForm(self.cfg.fes) 
-        self.blfe = ngs.BilinearForm(self.cfg.fes)
+        self.blfs = ngs.BilinearForm(self.cfg.fes, condense=condense)       
         self.mass = ngs.BilinearForm(self.cfg.fes, symmetric=True)
         self.rhs = self.cfg.gfu.vec.CreateVector()
         self.mu0 = self.cfg.gfu.vec.CreateVector()
@@ -1162,56 +1161,11 @@ class IMEXRKSchemes(TimeSchemes, skip=True):
 
         # FIXME, these have to be carefully done, as they are based on the operator splitting assumed.
         
-        print( "blf: " )
         # Add the mass matrix and spatial terms (excluding convection) in blf.
-        #self.add_sum_of_integrals(self.blf, self.cfg.blf, 'convection')
+        self.add_sum_of_integrals(self.blf, self.cfg.blf, 'convection')
 
-        #print( self.cfg.fem.method.name )
-        from dream.compressible.formulations.conservative import HDG, DG, DG_HDG
-        print( isinstance( self.cfg.fem, HDG ) )
-
-        #NOTE, if this is a pure HDG-IMEX, then we only skip the volume convection term in 
-        #      the volume equations (tested by V), while we retain the inviscid terms in the
-        #      facet equations (tested by Vhat) which are computed implicitly.
-         
-        # Determine which spaces to iterate over.
-        integrals = self.cfg.blf
-        form = self.blf
-        pass_terms = 'convection'
-        spaces = integrals.keys()
-        
-        for space in spaces:
-            if space not in integrals:
-                logger.warning(f"Space '{space}' not found in integrals. Skipping.")
-                continue 
-
-            for term, cf in integrals[space].items():
-                if term in pass_terms and space == "U":
-                    logger.debug(f"Skipping {term}!")
-                    # DEBUGGING
-                    print( "  skipped: ", term, "[", space, "]" )
-                    continue
-
-                logger.debug(f"Adding {term}!")
-                # DEBUGGING
-                print( "    added: ", term, "[", space, "]" )
-
-                if compile.realcompile:
-                    form += cf.Compile(**compile)
-                else:
-                    form += cf
-        # 
-
-
-        print( "-------------------------------------" )
-        print( "blfs: " )
-        # Skip the mass matrix and convection contribution in blfs and only use the space for "U".
-        self.add_sum_of_integrals(self.blfs, self.cfg.blf, 'mass', 'convection', fespace='U')
-        
-        print( "-------------------------------------" )
-        print( "blfe: " )
-        # Add only the convection part in blfe, as this is handled explicitly in time.
-        self.add_sum_of_integrals(self.blfe, self.cfg.blf, 'mass', 'diffusion', fespace='U')
+        ## Skip the mass matrix contribution in blfs and only use the space for "U".
+        #self.add_sum_of_integrals(self.blfs, self.cfg.blf, 'mass', fespace='U')
 
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
         self.cfg.nonlinear_solver.initialize(self.blf, self.rhs, self.cfg.gfu)
@@ -1237,8 +1191,8 @@ class IMEXRKSchemes(TimeSchemes, skip=True):
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         return self.dt
 
-    def solve_stage(self, t, s):
-        for it in self.cfg.nonlinear_solver.solve(t, s):
+    def solve_stage(self, t):
+        for it in self.cfg.nonlinear_solver.solve(t):
             pass
 
     def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
@@ -1255,22 +1209,22 @@ class IMEXRK_ARS443(IMEXRKSchemes):
     def initialize_butcher_tableau(self):
         
         # Implicit RK coefficients.
-        self.aii =  1.0/2.0
+        self.aii =  0.5
         self.a21 =  1.0/6.0
-        self.a31 = -1.0/2.0
-        self.a32 =  1.0/2.0
-        self.a41 =  3.0/2.0
-        self.a42 = -3.0/2.0
-        self.a43 =  1.0/2.0
+        self.a31 = -0.5
+        self.a32 =  0.5
+        self.a41 =  1.5
+        self.a42 = -1.5
+        self.a43 =  0.5
 
         self.b1  = self.a41
         self.b2  = self.a42
         self.b3  = self.a43
         self.b4  = self.aii
 
-        self.c1  = 1.0/2.0
+        self.c1  = 0.5
         self.c2  = 2.0/3.0
-        self.c3  = 1.0/2.0
+        self.c3  = 0.5
         self.c4  = 1.0
 
         # Explicit RK coefficients.
@@ -1301,14 +1255,11 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         super().assemble()
 
         # Reserve space for additional vectors.
+        self.u0 = self.cfg.gfu.vec.CreateVector() 
         self.x1 = self.cfg.gfu.vec.CreateVector()
         self.x2 = self.cfg.gfu.vec.CreateVector()
         self.x3 = self.cfg.gfu.vec.CreateVector()
-        
-        self.f1 = self.cfg.gfu.vec.CreateVector()
-        self.f2 = self.cfg.gfu.vec.CreateVector()
-        self.f3 = self.cfg.gfu.vec.CreateVector()
-        self.f4 = self.cfg.gfu.vec.CreateVector()
+       
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -1330,74 +1281,47 @@ class IMEXRK_ARS443(IMEXRKSchemes):
 
     def update_solution(self, t: float):
  
+        # Book-keep the initial solution at U^n.
+        self.u0.data  = self.cfg.gfu.vec
+
         # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+        self.mu0.data = self.mass.mat * self.u0
   
-        # Abbreviation.
-        ovaii = 1.0/self.aii
-
         # Stage: 1.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f1 )
-
-        ae21 = ovaii*self.ae21 
-
-        self.rhs.data = self.mu0       \
-                      - ae21 * self.f1
-        self.solve_stage(t, 1)
-
-        # Stage: 2.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f2 )
-        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
         
-        ae31 = ovaii*self.ae31
-        ae32 = ovaii*self.ae32
-        a21  = ovaii*self.a21
 
-        self.rhs.data = self.mu0       \
-                      - ae31 * self.f1 \
-                      - ae32 * self.f2 \
-                      -  a21 * self.x1
-        self.solve_stage(t, 2)
+        self.rhs.data = self.mu0
+        self.solve_stage(t) 
 
-        # Stage: 3.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f3 )
-        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
-        
-        ae41 = ovaii*self.ae41
-        ae42 = ovaii*self.ae42
-        ae43 = ovaii*self.ae43
-        a31  = ovaii*self.a31
-        a32  = ovaii*self.a32
+        ## Stage: 2.
+        #self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        #self.rhs.data = self.mu0      \
+        #              + a21 * self.x1
+        #self.solve_stage(t)
 
-        self.rhs.data = self.mu0       \
-                      - ae41 * self.f1 \
-                      - ae42 * self.f2 \
-                      - ae43 * self.f3 \
-                      -  a31 * self.x1 \
-                      -  a32 * self.x2
-        self.solve_stage(t, 3)
+        ## Stage: 3.
+        #self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        #self.rhs.data = self.mu0      \
+        #              + a31 * self.x1 \
+        #              + a32 * self.x2
+        #self.solve_stage(t)
 
-        # Stage: 4.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f4 )
-        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
-        
-        ae51 = ovaii*self.ae51
-        ae52 = ovaii*self.ae52
-        ae53 = ovaii*self.ae53
-        ae54 = ovaii*self.ae54
-        a41  = ovaii*self.a41
-        a42  = ovaii*self.a42
-        a43  = ovaii*self.a43
+        ## Stage: 4.
+        #self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+        #self.rhs.data = self.mu0      \
+        #              + a41 * self.x1 \
+        #              + a42 * self.x2 \
+        #              + a43 * self.x3
+        #self.solve_stage(t)
 
-        self.rhs.data = self.mu0       \
-                      - ae51 * self.f1 \
-                      - ae52 * self.f2 \
-                      - ae53 * self.f3 \
-                      - ae54 * self.f4 \
-                      -  a41 * self.x1 \
-                      -  a42 * self.x2 \
-                      -  a43 * self.x3
-        self.solve_stage(t, 4)
+        ## Stage: 5.
+        #self.blfs.Apply( self.cfg.gfu.vec, self.x4 )
+        #self.rhs.data = self.mu0      \
+        #              + a51 * self.x1 \
+        #              + a52 * self.x2 \
+        #              + a53 * self.x3 \
+        #              + a54 * self.x4
+        #self.solve_stage(t)
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 

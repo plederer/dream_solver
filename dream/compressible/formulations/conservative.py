@@ -913,9 +913,9 @@ class DG_HDG(ConservativeMethod):
         # Compute the flux on the surface of an element, in the normal direction.
         Fn = self.cfg.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
 
-        # Assemble the explicit bilinear form, keeping in mind this is placed on the RHS.
-        blf['U']['convection'] =   bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['U']['convection'] += -mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        # Assemble the explicit bilinear form, keeping in mind this is also placed on the LHS.
+        blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['U']['convection'] += mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
 
     # In this (IMEX-)specialized class, the elliptic terms are handled via an HDG.
@@ -940,9 +940,18 @@ class DG_HDG(ConservativeMethod):
         blf['U']['diffusion']   -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
         blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn, Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
+        # TESTING: add the continuity equation for the facet equation, to obtain rho_hat.
+        
+        rho    = self.cfg.density(U)
+        rhoHat = self.cfg.density(Uhat)
+        rho_avg = rho - rhoHat
+        eq = ngs.CF( ( rho_avg, 0, 0, 0 ) ) 
+
+        blf['Uhat']['test'] = mask * ngs.InnerProduct( eq, Vhat ) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+
 
     def get_diffusive_numerical_flux(
-            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
+        self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
         """
         Diffusive numerical flux
 
@@ -997,6 +1006,32 @@ class DG_HDG(ConservativeMethod):
 
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
+
+
+    def set_initial_conditions(self, U: ngs.CF = None):
+
+        if U is None:
+            U = self.mesh.MaterialCF({dom: ngs.CF(
+                (self.cfg.density(dc.fields),
+                 self.cfg.momentum(dc.fields),
+                 self.cfg.energy(dc.fields))) for dom, dc in self.cfg.dcs.to_pattern(Initial).items()})
+
+        super().set_initial_conditions(U)
+
+        gfu = self.gfu['Uhat']
+        fes = self.gfu['Uhat'].space
+        u, v = fes.TnT()
+
+        blf = ngs.BilinearForm(fes)
+        blf += u * v * ngs.dx(element_boundary=True)
+
+        f = ngs.LinearForm(fes)
+        f += U * v * ngs.dx(element_boundary=True)
+
+        with ngs.TaskManager():
+            blf.Assemble()
+            f.Assemble()
+            gfu.vec.data = blf.mat.Inverse(freedofs=fes.FreeDofs(), inverse="sparsecholesky") * f.vec
 
 
 

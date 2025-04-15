@@ -73,6 +73,7 @@ cfg.riemann_solver = "lax_friedrich"
 #cfg.riemann_solver = "upwind"
 cfg.fem = "conservative"
 cfg.fem.order = nPoly
+#cfg.fem.method = "hdg"
 cfg.fem.method = "dg_hdg"
 cfg.fem.mixed_method = "strain_heat"
 
@@ -90,9 +91,9 @@ TEMPORAL = cfg.time
 #TEMPORAL.scheme = "sdirk54"
 #TEMPORAL.scheme = "bdf2"
 #TEMPORAL.scheme = "implicit_euler"
-TEMPORAL.scheme = "imex_test"
-TEMPORAL.timer.interval = (0, 5.0)
-TEMPORAL.timer.step = 0.5
+TEMPORAL.scheme = "imex_rk_ars443"
+TEMPORAL.timer.interval = (0, 1.0)
+TEMPORAL.timer.step = 0.025
 
 
 # # # # # # # # # # #
@@ -146,7 +147,7 @@ Uexact = AnalyticSolution(cfg, TEMPORAL.timer.t, xLength, yLength)
 # Write output VTK file.
 IO = cfg.io
 IO.vtk = True
-IO.vtk.rate = 1
+IO.vtk.rate = 10
 IO.vtk.subdivision = nSubdiv
 
 # VTK Visualization data.
