@@ -15,6 +15,8 @@ from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind
 from .config import flowfields, BCS, DCS
 from .formulations import ConservativeFiniteElementMethod
 
+from .time import CompressibleTransient 
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,6 +37,13 @@ class CompressibleFlowSolver(SolverConfiguration):
             :getter: Returns the finite element
         """
         return fem
+
+    @interface(default=CompressibleTransient)
+    def time(self, time) -> CompressibleTransient:
+        r""" Sets the time schemes for the compressible flow solver.
+        """
+        return time
+
 
     @parameter(default=0.3)
     def mach_number(self, mach_number: float) -> ngs.Parameter:

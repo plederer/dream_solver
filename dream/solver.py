@@ -319,10 +319,11 @@ class SolverConfiguration(InterfaceConfiguration, is_interface=True):
     @property
     def fem(self) -> FiniteElementMethod:
         raise NotImplementedError("Overload this configuration in derived class!")
+    
+    @property
+    def time(self) -> TimeConfig:
+        raise NotImplementedError("Overload this configuration in derived class!")
 
-    @interface(default=StationaryConfig)
-    def time(self, time):
-        return time
 
     @interface(default=UmfpackLinearSolver)
     def linear_solver(self, solver: LinearSolver):
