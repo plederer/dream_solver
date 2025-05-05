@@ -44,7 +44,7 @@ cfg.equation_of_state = "ideal"
 cfg.equation_of_state.heat_capacity_ratio = 1.4
 cfg.scaling = "acoustic"
 cfg.mach_number = 0.03
-cfg.riemann_solver = "lf"
+cfg.riemann_solver = "lax_friedrich"
 
 cfg.fem = "conservative"
 cfg.fem.order = 4
@@ -64,16 +64,8 @@ cfg.nonlinear_solver.convergence_criterion = 1e-10
 
 cfg.optimizations.static_condensation = True
 cfg.optimizations.compile.realcompile = False
-cfg.optimizations.bonus_int_order = {'vol': 4, 'bnd': 4}
-
-cfg.io.log.to_terminal = True
-cfg.io.log.to_file = False
-cfg.io.vtk = True
-cfg.io.settings = False
-cfg.io.settings.pickle = False
-cfg.io.settings.txt = False
-cfg.io.gfu = False
-cfg.io.ngsmesh = False
+cfg.optimizations.bonus_int_order.vol = 4
+cfg.optimizations.bonus_int_order.bnd = 4
 
 # ------- Curve Mesh ------- #
 if circle:
@@ -100,7 +92,7 @@ else:
 cfg.initialize()
 
 # ------- Setup Outputs ------- #
-drawing = cfg.get_fields(p=True)
+drawing = cfg.get_fields()
 drawing["p'"] = drawing.p - Uinf.p
 cfg.io.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
 cfg.io.vtk.fields = drawing

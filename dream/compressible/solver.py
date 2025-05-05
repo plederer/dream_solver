@@ -4,16 +4,18 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import parameter, interface, equation
+from dream.config import dream_configuration, equation
 from dream.mesh import (BoundaryConditions, DomainConditions)
 from dream.solver import SolverConfiguration
+from dream.time import TimeConfig
 
-from .eos import IdealGas
-from .viscosity import Inviscid, Constant, Sutherland
-from .scaling import Aerodynamic, Aeroacoustic, Acoustic
-from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind
-from .config import flowfields, BCS, DCS
+from .eos import IdealGas, EquationOfState
+from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
+from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
+from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
+from .config import flowfields, BCS, DCS, CompressibleFiniteElementMethod
 from .formulations import ConservativeFiniteElementMethod
+from .time import CompressibleTransientConfig, CompressiblePseudoTimeSteppingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -22,22 +24,59 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     name = "compressible"
 
-    def __init__(self, mesh: ngs.Mesh, **kwargs) -> None:
+    def __init__(self, mesh: ngs.Mesh, **default) -> None:
         bcs = BoundaryConditions(mesh, BCS)
         dcs = DomainConditions(mesh, DCS)
-        super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **kwargs)
 
-    @interface(default=ConservativeFiniteElementMethod)
-    def fem(self, fem) -> ConservativeFiniteElementMethod:
+        self._mach_number = ngs.Parameter(0.3)
+        self._reynolds_number = ngs.Parameter(150)
+        self._prandtl_number = ngs.Parameter(0.72)
+
+        DEFAULT = {
+            "fem": ConservativeFiniteElementMethod(mesh, self),
+            "time": CompressibleTransientConfig(mesh, self),
+            "equation_of_state": IdealGas(mesh, self),
+            "dynamic_viscosity": Inviscid(mesh, self),
+            "scaling": Aerodynamic(mesh, self),
+            "riemann_solver": LaxFriedrich(mesh, self),
+            "mach_number": 0.3,
+            "reynolds_number": 150,
+            "prandtl_number": 0.72,
+        }
+        DEFAULT.update(default)
+        
+        super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
+
+    @dream_configuration
+    def fem(self) -> ConservativeFiniteElementMethod:
         r""" Sets the finite element for the compressible flow solver. 
 
-            :setter: Sets the finite element, defaults to ConservativeFiniteElement
             :getter: Returns the finite element
+            :setter: Sets the finite element, defaults to ConservativeFiniteElement
         """
-        return fem
+        return self._fem
 
-    @parameter(default=0.3)
-    def mach_number(self, mach_number: float) -> ngs.Parameter:
+    @fem.setter
+    def fem(self, fem):
+        OPTIONS = [ConservativeFiniteElementMethod]
+        self._fem = self._get_configuration_option(fem, OPTIONS, CompressibleFiniteElementMethod)
+
+    @dream_configuration
+    def time(self) -> CompressibleTransientConfig | CompressiblePseudoTimeSteppingConfig:
+        r""" Sets the time configuration for the compressible flow solver. 
+
+            :getter: Returns the time configuration
+            :setter: Sets the time configuration, defaults to CompressibleTransientConfig
+        """
+        return self._time
+    
+    @time.setter
+    def time(self, time: TimeConfig):
+        OPTIONS = [CompressibleTransientConfig, CompressiblePseudoTimeSteppingConfig]
+        self._time = self._get_configuration_option(time, OPTIONS, TimeConfig)
+
+    @dream_configuration
+    def mach_number(self) -> ngs.Parameter:
         r""" Sets the ratio of the farfield flow velocity to the farfield speed of sound.
 
             .. math::
@@ -46,14 +85,17 @@ class CompressibleFlowSolver(SolverConfiguration):
             :setter: Sets the Mach number, defaults to 0.3
             :getter: Returns the Mach number
         """
+        return self._mach_number
 
+    @mach_number.setter
+    def mach_number(self, mach_number: float):
         if mach_number < 0:
             raise ValueError("Invalid Mach number. Value has to be >= 0!")
 
-        return mach_number
+        self._mach_number.Set(mach_number)
 
-    @parameter(default=150)
-    def reynolds_number(self, reynolds_number: float) -> ngs.Parameter:
+    @dream_configuration
+    def reynolds_number(self) -> ngs.Parameter:
         r""" Sets the ratio of inertial to viscous forces 
 
             .. math::
@@ -62,18 +104,16 @@ class CompressibleFlowSolver(SolverConfiguration):
             :setter: Sets the Reynolds number, defaults to 150
             :getter: Returns the Reynolds number
         """
+        return self._reynolds_number
+
+    @reynolds_number.setter
+    def reynolds_number(self, reynolds_number: float):
         if reynolds_number <= 0:
-            raise ValueError("Invalid Reynold number. Value has to be > 0!")
+            raise ValueError("Invalid Reynolds number. Value has to be > 0!")
+        self._reynolds_number.Set(reynolds_number)
 
-        return reynolds_number
-
-    @reynolds_number.getter_check
-    def reynolds_number(self):
-        if self.dynamic_viscosity.is_inviscid:
-            raise ValueError("Inviscid solver configuration: Reynolds number not applicable")
-
-    @parameter(default=0.72)
-    def prandtl_number(self, prandtl_number: float) -> ngs.Parameter:
+    @dream_configuration
+    def prandtl_number(self) -> ngs.Parameter:
         r""" Sets the ratio of momentum diffusivity to thermal diffusivity 
 
             .. math::
@@ -82,60 +122,69 @@ class CompressibleFlowSolver(SolverConfiguration):
             :setter: Sets the Prandtl number, defaults to 0.72
             :getter: Returns the Prandtl number
         """
+        return self._prandtl_number
+
+    @prandtl_number.setter
+    def prandtl_number(self, prandtl_number: float):
         if prandtl_number <= 0:
-            raise ValueError("Invalid Prandtl_number. Value has to be > 0!")
+            raise ValueError("Invalid Prandtl number. Value has to be > 0!")
+        self._prandtl_number.Set(prandtl_number)
 
-        return prandtl_number
-
-    @prandtl_number.getter_check
-    def prandtl_number(self):
-        if self.dynamic_viscosity.is_inviscid:
-            raise ValueError("Inviscid solver configuration: Prandtl number not applicable")
-
-    @interface(default=IdealGas)
-    def equation_of_state(self, equation_of_state) -> IdealGas:
+    @dream_configuration
+    def equation_of_state(self) -> IdealGas:
         r""" Sets the equation of state for the compressible flow solver. 
 
-            :setter: Sets the equation of state, defaults to IdealGas
             :getter: Returns the equation of state
+            :setter: Sets the equation of state, defaults to IdealGas
         """
-        return equation_of_state
+        return self._equation_of_state
 
-    @interface(default=Inviscid)
-    def dynamic_viscosity(self, dynamic_viscosity) -> Inviscid | Constant | Sutherland:
+    @equation_of_state.setter
+    def equation_of_state(self, equation_of_state: IdealGas):
+        OPTIONS = [IdealGas]
+        self._equation_of_state = self._get_configuration_option(equation_of_state, OPTIONS, EquationOfState)
+
+    @dream_configuration
+    def dynamic_viscosity(self) -> Inviscid | Constant | Sutherland:
         r""" Sets the dynamic viscosity for the compressible flow solver.
 
-            :setter: Sets the dynamic viscosity, defaults to Inviscid
             :getter: Returns the dynamic viscosity
+            :setter: Sets the dynamic viscosity, defaults to Inviscid
         """
-        return dynamic_viscosity
+        return self._dynamic_viscosity
 
-    @interface(default=Aerodynamic)
-    def scaling(self, scaling) -> Aerodynamic | Acoustic | Aeroacoustic:
+    @dynamic_viscosity.setter
+    def dynamic_viscosity(self, dynamic_viscosity: str | Inviscid | Constant | Sutherland):
+        OPTIONS = [Inviscid, Constant, Sutherland]
+        self._dynamic_viscosity = self._get_configuration_option(dynamic_viscosity, OPTIONS, DynamicViscosity)
+
+    @dream_configuration
+    def scaling(self) -> Aerodynamic | Acoustic | Aeroacoustic:
         r""" Sets the dimensional scaling for the compressible flow solver.
 
-            :setter: Sets the scaling, defaults to Aerodynamic
             :getter: Returns the scaling
+            :setter: Sets the scaling, defaults to Aerodynamic
         """
-        return scaling
+        return self._scaling
 
-    @interface(default=LaxFriedrich)
-    def riemann_solver(self, riemann_solver) -> LaxFriedrich | Roe | HLL | HLLEM | Upwind:
+    @scaling.setter
+    def scaling(self, scaling: str | Aerodynamic | Acoustic | Aeroacoustic):
+        OPTIONS = [Aerodynamic, Acoustic, Aeroacoustic]
+        self._scaling = self._get_configuration_option(scaling, OPTIONS, Scaling)
+
+    @dream_configuration
+    def riemann_solver(self) -> LaxFriedrich | Roe | HLL | HLLEM | Upwind:
         r""" Sets the Riemann solver for the compressible flow solver.
 
-            :setter: Sets the Riemann solver, defaults to LaxFriedrich
             :getter: Returns the Riemann solver
+            :setter: Sets the Riemann solver, defaults to LaxFriedrich
         """
-        return riemann_solver
+        return self._riemann_solver
 
-    fem: ConservativeFiniteElementMethod
-    mach_number: ngs.Parameter
-    reynolds_number: ngs.Parameter
-    prandtl_number: ngs.Parameter
-    equation_of_state: IdealGas
-    dynamic_viscosity: Inviscid | Constant | Sutherland
-    scaling: Aerodynamic | Acoustic | Aeroacoustic
-    riemann_solver: LaxFriedrich | Roe | HLL | HLLEM
+    @riemann_solver.setter
+    def riemann_solver(self, riemann_solver: str | LaxFriedrich | Roe | HLL | HLLEM | Upwind):
+        OPTIONS = [LaxFriedrich, Roe, HLL, HLLEM, Upwind]
+        self._riemann_solver = self._get_configuration_option(riemann_solver, OPTIONS, RiemannSolver)
 
     def get_farfield_state(self, direction: tuple[float, ...]) -> flowfields:
         r""" Returns the dimensionless farfield fields depending on the scaling in use and the flow direction. 

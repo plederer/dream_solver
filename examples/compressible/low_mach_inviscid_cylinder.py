@@ -20,6 +20,7 @@ Literature:
 from ngsolve import *
 from dream.mesh import get_cylinder_omesh
 from dream.compressible import CompressibleFlowSolver, InviscidWall, FarField, Initial, flowfields
+from dream.io import PointSensor
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)
@@ -65,10 +66,8 @@ cfg.initialize()
 fields = cfg.get_fields()
 cfg.io.draw(fields, autoscale=False, min=-1e-4, max=1e-4)
 
-cfg.io.sensor = True
-cfg.io.sensor.point = "pressure_coefficient"
-cfg.io.sensor.point["pressure_coefficient"].points = 'cylinder'
-cfg.io.sensor.point["pressure_coefficient"].fields = flowfields(c_p=cfg.pressure_coefficient(fields, Uinf))
+c_p = flowfields(c_p=cfg.pressure_coefficient(fields, Uinf))
+cfg.io.sensor.add(PointSensor.from_boundary(c_p, mesh, 'cylinder', name='pressure_coefficient'))
 
 # ------- Solve System ------- #
 with TaskManager():

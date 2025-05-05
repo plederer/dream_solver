@@ -1,22 +1,18 @@
 from __future__ import annotations
 import unittest
-import numpy.testing as nptest
-from tests import simplex
 import ngsolve as ngs
 
-from dream.compressible.config import flowfields
-from tests.compressible.setup import cfg, mip
+from tests.compressible.setup import cfg
 
 
 class TestConservativeHDGFiniteElementMethod(unittest.TestCase):
 
     def setUp(self) -> None:
-
         cfg.fem = "conservative"
         cfg.fem.method = "hdg"
         cfg.fem.mixed_method = "inactive"
         cfg.dynamic_viscosity = "inviscid"
-        cfg.time = "stationary"
+        cfg.time = "transient"
 
     def test_inviscid_finite_element_spaces(self):
 

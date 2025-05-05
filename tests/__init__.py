@@ -2,9 +2,10 @@ from __future__ import annotations
 import netgen.occ as occ
 import ngsolve as ngs
 
-from dream.config import interface
+from dream.config import dream_configuration
 from dream.solver import SolverConfiguration, FiniteElementMethod
 from dream.mesh import BoundaryConditions, DomainConditions
+from dream.time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, TimeConfig, TimeSchemes
 
 
 def unit_square(maxh=0.25, periodic: bool = False) -> ngs.Mesh:
@@ -57,7 +58,7 @@ def simplex(maxh=1, dim: int = 2) -> ngs.Mesh:
 class DummyFiniteElementMethod(FiniteElementMethod):
 
     name: str = 'dummy'
-    cfg: SolverConfiguration
+    root: SolverConfiguration
 
     def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
         spaces['U'] = ngs.L2(self.mesh, order=0)
@@ -67,7 +68,7 @@ class DummyFiniteElementMethod(FiniteElementMethod):
         return {'U': ngs.dx, 'Uhat': ngs.dx}
 
     def add_symbolic_spatial_forms(self, blf, lf):
-        u, v = self.cfg.TnT['U']
+        u, v = self.root.TnT['U']
 
         blf['U']['test'] = u * v * ngs.dx
         lf['U']['test'] = v * ngs.dx
@@ -85,15 +86,61 @@ class DummyFiniteElementMethod(FiniteElementMethod):
         pass
 
 
+class DummyTimeScheme(TimeSchemes):
+    time_levels = ("n", "n+1")
+
+
+class DummyTimeConfig(TransientConfig):
+
+    name: str = "transient"
+
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            "scheme": DummyTimeScheme(mesh, root)
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def scheme(self):
+        return self._scheme
+
+    @scheme.setter
+    def scheme(self, scheme: TimeSchemes):
+        OPTIONS = [DummyTimeScheme]
+        self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
+
+
 class DummySolverConfiguration(SolverConfiguration):
 
     name: str = 'dummy'
 
-    def __init__(self, mesh, **kwargs):
+    def __init__(self, mesh, **default):
         bcs = BoundaryConditions(mesh, [])
         dcs = DomainConditions(mesh, [])
-        super().__init__(mesh, bcs, dcs, **kwargs)
 
-    @interface(default=DummyFiniteElementMethod)
-    def fem(self, fem):
-        return fem
+        DEFAULT = {
+            "fem": DummyFiniteElementMethod(mesh, self),
+            "time": DummyTimeConfig(mesh, self),
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, bcs, dcs, **DEFAULT)
+
+    @dream_configuration
+    def fem(self):
+        return self._fem
+
+    @fem.setter
+    def fem(self, fem: FiniteElementMethod):
+        self._fem = fem
+
+    @dream_configuration
+    def time(self) -> DummyTimeConfig:
+        return self._time
+
+    @time.setter
+    def time(self, time: FiniteElementMethod):
+        OPTIONS = [DummyTimeConfig, StationaryConfig]
+        self._time = self._get_configuration_option(time, OPTIONS, TimeConfig)

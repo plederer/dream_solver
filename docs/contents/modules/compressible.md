@@ -22,9 +22,8 @@ by applying a proper scaling, see
 
 ### Equation of State
 ```{eval-rst}
-    .. automodule:: dream.compressible.eos
+    .. autoclass:: dream.compressible.eos.IdealGas
         :members:
-        :exclude-members: EquationOfState
 ``` 
 
 ### Riemann Solvers
@@ -65,7 +64,7 @@ by applying a proper scaling, see
 
 ### Domain Conditions
 
-### Utils
+### Utility
 ```{eval-rst}
     .. autoclass:: dream.compressible.config.flowfields
         :members:

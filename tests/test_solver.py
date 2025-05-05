@@ -8,7 +8,7 @@ class TestSolverConfiguration(unittest.TestCase):
 
     def setUp(self) -> None:
         self.cfg = DummySolverConfiguration(mesh=simplex())
-        self.cfg.time = "transient"
+        # self.cfg.time = "transient"
 
     def test_initialize_finite_element_spaces_dictionary(self):
         self.cfg.initialize_finite_element_spaces()
