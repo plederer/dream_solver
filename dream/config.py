@@ -48,7 +48,6 @@ def equation(func):
 
     return fields
 
-
     """
     Variable is a descriptor that mimics a physical quantity.
 
@@ -57,8 +56,8 @@ def equation(func):
     tensor dimensions.
     """
 
-class quantity:
 
+class quantity:
 
     __slots__ = ('symbol', 'name', '__doc__')
 
@@ -73,60 +72,36 @@ class quantity:
     def __get__(self, fields: ngsdict, objtype) -> ngs.CF:
         if fields is None:
             return self
-        return fields.get(self.name, None)
+
+        if self.name in fields:
+            return fields[self.name]
+        elif self.symbol in fields:
+            return fields[self.symbol]
+        else:
+            return None
 
     def __set__(self, fields: ngsdict, value) -> None:
         if value is not None:
-            fields[self.name] = value
+            fields[self.symbol] = value
 
     def __delete__(self, fields: ngsdict):
-        del fields[self.name]
+        del fields[self.symbol]
 
 
-class ngsdict(typing.MutableMapping):
-
-    symbols: dict[str, str] = {}
-
-    def to_py(self) -> dict:
-        """ Returns the current fields represented by pure python objects. 
-        """
-        mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
-        return {key: value(mesh()) for key, value in self.items()}
-
-    def __init_subclass__(cls) -> None:
-        symbols = {symbol: value.name for symbol, value in vars(cls).items() if isinstance(value, quantity)}
-        if hasattr(cls, "symbols"):
-            symbols.update(cls.symbols)
-        cls.symbols = symbols
-        return super().__init_subclass__()
-
-    def __init__(self, *args, **kwargs):
-        self.data = {}
-        self.update(*args, **kwargs)
+class ngsdict(dict):
 
     def __setitem__(self, key: str, value):
         if not isinstance(value, ngs.CF):
             value = ngs.CF(value)
+        super().__setitem__(key, value)
 
-        if key in self.symbols:
-            key = self.symbols[key]
+    def copy(self):
+        return type(self)(**super().copy())
 
-        self.data[key] = value
-
-    def __getitem__(self, key):
-        return self.data[key]
-
-    def __delitem__(self, key):
-        del self.data[key]
-
-    def __iter__(self):
-        return iter(self.data)
-
-    def __len__(self):
-        return len(self.data)
-
-    def __repr__(self):
-        return "".join([f"{key}: {str(value)}" for key, value in self.items()])
+    def to_py(self, mesh: ngs.Mesh) -> dict:
+        """ Returns the current fields represented by pure python objects. 
+        """
+        return {key: value(mesh()) for key, value in self.items()}
 
 
 # ------- User configuration ------- #
@@ -281,17 +256,17 @@ class interface(unique):
 
         # First, check if the input is an actual configuration file.
         if isinstance(value, self.default.tree.root):
-            value.cfg  = cfg.cfg   # Re-assign the correct cfg instance.
+            value.cfg = cfg.cfg   # Re-assign the correct cfg instance.
             value.mesh = cfg.mesh  # Re-assign the original mesh instance.
-            self.update_subconfigurations_recursively(value) 
+            self.update_subconfigurations_recursively(value)
 
             # Set subconfiguration in parent configuration after all subconfigurations are updated
             cfg.data[item] = value
 
         # Second, check if the input is of type string, e.g. 'compressible'.
         elif isinstance(value, str):
-            
-            # If the value has a different configuration than what already exists 
+
+            # If the value has a different configuration than what already exists
             # in cfg.data[item], modify the latter.
             cfg_ = self.default.tree[value]
             if not isinstance(cfg.data[item], cfg_):

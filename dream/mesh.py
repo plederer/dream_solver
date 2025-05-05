@@ -246,12 +246,11 @@ class GridMapping:
 
 class Condition:
 
-    name: str = "condition"
+    name: str
 
     def __init_subclass__(cls) -> None:
         if not hasattr(cls, "name"):
-            cls.name = cls.__name__
-        cls.name = cls.name.lower()
+            cls.name = cls.__name__.lower()
 
     def __hash__(self) -> int:
         return id(self)
@@ -269,7 +268,6 @@ class Condition:
 class Periodic(Condition):
 
     name = "periodic"
-
 
 class Initial(Condition):
 
@@ -662,9 +660,6 @@ class Conditions(UserDict):
                 logger.warning(f"""Multiple conditions set for region '{region}': {
                                '|'.join([condition.name for condition in self[region]])}!""")
 
-    def __repr__(self) -> str:
-        return "\n".join([f"{region}: {'|'.join([condition.name for condition in conditions])} "for region,
-                          conditions in self.items()])
 
 
 class BoundaryConditions(Conditions):
