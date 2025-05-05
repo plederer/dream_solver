@@ -24,18 +24,52 @@ __all__ = ['ImplicitEuler',
 
 
 
-from dream.config import interface
-from dream.time import TransientConfig
+from dream.time import TimeSchemes, TransientConfig, PseudoTimeSteppingConfig
+from dream.config import dream_configuration
 
-# Proxy class for defining local transient time schemes.
+
 class CompressibleTransient(TransientConfig):
 
-    name = "CompressibleTransient"
+    name: str = "transient"
 
-    @interface(default=ImplicitEuler)
-    def scheme(self, scheme):
-        return scheme
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            "scheme": ImplicitEuler(mesh, root)
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def scheme(self) -> ExplicitEuler | SSPRK3 | CRK4 | ImplicitEuler | BDF2 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK43_WSO2 | DIRK34_LDD | IMEXRK_ARS443:
+        return self._scheme
+
+    @scheme.setter
+    def scheme(
+            self, scheme: ExplicitEuler | SSPRK3 | CRK4 | ImplicitEuler | BDF2 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK43_WSO2 | DIRK34_LDD | IMEXRK_ARS443):
+        OPTIONS = [ExplicitEuler, SSPRK3, CRK4, ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK43_WSO2, DIRK34_LDD, IMEXRK_ARS443]
+        self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
 
 
+class CompressiblePseudoTimeStepping(PseudoTimeSteppingConfig):
 
+    name: str = "pseudo_time_stepping"
 
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            "scheme": ImplicitEuler(mesh, root)
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def scheme(self) -> ExplicitEuler | SSPRK3 | CRK4 | ImplicitEuler | BDF2 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK43_WSO2 | DIRK34_LDD:
+        return self._scheme
+
+    @scheme.setter
+    def scheme(self, scheme: ImplicitEuler | BDF2):
+        OPTIONS = [ImplicitEuler, BDF2]
+        self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)

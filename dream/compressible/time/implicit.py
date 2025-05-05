@@ -5,38 +5,38 @@ import ngsolve as ngs
 import logging
 import typing
 
-from dream.config import UniqueConfiguration, InterfaceConfiguration, parameter, configuration, interface, unique, Integrals
+#from dream.config import UniqueConfiguration, InterfaceConfiguration, parameter, configuration, interface, unique, Integrals
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
 
 logger = logging.getLogger(__name__)
 
-from .time import CompressibleTimeSchemes
+#from .time import TimeSchemes
+from dream.time import TimeSchemes
 
 
 
-
-class ImplicitSchemes(CompressibleTimeSchemes, skip=True):
+class ImplicitSchemes(TimeSchemes):
 
     def assemble(self) -> None:
 
-        condense = self.cfg.optimizations.static_condensation
-        compile = self.cfg.optimizations.compile
+        condense = self.root.optimizations.static_condensation
+        compile = self.root.optimizations.compile
 
-        self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
-        self.lf  = ngs.LinearForm(self.cfg.fes) 
+        self.blf = ngs.BilinearForm(self.root.fes, condense=condense)
+        self.lf  = ngs.LinearForm(self.root.fes) 
         
-        self.add_sum_of_integrals(self.blf, self.cfg.blf)
-        self.add_sum_of_integrals(self.lf, self.cfg.lf)
+        self.add_sum_of_integrals(self.blf, self.root.blf)
+        self.add_sum_of_integrals(self.lf, self.root.lf)
         
-        self.cfg.nonlinear_solver.initialize(self.blf, self.lf.vec, self.cfg.gfu)
+        self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, self.cfg.gfu)
 
         # NOTE
         # Pehaps its better to avoid lf, since it is empty, and specify the 2nd. 
         # argument in nonlinear_solver.initialize() as "None". That way, we 
         # guarantee avoiding additional unecessary memory. For example:
-        #self.cfg.nonlinear_solver.initialize(self.blf, None, self.cfg.gfu)
+        #self.root.nonlinear_solver.initialize(self.blf, None, self.cfg.gfu)
         
 
     def add_symbolic_temporal_forms(self, 
@@ -60,7 +60,7 @@ class ImplicitSchemes(CompressibleTimeSchemes, skip=True):
         raise NotImplementedError()
 
     def solve_current_time_level(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
-        for it in self.cfg.nonlinear_solver.solve(t):
+        for it in self.root.nonlinear_solver.solve(t):
             yield it
 
 
@@ -102,7 +102,7 @@ class BDF2(ImplicitSchemes):
         return 2.0*self.dt
 
 
-class DIRKSchemes(CompressibleTimeSchemes, skip=True):
+class DIRKSchemes(TimeSchemes):
     r""" All DIRK-type schemes are solving the following HDG problem:
           PDE: M * u_t + f(u,uhat) = 0,
            AE:           g(u,uhat) = 0.
@@ -146,36 +146,36 @@ class DIRKSchemes(CompressibleTimeSchemes, skip=True):
 
     def assemble(self) -> None:
 
-        condense = self.cfg.optimizations.static_condensation
-        compile = self.cfg.optimizations.compile
+        condense = self.root.optimizations.static_condensation
+        compile = self.root.optimizations.compile
 
         # NOTE, we assume that self.lf is not needed here (for efficiency).
-        self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
-        self.blfs = ngs.BilinearForm(self.cfg.fes, condense=condense)
-        self.mass = ngs.BilinearForm(self.cfg.fes, symmetric=True)
-        self.rhs = self.cfg.gfu.vec.CreateVector()       
-        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.blf = ngs.BilinearForm(self.root.fes, condense=condense)
+        self.blfs = ngs.BilinearForm(self.root.fes, condense=condense)
+        self.mass = ngs.BilinearForm(self.root.fes, symmetric=True)
+        self.rhs = self.root.gfu.vec.CreateVector()       
+        self.mu0 = self.root.gfu.vec.CreateVector()
 
         # Check that a mass matrix is defined in the bilinear form dictionary.
-        if "mass" not in self.cfg.blf['U']:
+        if "mass" not in self.root.blf['U']:
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
         # Precompute the weighted mass matrix, with weights: 1/(dt*aii).
         if compile.realcompile:
-            self.mass += self.cfg.blf['U']['mass'].Compile(**compile)
+            self.mass += self.root.blf['U']['mass'].Compile(**compile)
         else:
-            self.mass += self.cfg.blf['U']['mass']
+            self.mass += self.root.blf['U']['mass']
         
         # Assemble the mass matrix once.
         self.mass.Assemble()
         
         # Add both spatial and mass-matrix terms in blf.
-        self.add_sum_of_integrals(self.blf, self.cfg.blf)
+        self.add_sum_of_integrals(self.blf, self.root.blf)
         # Skip the mass matrix contribution in blfs and only use the space for "U".
-        self.add_sum_of_integrals(self.blfs, self.cfg.blf, 'mass', fespace='U')
+        self.add_sum_of_integrals(self.blfs, self.root.blf, 'mass', fespace='U')
 
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
-        self.cfg.nonlinear_solver.initialize(self.blf, self.rhs, self.cfg.gfu)
+        self.root.nonlinear_solver.initialize(self.blf, self.rhs, self.cfg.gfu)
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -197,7 +197,7 @@ class DIRKSchemes(CompressibleTimeSchemes, skip=True):
         return self.dt
 
     def solve_stage(self, t, s):
-        for it in self.cfg.nonlinear_solver.solve(t, s):
+        for it in self.root.nonlinear_solver.solve(t, s):
             pass
 
     def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
@@ -238,7 +238,7 @@ class SDIRK22(DIRKSchemes):
         super().assemble()
  
         # Reserve space for additional vectors.
-        self.x1 = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.root.gfu.vec.CreateVector()
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -261,7 +261,7 @@ class SDIRK22(DIRKSchemes):
     def update_solution(self, t: float):
  
         # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+        self.mu0.data = self.mass.mat * self.root.gfu.vec
 
         # Abbreviations.
         a21 = -self.a21 / self.aii
@@ -271,7 +271,7 @@ class SDIRK22(DIRKSchemes):
         self.solve_stage(t, 1) 
 
         # Stage: 2.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.blfs.Apply( self.root.gfu.vec, self.x1 )
         self.rhs.data = self.mu0 + a21 * self.x1
         self.solve_stage(t, 2)
 
@@ -315,8 +315,8 @@ class SDIRK33(DIRKSchemes):
         super().assemble()
  
         # Reserve space for additional vectors.
-        self.x1 = self.cfg.gfu.vec.CreateVector()
-        self.x2 = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.root.gfu.vec.CreateVector()
+        self.x2 = self.root.gfu.vec.CreateVector()
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -339,7 +339,7 @@ class SDIRK33(DIRKSchemes):
     def update_solution(self, t: float):
  
         # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+        self.mu0.data = self.mass.mat * self.root.gfu.vec
 
         # Abbreviations.
         a21 = -self.a21 / self.aii
@@ -351,12 +351,12 @@ class SDIRK33(DIRKSchemes):
         self.solve_stage(t, 1) 
 
         ## Stage: 2.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.blfs.Apply( self.root.gfu.vec, self.x1 )
         self.rhs.data = self.mu0 + a21 * self.x1
         self.solve_stage(t, 2)
 
         # Stage: 3.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.blfs.Apply( self.root.gfu.vec, self.x2 )
         self.rhs.data = self.mu0 + a31 * self.x1 + a32 * self.x2
         self.solve_stage(t, 3)
 
@@ -415,10 +415,10 @@ class SDIRK54(DIRKSchemes):
         super().assemble()
  
         # Reserve space for additional vectors.
-        self.x1 = self.cfg.gfu.vec.CreateVector()
-        self.x2 = self.cfg.gfu.vec.CreateVector()
-        self.x3 = self.cfg.gfu.vec.CreateVector()
-        self.x4 = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.root.gfu.vec.CreateVector()
+        self.x2 = self.root.gfu.vec.CreateVector()
+        self.x3 = self.root.gfu.vec.CreateVector()
+        self.x4 = self.root.gfu.vec.CreateVector()
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -441,7 +441,7 @@ class SDIRK54(DIRKSchemes):
     def update_solution(self, t: float):
  
         # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+        self.mu0.data = self.mass.mat * self.root.gfu.vec
 
         # Abbreviations.
         a21 = -self.a21 / self.aii
@@ -463,20 +463,20 @@ class SDIRK54(DIRKSchemes):
         self.solve_stage(t, 1) 
 
         ## Stage: 2.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.blfs.Apply( self.root.gfu.vec, self.x1 )
         self.rhs.data = self.mu0      \
                       + a21 * self.x1
         self.solve_stage(t, 2)
 
         # Stage: 3.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.blfs.Apply( self.root.gfu.vec, self.x2 )
         self.rhs.data = self.mu0      \
                       + a31 * self.x1 \
                       + a32 * self.x2
         self.solve_stage(t, 3)
 
         # Stage: 4.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+        self.blfs.Apply( self.root.gfu.vec, self.x3 )
         self.rhs.data = self.mu0      \
                       + a41 * self.x1 \
                       + a42 * self.x2 \
@@ -484,7 +484,7 @@ class SDIRK54(DIRKSchemes):
         self.solve_stage(t, 4)
 
         # Stage: 5.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x4 )
+        self.blfs.Apply( self.root.gfu.vec, self.x4 )
         self.rhs.data = self.mu0      \
                       + a51 * self.x1 \
                       + a52 * self.x2 \
@@ -543,9 +543,9 @@ class DIRK43_WSO2(DIRKSchemes):
         super().assemble()
  
         # Reserve space for additional vectors.
-        self.x1 = self.cfg.gfu.vec.CreateVector()
-        self.x2 = self.cfg.gfu.vec.CreateVector()
-        self.x3 = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.root.gfu.vec.CreateVector()
+        self.x2 = self.root.gfu.vec.CreateVector()
+        self.x3 = self.root.gfu.vec.CreateVector()
         
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -571,7 +571,7 @@ class DIRK43_WSO2(DIRKSchemes):
     def update_solution(self, t: float):
  
         # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+        self.mu0.data = self.mass.mat * self.root.gfu.vec
         
         # Stage: 1.
         self.aii.Set( self.a11 )
@@ -585,7 +585,7 @@ class DIRK43_WSO2(DIRKSchemes):
         ovaii =  1.0 / self.aii.Get()
         a21 = -ovaii * self.a21
         
-        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.blfs.Apply( self.root.gfu.vec, self.x1 )
         self.rhs.data = ovaii * self.mu0 \
                       +   a21 * self.x1
         self.solve_stage(t, 2)
@@ -596,7 +596,7 @@ class DIRK43_WSO2(DIRKSchemes):
         a31 = -self.a31 * ovaii
         a32 = -self.a32 * ovaii
         
-        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.blfs.Apply( self.root.gfu.vec, self.x2 )
         self.rhs.data = ovaii * self.mu0 \
                       +   a31 * self.x1  \
                       +   a32 * self.x2
@@ -609,7 +609,7 @@ class DIRK43_WSO2(DIRKSchemes):
         a42 = -ovaii * self.a42 
         a43 = -ovaii * self.a43 
         
-        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+        self.blfs.Apply( self.root.gfu.vec, self.x3 )
         self.rhs.data = ovaii * self.mu0 \
                       +   a41 * self.x1  \
                       +   a42 * self.x2  \
@@ -660,20 +660,20 @@ class DIRK34_LDD(DIRKSchemes):
         super().assemble()
  
         # Reserve space for additional vectors.
-        self.u0 = self.cfg.gfu.vec.CreateVector() 
-        self.x1 = self.cfg.gfu.vec.CreateVector()
-        self.x2 = self.cfg.gfu.vec.CreateVector()
-        self.x3 = self.cfg.gfu.vec.CreateVector()
+        self.u0 = self.root.gfu.vec.CreateVector() 
+        self.x1 = self.root.gfu.vec.CreateVector()
+        self.x2 = self.root.gfu.vec.CreateVector()
+        self.x3 = self.root.gfu.vec.CreateVector()
        
         # Precompute the mass matrix of the volume elements.
-        self.minv = self.cfg.linear_solver.inverse(self.mass, self.cfg.fes)
+        self.minv = self.root.linear_solver.inverse(self.mass, self.cfg.fes)
 
         # Compute the inverse mass matrix for the facets only. Needed to update uhat^{n+1}.
         # NOTE, this assumes uhat^{n+1} = 0.5*( U_L^{n+1} + U_R^{n+1} ).
         
         # Step 1: extract the relevant space for the facets.
-        gfu = self.cfg.gfus['Uhat']
-        fes = self.cfg.gfus['Uhat'].space
+        gfu = self.root.gfus['Uhat']
+        fes = self.root.gfus['Uhat'].space
         uhat,vhat = fes.TnT()
 
         # Step 2: define the facet "mass" matrix term.
@@ -682,7 +682,7 @@ class DIRK34_LDD(DIRKSchemes):
 
         # Step 3: define the rhs for the facet solution, needed to approximate uhat^{n+1}.
         self.f_uhat = ngs.LinearForm(fes)
-        self.f_uhat += self.cfg.gfus['U'] * vhat * ngs.dx(element_boundary=True)
+        self.f_uhat += self.root.gfus['U'] * vhat * ngs.dx(element_boundary=True)
 
         # Step 4: compute the inverse of the mass matrix on the facets.
         blfh.Assemble()
@@ -712,10 +712,10 @@ class DIRK34_LDD(DIRKSchemes):
     def update_solution(self, t: float):
  
         # Book-keep the initial solution at U^n.
-        self.u0.data  = self.cfg.gfu.vec
+        self.u0.data  = self.root.gfu.vec
 
         # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+        self.mu0.data = self.mass.mat * self.root.gfu.vec
 
         # Stage: 1.
         self.aii.Set( self.a11 )
@@ -729,7 +729,7 @@ class DIRK34_LDD(DIRKSchemes):
         ovaii =  1.0 / self.aii.Get()
         a21 = -ovaii * self.a21
         
-        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.blfs.Apply( self.root.gfu.vec, self.x1 )
         self.rhs.data = ovaii * self.mu0 \
                       +   a21 * self.x1
         self.solve_stage(t, 2)
@@ -740,17 +740,17 @@ class DIRK34_LDD(DIRKSchemes):
         a31 = -self.a31 * ovaii
         a32 = -self.a32 * ovaii
         
-        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.blfs.Apply( self.root.gfu.vec, self.x2 )
         self.rhs.data = ovaii * self.mu0 \
                       +   a31 * self.x1  \
                       +   a32 * self.x2
         self.solve_stage(t, 3)
 
         # Spatial term evaluated at stage 3.
-        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+        self.blfs.Apply( self.root.gfu.vec, self.x3 )
 
         # Need to explicitly update the solution. 
-        self.cfg.gfu.vec.data = self.u0           \
+        self.root.gfu.vec.data = self.u0           \
                               - self.minv *       \
                               ( self.b1 * self.x1 \
                               + self.b2 * self.x2 \
@@ -758,7 +758,7 @@ class DIRK34_LDD(DIRKSchemes):
        
         # We assumbe f, because it uses the (volume) solution at u^{n+1}.
         self.f_uhat.Assemble()
-        self.cfg.gfus['Uhat'].vec.data = self.minv_uhat * self.f_uhat.vec
+        self.root.gfus['Uhat'].vec.data = self.minv_uhat * self.f_uhat.vec
 
 
 

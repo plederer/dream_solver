@@ -150,11 +150,7 @@ def ProcessVTKData(IO, cfg, Uexact):
     gamma = cfg.equation_of_state.heat_capacity_ratio
 
     # Extract the usual suspects in the numerical solution.
-    fields = cfg.get_fields(rho=True, \
-                              u=True, \
-                              p=True, \
-                              T=True, \
-                              c=True)
+    fields = cfg.get_fields('T', 'c')
 
     # Get the local Mach number.
     fields["mach"] = cfg.get_local_mach_number( fields )

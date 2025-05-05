@@ -2,7 +2,7 @@ from __future__ import annotations
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import quantity, configuration, ngsdict
+from dream.config import quantity, dream_configuration, ngsdict
 from dream.solver import FiniteElementMethod
 from dream.mesh import (Condition,
                         Periodic,
@@ -15,11 +15,7 @@ from dream.mesh import (Condition,
                         )
 
 
-class CompressibleFiniteElement(FiniteElementMethod, is_interface=True):
-
-    @property
-    def gfu(self) -> ngs.GridFunction:
-        return self.cfg.gfu
+class CompressibleFiniteElementMethod(FiniteElementMethod):
 
     def set_boundary_conditions(self) -> None:
         """ Boundary conditions for compressible flows are set weakly. Therefore we do nothing here."""
@@ -83,73 +79,127 @@ class FarField(Condition):
 
     name = "farfield"
 
-    @configuration(default=None)
-    def fields(self, fields) -> flowfields:
-        if fields is not None:
-            fields = flowfields(**fields)
-        return fields
+    def __init__(self,
+                 fields: flowfields | None = None,
+                 use_identity_jacobian: bool = True):
 
-    @fields.getter_check
-    def fields(self) -> None:
-        if self.data['fields'] is None:
+        self.fields = fields
+        self.use_identity_jacobian = use_identity_jacobian
+
+        super().__init__()
+
+    @dream_configuration
+    def fields(self) -> flowfields:
+        """ Returns the fields of the farfield condition """
+        if self._fields is None:
             raise ValueError("Farfield fields not set!")
+        return self._fields
 
-    @configuration(default=True)
-    def identity_jacobian(self, use_identity_jacobian: bool):
-        return bool(use_identity_jacobian)
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, (dict, ngsdict)):
+            self._fields = flowfields(**fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"Farfield fields must be of type '{flowfields}' or '{dict}'")
 
-    fields: flowfields
+    @dream_configuration
+    def use_identity_jacobian(self) -> bool:
+        """ Returns the identity jacobian flag """
+        return self._use_identity_jacobian
+
+    @use_identity_jacobian.setter
+    def use_identity_jacobian(self, use_identity_jacobian: bool) -> None:
+        self._use_identity_jacobian = bool(use_identity_jacobian)
 
 
 class Outflow(Condition):
 
     name = "outflow"
 
-    @configuration(default=None)
-    def fields(self, fields) -> flowfields:
-        if fields is not None:
-            if bla.is_scalar(fields):
-                fields = flowfields(p=fields)
-            else:
-                fields = flowfields(**fields)
-        return fields
+    def __init__(self,
+                 pressure: float | flowfields | None = None):
 
-    @fields.getter_check
-    def fields(self) -> None:
-        if self.data['fields'] is None:
-            raise ValueError("Outflow fields not set!")
+        self.fields = pressure
 
-    fields: flowfields
+        super().__init__()
+
+    @dream_configuration
+    def fields(self) -> flowfields:
+        """ Returns the set pressure """
+        if self._fields is None:
+            raise ValueError("Initial fields not set!")
+        return self._fields
+
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, flowfields):
+            self._fields = flowfields(**fields)
+        elif bla.is_scalar(fields):
+            self._fields = flowfields(pressure=fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"Pressure must be a scalar or '{flowfields}'")
 
 
 class CBC(Condition):
 
     name = "cbc"
 
-    @configuration(default=None)
-    def fields(self, fields) -> flowfields:
-        if fields is not None:
-            fields = flowfields(**fields)
-        return fields
+    def __init__(self,
+                 fields: flowfields | None = None,
+                 target: str = "farfield",
+                 relaxation_factor: float = 0.28,
+                 tangential_relaxation: float = 0.0,
+                 is_viscous_fluxes: bool = False):
 
-    @fields.getter_check
-    def fields(self) -> None:
-        if self.data['fields'] is None:
-            raise ValueError("CBC fields not set!")
+        self.fields = fields
+        self.target = target
+        self.relaxation_factor = relaxation_factor
+        self.tangential_relaxation = tangential_relaxation
+        self.is_viscous_fluxes = is_viscous_fluxes
+        super().__init__()
 
-    @configuration(default="farfield")
-    def target(self, target: str):
+    @dream_configuration
+    def fields(self) -> flowfields:
+        """ Returns the fields of the farfield condition """
+        if self._fields is None:
+            raise ValueError("Farfield fields not set!")
+        return self._fields
 
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, (dict, ngsdict)):
+            self._fields = flowfields(**fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"Farfield fields must be of type '{flowfields}' or '{dict}'")
+
+    @dream_configuration
+    def target(self) -> str:
+        """ Returns the type of target state """
+        return self._target
+
+    @target.setter
+    def target(self, target: str) -> None:
         target = str(target).lower()
 
-        options = ["farfield", "outflow", "mass_inflow", "temperature_inflow"]
-        if target not in options:
-            raise ValueError(f"Invalid target '{target}'. Options are: {options}")
+        OPTIONS = ["farfield", "outflow", "mass_inflow", "temperature_inflow"]
+        if target not in OPTIONS:
+            raise ValueError(f"Invalid target '{target}'. Options are: {OPTIONS}")
 
-        return target
+        self._target = target
 
-    @configuration(default=0.28)
-    def relaxation_factor(self, factor: float):
+    @dream_configuration
+    def relaxation_factor(self) -> dict[str, float]:
+        """ Returns the relaxation factors for the different fields """
+        return self._relaxation_factor
+
+    @relaxation_factor.setter
+    def relaxation_factor(self, factor: float | list | tuple | dict) -> None:
         characteristic = ["acoustic_in", "entropy", "vorticity_0", "vorticity_1", "acoustic_out"]
         if bla.is_scalar(factor):
             characteristic = dict.fromkeys(characteristic, factor)
@@ -157,41 +207,48 @@ class CBC(Condition):
             characteristic = {key: value for key, value in zip(characteristic, factor)}
         elif isinstance(factor, dict):
             characteristic = {key: value for key, value in zip(characteristic, factor.values())}
-        return characteristic
 
-    @configuration(default=0.0)
-    def tangential_relaxation(self, tangential_relaxation: bla.SCALAR):
-        return bla.as_scalar(tangential_relaxation)
+        self._relaxation_factor = characteristic
 
-    @configuration(default=False)
-    def is_viscous_fluxes(self, viscous_fluxes: bool):
-        return bool(viscous_fluxes)
+    @dream_configuration
+    def tangential_relaxation(self) -> float:
+        """ Returns the tangential relaxation factor """
+        return self._tangential_relaxation
 
-    def get_relaxation_matrix(self, **kwargs) -> dict[str, ngs.CF]:
+    @tangential_relaxation.setter
+    def tangential_relaxation(self, tangential_relaxation: float) -> None:
+        if isinstance(tangential_relaxation, ngs.Parameter):
+            tangential_relaxation = tangential_relaxation.Get()
+        self._tangential_relaxation = float(tangential_relaxation)
+
+    @dream_configuration
+    def is_viscous_fluxes(self) -> bool:
+        """ Returns the viscous fluxes flag """
+        return self._is_viscous_fluxes
+
+    @is_viscous_fluxes.setter
+    def is_viscous_fluxes(self, viscous_fluxes: bool) -> None:
+        self._is_viscous_fluxes = bool(viscous_fluxes)
+
+    def get_relaxation_matrix(self, dim: int, **kwargs) -> dict[str, ngs.CF]:
 
         factors = self.relaxation_factor.copy()
-        if self.mesh.dim == 2:
+        if dim == 2:
             factors.pop("vorticity_1")
 
         return factors
-
-    fields: flowfields
-    target: str
-    relaxation_factor: dict
-    tangential_relaxation: ngs.CF
-    is_viscous_fluxes: bool
 
 
 class GRCBC(CBC):
 
     name = "grcbc"
 
-    def get_relaxation_matrix(self, **kwargs) -> ngs.CF:
+    def get_relaxation_matrix(self, dim: int, **kwargs) -> ngs.CF:
         dt = kwargs.get('dt', None)
         if dt is None:
             raise ValueError("Time step 'dt' not provided!")
 
-        C = super().get_relaxation_matrix()
+        C = super().get_relaxation_matrix(dim)
         return bla.diagonal(tuple(C.values()))/dt
 
 
@@ -199,22 +256,35 @@ class NSCBC(CBC):
 
     name = "nscbc"
 
-    @configuration(default=1)
-    def length(self, length: float):
-        return length
+    def __init__(self,
+                 fields=None,
+                 target="farfield",
+                 relaxation_factor=0.28,
+                 tangential_relaxation=0.0,
+                 is_viscous_fluxes=False,
+                 length: float = 1.0):
+        self.length = 1.0
+        super().__init__(fields, target, relaxation_factor, tangential_relaxation, is_viscous_fluxes)
 
-    def get_relaxation_matrix(self, **kwargs) -> ngs.CF:
+    @dream_configuration
+    def length(self) -> float:
+        """ Returns the length scale """
+        return self._length
+
+    @length.setter
+    def length(self, length: float):
+        self._length = length
+
+    def get_relaxation_matrix(self, dim: int, **kwargs) -> ngs.CF:
         c = kwargs.get('c', None)
         M = kwargs.get('M', None)
         if c is None or M is None:
             raise ValueError("Speed of sound 'c' and Mach number 'M' not provided!")
 
-        sigmas = super().get_relaxation_matrix()
-        eig = [c * (1 - M**2)] + self.mesh.dim * [c] + [c * (1 - M**2)]
+        sigmas = super().get_relaxation_matrix(dim)
+        eig = [c * (1 - M**2)] + dim * [c] + [c * (1 - M**2)]
         eig = [factor*eig/self.length for factor, eig in zip(sigmas.values(), eig)]
         return bla.diagonal(eig)
-
-    length: float
 
 
 class InviscidWall(Condition):
@@ -231,21 +301,29 @@ class IsothermalWall(Condition):
 
     name = "isothermal_wall"
 
-    @configuration(default=None)
-    def fields(self, fields) -> flowfields:
-        if fields is not None:
-            if bla.is_scalar(fields):
-                fields = flowfields(T=fields)
-            else:
-                fields = flowfields(**fields)
-        return fields
+    def __init__(self,
+                 temperature: float | flowfields | None = None):
 
-    @fields.getter_check
-    def fields(self) -> None:
-        if self.data['fields'] is None:
-            raise ValueError("Isothermal Wall fields not set!")
+        self.fields = temperature
+        super().__init__()
 
-    fields: flowfields
+    @dream_configuration
+    def fields(self) -> flowfields:
+        """ Returns the set temperature """
+        if self._fields is None:
+            raise ValueError("Initial fields not set!")
+        return self._fields
+
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, flowfields):
+            self._fields = flowfields(**fields)
+        elif bla.is_scalar(fields):
+            self._fields = flowfields(temperature=fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"Temperature must be a scalar or '{flowfields}'")
 
 
 class AdiabaticWall(Condition):

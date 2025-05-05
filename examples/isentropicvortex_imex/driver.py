@@ -117,6 +117,7 @@ OPTIMIZATION.static_condensation = True
 OPTIMIZATION.compile.realcompile = False
 
 
+
 # # # # # # # # # # #
 # Initial conditions.
 # # # # # # # # # # #
@@ -146,9 +147,10 @@ Uexact = AnalyticSolution(cfg, TEMPORAL.timer.t, xLength, yLength)
 
 # Write output VTK file.
 IO = cfg.io
-IO.vtk = True
 IO.vtk.rate = 10
 IO.vtk.subdivision = nSubdiv
+IO.log.level = 10
+
 
 # VTK Visualization data.
 ProcessVTKData(IO, cfg, Uexact)

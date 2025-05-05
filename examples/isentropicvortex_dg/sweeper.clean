@@ -1,5 +1,0 @@
-#!/bin/bash
-
-rm vtk/*.vtk
-rm vtk/*.vtu
-rm vtk/*.pvd

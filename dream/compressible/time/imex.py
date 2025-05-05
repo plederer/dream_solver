@@ -4,43 +4,38 @@ import numpy as np
 import ngsolve as ngs
 import logging
 import typing
-
-from dream.config import UniqueConfiguration, InterfaceConfiguration, parameter, configuration, interface, unique, Integrals
+from dream.time import TimeSchemes
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
 
 logger = logging.getLogger(__name__)
 
-from .time import CompressibleTimeSchemes
 
-
-
-
-class IMEXRKSchemes(CompressibleTimeSchemes, skip=True):
+class IMEXRKSchemes(TimeSchemes):
 
     def assemble(self) -> None:
 
-        condense = self.cfg.optimizations.static_condensation
-        compile = self.cfg.optimizations.compile
+        condense = self.root.optimizations.static_condensation
+        compile = self.root.optimizations.compile
 
         # NOTE, we assume that self.lf is not needed here (for efficiency).
-        self.blf = ngs.BilinearForm(self.cfg.fes, condense=condense)
-        self.blfs = ngs.BilinearForm(self.cfg.fes) 
-        self.blfe = ngs.BilinearForm(self.cfg.fes)
-        self.mass = ngs.BilinearForm(self.cfg.fes, symmetric=True)
-        self.rhs = self.cfg.gfu.vec.CreateVector()
-        self.mu0 = self.cfg.gfu.vec.CreateVector()
+        self.blf = ngs.BilinearForm(self.root.fes, condense=condense)
+        self.blfs = ngs.BilinearForm(self.root.fes) 
+        self.blfe = ngs.BilinearForm(self.root.fes)
+        self.mass = ngs.BilinearForm(self.root.fes, symmetric=True)
+        self.rhs = self.root.gfu.vec.CreateVector()
+        self.mu0 = self.root.gfu.vec.CreateVector()
         
         # Check that a mass matrix is defined in the bilinear form dictionary.
-        if "mass" not in self.cfg.blf['U']:
+        if "mass" not in self.root.blf['U']:
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
         # Precompute the weighted mass matrix, with weights: 1/(dt*aii).
         if compile.realcompile:
-            self.mass += self.cfg.blf['U']['mass'].Compile(**compile)
+            self.mass += self.root.blf['U']['mass'].Compile(**compile)
         else:
-            self.mass += self.cfg.blf['U']['mass']
+            self.mass += self.root.blf['U']['mass']
         
         # Assemble the mass matrix once.
         self.mass.Assemble()
@@ -50,18 +45,18 @@ class IMEXRKSchemes(CompressibleTimeSchemes, skip=True):
         
         print( "blf: " )
         # Add the mass matrix and spatial terms (excluding convection) in blf.
-        #self.add_sum_of_integrals(self.blf, self.cfg.blf, 'convection')
+        #self.add_sum_of_integrals(self.blf, self.root.blf, 'convection')
 
-        #print( self.cfg.fem.method.name )
+        #print( self.root.fem.method.name )
         from dream.compressible.formulations.conservative import HDG, DG, DG_HDG
-        print( isinstance( self.cfg.fem, HDG ) )
+        print( isinstance( self.root.fem, HDG ) )
 
         #NOTE, if this is a pure HDG-IMEX, then we only skip the volume convection term in 
         #      the volume equations (tested by V), while we retain the inviscid terms in the
         #      facet equations (tested by Vhat) which are computed implicitly.
          
         # Determine which spaces to iterate over.
-        integrals = self.cfg.blf
+        integrals = self.root.blf
         form = self.blf
         pass_terms = 'convection'
         spaces = integrals.keys()
@@ -92,15 +87,15 @@ class IMEXRKSchemes(CompressibleTimeSchemes, skip=True):
         print( "-------------------------------------" )
         print( "blfs: " )
         # Skip the mass matrix and convection contribution in blfs and only use the space for "U".
-        self.add_sum_of_integrals(self.blfs, self.cfg.blf, 'mass', 'convection', fespace='U')
+        self.add_sum_of_integrals(self.blfs, self.root.blf, 'mass', 'convection', fespace='U')
         
         print( "-------------------------------------" )
         print( "blfe: " )
         # Add only the convection part in blfe, as this is handled explicitly in time.
-        self.add_sum_of_integrals(self.blfe, self.cfg.blf, 'mass', 'diffusion', fespace='U')
+        self.add_sum_of_integrals(self.blfe, self.root.blf, 'mass', 'diffusion', fespace='U')
 
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
-        self.cfg.nonlinear_solver.initialize(self.blf, self.rhs, self.cfg.gfu)
+        self.root.nonlinear_solver.initialize(self.blf, self.rhs, self.root.gfu)
 
 
 
@@ -124,7 +119,7 @@ class IMEXRKSchemes(CompressibleTimeSchemes, skip=True):
         return self.dt
 
     def solve_stage(self, t, s):
-        for it in self.cfg.nonlinear_solver.solve(t, s):
+        for it in self.root.nonlinear_solver.solve(t, s):
             pass
 
     def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
@@ -187,14 +182,14 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         super().assemble()
 
         # Reserve space for additional vectors.
-        self.x1 = self.cfg.gfu.vec.CreateVector()
-        self.x2 = self.cfg.gfu.vec.CreateVector()
-        self.x3 = self.cfg.gfu.vec.CreateVector()
+        self.x1 = self.root.gfu.vec.CreateVector()
+        self.x2 = self.root.gfu.vec.CreateVector()
+        self.x3 = self.root.gfu.vec.CreateVector()
         
-        self.f1 = self.cfg.gfu.vec.CreateVector()
-        self.f2 = self.cfg.gfu.vec.CreateVector()
-        self.f3 = self.cfg.gfu.vec.CreateVector()
-        self.f4 = self.cfg.gfu.vec.CreateVector()
+        self.f1 = self.root.gfu.vec.CreateVector()
+        self.f2 = self.root.gfu.vec.CreateVector()
+        self.f3 = self.root.gfu.vec.CreateVector()
+        self.f4 = self.root.gfu.vec.CreateVector()
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -217,13 +212,13 @@ class IMEXRK_ARS443(IMEXRKSchemes):
     def update_solution(self, t: float):
  
         # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.cfg.gfu.vec
+        self.mu0.data = self.mass.mat * self.root.gfu.vec
   
         # Abbreviation.
         ovaii = 1.0/self.aii
 
         # Stage: 1.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f1 )
+        self.blfe.Apply( self.root.gfu.vec, self.f1 )
 
         ae21 = ovaii*self.ae21 
 
@@ -232,8 +227,8 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         self.solve_stage(t, 1)
 
         # Stage: 2.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f2 )
-        self.blfs.Apply( self.cfg.gfu.vec, self.x1 )
+        self.blfe.Apply( self.root.gfu.vec, self.f2 )
+        self.blfs.Apply( self.root.gfu.vec, self.x1 )
         
         ae31 = ovaii*self.ae31
         ae32 = ovaii*self.ae32
@@ -246,8 +241,8 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         self.solve_stage(t, 2)
 
         # Stage: 3.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f3 )
-        self.blfs.Apply( self.cfg.gfu.vec, self.x2 )
+        self.blfe.Apply( self.root.gfu.vec, self.f3 )
+        self.blfs.Apply( self.root.gfu.vec, self.x2 )
         
         ae41 = ovaii*self.ae41
         ae42 = ovaii*self.ae42
@@ -264,8 +259,8 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         self.solve_stage(t, 3)
 
         # Stage: 4.
-        self.blfe.Apply( self.cfg.gfu.vec, self.f4 )
-        self.blfs.Apply( self.cfg.gfu.vec, self.x3 )
+        self.blfe.Apply( self.root.gfu.vec, self.f4 )
+        self.blfs.Apply( self.root.gfu.vec, self.x3 )
         
         ae51 = ovaii*self.ae51
         ae52 = ovaii*self.ae52
