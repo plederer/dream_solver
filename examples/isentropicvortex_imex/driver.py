@@ -73,8 +73,8 @@ cfg.riemann_solver = "lax_friedrich"
 #cfg.riemann_solver = "upwind"
 cfg.fem = "conservative"
 cfg.fem.order = nPoly
-cfg.fem.method = "hdg"
-#cfg.fem.method = "dg_hdg"
+#cfg.fem.method = "hdg"
+cfg.fem.method = "dg_hdg"
 cfg.fem.mixed_method = "strain_heat"
 
 

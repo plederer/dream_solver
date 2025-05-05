@@ -5,6 +5,7 @@ import ngsolve as ngs
 import logging
 import typing
 from dream.time import TimeSchemes
+from dream.compressible.formulations.conservative import HDG, DG, DG_HDG
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
@@ -40,57 +41,57 @@ class IMEXRKSchemes(TimeSchemes):
         # Assemble the mass matrix once.
         self.mass.Assemble()
 
+        # The first assumption is that this cannot be an inviscid formulation: it must have inviscid + viscous terms.
+        if self.root.dynamic_viscosity.is_inviscid is True:
+            raise ValueError("IMEXRK Schemes are based on inviscid and viscous operator splitting.")
 
-        # FIXME, these have to be carefully done, as they are based on the operator splitting assumed.
+       
+        # We have only two possibilities for the IMEXRK splitting: pure HDG or hybrid DG-HDG.
+        if isinstance( self.root.fem.method, DG_HDG ):
+            
+            # For the hybrid DG-HDG scheme, we only need to skip the 'convection' term in blf, 
+            # since everything else is handled within the DG_HDG class.
+            self.add_sum_of_integrals(self.blf, self.root.blf, 'convection')
+
+        elif isinstance( self.root.fem.method, HDG):
+
+            # This is a pure HDG-IMEX scheme, we only skip the volume convection term in 
+            # the volume equations (tested by V), while we retain the inviscid terms in the
+            # facet equations (tested by Vhat) which are computed implicitly. In the below,
+            # we handle the splitting manually, instead of calling add_sum_of_integrals.
+            # The reason is we retain an implicit treatment of the 'convection' term on the 
+            # facets (Uhat-space), but treat the 'convection' term explicitly on the volume (U-space).
+
+            # Determine which spaces to iterate over.
+            integrals = self.root.blf
+            form = self.blf
+            pass_terms = 'convection'
+            spaces = integrals.keys()
+            
+            for space in spaces:
+                if space not in integrals:
+                    logger.warning(f"Space '{space}' not found in integrals. Skipping.")
+                    continue 
+
+                for term, cf in integrals[space].items():
+                    if term in pass_terms and space == "U":
+                        logger.debug(f"Skipping {term} for space {space}!")
+                        continue
+
+                    logger.debug(f"Adding {term} term for space {space}!")
+
+                    if compile.realcompile:
+                        form += cf.Compile(**compile)
+                    else:
+                        form += cf
         
-        print( "blf: " )
-        # Add the mass matrix and spatial terms (excluding convection) in blf.
-        #self.add_sum_of_integrals(self.blf, self.root.blf, 'convection')
+        else:
+            # As of now, only HDG and DG-HDG discretizations are possible with IMEXRK schemes.
+            raise ValueError("IMEXRK currently can be used either with HDG or DG-HDG discretizations.")
 
-        #print( self.root.fem.method.name )
-        from dream.compressible.formulations.conservative import HDG, DG, DG_HDG
-        print( isinstance( self.root.fem, HDG ) )
-
-        #NOTE, if this is a pure HDG-IMEX, then we only skip the volume convection term in 
-        #      the volume equations (tested by V), while we retain the inviscid terms in the
-        #      facet equations (tested by Vhat) which are computed implicitly.
-         
-        # Determine which spaces to iterate over.
-        integrals = self.root.blf
-        form = self.blf
-        pass_terms = 'convection'
-        spaces = integrals.keys()
-        
-        for space in spaces:
-            if space not in integrals:
-                logger.warning(f"Space '{space}' not found in integrals. Skipping.")
-                continue 
-
-            for term, cf in integrals[space].items():
-                if term in pass_terms and space == "U":
-                    logger.debug(f"Skipping {term}!")
-                    # DEBUGGING
-                    print( "  skipped: ", term, "[", space, "]" )
-                    continue
-
-                logger.debug(f"Adding {term}!")
-                # DEBUGGING
-                print( "    added: ", term, "[", space, "]" )
-
-                if compile.realcompile:
-                    form += cf.Compile(**compile)
-                else:
-                    form += cf
-        # 
-
-
-        print( "-------------------------------------" )
-        print( "blfs: " )
         # Skip the mass matrix and convection contribution in blfs and only use the space for "U".
         self.add_sum_of_integrals(self.blfs, self.root.blf, 'mass', 'convection', fespace='U')
         
-        print( "-------------------------------------" )
-        print( "blfe: " )
         # Add only the convection part in blfe, as this is handled explicitly in time.
         self.add_sum_of_integrals(self.blfe, self.root.blf, 'mass', 'diffusion', fespace='U')
 

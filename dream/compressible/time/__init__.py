@@ -46,8 +46,7 @@ class CompressibleTransient(TransientConfig):
         return self._scheme
 
     @scheme.setter
-    def scheme(
-            self, scheme: ExplicitEuler | SSPRK3 | CRK4 | ImplicitEuler | BDF2 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK43_WSO2 | DIRK34_LDD | IMEXRK_ARS443):
+    def scheme(self, scheme: ExplicitEuler | SSPRK3 | CRK4 | ImplicitEuler | BDF2 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK43_WSO2 | DIRK34_LDD | IMEXRK_ARS443):
         OPTIONS = [ExplicitEuler, SSPRK3, CRK4, ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK43_WSO2, DIRK34_LDD, IMEXRK_ARS443]
         self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
 

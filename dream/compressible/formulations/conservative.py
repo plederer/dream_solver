@@ -847,7 +847,6 @@ class HDG(ConservativeMethod):
 
 
 
-# TODO: finish me... 
 class DG_HDG(ConservativeMethod):
 
     name: str = "dg_hdg"
@@ -925,8 +924,10 @@ class DG_HDG(ConservativeMethod):
         blf['U']['diffusion']   -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
         blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn, Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
-        # TESTING: add the continuity equation for the facet equation, to obtain rho_hat.
-        
+        # NOTE, to obtain a well-posed formulation, we require a value for rho_hat, since we need it on the facets.
+        # To this end, we estimate its value as the average of the density on the surface (w.r.t. neighboring elements).
+        # Recall, we solve for a Uhat implicitly, but use it explicitly in the next time step -- also note, rho is 
+        # solved for explicitly, as it's governed by a pure hyperbolic equation (continuity eq). 
         rho    = self.root.density(U)
         rhoHat = self.root.density(Uhat)
         rho_avg = rho - rhoHat
@@ -1033,7 +1034,7 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
         super().__init__(mesh, root, **DEFAULT)
 
     @dream_configuration
-    def method(self) -> HDG | DG:
+    def method(self) -> HDG | DG | DG_HDG:
         """
         The method to be used for the compressible flow solver.
         """
@@ -1041,7 +1042,7 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
 
     @method.setter
     def method(self, value: str | ConservativeMethod):
-        OPTIONS = [HDG, DG]
+        OPTIONS = [HDG, DG, DG_HDG]
         self._method = self._get_configuration_option(value, OPTIONS, ConservativeMethod)
 
     @dream_configuration

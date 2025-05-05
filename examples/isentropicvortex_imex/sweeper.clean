@@ -1,5 +1,5 @@
 #!/bin/bash
 
-rm vtk/*.vtk
-rm vtk/*.vtu
-rm vtk/*.pvd
+rm output/vtk/*.vtk
+rm output/vtk/*.vtu
+rm output/vtk/*.pvd
