@@ -15,7 +15,7 @@ from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
 from .config import flowfields, BCS, DCS, CompressibleFiniteElementMethod
 from .formulations import ConservativeFiniteElementMethod
-from .time import CompressibleTransientConfig, CompressiblePseudoTimeSteppingConfig
+from .time import CompressibleTransient, CompressiblePseudoTimeStepping 
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         DEFAULT = {
             "fem": ConservativeFiniteElementMethod(mesh, self),
-            "time": CompressibleTransientConfig(mesh, self),
+            "time": CompressibleTransient(mesh, self),
             "equation_of_state": IdealGas(mesh, self),
             "dynamic_viscosity": Inviscid(mesh, self),
             "scaling": Aerodynamic(mesh, self),
@@ -56,13 +56,14 @@ class CompressibleFlowSolver(SolverConfiguration):
         """
         return self._fem
 
+
     @fem.setter
     def fem(self, fem):
         OPTIONS = [ConservativeFiniteElementMethod]
         self._fem = self._get_configuration_option(fem, OPTIONS, CompressibleFiniteElementMethod)
 
     @dream_configuration
-    def time(self) -> CompressibleTransientConfig | CompressiblePseudoTimeSteppingConfig:
+    def time(self) -> CompressibleTransient | CompressiblePseudoTimeStepping:
         r""" Sets the time configuration for the compressible flow solver. 
 
             :getter: Returns the time configuration
@@ -72,7 +73,7 @@ class CompressibleFlowSolver(SolverConfiguration):
     
     @time.setter
     def time(self, time: TimeConfig):
-        OPTIONS = [CompressibleTransientConfig, CompressiblePseudoTimeSteppingConfig]
+        OPTIONS = [CompressibleTransient, CompressiblePseudoTimeStepping]
         self._time = self._get_configuration_option(time, OPTIONS, TimeConfig)
 
     @dream_configuration

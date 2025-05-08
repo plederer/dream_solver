@@ -846,6 +846,180 @@ class HDG(ConservativeMethod):
             gfu.vec.data = blf.mat.Inverse(freedofs=fes.FreeDofs(), inverse="sparsecholesky") * f.vec
 
 
+
+class DG_HDG(ConservativeMethod):
+
+    name: str = "dg_hdg"
+
+    @property
+    def mixed_method(self) -> MixedMethod:
+        return self.root.fem.mixed_method
+
+    def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]) -> None:
+
+        order = self.root.fem.order
+        dim = self.mesh.dim + 2
+
+        U = ngs.L2(self.mesh, order=order, dgjumps=True)
+        Uhat = ngs.FacetFESpace(self.mesh, order=order)
+
+        if self.root.bcs.has_condition(Periodic):
+            Uhat = ngs.Periodic(Uhat)
+
+        fes['U'] = U**dim
+        fes['Uhat'] = Uhat**dim
+
+    # In this (IMEX-)specialized class, the inviscid terms are handled via a standard DG.
+    def add_convection_form(self, 
+                            blf: dict[str, ngs.comp.SumOfIntegrals],
+                            lf:  dict[str, ngs.comp.SumOfIntegrals]):
+
+        # Extract the bonus integration order, if specified.
+        bonus = self.root.optimizations.bonus_int_order
+
+        # Obtain the relevant test and trial functions. Notice, the solution "U"
+        # is assumed to be an unknown in the bilinear form, despite being explicit 
+        # in time. This works, because we invoke the "Apply" function when solving. 
+        U, V = self.TnT['U']
+
+        # Get a mask that is nonzero (unity) for only the internal faces.
+        mask = self.get_domain_boundary_mask()
+
+        # Current/owned solution.
+        Ui = self.get_conservative_fields(U)
+
+        # Neighboring solution.
+        Uj = self.get_conservative_fields(U.Other())
+        
+        # Compute the flux of the solution on the volume elements.
+        F = self.root.get_convective_flux(Ui)
+       
+        # Compute the flux on the surface of an element, in the normal direction.
+        Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
+
+        # Assemble the explicit bilinear form, keeping in mind this is also placed on the LHS.
+        blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['U']['convection'] += mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+
+
+    # In this (IMEX-)specialized class, the elliptic terms are handled via an HDG.
+    def add_diffusion_form(self, blf: Integrals, lf: Integrals):
+
+        bonus = self.root.optimizations.bonus_int_order
+
+        mask = self.get_domain_boundary_mask()
+
+        U, V = self.TnT['U']
+        Uhat, Vhat = self.TnT['Uhat']
+        Q, _ = self.mixed_method.TnT['Q']
+
+        U = self.get_conservative_fields(U)
+        Uhat = self.get_conservative_fields(Uhat)
+        Q = self.root.fem.mixed_method.get_mixed_fields(Q)
+
+        G = self.root.get_diffusive_flux(U, Q)
+        Gn = self.get_diffusive_numerical_flux(U, Uhat, Q, self.mesh.normal)
+
+        blf['U']['diffusion']    = ngs.InnerProduct(G, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['U']['diffusion']   -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn, Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+
+        # NOTE, to obtain a well-posed formulation, we require a value for rho_hat, since we need it on the facets.
+        # To this end, we estimate its value as the average of the density on the surface (w.r.t. neighboring elements).
+        # Recall, we solve for a Uhat implicitly, but use it explicitly in the next time step -- also note, rho is 
+        # solved for explicitly, as it's governed by a pure hyperbolic equation (continuity eq). 
+        rho    = self.root.density(U)
+        rhoHat = self.root.density(Uhat)
+        rho_avg = rho - rhoHat
+        eq = ngs.CF( ( rho_avg, 0, 0, 0 ) ) 
+
+        blf['Uhat']['test'] = mask * ngs.InnerProduct( eq, Vhat ) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+
+
+    def get_diffusive_numerical_flux(
+        self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
+        """
+        Diffusive numerical flux
+
+        Equation 22b, page 11
+
+        Literature:
+        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
+              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
+              Arch Computat Methods Eng 28, 753–784 (2021).
+              https://doi.org/10.1007/s11831-020-09508-z
+        """
+        unit_vector = bla.as_vector(unit_vector)
+
+        tau_d = self.root.fem.mixed_method.get_diffusive_stabilisation_matrix(Uhat)
+
+        return self.root.get_diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U.U - Uhat.U)
+
+    def get_temporal_integrators(self):
+        U = super().get_temporal_integrators()
+        if self.root.bcs.has_condition(CBC):
+            U['Uhat'] = ngs.ds(skeleton=True)
+        return U
+
+
+    # NOTE, for now we restrict ourselves to periodic BCs.
+    def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
+
+        bnds = self.root.bcs.to_pattern()
+
+        for bnd, bc in bnds.items():
+
+            logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
+
+            if isinstance(bc, Periodic):
+                continue
+            else:
+                raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
+
+
+    def add_domain_conditions(self, 
+                              blf: dict[str, ngs.comp.SumOfIntegrals],
+                              lf:  dict[str, ngs.comp.SumOfIntegrals]):
+
+        doms = self.root.dcs.to_pattern()
+
+        for dom, dc in doms.items():
+
+            logger.debug(f"Adding domain condition {dc} on domain {dom}.")
+
+            if isinstance(dc, Initial):
+                continue
+
+            else:
+                raise TypeError(f"Domain condition {dc} not implemented in {self}!")
+
+
+    def set_initial_conditions(self, U: ngs.CF = None):
+
+        if U is None:
+            U = self.mesh.MaterialCF({dom: ngs.CF(
+                (self.root.density(dc.fields),
+                 self.root.momentum(dc.fields),
+                 self.root.energy(dc.fields))) for dom, dc in self.root.dcs.to_pattern(Initial).items()})
+
+        super().set_initial_conditions(U)
+
+        gfu = self.gfu['Uhat']
+        fes = self.gfu['Uhat'].space
+        u, v = fes.TnT()
+
+        blf = ngs.BilinearForm(fes)
+        blf += u * v * ngs.dx(element_boundary=True)
+
+        f = ngs.LinearForm(fes)
+        f += U * v * ngs.dx(element_boundary=True)
+
+        with ngs.TaskManager():
+            blf.Assemble()
+            f.Assemble()
+            gfu.vec.data = blf.mat.Inverse(freedofs=fes.FreeDofs(), inverse="sparsecholesky") * f.vec
+
+
 class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
 
     root: CompressibleFlowSolver
@@ -860,7 +1034,7 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
         super().__init__(mesh, root, **DEFAULT)
 
     @dream_configuration
-    def method(self) -> HDG | DG:
+    def method(self) -> HDG | DG | DG_HDG:
         """
         The method to be used for the compressible flow solver.
         """
@@ -868,7 +1042,7 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
 
     @method.setter
     def method(self, value: str | ConservativeMethod):
-        OPTIONS = [HDG, DG]
+        OPTIONS = [HDG, DG, DG_HDG]
         self._method = self._get_configuration_option(value, OPTIONS, ConservativeMethod)
 
     @dream_configuration

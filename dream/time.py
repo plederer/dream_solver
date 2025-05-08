@@ -123,6 +123,7 @@ class TimeSchemes(Configuration, is_interface=True):
 
             for term, cf in integrals[space].items():
                 if term in pass_terms:
+
                     logger.debug(f"Skipping {term} for space {space}!")
                     continue
 
@@ -180,6 +181,9 @@ class TimeConfig(Configuration, is_interface=True):
         raise NotImplementedError("Symbolic Forms not implemented!")
 
     def add_symbolic_temporal_forms(self, blf, lf) -> None:
+        pass
+    
+    def scheme(self) -> None:
         pass
 
     def initialize(self):

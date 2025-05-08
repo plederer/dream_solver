@@ -160,14 +160,6 @@ class Solver(Configuration, is_interface=True):
     def initialize(self, blf: ngs.BilinearForm, lf: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
         ...
 
-    def log_iteration_error(self, it: int | None = None, t: float | None = None):
-        msg = f"residual: {self.error:8e}"
-        if it is not None:
-            msg += f" | iteration: {it}"
-        if t is not None:
-            msg += f" | t: {t}"
-        logger.info(msg)
-
     def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
         raise NotImplementedError()
 
@@ -284,12 +276,14 @@ class NonlinearSolver(Solver, is_interface=True):
             raise ValueError("Convergence Criterion must be greater than zero!")
         self._convergence_criterion = float(convergence_criterion)
 
-    def log_iteration_error(self, it: int | None = None, t: float | None = None):
+    def log_iteration_error(self, it: int | None = None, t: float | None = None, s: int | None = None):
         msg = f"residual: {self.error:8e}"
+        if s is not None:
+            msg += f" | stage: {s}"
         if it is not None:
             msg += f" | iteration: {it}"
         if t is not None:
-            msg += f" | t: {t}"
+            msg += f" | t: {t}" 
         logger.info(msg)
 
     def reset_status(self):
@@ -306,7 +300,7 @@ class NonlinearSolver(Solver, is_interface=True):
             self.is_nan = True
             logger.error("Solution process diverged!")
 
-    def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
+    def solve(self, t: float | None = None, s: int | None = None) -> typing.Generator[int | None, None, None]:
 
         self.reset_status()
 
@@ -314,7 +308,7 @@ class NonlinearSolver(Solver, is_interface=True):
             yield it
 
             self.solve_update_step()
-            self.log_iteration_error(it, t)
+            self.log_iteration_error(it, t, s)
 
             if self.is_nan:
                 break
@@ -459,9 +453,9 @@ class SolverConfiguration(Configuration, is_interface=True):
     @property
     def fem(self) -> FiniteElementMethod:
         raise NotImplementedError("Overload this configuration in derived class!")
-
+    
     @property
-    def time(self) -> StationaryConfig | TransientConfig | PseudoTimeSteppingConfig:
+    def time(self) -> TimeConfig:
         raise NotImplementedError("Overload this configuration in derived class!")
 
     @dream_configuration
