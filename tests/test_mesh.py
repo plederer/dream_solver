@@ -116,7 +116,7 @@ class TestDomainConditions(unittest.TestCase):
         for i, x_ in enumerate([-0.25, 0, 0.25]):
             x = BufferCoord.x(x_, x_ + 0.25)
             sigma = SpongeFunction.polynomial(2, x, order=5)
-            dom[f"layer_{i + 1}"] = SpongeLayer(function=sigma, target_state=1, order=5)
+            dom[f"layer_{i + 1}"] = SpongeLayer(function=sigma, target_state={"rho":1}, order=5)
 
         gfu = self.dcs.get_sponge_layer_function(dom)
 
@@ -142,7 +142,7 @@ class TestDomainConditions(unittest.TestCase):
         for i, r_ in enumerate([0.125, 0.25, 0.375]):
             r = BufferCoord.polar(r_, r_ + 0.125, shift=(1, 1))
             sigma = SpongeFunction.polynomial(2, r, order=5)
-            dom[f"layer_{i + 1}"] = SpongeLayer(function=sigma, target_state=1, order=5)
+            dom[f"layer_{i + 1}"] = SpongeLayer(function=sigma, target_state={"rho":1}, order=5)
 
         gfu = self.pcs.get_sponge_layer_function(dom)
 

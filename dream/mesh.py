@@ -7,7 +7,7 @@ from collections import UserDict
 from typing import Callable, Sequence
 
 from dream import bla
-from dream.config import ngsdict, UniqueConfiguration, configuration
+from dream.config import ngsdict, dream_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +136,7 @@ class GridMapping:
 
     @classmethod
     def linear(cls, scale: float, coordinate: BufferCoord):
-        r""" Returns a linear grid mapping. 
+        r""" Returns a linear grid mapping.
 
         The thickness of the buffer layer is scaled by the factor 'scale'.
 
@@ -156,7 +156,7 @@ class GridMapping:
 
     @classmethod
     def exponential(cls, scale: float, coordinate: BufferCoord):
-        r""" Returns an exponential grid mapping. 
+        r""" Returns an exponential grid mapping.
 
         The thickness of the buffer layer is scaled by the factor 'scale'.
 
@@ -183,7 +183,7 @@ class GridMapping:
 
     @classmethod
     def tangential(cls, scale: float, coordinate: BufferCoord):
-        r""" Returns a tangential grid mapping. 
+        r""" Returns a tangential grid mapping.
 
         The thickness of the buffer layer is scaled by the factor 'scale'.
 
@@ -244,9 +244,13 @@ class GridMapping:
         return self.map(x_)
 
 
-class Condition(UniqueConfiguration):
+class Condition:
 
-    mesh: ngs.Mesh
+    name: str
+
+    def __init_subclass__(cls) -> None:
+        if not hasattr(cls, "name"):
+            cls.name = cls.__name__.lower()
 
     def __hash__(self) -> int:
         return id(self)
@@ -258,60 +262,118 @@ class Condition(UniqueConfiguration):
         return self is not other
 
     def __repr__(self) -> str:
-        return f"{self.name}:\n" + super().__repr__()
+        return f"{self.name}"
 
+
+class Periodic(Condition):
+
+    name = "periodic"
 
 class Initial(Condition):
 
-    name = "initial"
+    def __init__(self, fields: ngsdict | None = None):
+        super().__init__()
+        self.fields = fields
 
-    @configuration(default=None)
-    def fields(self, fields) -> ngsdict:
-        return fields
+    @dream_configuration
+    def fields(self) -> ngsdict:
+        """ Returns the fields of the initial condition """
+        if self._fields is None:
+            raise ValueError("Initial fields not set!")
+        return self._fields
 
-    @fields.getter_check
-    def fields(self) -> None:
-        if self.data['fields'] is None:
-            raise ValueError("Initial State not set!")
-
-    fields: ngsdict
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, ngsdict):
+            self._fields = fields
+        elif isinstance(fields, dict):
+            self._fields = ngsdict(**fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"Initial fields must be of type '{ngsdict}' or '{dict}'")
 
 
 class Perturbation(Condition):
 
-    name = "perturbation"
+    def __init__(self, fields: ngsdict | None = None):
+        super().__init__()
+        self.fields = fields
+
+    @dream_configuration
+    def fields(self) -> ngsdict:
+        """ Returns the fields of the initial condition """
+        if self._fields is None:
+            raise ValueError("Initial fields not set!")
+        return self._fields
+
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, ngsdict):
+            self._fields = fields
+        elif isinstance(fields, dict):
+            self._fields = ngsdict(**fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"Perturbation fields must be of type '{ngsdict}' or '{dict}'")
 
 
 class Force(Condition):
 
-    name = "force"
+    def __init__(self, fields: ngsdict | None = None):
+        super().__init__()
+        self.fields = fields
 
-    @configuration(default=None)
-    def fields(self, fields) -> ngsdict:
-        return fields
+    @dream_configuration
+    def fields(self) -> ngsdict:
+        """ Returns the force of the corresponding equation """
+        if self._fields is None:
+            raise ValueError("Force fields not set!")
+        return self._fields
 
-    @fields.getter_check
-    def fields(self) -> None:
-        if self.data['fields'] is None:
-            raise ValueError("Force State not set!")
-
-    fields: ngsdict
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, ngsdict):
+            self._fields = fields
+        elif isinstance(fields, dict):
+            self._fields = ngsdict(**fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"Fields must be of type '{ngsdict}' or '{dict}'")
 
 
 class Buffer(Condition):
 
-    @configuration(default=None)
-    def function(self, buffer_function) -> ngs.CF:
-        return buffer_function
+    def __init__(self, function: ngs.CF | None = None, order: int = 0):
+        self.function = function
+        self.order = order
+        super().__init__()
 
-    @function.getter_check
+    @dream_configuration
     def function(self) -> ngs.CF:
-        if self.data['function'] is None:
+        if self._function is None:
             raise ValueError("Buffer function not set!")
+        return self._function
 
-    @configuration(default=0)
-    def order(self, order) -> int:
-        return int(order)
+    @function.setter
+    def function(self, function: ngs.CF) -> None:
+        if isinstance(function, ngs.CF):
+            self._function = function
+        elif function is None:
+            self._function = None
+        else:
+            raise TypeError(f"Buffer function must be of type '{ngs.CF}' or '{None}'")
+
+    @dream_configuration
+    def order(self) -> int:
+        return self._order
+
+    order.setter
+
+    def order(self, order):
+        self._order = int(order)
 
     @classmethod
     def get_space(cls, buffers: dict[str, Buffer], mesh: ngs.Mesh) -> ngs.FESpace:
@@ -325,38 +387,64 @@ class GridDeformation(Buffer):
 
     name = "grid_deformation"
 
-    @configuration(default=2)
-    def dim(self, dim) -> int:
-        return int(dim)
+    def __init__(self,
+                 x: GridMapping = None,
+                 y: GridMapping = None,
+                 z: GridMapping = None,
+                 dim: int = 2,
+                 order: int = 0) -> None:
 
-    @configuration(default=None)
-    def x(self, x) -> GridMapping:
-        map = self.check_mapping(x, ngs.x)
-        self.set_function(x=x)
-        return map
+        super().__init__(None, order)
+        self.dim = dim
+        self.x = x
+        self.y = y
+        self.z = z
 
-    @configuration(default=None)
-    def y(self, y) -> GridMapping:
-        map = self.check_mapping(y, ngs.y)
-        self.set_function(y=y)
-        return map
+    @dream_configuration
+    def x(self) -> GridMapping:
+        return self._x
 
-    @configuration(default=None)
-    def z(self, z) -> GridMapping:
-        map = self.check_mapping(z, ngs.z)
-        self.set_function(z=z)
-        return map
+    @x.setter
+    def x(self, x):
+        self._x = self.check_mapping(x, ngs.x)
+        self.set_function(x=self._x)
+
+    @dream_configuration
+    def y(self) -> GridMapping:
+        return self._y
+
+    @y.setter
+    def y(self, y):
+        self._y = self.check_mapping(y, ngs.y)
+        self.set_function(y=self._y)
+
+    @dream_configuration
+    def z(self) -> GridMapping:
+        return self._z
+
+    @z.setter
+    def z(self, z):
+        self._z = self.check_mapping(z, ngs.z)
+        self.set_function(z=self._z)
+
+    @dream_configuration
+    def dim(self) -> int:
+        return self._dim
+
+    @dim.setter
+    def dim(self, dim):
+        self._dim = int(dim)
 
     def set_function(self, x: GridMapping = None, y: GridMapping = None, z: GridMapping = None) -> None:
 
         if x is None:
-            x = self.data.get("x", GridMapping.none(ngs.x))
+            x = getattr(self, "_x", GridMapping.none(ngs.x))
 
         if y is None:
-            y = self.data.get("y", GridMapping.none(ngs.y))
+            y = getattr(self, "_y", GridMapping.none(ngs.y))
 
         if z is None:
-            z = self.data.get("z", GridMapping.none(ngs.z))
+            z = getattr(self, "_z", GridMapping.none(ngs.z))
 
         self.function = ngs.CF(tuple(map.deformation for map in (x, y, z)[:self.dim]))
 
@@ -383,24 +471,35 @@ class GridDeformation(Buffer):
 
         return map
 
-    dim: int
-    x: GridMapping
-    y: GridMapping
-    z: GridMapping
-
 
 class SpongeLayer(Buffer):
 
     name = "sponge_layer"
 
-    @configuration(default=None)
-    def target_state(self, target_state) -> ngsdict:
-        return target_state
+    def __init__(self,
+                 target_state: ngsdict = None,
+                 function: ngs.CF = None,
+                 order=0):
+        super().__init__(function, order)
+        self.target_state = target_state
 
-    @target_state.getter_check
-    def target_state(self) -> None:
-        if self.data['target_state'] is None:
-            raise ValueError("Target State not set!")
+    @dream_configuration
+    def target_state(self) -> ngsdict:
+        """ Returns the fields of the target state """
+        if self._target_state is None:
+            raise ValueError("Target state not set!")
+        return self._target_state
+
+    @target_state.setter
+    def target_state(self, fields: ngsdict) -> None:
+        if isinstance(fields, ngsdict):
+            self._target_state = fields
+        elif isinstance(fields, dict):
+            self._target_state = ngsdict(**fields)
+        elif fields is None:
+            self._target_state = None
+        else:
+            raise TypeError(f"Target state must be of type '{ngsdict}' or '{dict}'")
 
     @classmethod
     def get_space(cls, sponge_layers: dict[str, SpongeLayer], mesh: ngs.Mesh):
@@ -429,27 +528,44 @@ class SpongeLayer(Buffer):
 
         return fes
 
-    target_state: ngsdict
-
 
 class PSpongeLayer(SpongeLayer):
 
     name = "psponge_layer"
 
-    @configuration(default=0)
-    def high_order(self, high_order) -> int:
+    def __init__(self,
+                 high_order: int = 0,
+                 low_order: int = 0,
+                 target_state: ngsdict = None,
+                 function: ngs.CF = None,
+                 order: int = 0) -> None:
+
+        super().__init__(target_state, function, order)
+        self.high_order = high_order
+        self.low_order = low_order
+
+    @dream_configuration
+    def high_order(self) -> int:
+        return self._high_order
+
+    @high_order.setter
+    def high_order(self, high_order: int) -> None:
 
         if high_order < 0:
             raise ValueError("Negative polynomial order!")
 
-        low_order = self.data.get("low_order", 0)
+        low_order = getattr(self, "_low_order", 0)
         if not high_order >= low_order:
             raise ValueError("Low order must be less equal high order")
 
-        return int(high_order)
+        self._high_order = int(high_order)
 
-    @configuration(default=0)
-    def low_order(self, low_order) -> int:
+    @dream_configuration
+    def low_order(self) -> int:
+        return self._low_order
+
+    @low_order.setter
+    def low_order(self, low_order) -> None:
 
         if low_order < 0:
             raise ValueError("Negative polynomial order!")
@@ -457,7 +573,7 @@ class PSpongeLayer(SpongeLayer):
         if not self.high_order >= low_order:
             raise ValueError("Low order must be less equal high order")
 
-        return int(low_order)
+        self._low_order = int(low_order)
 
     @property
     def is_equal_order(self) -> bool:
@@ -470,11 +586,6 @@ class PSpongeLayer(SpongeLayer):
 
     high_order: int
     low_order: int
-
-
-class Periodic(Condition):
-
-    name = "periodic"
 
 
 class Conditions(UserDict):
@@ -549,9 +660,6 @@ class Conditions(UserDict):
                 logger.warning(f"""Multiple conditions set for region '{region}': {
                                '|'.join([condition.name for condition in self[region]])}!""")
 
-    def __repr__(self) -> str:
-        return "\n".join([f"{region}: {'|'.join([condition.name for condition in conditions])} "for region,
-                          conditions in self.items()])
 
 
 class BoundaryConditions(Conditions):

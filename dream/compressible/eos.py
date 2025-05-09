@@ -4,13 +4,13 @@ import logging
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import InterfaceConfiguration, parameter
+from dream.config import Configuration, dream_configuration
 from dream.compressible.config import flowfields
 
 logger = logging.getLogger(__name__)
 
 
-class EquationOfState(InterfaceConfiguration, is_interface=True):
+class EquationOfState(Configuration, is_interface=True):
 
     def density(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()
@@ -88,13 +88,22 @@ class EquationOfState(InterfaceConfiguration, is_interface=True):
 class IdealGas(EquationOfState):
 
     name = 'ideal'
-    aliases = ('perfect', )
 
-    @parameter(default=1.4)
-    def heat_capacity_ratio(self, heat_capacity_ratio: float):
-        return heat_capacity_ratio
+    def __init__(self, mesh, root=None, **default):
 
-    heat_capacity_ratio: ngs.Parameter
+        self._heat_capacity_ratio = ngs.Parameter(1.4)
+
+        DEFAULT = {"heat_capacity_ratio": 1.4}
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def heat_capacity_ratio(self) -> ngs.Parameter:
+        return self._heat_capacity_ratio
+
+    @heat_capacity_ratio.setter
+    def heat_capacity_ratio(self, value: ngs.Parameter):
+        self._heat_capacity_ratio.Set(value)
 
     def density(self, U: flowfields) -> bla.SCALAR:
         r"""Returns the density from given fields
@@ -416,7 +425,7 @@ class IdealGas(EquationOfState):
                         u_y & 0 & \rho & 0 \\
                         \frac{|u|^2}{2} & \rho u_x & \rho u_y & \frac{1}{\gamma - 1}
             \end{pmatrix}
-            \qquad [1, E16.2.10]
+            \qquad [E16.2.10]
             \end{align*}
 
         .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
@@ -453,7 +462,7 @@ class IdealGas(EquationOfState):
                         -\frac{u_y}{\rho} & 0 & \frac{1}{\rho} & 0 \\
                         (\gamma - 1)\frac{|u|^2}{2}  & -(\gamma - 1) u_x & -(\gamma - 1) u_y & \gamma - 1
             \end{pmatrix}
-            \qquad [1, E16.2.11]
+            \qquad [E16.2.11]
             \end{align*}
 
         .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
@@ -544,7 +553,7 @@ class IdealGas(EquationOfState):
                 return NotImplementedError()
 
             return bla.as_matrix(Linv, dims=(dim, dim))
-    
+
     def primitive_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
 
         if all((U.u, U.rho, U.c)):
@@ -594,6 +603,7 @@ class IdealGas(EquationOfState):
             - \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                & \frac{v}{c^{2}}         & - \rho n_{x}                & \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                  \\
             \frac{1}{2(\gamma - 1)} - \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}} & \frac{|\bm{u}|^2}{2c^{2}} & \rho u n_{y} - \rho v n_{x} & \frac{1}{2(\gamma - 1)} + \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}}
             \end{pmatrix}
+            \qquad [E16.5.3]
             \end{align*}
         """
         unit_vector = bla.as_vector(unit_vector)
@@ -637,6 +647,7 @@ class IdealGas(EquationOfState):
             - \frac{u n_{y}}{\rho} + \frac{v n_{x}}{\rho} & \frac{n_{y}}{\rho}         & - \frac{n_{x}}{\rho}       & 0          \\
             - c u_{n} + \frac{\gamma - 1}{2}|\bm{u}|^2      & c n_{x} + u (1 - \gamma)   & c n_{y} + v (1 - \gamma)   & \gamma - 1
             \end{pmatrix}
+            \qquad [E16.5.4]
             \end{align*}
         """
         unit_vector = bla.as_vector(unit_vector)
@@ -672,7 +683,7 @@ class IdealGas(EquationOfState):
                      -u_x u_y & u_y & u_x & 0 \\
                      -\gamma u_x E + (\gamma - 1) u_x |\bm{u}|^2 & \gamma E - \frac{\gamma - 1}{2} (u_y^2 + 3 u_x^2)&  -(\gamma - 1) u_x u_y & \gamma u_x
             \end{pmatrix}
-            \qquad [1, E16.5.3]
+            \qquad [E16.2.5]
             \end{align*}
 
         .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
@@ -711,7 +722,7 @@ class IdealGas(EquationOfState):
                 -\gamma u_y E + (\gamma - 1) u_y |\bm{u}|^2 & -(\gamma - 1) u_x u_y & \gamma E -
                 \frac{\gamma - 1}{2} (u_x^2 + 3 u_y^2) & \gamma u_y
             \end{pmatrix}
-            \qquad [1, E16.5.3]
+            \qquad [E16.2.6]
             \end{align*}
 
         .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
@@ -736,10 +747,6 @@ class IdealGas(EquationOfState):
                 raise NotImplementedError()
 
             return bla.as_matrix(B, dims=(dim, dim))
-
-
-
-
 
     def isentropic_density(self, U: flowfields, Uref: flowfields) -> ngs.CF:
         r"""Returns the isentropic density from given fields
