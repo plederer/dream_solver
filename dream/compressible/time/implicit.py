@@ -30,13 +30,13 @@ class ImplicitSchemes(TimeSchemes):
         self.add_sum_of_integrals(self.blf, self.root.blf)
         self.add_sum_of_integrals(self.lf, self.root.lf)
         
-        self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, self.cfg.gfu)
+        self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, self.root.gfu)
 
         # NOTE
         # Pehaps its better to avoid lf, since it is empty, and specify the 2nd. 
         # argument in nonlinear_solver.initialize() as "None". That way, we 
         # guarantee avoiding additional unecessary memory. For example:
-        #self.root.nonlinear_solver.initialize(self.blf, None, self.cfg.gfu)
+        #self.root.nonlinear_solver.initialize(self.blf, None, self.root.gfu)
         
 
     def add_symbolic_temporal_forms(self, 
@@ -175,7 +175,7 @@ class DIRKSchemes(TimeSchemes):
         self.add_sum_of_integrals(self.blfs, self.root.blf, 'mass', fespace='U')
 
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
-        self.root.nonlinear_solver.initialize(self.blf, self.rhs, self.cfg.gfu)
+        self.root.nonlinear_solver.initialize(self.blf, self.rhs, self.root.gfu)
 
     def add_symbolic_temporal_forms(self,
                                     variable: str,
@@ -666,7 +666,7 @@ class DIRK34_LDD(DIRKSchemes):
         self.x3 = self.root.gfu.vec.CreateVector()
        
         # Precompute the mass matrix of the volume elements.
-        self.minv = self.root.linear_solver.inverse(self.mass, self.cfg.fes)
+        self.minv = self.root.linear_solver.inverse(self.mass, self.root.fes)
 
         # Compute the inverse mass matrix for the facets only. Needed to update uhat^{n+1}.
         # NOTE, this assumes uhat^{n+1} = 0.5*( U_L^{n+1} + U_R^{n+1} ).

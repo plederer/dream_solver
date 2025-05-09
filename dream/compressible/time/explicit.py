@@ -39,7 +39,7 @@ class ExplicitSchemes(TimeSchemes):
 
         # Invert the mass matrix.
         self.minv.Assemble()
-        self.minv = self.root.linear_solver.inverse(self.minv, self.cfg.fes)
+        self.minv = self.root.linear_solver.inverse(self.minv, self.root.fes)
 
         # Remove the mass matrix item from the bilinear form dictionary, before proceeding.
         self.root.blf['U'].pop('mass')
