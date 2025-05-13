@@ -4,7 +4,6 @@ import ngsolve as ngs
 import logging
 import typing
 from dream.time import TimeSchemes
-from dream.compressible.formulations.conservative import HDG, DG, DG_HDG
 from dream.config import Integrals
 
 logger = logging.getLogger(__name__)
@@ -43,13 +42,13 @@ class IMEXRKSchemes(TimeSchemes):
             raise ValueError("IMEXRK Schemes are based on inviscid and viscous operator splitting.")
 
         # We have only two possibilities for the IMEXRK splitting: pure HDG or hybrid DG-HDG.
-        if isinstance(self.root.fem.method, DG_HDG):
+        if self.root.fem.method.name == "dg_hdg":
 
             # For the hybrid DG-HDG scheme, we only need to skip the 'convection' term in blf,
             # since everything else is handled within the DG_HDG class.
             self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'convection')
-
-        elif isinstance(self.root.fem.method, HDG):
+        
+        elif self.root.fem.method.name == "hdg":
 
             # This is a pure HDG-IMEX scheme, we only skip the volume convection term in
             # the volume equations (tested by V), while we retain the inviscid terms in the
