@@ -91,20 +91,9 @@ class Timer(Configuration):
         self.digit = len(digit.rstrip("0"))
 
 
-class TimeSchemes(Configuration, is_interface=True):
+class Scheme(Configuration, is_interface=True):
 
     root: SolverConfiguration
-    time_levels: tuple[str, ...]
-
-    @property
-    def dt(self) -> ngs.Parameter:
-        return self.root.time.timer.step
-
-    def add_symbolic_temporal_forms(self,
-                                    space: str,
-                                    blf: Integrals,
-                                    lf: Integrals) -> None:
-        raise NotImplementedError()
 
     def add_sum_of_integrals(self,
                              form: ngs.LinearForm | ngs.BilinearForm,
@@ -135,31 +124,34 @@ class TimeSchemes(Configuration, is_interface=True):
                     form += cf
 
     def assemble(self) -> None:
-        raise NotImplementedError()
+        raise NotImplementedError("Overload this method in derived class!")
 
-    def initialize(self):
 
-        self.dx = self.root.fem.get_temporal_integrators()
-        self.spaces = {}
-        self.TnT = {}
-        self.gfus = {}
+class TimeSchemes(Scheme):
 
-        for variable in self.dx:
-            self.spaces[variable] = self.root.spaces[variable]
-            self.TnT[variable] = self.root.TnT[variable]
-            self.gfus[variable] = self.initialize_level_gridfunctions(self.root.gfus[variable])
+    time_levels: tuple[str, ...]
 
-    def initialize_level_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
+    @property
+    def dt(self) -> ngs.Parameter:
+        return self.root.time.timer.step
+
+    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def solve_current_time_level(self) -> typing.Generator[int | None, None, None]:
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def get_level_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
         gfus = [ngs.GridFunction(gfu.space) for _ in self.time_levels[:-1]] + [gfu]
         return {level: gfu for level, gfu in zip(self.time_levels, gfus)}
+
+    def initialize_gridfunctions(self, gfus: dict[str, ngs.GridFunction]) -> None:
+        self.gfus = {space: self.get_level_gridfunctions(gfu) for space, gfu in gfus.items()}
 
     def set_initial_conditions(self):
         for gfu in self.gfus.values():
             for old in list(gfu.values())[:-1]:
                 old.vec.data = gfu['n+1'].vec
-
-    def solve_current_time_level(self) -> typing.Generator[int | None, None, None]:
-        raise NotImplementedError()
 
     def update_gridfunctions(self):
         for gfu in self.gfus.values():
@@ -167,80 +159,41 @@ class TimeSchemes(Configuration, is_interface=True):
                 gfu[old].vec.data = gfu[new].vec
 
 
-
-
-class TimeConfig(Configuration, is_interface=True):
+class TimeRoutine(Configuration, is_interface=True):
 
     root: SolverConfiguration
 
     @property
     def is_stationary(self) -> bool:
-        return isinstance(self, StationaryConfig)
-
-    def assemble(self) -> None:
-        raise NotImplementedError("Symbolic Forms not implemented!")
-
-    def add_symbolic_temporal_forms(self, blf, lf) -> None:
-        pass
-    
-    def scheme(self) -> None:
-        pass
-
-    def initialize(self):
-        pass
-
-    def set_initial_conditions(self):
-        self.root.fem.set_initial_conditions()
+        return isinstance(self, StationaryRoutine)
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
-        raise NotImplementedError("Solution Routine not implemented!")
+        raise NotImplementedError("Overload this method in derived class!")
 
 
-class StationaryConfig(TimeConfig):
+class StationaryRoutine(TimeRoutine):
 
     name: str = "stationary"
 
-    def assemble(self) -> None:
-
-        condense = self.root.optimizations.static_condensation
-        compile = self.root.optimizations.compile
-
-        self.blf = ngs.BilinearForm(self.root.fes, condense=condense)
-        self.lf = ngs.LinearForm(self.root.fes)
-
-        for name, cf in self.root.blf.items():
-            logger.debug(f"Adding {name} to the BilinearForm!")
-
-            if compile.realcompile:
-                self.blf += cf.Compile(**compile)
-            else:
-                self.blf += cf
-
-        for name, cf in self.root.lf.items():
-            logger.debug(f"Adding {name} to the LinearForm!")
-
-            if compile.realcompile:
-                self.lf += cf.Compile(**compile)
-            else:
-                self.lf += cf
-
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
+        scheme = self.root.fem.scheme
+
         if reassemble:
-            self.assemble()
+            scheme.assemble()
 
         with self.root.io as io:
             io.save_pre_time_routine()
 
             # Solution routine starts here
-            self.solve()
+            scheme.solve()
             yield None
             # Solution routine ends here
 
             io.save_post_time_routine()
 
 
-class TransientConfig(TimeConfig):
+class TransientRoutine(TimeRoutine):
 
     name: str = "transient"
 
@@ -252,10 +205,6 @@ class TransientConfig(TimeConfig):
         DEFAULT.update(default)
 
         super().__init__(mesh, root, **DEFAULT)
-
-    @property
-    def scheme(self) -> TimeSchemes:
-        raise NotImplementedError("Overload this configuration in derived class!")
 
     @dream_configuration
     def timer(self) -> Timer:
@@ -269,24 +218,12 @@ class TransientConfig(TimeConfig):
 
         self._timer = timer
 
-    def assemble(self):
-        self.scheme.assemble()
-
-    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals):
-        self.root.fem.add_symbolic_temporal_forms(blf, lf)
-
-    def initialize(self):
-        super().initialize()
-        self.scheme.initialize()
-
-    def set_initial_conditions(self):
-        super().set_initial_conditions()
-        self.scheme.set_initial_conditions()
-
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
+        scheme = self.root.fem.scheme
+
         if reassemble:
-            self.assemble()
+            scheme.assemble()
 
         with self.root.io as io:
             io.save_pre_time_routine(self.timer.t.Get())
@@ -294,10 +231,10 @@ class TransientConfig(TimeConfig):
             # Solution routine starts here
             for it, t in enumerate(self.timer()):
 
-                for _ in self.scheme.solve_current_time_level(t):
+                for _ in scheme.solve_current_time_level(t):
                     continue
 
-                self.scheme.update_gridfunctions()
+                scheme.update_gridfunctions()
 
                 yield t
 
@@ -308,7 +245,7 @@ class TransientConfig(TimeConfig):
             io.save_post_time_routine(t, it)
 
 
-class PseudoTimeSteppingConfig(TimeConfig):
+class PseudoTimeSteppingRoutine(TimeRoutine):
 
     name: str = "pseudo_time_stepping"
 
@@ -323,10 +260,6 @@ class PseudoTimeSteppingConfig(TimeConfig):
         DEFAULT.update(default)
 
         super().__init__(mesh, root, **DEFAULT)
-
-    @property
-    def scheme(self) -> TimeSchemes:
-        raise NotImplementedError("Overload this configuration in derived class!")
 
     @dream_configuration
     def timer(self) -> Timer:
@@ -364,27 +297,19 @@ class PseudoTimeSteppingConfig(TimeConfig):
     def increment_factor(self, increment_factor: int):
         self._increment_factor = int(increment_factor)
 
-    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals):
-        self.root.fem.add_symbolic_temporal_forms(blf, lf)
-
-    def assemble(self):
-        self.scheme.assemble()
-
-    def initialize(self):
-        super().initialize()
-        self.scheme.initialize()
-
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
+        scheme = self.root.fem.scheme
+
         if reassemble:
-            self.scheme.assemble()
+            scheme.assemble()
 
         with self.root.io as io:
             io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
-            for it in self.scheme.solve_current_time_level():
-                self.scheme.update_gridfunctions()
+            for it in scheme.solve_current_time_level():
+                scheme.update_gridfunctions()
                 self.solver_iteration_update(it)
                 io.redraw()
 
@@ -410,7 +335,3 @@ class PseudoTimeSteppingConfig(TimeConfig):
                 self.timer.step = new_time_step
                 logger.info(f"Successfully updated time step at iteration {it}")
                 logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
-
-    def set_initial_conditions(self):
-        super().set_initial_conditions()
-        self.scheme.set_initial_conditions()
