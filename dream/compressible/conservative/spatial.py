@@ -810,35 +810,39 @@ class HDG(ConservativeMethod):
         blf['Uhat'][f"{dc.name}_{dom}"] = dc.function * Delta_U * V * dX
 
     def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: bla.VECTOR):
-        """
+        r"""
         Convective numerical flux
 
-        Equation 22a, page 11
+        .. math::
 
-        Literature:
-        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
-              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
-              Arch Computat Methods Eng 28, 753–784 (2021).
-              https://doi.org/10.1007/s11831-020-09508-z
+            \widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}}) \qquad [E22a]
+
+        See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`
+
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         unit_vector = bla.as_vector(unit_vector)
 
-        tau = self.root.riemann_solver.get_convective_stabilisation_matrix_hdg(Uhat, unit_vector)
+        tau_c = self.root.riemann_solver.get_convective_stabilisation_matrix_hdg(Uhat, unit_vector)
 
-        return self.root.get_convective_flux(Uhat) * unit_vector + tau * (U.U - Uhat.U)
+        return self.root.get_convective_flux(Uhat) * unit_vector + tau_c * (U.U - Uhat.U)
 
     def get_diffusive_numerical_flux(
             self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
-        """
+        r"""
         Diffusive numerical flux
 
-        Equation 22b, page 11
+        .. math::
 
-        Literature:
-        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
-              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
-              Arch Computat Methods Eng 28, 753–784 (2021).
-              https://doi.org/10.1007/s11831-020-09508-z
+            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
+
+        See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
+            
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -982,16 +986,18 @@ class DG_HDG(ConservativeMethod):
 
     def get_diffusive_numerical_flux(
             self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
-        """
+        r"""
         Diffusive numerical flux
 
-        Equation 22b, page 11
+        .. math::
 
-        Literature:
-        [1] - Vila-Pérez, J., Giacomini, M., Sevilla, R. et al.
-              Hybridisable Discontinuous Galerkin Formulation of Compressible Flows.
-              Arch Computat Methods Eng 28, 753–784 (2021).
-              https://doi.org/10.1007/s11831-020-09508-z
+            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
+
+        See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
+            
+        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
+                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
+                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
         """
         unit_vector = bla.as_vector(unit_vector)
 

@@ -51,11 +51,7 @@ mathjax3_config = {
             "sym": ["{{\\rm sym} (#1) }", 1],
             "skw": ["{{\\rm skw} (#1) }", 1],
             "vec": ["{\\bm{#1}}", 1],
-            "mat": ["{#1}", 1],
-            "pdt": ["{\\frac{\\partial #1}{\\partial t}}", 1],
-            "pdx":["{\\frac{\\partial #1}{\\partial x}}", 1],
-            "pdy":["{\\frac{\\partial #1}{\\partial y}}", 1],
-            "pdz":["{\\frac{\\partial #1}{\\partial z}}", 1],
+            "mat": ["{\\bm{#1}}", 1],
         }
     }
 }

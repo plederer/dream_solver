@@ -1,10 +1,8 @@
 compressible
 ========================================
-.. include:: equations.md
-    :parser: myst_parser.sphinx_
-
-
 .. currentmodule:: dream.compressible
+
+.. note:: We currently only support two-dimensional domains.
 
 .. autosummary::
     :toctree:
@@ -21,6 +19,9 @@ compressible
     scaling
     config
     
+.. include:: equations.md
+    :parser: myst_parser.sphinx_
+
 
 
 

@@ -66,8 +66,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Ma_\infty = \frac{|\bm{u}_\infty|}{c_\infty}
 
-            :setter: Sets the Mach number, defaults to 0.3
             :getter: Returns the Mach number
+            :setter: Sets the Mach number, defaults to 0.3
         """
         return self._mach_number
 
@@ -85,8 +85,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Re_\infty = \frac{\rho_\infty |\bm{u}_\infty| L}{\mu_\infty}
 
-            :setter: Sets the Reynolds number, defaults to 150
             :getter: Returns the Reynolds number
+            :setter: Sets the Reynolds number, defaults to 150
         """
         return self._reynolds_number
 
@@ -103,8 +103,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Pr_\infty = \frac{c_p \mu_\infty}{k_\infty}
 
-            :setter: Sets the Prandtl number, defaults to 0.72
             :getter: Returns the Prandtl number
+            :setter: Sets the Prandtl number, defaults to 0.72
         """
         return self._prandtl_number
 
