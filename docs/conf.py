@@ -20,10 +20,10 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc', "myst_parser", 'sphinx_rtd_theme']
+extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc','sphinx.ext.autosummary', "myst_parser", 'sphinx_rtd_theme', 'sphinx_design']
 
 templates_path = ['_templates']
-exclude_patterns = ['build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', 'contents', 'hdg']
 
 add_module_names = False
 autodoc_member_order = 'bysource'

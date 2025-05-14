@@ -6,14 +6,18 @@ Euler and Navier-Stokes equations by means of an hybrid discontinuous
 Galerkin Finite element method. The main emphasis lies in high
 fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation (dream).
 
-Contents
-==================
-.. toctree::
-   :maxdepth: 2
 
-   contents/installation
-   contents/usage
-   contents/modules/summary
+.. dropdown:: **Installation**
+
+   .. include:: installation.md
+      :parser: myst_parser.sphinx_
+   
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Solvers
+
+   modules/compressible/index.rst
 
 Funding
 ==================

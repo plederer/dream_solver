@@ -1,4 +1,3 @@
-# Installation
 We strongly advice the use of a virtual environment for the installation of the *dream* package
 and its dependencies.
 
