@@ -5,7 +5,7 @@ import ngsolve as ngs
 from dream.config import dream_configuration
 from dream.solver import SolverConfiguration, FiniteElementMethod
 from dream.mesh import BoundaryConditions, DomainConditions
-from dream.time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig, TimeConfig, TimeSchemes
+from dream.time import StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine, TimeRoutine, TimeSchemes
 
 
 def unit_square(maxh=0.25, periodic: bool = False) -> ngs.Mesh:
@@ -60,6 +60,27 @@ class DummyFiniteElementMethod(FiniteElementMethod):
     name: str = 'dummy'
     root: SolverConfiguration
 
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            "scheme": DummyTimeScheme(mesh, root)
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def scheme(self):
+        return self._scheme
+
+    @scheme.setter
+    def scheme(self, scheme: TimeSchemes):
+        OPTIONS = [DummyTimeScheme]
+        self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
+
+    def initialize_time_scheme_gridfunctions(self):
+        return super().initialize_time_scheme_gridfunctions('U', 'Uhat')
+
     def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
         spaces['U'] = ngs.L2(self.mesh, order=0)
         spaces['Uhat'] = ngs.L2(self.mesh, order=0)
@@ -68,7 +89,7 @@ class DummyFiniteElementMethod(FiniteElementMethod):
         return {'U': ngs.dx, 'Uhat': ngs.dx}
 
     def add_symbolic_spatial_forms(self, blf, lf):
-        u, v = self.root.TnT['U']
+        u, v = self.TnT['U']
 
         blf['U']['test'] = u * v * ngs.dx
         lf['U']['test'] = v * ngs.dx
@@ -89,28 +110,8 @@ class DummyFiniteElementMethod(FiniteElementMethod):
 class DummyTimeScheme(TimeSchemes):
     time_levels = ("n", "n+1")
 
-
-class DummyTimeConfig(TransientConfig):
-
-    name: str = "transient"
-
-    def __init__(self, mesh, root=None, **default):
-
-        DEFAULT = {
-            "scheme": DummyTimeScheme(mesh, root)
-        }
-        DEFAULT.update(default)
-
-        super().__init__(mesh, root, **DEFAULT)
-
-    @dream_configuration
-    def scheme(self):
-        return self._scheme
-
-    @scheme.setter
-    def scheme(self, scheme: TimeSchemes):
-        OPTIONS = [DummyTimeScheme]
-        self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
+    def add_symbolic_temporal_forms(self, blf, lf):
+        ...
 
 
 class DummySolverConfiguration(SolverConfiguration):
@@ -123,7 +124,7 @@ class DummySolverConfiguration(SolverConfiguration):
 
         DEFAULT = {
             "fem": DummyFiniteElementMethod(mesh, self),
-            "time": DummyTimeConfig(mesh, self),
+            "time": TransientRoutine(mesh, self),
         }
         DEFAULT.update(default)
         super().__init__(mesh, bcs, dcs, **DEFAULT)
@@ -137,10 +138,10 @@ class DummySolverConfiguration(SolverConfiguration):
         self._fem = fem
 
     @dream_configuration
-    def time(self) -> DummyTimeConfig:
+    def time(self) -> TransientRoutine:
         return self._time
 
     @time.setter
     def time(self, time: FiniteElementMethod):
-        OPTIONS = [DummyTimeConfig, StationaryConfig]
-        self._time = self._get_configuration_option(time, OPTIONS, TimeConfig)
+        OPTIONS = [TransientRoutine, StationaryRoutine]
+        self._time = self._get_configuration_option(time, OPTIONS, TimeRoutine)

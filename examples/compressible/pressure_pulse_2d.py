@@ -39,6 +39,12 @@ else:
 
 # ------- Set Configuration ------- #
 cfg = CompressibleFlowSolver(mesh)
+
+cfg.time = "transient"
+cfg.time.scheme = "bdf2"
+cfg.time.timer.interval = (0, 10)
+cfg.time.timer.step = 0.01
+
 cfg.dynamic_viscosity = "inviscid"
 cfg.equation_of_state = "ideal"
 cfg.equation_of_state.heat_capacity_ratio = 1.4
@@ -47,14 +53,10 @@ cfg.mach_number = 0.03
 cfg.riemann_solver = "lax_friedrich"
 
 cfg.fem = "conservative"
-cfg.fem.order = 4
 cfg.fem.method = "hdg"
+cfg.fem.method.scheme = "bdf2"
+cfg.fem.order = 4
 cfg.fem.mixed_method = "inactive"
-
-cfg.time = "transient"
-cfg.time.scheme = "bdf2"
-cfg.time.timer.interval = (0, 10)
-cfg.time.timer.step = 0.01
 
 cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
@@ -66,6 +68,8 @@ cfg.optimizations.static_condensation = True
 cfg.optimizations.compile.realcompile = False
 cfg.optimizations.bonus_int_order.vol = 4
 cfg.optimizations.bonus_int_order.bnd = 4
+
+
 
 # ------- Curve Mesh ------- #
 if circle:
@@ -92,7 +96,7 @@ else:
 cfg.initialize()
 
 # ------- Setup Outputs ------- #
-drawing = cfg.get_fields()
+drawing = cfg.fem.get_fields()
 drawing["p'"] = drawing.p - Uinf.p
 cfg.io.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
 cfg.io.vtk.fields = drawing

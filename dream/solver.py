@@ -7,7 +7,7 @@ from math import isnan
 
 from .mesh import is_mesh_periodic, Periodic, Initial, BoundaryConditions, DomainConditions
 from .config import Configuration, dream_configuration, ngsdict, Integrals
-from .time import StationaryConfig, TransientConfig, PseudoTimeSteppingConfig
+from .time import StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine, TimeRoutine, Scheme, TimeSchemes
 from .io import IOConfiguration
 
 logger = logging.getLogger(__name__)
@@ -409,8 +409,69 @@ class FiniteElementMethod(Configuration, is_interface=True):
         self._order = int(order)
 
     @property
-    def gfu(self) -> ngs.GridFunction:
-        return self.root.gfu
+    def scheme(self) -> Scheme | TimeSchemes:
+        raise NotImplementedError("Overload this configuration in derived class!")
+    
+    def initialize(self) -> None:
+        self.initialize_finite_element_spaces()
+        self.initialize_trial_and_test_functions()
+        self.initialize_gridfunctions()
+        self.initialize_time_scheme_gridfunctions()
+        
+        self.set_boundary_conditions()
+        self.set_initial_conditions()
+
+        self.initialize_symbolic_forms()
+
+    def initialize_finite_element_spaces(self) -> None:
+
+        self.spaces = {}
+        self.add_finite_element_spaces(self.spaces)
+
+        if not self.spaces:
+            raise ValueError("Spaces container is empty!")
+
+        fes = list(self.spaces.values())
+
+        for space in fes[1:]:
+            fes[0] *= space
+
+        self.fes: ngs.ProductSpace = fes[0]
+
+    def initialize_trial_and_test_functions(self) -> None:
+
+        if len(self.spaces) > 1:
+            self.TnT = {label: (tr, te) for label, tr, te in zip(
+                self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
+        else:
+            self.TnT = {label: self.fes.TnT() for label in self.spaces}
+
+    def initialize_gridfunctions(self) -> None:
+        self.gfu = ngs.GridFunction(self.fes)
+
+        if len(self.spaces) > 1:
+            self.gfus = {label: gfu for label, gfu in zip(self.spaces, self.gfu.components)}
+        else:
+            self.gfus = {label: self.gfu for label in self.spaces}
+
+    def initialize_time_scheme_gridfunctions(self, *spaces: str) -> None:
+        if isinstance(self.scheme, TimeSchemes):
+            gfus = {space: gfu for space, gfu in self.gfus.items() if space in spaces}
+            self.scheme.initialize_gridfunctions(gfus)
+
+    def initialize_symbolic_forms(self) -> None:
+        self.blf: Integrals = {label: {} for label in self.spaces}
+        self.lf: Integrals = {label: {} for label in self.spaces}
+
+        self.add_symbolic_spatial_forms(self.blf, self.lf)
+
+        if isinstance(self.scheme, TimeSchemes):
+            self.scheme.add_symbolic_temporal_forms(self.blf, self.lf)
+
+    def set_initial_conditions(self) -> None:    
+        # Make sure to call the upper class method after having set the initial conditions
+        if isinstance(self.scheme, TimeSchemes):
+            self.scheme.set_initial_conditions()
 
     def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
         raise NotImplementedError("Overload this method in derived class!")
@@ -418,19 +479,8 @@ class FiniteElementMethod(Configuration, is_interface=True):
     def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals):
-        raise NotImplementedError("Overload this method in derived class!")
-
-    def get_temporal_integrators(self) -> dict[str, ngs.comp.DifferentialSymbol]:
-        raise NotImplementedError("Overload this method in derived class!")
-
     def get_fields(self, *fields: str, default: bool = True) -> ngsdict:
         raise NotImplementedError("Overload this method in derived class!")
-
-    def set_initial_conditions(self) -> None:
-        if not self.root.dcs.has_condition(Initial):
-            logger.debug("No initial conditions set!")
-            return None
 
     def set_boundary_conditions(self) -> None:
         raise NotImplementedError("Overload this method in derived class!")
@@ -449,6 +499,7 @@ class SolverConfiguration(Configuration, is_interface=True):
         mesh.is_periodic = is_mesh_periodic(mesh)
 
         DEFAULT = {
+            "time": StationaryRoutine(mesh, self),
             "linear_solver": UmfpackLinearSolver(mesh, self),
             "nonlinear_solver": UmfpackNonlinearSolver(mesh, self),
             "optimizations": Optimizations(mesh, self),
@@ -466,9 +517,14 @@ class SolverConfiguration(Configuration, is_interface=True):
     def fem(self) -> FiniteElementMethod:
         raise NotImplementedError("Overload this configuration in derived class!")
     
-    @property
-    def time(self) -> TimeConfig:
-        raise NotImplementedError("Overload this configuration in derived class!")
+    @dream_configuration
+    def time(self) -> TimeRoutine:
+        return self._time
+    
+    @time.setter
+    def time(self, time: str | TimeRoutine):
+        OPTIONS = [StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine]
+        self._time = self._get_configuration_option(time, OPTIONS, TimeRoutine)
 
     @dream_configuration
     def linear_solver(self) -> UmfpackLinearSolver | PardisoLinearSolver:
@@ -521,63 +577,11 @@ class SolverConfiguration(Configuration, is_interface=True):
         self._info = info
 
     def initialize(self) -> None:
-        self.initialize_finite_element_spaces()
-        self.initialize_trial_and_test_functions()
-        self.initialize_gridfunctions()
-        self.set_boundary_conditions()
 
-        self.time.initialize()
-        self.time.set_initial_conditions()
-
-        self.initialize_symbolic_forms()
-
-    def initialize_finite_element_spaces(self) -> None:
-
-        self.spaces = {}
-        self.fem.add_finite_element_spaces(self.spaces)
-
-        if not self.spaces:
-            raise ValueError("Spaces container is empty!")
-
-        fes = list(self.spaces.values())
-
-        for space in fes[1:]:
-            fes[0] *= space
-
-        self.fes: ngs.ProductSpace = fes[0]
-
-    def initialize_trial_and_test_functions(self) -> None:
-
-        if len(self.spaces) > 1:
-            self.TnT = {label: (tr, te) for label, tr, te in zip(
-                self.spaces, self.fes.TrialFunction(), self.fes.TestFunction())}
-        else:
-            self.TnT = {label: self.fes.TnT() for label in self.spaces}
-
-    def initialize_gridfunctions(self) -> None:
-        self.gfu = ngs.GridFunction(self.fes)
-
-        if len(self.spaces) > 1:
-            self.gfus = {label: gfu for label, gfu in zip(self.spaces, self.gfu.components)}
-        else:
-            self.gfus = {label: self.gfu for label in self.spaces}
-
-    def initialize_symbolic_forms(self) -> None:
-        self.blf: Integrals = {label: {} for label in self.spaces}
-        self.lf: Integrals = {label: {} for label in self.spaces}
-
-        self.fem.add_symbolic_spatial_forms(self.blf, self.lf)
-        self.time.add_symbolic_temporal_forms(self.blf, self.lf)
-
-    def get_fields(self, *fields: str, default: bool = True) -> ngsdict:
-        fields = self.fem.get_fields(*fields, default=default)
-        return fields
-
-    def set_boundary_conditions(self) -> None:
-        if self.mesh.is_periodic and not self.bcs.has_condition(Periodic):
+        if self.mesh.is_periodic and not self.root.bcs.has_condition(Periodic):
             raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
-
-        self.fem.set_boundary_conditions()
+        
+        self.fem.initialize()
 
     def set_grid_deformation(self):
         grid_deformation = self.dcs.get_grid_deformation_function()

@@ -1,3 +1,4 @@
+""" Definitions of boundary/domain conditions for compressible flow """
 from __future__ import annotations
 import ngsolve as ngs
 

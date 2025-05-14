@@ -333,7 +333,7 @@ class GridfunctionStream(Stream):
         if t is not None:
             filename = f"{filename}_{t}"
 
-        self.load_gridfunction(self.root.gfu, filename)
+        self.load_gridfunction(self.root.fem.gfu, filename)
 
     def load_transient_routine(self, sleep: float = 0) -> typing.Generator[float, None, None]:
 
@@ -358,7 +358,7 @@ class GridfunctionStream(Stream):
         if self.root.time.is_stationary:
             raise ValueError("Load time levels is not available in stationary mode!")
 
-        for fes, gfu in self.root.time.scheme.gfus.items():
+        for fes, gfu in self.root.fem.scheme.gfus.items():
 
             for level, gfu in gfu.items():
 
@@ -372,12 +372,12 @@ class GridfunctionStream(Stream):
 
             if it % self.time_level_rate == 0:
 
-                for fes, gfus in self.root.time.scheme.gfus.items():
+                for fes, gfus in self.root.fem.scheme.gfus.items():
                     for level, gfu in gfus.items():
                         self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
 
         if it % self.rate == 0:
-            self.save_gridfunction(self.root.gfu, filename)
+            self.save_gridfunction(self.root.fem.gfu, filename)
 
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 

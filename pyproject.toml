@@ -6,18 +6,15 @@ build-backend = "setuptools.build_meta"
 name = "dream"
 requires-python = ">=3.10"
 license = "LGPL-2.1"
+license-files = ["LICENSE"]
 readme = "README.md"
-dynamic = ["version"]
 authors = [
   {name = "Philip Lederer", email = "philip.lederer@uni-hamburg.de"},
   {name = "Jan Ellmenreich", email = "jan.ellmenreich@tuwien.ac.at"},
   {name = "Edmond Shehadi", email = "edmond.shehadi@tuwien.ac.at"},
 ]
 
-dependencies = [
-    "numpy >= 1.26.4",
-    "ngsolve >= 6.2.2501",
-]
+dynamic = ["version", "dependencies", "optional-dependencies"]
 
 [project.urls]
 Repository = "https://github.com/plederer/dream_solver"
@@ -26,9 +23,5 @@ Repository = "https://github.com/plederer/dream_solver"
 where = ["."] 
 include = ["dream*"]
 
-[project.optional-dependencies]
-pandas = ["pandas>=2.2.2"]
-
 [tool.setuptools.dynamic]
 version = {attr = "dream.__version__"}
-readme = {file = ["README.rst", "USAGE.rst"]}

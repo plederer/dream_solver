@@ -1,3 +1,4 @@
+""" Compressible flow solver configuration """
 from __future__ import annotations
 
 import logging
@@ -7,15 +8,14 @@ from dream import bla
 from dream.config import dream_configuration, equation
 from dream.mesh import (BoundaryConditions, DomainConditions)
 from dream.solver import SolverConfiguration
-from dream.time import TimeConfig
+from dream.time import TransientRoutine
 
 from .eos import IdealGas, EquationOfState
 from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
 from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
 from .config import flowfields, BCS, DCS, CompressibleFiniteElementMethod
-from .formulations import ConservativeFiniteElementMethod
-from .time import CompressibleTransient, CompressiblePseudoTimeStepping 
+from .conservative import ConservativeFiniteElementMethod
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         self._prandtl_number = ngs.Parameter(0.72)
 
         DEFAULT = {
-            "fem": ConservativeFiniteElementMethod(mesh, self),
-            "time": CompressibleTransient(mesh, self),
+            "time": TransientRoutine(mesh, self),
             "equation_of_state": IdealGas(mesh, self),
             "dynamic_viscosity": Inviscid(mesh, self),
             "scaling": Aerodynamic(mesh, self),
@@ -44,7 +43,6 @@ class CompressibleFlowSolver(SolverConfiguration):
             "prandtl_number": 0.72,
         }
         DEFAULT.update(default)
-        
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
 
     @dream_configuration
@@ -56,25 +54,10 @@ class CompressibleFlowSolver(SolverConfiguration):
         """
         return self._fem
 
-
     @fem.setter
     def fem(self, fem):
         OPTIONS = [ConservativeFiniteElementMethod]
         self._fem = self._get_configuration_option(fem, OPTIONS, CompressibleFiniteElementMethod)
-
-    @dream_configuration
-    def time(self) -> CompressibleTransient | CompressiblePseudoTimeStepping:
-        r""" Sets the time configuration for the compressible flow solver. 
-
-            :getter: Returns the time configuration
-            :setter: Sets the time configuration, defaults to CompressibleTransientConfig
-        """
-        return self._time
-    
-    @time.setter
-    def time(self, time: TimeConfig):
-        OPTIONS = [CompressibleTransient, CompressiblePseudoTimeStepping]
-        self._time = self._get_configuration_option(time, OPTIONS, TimeConfig)
 
     @dream_configuration
     def mach_number(self) -> ngs.Parameter:
@@ -83,8 +66,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Ma_\infty = \frac{|\bm{u}_\infty|}{c_\infty}
 
-            :setter: Sets the Mach number, defaults to 0.3
             :getter: Returns the Mach number
+            :setter: Sets the Mach number, defaults to 0.3
         """
         return self._mach_number
 
@@ -102,8 +85,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Re_\infty = \frac{\rho_\infty |\bm{u}_\infty| L}{\mu_\infty}
 
-            :setter: Sets the Reynolds number, defaults to 150
             :getter: Returns the Reynolds number
+            :setter: Sets the Reynolds number, defaults to 150
         """
         return self._reynolds_number
 
@@ -120,8 +103,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Pr_\infty = \frac{c_p \mu_\infty}{k_\infty}
 
-            :setter: Sets the Prandtl number, defaults to 0.72
             :getter: Returns the Prandtl number
+            :setter: Sets the Prandtl number, defaults to 0.72
         """
         return self._prandtl_number
 

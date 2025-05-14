@@ -1,3 +1,4 @@
+""" Definitions of dimensionless compressible flow equations """
 from __future__ import annotations
 import typing
 import ngsolve as ngs

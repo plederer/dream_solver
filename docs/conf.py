@@ -20,10 +20,10 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc', "myst_parser", 'sphinx_rtd_theme']
+extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc','sphinx.ext.autosummary', "myst_parser", 'sphinx_rtd_theme', 'sphinx_design']
 
 templates_path = ['_templates']
-exclude_patterns = ['build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', 'contents', 'hdg']
 
 add_module_names = False
 autodoc_member_order = 'bysource'
@@ -51,11 +51,7 @@ mathjax3_config = {
             "sym": ["{{\\rm sym} (#1) }", 1],
             "skw": ["{{\\rm skw} (#1) }", 1],
             "vec": ["{\\bm{#1}}", 1],
-            "mat": ["{#1}", 1],
-            "pdt": ["{\\frac{\\partial #1}{\\partial t}}", 1],
-            "pdx":["{\\frac{\\partial #1}{\\partial x}}", 1],
-            "pdy":["{\\frac{\\partial #1}{\\partial y}}", 1],
-            "pdz":["{\\frac{\\partial #1}{\\partial z}}", 1],
+            "mat": ["{\\bm{#1}}", 1],
         }
     }
 }
