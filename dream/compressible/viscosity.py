@@ -1,3 +1,4 @@
+""" Definitions of viscous constitutive relations for compressible flow """
 from __future__ import annotations
 import typing
 

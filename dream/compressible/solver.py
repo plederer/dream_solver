@@ -1,3 +1,4 @@
+""" Compressible flow solver configuration """
 from __future__ import annotations
 
 import logging

@@ -1,3 +1,4 @@
+""" Definitions of riemann solvers for compressible flow """
 from __future__ import annotations
 import typing
 import ngsolve as ngs
@@ -22,6 +23,7 @@ class RiemannSolver(Configuration, is_interface=True):
 
 
 class Upwind(RiemannSolver):
+    """ Upwind scheme for the convective flux. """
 
     name = "upwind"
 
@@ -39,7 +41,7 @@ class Upwind(RiemannSolver):
 
 
 class LaxFriedrich(RiemannSolver):
-
+    """ Lax-Friedrich scheme for the convective flux. """
     name = "lax_friedrich"
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
@@ -92,6 +94,7 @@ class LaxFriedrich(RiemannSolver):
 
 
 class Roe(RiemannSolver):
+    """ Roe scheme for the convective flux. """
 
     name = "roe"
 
@@ -115,6 +118,7 @@ class Roe(RiemannSolver):
 
 
 class HLL(RiemannSolver):
+    """ HLL scheme for the convective flux. """
 
     name = "hll"
 
@@ -143,6 +147,7 @@ class HLL(RiemannSolver):
 
 
 class HLLEM(RiemannSolver):
+    """ HLLEM scheme for the convective flux. """
 
     name = "hllem"
 

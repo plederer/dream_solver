@@ -1,3 +1,4 @@
+""" Definitions of equation of states for compressible flow """
 from __future__ import annotations
 
 import logging
