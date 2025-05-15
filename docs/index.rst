@@ -28,4 +28,5 @@ This code is funded by the Austrian-Science fund `FWF
 Developed at:
 
 * (2022 - ) TU Wien, Institute of Analysis and Scientific Computing
-* (2023 - ) University of Twente, Department of Applied Mathematics
+* (2023 - 2024) University of Twente, Department of Applied Mathematics
+* (2024 - ) University of Hamburg, Department of Mathematics

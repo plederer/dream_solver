@@ -3,6 +3,7 @@ import sys
 sys.path.append(os.path.abspath('../'))
 sys.path.append(os.path.abspath('.'))
 
+import sphinx_rtd_theme
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -20,15 +21,25 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc','sphinx.ext.autosummary', "myst_parser", 'sphinx_rtd_theme', 'sphinx_design']
+# extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc', "myst_parser", 'sphinx_rtd_theme', 'nbsphinx']
+
+extensions = ["sphinx.ext.autodoc","sphinx.ext.mathjax","sphinx.ext.todo", "sphinxcontrib.jquery",
+              "IPython.sphinxext.ipython_console_highlighting", "IPython.sphinxext.ipython_directive",
+              "nbsphinx", "myst_parser", 'sphinx.ext.autosummary', 'sphinx_design']
 
 templates_path = ['_templates']
-exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', 'contents', 'hdg']
+exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints"]
 
 add_module_names = False
 autodoc_member_order = 'bysource'
 highlight_language = 'python3'
-pygments_style = "default"
+pygments_style = "sphinx"
+
+
+
+# html_static_path = [os.path.abspath('.') + '/_static']
+
+html_js_files = ['webgui.js', 'webgui_jupyter_widgets.js']
 
 mathjax3_config = {
     # "loader": {"load": ['[tex]/color']},
@@ -62,6 +73,46 @@ suppress_warnings = ["myst.header"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+# nbsphinx_execute = 'always'
+
+
+html_static_path = ['_static']
+
+nbsphinx_timeout = 600
+html_sourcelink_suffix = ''
+nbsphinx_allow_errors = False
+
+# bsphinx_prolog = r"""
+# {% set docname = env.doc2path(env.docname, base='').replace('i-tutorials/', '') %}
+
+# .. raw:: html
+
+#     <style>
+#         .p-Widget {
+#             height: 400px;
+#         }
+#         .dg.main {
+#             margin-left: 0px;
+#         }
+#         div.p-Widget div div div div.dg ul li {
+#             list-style: none;
+#             margin-left: 0px;
+#         }
+#         div.p-Widget div div div div.dg ul li div.dg {
+#             margin-bottom: 0px;
+#         }
+#     </style>
+
+# .. only:: html
+#     .. role:: raw-html(raw)
+#         :format: html
+
+#     .. nbinfo::
+
+#         This page was generated from `{{ docname }}`__.
+
+#     __ ../../jupyter-files/{{docname}}
+# """
 
 html_theme = 'sphinx_rtd_theme'
 html_theme_options = {
@@ -80,17 +131,13 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False,
 }
-html_static_path = ['_static']
+
+def setup(app):
+    app.add_css_file("custom.css")
+
+# html_static_path = ['_static']
 
 rst_prolog ="""
 .. role:: py(code)
   :language: python3
 """
-
-# def test_autodoc_process_bases(app, what, name, obj, options, signature, return_annotation):
-#     if isinstance(obj, configuration):
-#         options['show_inheritance'] = True
-#         return (f"{signature}", return_annotation)
-
-# def setup(app):
-#     app.connect("autodoc-process-signature", test_autodoc_process_bases)
