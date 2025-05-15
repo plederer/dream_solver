@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Exit script on error
+set -e
+
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+
+echo "Cleaning Jupyter notebook outputs in examples/..."
+find ./examples -name "*.ipynb" -exec jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace {} \;
+
+# Set environment variables
+export NETGEN_DOCUMENTATION_RST_FORMAT=1
+export NETGEN_DOCUMENTATION_OUT_DIR="$PWD/../.docu_build"
+export NETGEN_DOCUMENTATION_SRC_DIR="$PWD"
+
+# Create output directory
+mkdir -p "$NETGEN_DOCUMENTATION_OUT_DIR"
+
+# Run sphinx-build
+echo "Running sphinx-build..."
+sphinx-build -a ./ "$NETGEN_DOCUMENTATION_OUT_DIR"
+
+# Switch to docu_page branch
+cd ..
+echo "Switching to branch docu_page..."
+git switch docu_page
+
+# Copy built documentation into repo root
+echo "Copying documentation into root..."
+cp -r .docu_build/* .
+
+# Delete the docu_build directory
+echo "Cleaning up temporary build directory..."
+rm -rf ./docu_build
+
+# Copying Widgets
+python3 -m webgui_jupyter_widgets.js ./_static
+
+# Add and commit all files
+git add .
+git commit -m "Update documentation"
+
+# Switch back to main branch
+echo "Switching back to branch $current_branch"
+git switch "$current_branch"
+
+echo "Done."
