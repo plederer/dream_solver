@@ -1,16 +1,17 @@
+""" Definitions of viscous constitutive relations for compressible flow """
 from __future__ import annotations
 import typing
 
-from dream.config import InterfaceConfiguration, configuration
+from dream.config import Configuration, dream_configuration
 from dream.compressible.config import flowfields
 
 if typing.TYPE_CHECKING:
     from .solver import CompressibleFlowSolver
 
 
-class DynamicViscosity(InterfaceConfiguration, is_interface=True):
+class DynamicViscosity(Configuration, is_interface=True):
 
-    cfg: CompressibleFlowSolver
+    root: CompressibleFlowSolver
 
     @property
     def is_inviscid(self) -> bool:
@@ -23,7 +24,6 @@ class DynamicViscosity(InterfaceConfiguration, is_interface=True):
 class Inviscid(DynamicViscosity):
 
     name: str = "inviscid"
-    aliases = ('euler', )
 
     def viscosity(self, U: flowfields):
         raise TypeError("Inviscid Setting! Dynamic Viscosity not defined!")
@@ -41,22 +41,39 @@ class Sutherland(DynamicViscosity):
 
     name: str = "sutherland"
 
-    @configuration(default=110.4)
-    def measurement_temperature(self, value: float) -> float:
-        return value
+    def __init__(self, mesh, root=None, **default):
 
-    @configuration(default=1.716e-5)
-    def measurement_viscosity(self, value: float) -> float:
-        return value
+        DEFAULT = {
+            "measurement_temperature": 110.4,
+            "measurement_viscosity": 1.716e-5,
+        }
+
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def measurement_temperature(self) -> float:
+        return self._measurement_temperature
+
+    @measurement_temperature.setter
+    def measurement_temperature(self, value: float) -> None:
+        self._measurement_temperature = value
+
+    @dream_configuration
+    def measurement_viscosity(self) -> float:
+        return self._measurement_viscosity
+
+    @measurement_viscosity.setter
+    def measurement_viscosity(self, value: float) -> None:
+        self._measurement_viscosity = value
 
     def viscosity(self, U: flowfields):
 
         if U.T is not None:
 
-            INF = flowfields(rho=self.cfg.scaling.density(), c=self.cfg.scaling.speed_of_sound(self.cfg.mach_number))
-            INF.T = self.cfg.temperature(INF)
+            INF = flowfields(rho=self.root.scaling.density(), c=self.root.scaling.speed_of_sound(self.root.mach_number))
+            INF.T = self.root.temperature(INF)
 
-            T0 = self.measurement_temperature/self.cfg.scaling.dimensionful_values.T * INF.T
+            T0 = self.measurement_temperature/self.root.scaling.dimensionful_values.T * INF.T
 
             return (U.T/INF.T)**(3/2) * (INF.T + T0)/(U.T + T0)
-

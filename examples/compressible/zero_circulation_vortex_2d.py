@@ -15,6 +15,11 @@ mesh = Mesh(OCCGeometry(face, dim=2).GenerateMesh(maxh=0.1))
 
 # ------- Set Configuration ------- #
 cfg = CompressibleFlowSolver(mesh)
+
+cfg.time = "transient"
+cfg.time.timer.interval = (0, 200)
+cfg.time.timer.step = 0.01
+
 cfg.dynamic_viscosity = "inviscid"
 # cfg.dynamic_viscosity = "constant"
 cfg.equation_of_state = "ideal"
@@ -26,15 +31,12 @@ cfg.prandtl_number = 0.72
 cfg.riemann_solver = "upwind"
 
 cfg.fem = "conservative"
-cfg.fem.order = 4
 cfg.fem.method = "hdg"
+cfg.fem.scheme = "bdf2"
+cfg.fem.order = 4
 cfg.fem.mixed_method = "inactive"
 # cfg.fem.mixed_method = "strain_heat"
 
-cfg.time = "transient"
-cfg.time.scheme = "bdf2"
-cfg.time.timer.interval = (0, 200)
-cfg.time.timer.step = 0.01
 
 cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
@@ -44,7 +46,8 @@ cfg.nonlinear_solver.convergence_criterion = 1e-10
 
 cfg.optimizations.static_condensation = True
 cfg.optimizations.compile.realcompile = False
-cfg.optimizations.bonus_int_order = {'vol': 4, 'bnd': 4}
+cfg.optimizations.bonus_int_order.vol = 4
+cfg.optimizations.bonus_int_order.bnd = 4
 
 # ------- Setup Boundary Conditions and Domain Conditions ------- #
 Uinf = cfg.get_farfield_state((1, 0))
@@ -78,7 +81,7 @@ cfg.dcs['default'] = initial
 cfg.initialize()
 
 # ------- Setup Outputs ------- #
-drawing = cfg.get_fields(p=True)
+drawing = cfg.fem.get_fields('p', default=False)
 drawing['p*'] = (drawing.p - Uinf.p)/(p_00 - Uinf.p)
 cfg.io.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
 

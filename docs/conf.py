@@ -25,7 +25,7 @@ release = '0.1'
 
 extensions = ["sphinx.ext.autodoc","sphinx.ext.mathjax","sphinx.ext.todo", "sphinxcontrib.jquery",
               "IPython.sphinxext.ipython_console_highlighting", "IPython.sphinxext.ipython_directive",
-              "nbsphinx", "myst_parser"]
+              "nbsphinx", "myst_parser", 'sphinx.ext.autosummary', 'sphinx_design']
 
 templates_path = ['_templates']
 exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints"]
@@ -62,11 +62,7 @@ mathjax3_config = {
             "sym": ["{{\\rm sym} (#1) }", 1],
             "skw": ["{{\\rm skw} (#1) }", 1],
             "vec": ["{\\bm{#1}}", 1],
-            "mat": ["{#1}", 1],
-            "pdt": ["{\\frac{\\partial #1}{\\partial t}}", 1],
-            "pdx":["{\\frac{\\partial #1}{\\partial x}}", 1],
-            "pdy":["{\\frac{\\partial #1}{\\partial y}}", 1],
-            "pdz":["{\\frac{\\partial #1}{\\partial z}}", 1],
+            "mat": ["{\\bm{#1}}", 1],
         }
     }
 }

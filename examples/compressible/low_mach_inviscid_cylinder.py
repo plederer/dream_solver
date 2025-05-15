@@ -20,6 +20,7 @@ Literature:
 from ngsolve import *
 from dream.mesh import get_cylinder_omesh
 from dream.compressible import CompressibleFlowSolver, InviscidWall, FarField, Initial, flowfields
+from dream.io import PointSensor
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)
@@ -31,21 +32,23 @@ mesh = get_cylinder_omesh(ri, ro, 28, 12, geom=1.8)
 
 # ------- Set Configuration ------- #
 cfg = CompressibleFlowSolver(mesh)
+cfg.time = "pseudo_time_stepping"
+cfg.time.timer.step = 0.001
+cfg.time.max_time_step = 10
+
 cfg.fem = 'conservative'
+cfg.fem.order = 5
+cfg.fem.scheme = "implicit_euler"
+
 cfg.scaling = "acoustic"
 cfg.riemann_solver = "hllem"
 cfg.mach_number = 0.001
 cfg.equation_of_state.heat_capacity_ratio = 1.4
-cfg.fem.order = 5
 
 cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
 cfg.nonlinear_solver.max_iterations = 300
 cfg.nonlinear_solver.convergence_criterion = 1e-12
-
-cfg.time = "pseudo_time_stepping"
-cfg.time.timer.step = 0.001
-cfg.time.max_time_step = 10
 
 cfg.optimizations.static_condensation = True
 
@@ -62,13 +65,11 @@ cfg.dcs['default'] = Initial(fields=Uinf)
 cfg.initialize()
 
 # ------- Setup Outputs ------- #
-fields = cfg.get_fields()
+fields = cfg.fem.get_fields()
 cfg.io.draw(fields, autoscale=False, min=-1e-4, max=1e-4)
 
-cfg.io.sensor = True
-cfg.io.sensor.point = "pressure_coefficient"
-cfg.io.sensor.point["pressure_coefficient"].points = 'cylinder'
-cfg.io.sensor.point["pressure_coefficient"].fields = flowfields(c_p=cfg.pressure_coefficient(fields, Uinf))
+c_p = flowfields(c_p=cfg.pressure_coefficient(fields, Uinf))
+cfg.io.sensor.add(PointSensor.from_boundary(c_p, mesh, 'cylinder', name='pressure_coefficient'))
 
 # ------- Solve System ------- #
 with TaskManager():

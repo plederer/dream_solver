@@ -7,14 +7,7 @@ from pathlib import Path
 
 import ngsolve as ngs
 import dream.bla as bla
-from dream.config import (InterfaceConfiguration,
-                          UniqueConfiguration,
-                          configuration,
-                          CONFIG,
-                          interface,
-                          configuration,
-                          ngsdict,
-                          is_notebook)
+from dream.config import dream_configuration, Configuration, ngsdict, is_notebook
 from dream.mesh import get_pattern_from_sequence, get_regions_from_pattern
 from dream._version import acknowledgements, header
 
@@ -24,137 +17,51 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class path(configuration):
-
-    def __init__(self, default, fset=None, fget=None, doc: str | None = None):
-        super().__init__(default, fset, fget, doc)
-
-    def __set__(self, cfg: CONFIG, path: str | None | Path) -> None:
-
-        if self.fset is not None:
-            path = self.fset(cfg, path)
-
-        if path is None:
-            path = Path.cwd()
-        elif isinstance(path, str):
-            path = Path(path)
-
-        old = cfg.data.get(self.__name__, None)
-
-        # Set new path
-        if path.is_absolute():
-            cfg.data[self.__name__] = path
-            return
-        elif hasattr(cfg, 'root'):
-            cfg.data[self.__name__] = cfg.root.joinpath(path)
-        else:
-            raise ValueError(f"Path '{path}' is not absolute or {cfg} has no 'root' path!")
-
-        # Update all paths containing the old path
-        if old is not None:
-
-            for key, path in cfg.data.items():
-                if path == cfg.data[self.__name__]:
-                    continue
-                elif isinstance(path, Path) and path.is_relative_to(old):
-                    name = path.name
-                    parent = path.parent
-                    while parent != old:
-                        name = Path(parent.name).joinpath(name)
-                        parent = parent.parent
-                    cfg.data[key] = cfg.data[self.__name__].joinpath(name)
+def get_directory_paths(path: Path, pattern: str = "") -> tuple[Path, ...]:
+    return tuple(dir for dir in path.glob(pattern + "*") if dir.is_dir())
 
 
-class stream(configuration):
-
-    def __set__(self, cfg: CONFIG, stream: bool) -> None:
-
-        if isinstance(stream, str) and stream == self.__name__:
-            stream = True
-
-        if not isinstance(stream, bool):
-            raise ValueError(f"Pass boolean to activate/deactivate handler")
-
-        if stream:
-            cfg.data[self.__name__] = self.fset(cfg, stream)
-        elif not stream and self.__name__ in cfg.data:
-            del cfg.data[self.__name__]
-
-    def __get__(self, cfg: CONFIG | None, owner: type[CONFIG]):
-        if self.__name__ not in cfg.data:
-            logger.warning(f"Handler '{self.__name__}' is not activated!")
-            return Stream()
-
-        return super().__get__(cfg, owner)
+def get_directory_names(path: Path, pattern: str = "") -> tuple[str, ...]:
+    return tuple(dir.name for dir in path.glob(pattern + "*") if dir.is_dir())
 
 
-class sensor(configuration):
-    def __set__(self, cfg: SensorStream, name: str) -> None:
+class Stream(Configuration, is_interface=True):
 
-        if self.__name__ not in cfg.data:
-            cfg.data[self.__name__] = {}
+    root: SolverConfiguration
 
-        sensor = self.fset(cfg, name)
-        if isinstance(sensor, Sensor):
-            cfg.data[self.__name__][sensor.sensor_name] = sensor
+    def __init__(self, mesh, root=None, **default):
 
+        DEFAULT = {"filename": None, "path": Path.cwd()}
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
 
-class IOFolders(InterfaceConfiguration, is_interface=True):
+    @dream_configuration
+    def filename(self) -> str:
+        return self._filename
 
-    @path(default=None)
-    def root(self, path):
-        return path
-
-    @path(default='states')
-    def states(self, path):
-        return path
-
-    @path(default='vtk')
-    def vtk(self, path):
-        return path
-
-    @path(default='cfg')
-    def settings(self, path):
-        return path
-
-    @path(default='sensors')
-    def sensors(self, path):
-        return path
-
-    def get_directory_paths(self, pattern: str = "") -> tuple[Path, ...]:
-        return tuple(dir for dir in self.root.glob(pattern + "*") if dir.is_dir())
-
-    def get_directory_names(self, pattern: str = "") -> tuple[str, ...]:
-        return tuple(dir.name for dir in self.root.glob(pattern + "*") if dir.is_dir())
-
-    root: Path
-    states: Path
-    vtk: Path
-    settings: Path
-    sensors: Path
-
-
-class SingleFolders(IOFolders):
-
-    name: str = 'single'
-
-
-class BenchmarkFolders(IOFolders):
-
-    name: str = 'benchmark'
-
-
-class Stream(InterfaceConfiguration, is_interface=True):
-
-    cfg: SolverConfiguration
-
-    @configuration(default=None)
-    def filename(self, filename: str):
+    @filename.setter
+    def filename(self, filename: str | None):
         if filename is None:
             filename = self.name
-        return filename
+        self._filename = filename
+
+    @dream_configuration
+    def path(self) -> Path:
+        return self._path
+
+    @path.setter
+    def path(self, path: str | Path):
+        if isinstance(path, str):
+            path = Path(path)
+        if not path.is_absolute():
+            path = self.root.io.path.joinpath(path)
+        self._path = path
 
     def open(self) -> Stream:
+
+        if not self.path.exists():
+            self.path.mkdir(parents=True, exist_ok=True)
+
         return self
 
     def save_pre_time_routine(self) -> None:
@@ -174,14 +81,8 @@ class MeshStream(Stream):
 
     name: str = "mesh"
 
-    @property
-    def path(self) -> Path:
-        path = self.cfg.io.folders.root
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-        return path
-
     def save_pre_time_routine(self) -> None:
+
         path = self.path.joinpath(self.filename + ".pickle")
 
         with path.open("wb") as open:
@@ -197,26 +98,43 @@ class SettingsStream(Stream):
 
     name: str = "settings"
 
-    @configuration(default=True)
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            "pickle": True,
+            "txt": True,
+            "yaml": False,
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def pickle(self) -> bool:
+        return self._pickle
+
+    @pickle.setter
     def pickle(self, pickle: bool):
-        return bool(pickle)
+        self._pickle = bool(pickle)
 
-    @configuration(default=True)
+    @dream_configuration
+    def txt(self) -> bool:
+        return self._txt
+
+    @txt.setter
     def txt(self, txt: bool):
-        return bool(txt)
+        self._txt = bool(txt)
 
-    @configuration(default=False)
+    @dream_configuration
+    def yaml(self) -> bool:
+        return self._yaml
+
+    @yaml.setter
     def yaml(self, yaml: bool):
-        return bool(yaml)
-
-    @property
-    def path(self) -> Path:
-        path = self.cfg.io.folders.settings
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-        return path
+        self._yaml = bool(yaml)
 
     def save_pre_time_routine(self):
+
         if self.pickle:
             self.save_to_pickle()
         if self.txt:
@@ -230,8 +148,9 @@ class SettingsStream(Stream):
             filename = self.filename
 
         path = self.path.joinpath(filename + ".pickle")
+
         with path.open("wb") as open:
-            pickle.dump(self.cfg.to_tree(), open, protocol=pickle.DEFAULT_PROTOCOL)
+            pickle.dump(self.root.to_dict(), open, protocol=pickle.DEFAULT_PROTOCOL)
 
     def save_to_txt(self, filename: str | None = None) -> None:
 
@@ -242,9 +161,9 @@ class SettingsStream(Stream):
 
         with path.open("w") as open:
             txt = [acknowledgements(), ""]
-            if hasattr(self.cfg, 'doc'):
-                txt += [header("Documentation"), self.cfg.doc, ""]
-            txt += [header("Configuration"), repr(self.cfg), ""]
+            if hasattr(self.root, 'doc'):
+                txt += [header("Documentation"), self.root.doc, ""]
+            txt += [header("Configuration"), repr(self.root), ""]
 
             open.write("\n".join(txt))
 
@@ -260,7 +179,7 @@ class SettingsStream(Stream):
 
         path = self.path.joinpath(filename + ".yaml")
         with path.open("w") as open:
-            yaml.dump(self.cfg.to_tree(), open, sort_keys=False)
+            yaml.dump(self.root.to_dict(), open, sort_keys=False)
 
     def load_from_pickle(self, filename: str | None = None) -> dict:
 
@@ -272,60 +191,79 @@ class SettingsStream(Stream):
         with path.open("rb") as open:
             return pickle.load(open)
 
-    pickle: bool
-    txt: bool
-    yaml: bool
-
 
 class VTKStream(Stream):
 
     name: str = "vtk"
 
-    @configuration(default=1)
-    def rate(self, i: int):
-        i = int(i)
-        if i <= 0:
-            raise ValueError("Saving frequency must be greater than 0, otherwise consider deactivating the vtk writer!")
-        return i
+    def __init__(self, mesh, root=None, **default):
+        DEFAULT = {
+            "rate": 1,
+            "subdivision": 2,
+            "region": None,
+            "fields": {},
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
 
-    @configuration(default=2)
+    @dream_configuration
+    def rate(self) -> int:
+        return self._rate
+
+    @rate.setter
+    def rate(self, rate: int):
+        rate = int(rate)
+        if rate <= 0:
+            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the vtk writer!")
+        self._rate = rate
+
+    @dream_configuration
+    def subdivision(self) -> int:
+        return self._subdivision
+
+    @subdivision.setter
     def subdivision(self, subdivision: int):
-        return subdivision
+        subdivision = int(subdivision)
+        if subdivision <= 0:
+            raise ValueError("Subdivision must be greater than 0!")
+        self._subdivision = subdivision
 
-    @configuration(default=None)
-    def region(self, region):
-        return region
+    @dream_configuration
+    def region(self) -> str:
+        return self._region
 
-    @configuration(default=None)
+    @region.setter
+    def region(self, region: str):
+        if region is not None and not isinstance(region, str):
+            raise ValueError("Region must be a string!")
+        self._region = region
+
+    @dream_configuration
+    def fields(self) -> dict[str, ngs.CF]:
+        return self._fields
+
+    @fields.setter
     def fields(self, fields: dict[str, ngs.CF]):
-        if fields is None:
-            fields = {}
-        return ngsdict(**fields)
-
-    @property
-    def path(self) -> Path:
-        path = self.cfg.io.folders.vtk
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-        return path
+        self._fields = ngsdict(**fields)
 
     def open(self) -> VTKStream:
 
         if not self.fields:
-            raise ValueError("No fields to save!")
+            logger.warning("No fields to save! VTK stream is deactivated!")
+            return None
 
         self.drawelems = None
         if self.region is not None:
             self.drawelems = ngs.BitArray(self.mesh.ne)
             self.drawelems.Clear()
-            for el in self.cfg.mesh.Materials(self.region).Elements():
+            for el in self.root.mesh.Materials(self.region).Elements():
                 self.drawelems[el.nr] = True
 
         path = self.path.joinpath(self.filename)
-        self.writer = ngs.VTKOutput(ma=self.cfg.mesh, coefs=list(self.fields.values()), names=list(
+        self.writer = ngs.VTKOutput(ma=self.root.mesh, coefs=list(self.fields.values()), names=list(
             self.fields.keys()), filename=str(path), subdivision=self.subdivision)
 
-        return self
+        return super().open()
 
     def save_pre_time_routine(self, t: float | None = None) -> None:
         if t is None:
@@ -345,37 +283,40 @@ class VTKStream(Stream):
     def close(self) -> None:
         del self.writer
 
-    rate: int
-    subdivision: int
-    region: str
-    fields: ngsdict
-
 
 class GridfunctionStream(Stream):
 
     name = "gfu"
 
-    @configuration(default=1)
-    def rate(self, i: int):
-        i = int(i)
-        if i <= 0:
-            raise ValueError(
-                "Saving/loading rate must be greater than 0, otherwise consider deactivating the statestream!")
-        return i
+    def __init__(self, mesh, root=None, **default):
+        DEFAULT = {
+            "rate": 1,
+            "time_level_rate": 100,
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
 
-    @configuration(default=100)
-    def time_level_rate(self, i: int):
-        i = int(i)
-        if i <= 0:
-            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the statestream!")
-        return i
+    @dream_configuration
+    def rate(self) -> int:
+        return self._rate
 
-    @property
-    def path(self) -> Path:
-        path = self.cfg.io.folders.states
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-        return path
+    @rate.setter
+    def rate(self, rate: int):
+        rate = int(rate)
+        if rate <= 0:
+            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the gfu writer!")
+        self._rate = rate
+
+    @dream_configuration
+    def time_level_rate(self) -> int:
+        return self._time_level_rate
+
+    @time_level_rate.setter
+    def time_level_rate(self, time_level_rate: int):
+        time_level_rate = int(time_level_rate)
+        if time_level_rate <= 0:
+            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the gfu writer!")
+        self._time_level_rate = time_level_rate
 
     def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
@@ -392,20 +333,20 @@ class GridfunctionStream(Stream):
         if t is not None:
             filename = f"{filename}_{t}"
 
-        self.load_gridfunction(self.cfg.gfu, filename)
+        self.load_gridfunction(self.root.fem.gfu, filename)
 
     def load_transient_routine(self, sleep: float = 0) -> typing.Generator[float, None, None]:
 
-        if self.cfg.time.is_stationary:
+        if self.root.time.is_stationary:
             raise ValueError("Transient routine is not available in stationary mode!")
 
         import time
 
         logger.info(f"Loading gridfunction from '{self.filename}'")
-        for t in self.cfg.time.timer.start(stride=self.rate):
+        for t in self.root.time.timer.start(stride=self.rate):
             self.load_routine(t)
 
-            self.cfg.io.redraw()
+            self.root.io.redraw()
             logger.info(f"file: {self.filename} | t: {t}")
 
             yield t
@@ -414,10 +355,10 @@ class GridfunctionStream(Stream):
 
     def load_time_levels(self, t: float) -> None:
 
-        if self.cfg.time.is_stationary:
+        if self.root.time.is_stationary:
             raise ValueError("Load time levels is not available in stationary mode!")
 
-        for fes, gfu in self.cfg.time.scheme.gfus.items():
+        for fes, gfu in self.root.fem.scheme.gfus.items():
 
             for level, gfu in gfu.items():
 
@@ -431,12 +372,12 @@ class GridfunctionStream(Stream):
 
             if it % self.time_level_rate == 0:
 
-                for fes, gfus in self.cfg.time.scheme.gfus.items():
+                for fes, gfus in self.root.fem.scheme.gfus.items():
                     for level, gfu in gfus.items():
                         self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
 
         if it % self.rate == 0:
-            self.save_gridfunction(self.cfg.gfu, filename)
+            self.save_gridfunction(self.root.fem.gfu, filename)
 
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
@@ -454,130 +395,152 @@ class GridfunctionStream(Stream):
         if t is None or not it % self.rate == 0:
             self.save_in_time_routine(t, it=0)
 
-    rate: int
-    time_level_rate: int
-
 
 class LogStream(Stream):
 
     name: str = "dream"
 
-    def __init__(self, cfg=None, mesh=None, **kwargs):
+    def __init__(self, mesh, root=None, **default):
+
         self.logger = logging.getLogger('dream')
-        super().__init__(cfg=cfg, mesh=mesh, **kwargs)
 
-    @configuration(default=logging.INFO)
-    def level(self, level: int):
+        DEFAULT = {
+            "level": logging.INFO,
+            "to_terminal": True,
+            "to_file": False,
+        }
+        DEFAULT.update(default)
 
-        if isinstance(level, int):
-            level = logging.getLevelName(level)
+        super().__init__(mesh, root, **DEFAULT)
 
-        self.logger.setLevel(level)
+    def _get_handler(self, name: str) -> logging.Handler:
+        for handler in self.logger.handlers:
+            if handler.get_name() == name:
+                return handler
+        return False
 
-        if level == 'DEBUG':
-            self.formatter = logging.Formatter(
+    def _get_formatter(self) -> logging.Formatter:
+
+        if self.level == logging.DEBUG:
+            return logging.Formatter(
                 "%(name)-15s (%(levelname)8s) | %(message)s (%(filename)s:%(lineno)s)", "%Y-%m-%d %H:%M:%S")
         else:
-            self.formatter = logging.Formatter("%(name)-15s (%(levelname)s) | %(message)s")
+            return logging.Formatter("%(name)-15s (%(levelname)s) | %(message)s")
 
-        return level
+    @dream_configuration
+    def level(self) -> int:
+        return self.logger.level
 
-    @configuration(default=True)
+    @level.setter
+    def level(self, level: int | str):
+        self.logger.setLevel(level)
+
+    @dream_configuration
+    def to_terminal(self) -> bool:
+        return self._to_terminal
+
+    @to_terminal.setter
     def to_terminal(self, to_terminal: bool):
 
-        if hasattr(self, 'terminal_handler'):
-            self.logger.removeHandler(self.terminal_handler)
+        handler = self._get_handler("terminal")
 
-        if to_terminal:
-            self.terminal_handler = logging.StreamHandler()
-            self.terminal_handler.setFormatter(self.formatter)
-            self.logger.addHandler(self.terminal_handler)
+        if to_terminal and not handler:
+            handler = logging.StreamHandler()
+            handler.set_name("terminal")
+            handler.setFormatter(self._get_formatter())
+            self.logger.addHandler(handler)
 
-        return to_terminal
+        elif to_terminal and handler:
+            handler.setFormatter(self._get_formatter())
 
-    @configuration(default=False)
+        elif not to_terminal and handler:
+            self.logger.removeHandler(handler)
+
+        self._to_terminal = to_terminal
+
+    @dream_configuration
+    def to_file(self) -> bool:
+        return self._to_file
+
+    @to_file.setter
     def to_file(self, to_file: bool):
 
-        if hasattr(self, 'file_handler'):
-            self.logger.removeHandler(self.file_handler)
+        handler = self._get_handler("file")
 
-        if to_file:
-            self.file_handler = logging.FileHandler(self.path.joinpath(self.filename + ".log"))
-            self.file_handler.setFormatter(self.formatter)
-            self.logger.addHandler(self.file_handler)
+        if to_file and not handler:
 
-        return to_file
+            if not self.path.exists():
+                self.path.mkdir(parents=True, exist_ok=True)
 
-    @property
-    def path(self) -> Path:
-        path = self.cfg.io.folders.root
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-        return path
+            handler = logging.FileHandler(filename=self.path.joinpath(self.filename + ".log"))
+            handler.set_name("file")
+            handler.setFormatter(self._get_formatter())
+            self.logger.addHandler(handler)
 
-    def __del__(self):
-        if hasattr(self, 'terminal_handler'):
-            self.logger.removeHandler(self.terminal_handler)
-        if hasattr(self, 'file_handler'):
-            self.logger.removeHandler(self.file_handler)
+        elif to_file and handler:
+
+            if not self.path.exists():
+                self.path.mkdir(parents=True, exist_ok=True)
+
+            handler.baseFilename = self.path.joinpath(self.filename + ".log")
+            handler.setFormatter(self._get_formatter())
+
+        elif not to_file and handler:
+            self.logger.removeHandler(handler)
+
+        self._to_file = to_file
 
 
 class SensorStream(Stream):
 
     name: str = "sensor"
 
-    @sensor(default=None)
-    def point(self, name: str):
-        if isinstance(name, str):
-            return PointSensor(sensor_name=name)
-        return None
+    def __init__(self, mesh, root=None, **default):
 
-    @sensor(default=None)
-    def domain(self, name: str):
-        if isinstance(name, str):
-            return DomainSensor(sensor_name=name)
-        return None
+        self._sensors: list[Sensor] = []
 
-    @sensor(default=None)
-    def domain_L2(self, name: str):
-        if isinstance(name, str):
-            return DomainL2Sensor(sensor_name=name)
-        return None
+        DEFAULT = {
+            "mode": "w",
+            "to_csv": True,
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
 
-    @sensor(default=None)
-    def boundary(self, name: str):
-        if isinstance(name, str):
-            return BoundarySensor(sensor_name=name)
-        return None
+    @dream_configuration
+    def mode(self) -> str:
+        return self._mode
 
-    @sensor(default=None)
-    def boundary_L2(self, name: str):
-        if isinstance(name, str):
-            return BoundaryL2Sensor(sensor_name=name)
-        return None
-
-    @configuration(default='w')
+    @mode.setter
     def mode(self, mode: str):
-        return mode
+        if mode not in ('w', 'a'):
+            raise ValueError("Mode must be 'w' or 'a'!")
+        self._mode = mode
 
-    @configuration(default=True)
-    def to_csv(self, activate: bool):
-        return activate
+    @dream_configuration
+    def to_csv(self) -> bool:
+        return self._to_csv
 
-    @property
-    def path(self) -> Path:
-        path = self.cfg.io.folders.sensors
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-        return path
+    @to_csv.setter
+    def to_csv(self, to_csv: bool):
+        self._to_csv = bool(to_csv)
+
+    def add(self, sensor: Sensor) -> None:
+        if not isinstance(sensor, Sensor):
+            raise ValueError("Sensor must be of type 'Sensor'!")
+
+        sensor.mesh = self.mesh
+
+        self._sensors.append(sensor)
 
     def open(self) -> SensorStream:
-        self.sensors: tuple[Sensor] = tuple(sensor_ for config in self.get_configurations(sensor)
-                                            for sensor_ in self[config.__name__].values())
 
-        for instance in self.sensors:
-            instance.cfg = self.cfg
-            instance.mesh = self.mesh
+        if not self._sensors:
+            logger.warning("No sensors to save! Sensor stream is deactivated!")
+            return None
+
+        super().open()
+
+        for instance in self._sensors:
             instance.open()
 
         if self.to_csv:
@@ -589,24 +552,25 @@ class SensorStream(Stream):
         import csv
 
         self.csv = {}
-        for sensor in self.sensors:
-            file = self.path.joinpath(sensor.sensor_name + ".csv").open(self.mode)
+        for sensor in self._sensors:
+            file = self.path.joinpath(sensor.name + ".csv").open(self.mode)
             writer = csv.writer(file)
 
             if self.mode == "w":
                 for name, value in self.get_header(sensor).items():
                     writer.writerow([name, *value])
 
-            self.csv[sensor.sensor_name] = (file, writer)
+            self.csv[sensor.name] = (file, writer)
 
     def get_header(self, sensor: Sensor) -> dict[str, list[str]]:
         header = sensor.get_header()
 
         for value in header.values():
             if len(value) != len(header['field']):
+                print(value, header['field'])
                 raise ValueError("Header fields are not consistent!")
 
-        if not self.cfg.time.is_stationary:
+        if not self.root.time.is_stationary:
             header['t'] = [' ']*len(header['field'])
 
         return header
@@ -619,33 +583,33 @@ class SensorStream(Stream):
                 data = [t, *data]
 
             if self.to_csv:
-                self.csv[sensor.sensor_name][1].writerow(data)
+                self.csv[sensor.name][1].writerow(data)
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
         for sensor, data in self.measure():
             if it % sensor.rate == 0:
                 if self.to_csv:
-                    self.csv[sensor.sensor_name][1].writerow([t, *data])
+                    self.csv[sensor.name][1].writerow([t, *data])
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
         for sensor, data in self.measure():
             if t is None:
                 if self.to_csv:
-                    self.csv[sensor.sensor_name][1].writerow(data)
+                    self.csv[sensor.name][1].writerow(data)
             elif not it % sensor.rate == 0:
                 if self.to_csv:
-                    self.csv[sensor.sensor_name][1].writerow([t, *data])
+                    self.csv[sensor.name][1].writerow([t, *data])
 
     def load_as_dataframe(self, sensor: Sensor | str, header: tuple = [0, 1, 2, 3], index_col: int = [0], **pd_kwargs):
         import pandas as pd
 
         if isinstance(sensor, Sensor):
-            sensor = sensor.sensor_name
+            sensor = sensor.name
 
         return pd.read_csv(self.path.joinpath(sensor + ".csv"), header=header, index_col=index_col, **pd_kwargs)
 
     def measure(self) -> typing.Generator[tuple[Sensor, np.ndarray], None, None]:
-        for sensor in self.sensors:
+        for sensor in self._sensors:
             yield sensor, np.concatenate([measurement for measurement in sensor.measure()])
 
     def close(self):
@@ -654,44 +618,22 @@ class SensorStream(Stream):
                 file.close()
             del self.csv
 
-    point: dict[str, PointSensor]
-    domain: dict[str, DomainSensor]
-    domain_L2: dict[str, DomainL2Sensor]
-    boundary: dict[str, BoundarySensor]
-    boundary_L2: dict[str, BoundaryL2Sensor]
-    to_csv: bool
 
+class Sensor:
 
-class Sensor(UniqueConfiguration):
+    def __init__(self, fields: ngsdict,
+                 mesh: ngs.Mesh,
+                 name: str,
+                 rate: int = 1):
 
-    @configuration(default=None)
-    def sensor_name(self, name: str):
-        return name
+        self.fields = ngsdict(**fields)
+        self.mesh = mesh
+        self.name = name
+        self.rate = rate
 
-    @configuration(default=1)
-    def rate(self, i: int):
-        i = int(i)
-        if i <= 0:
-            raise ValueError("Saving frequency must be greater than 0, otherwise consider deactivating the vtk writer!")
-        return i
-
-    @configuration(default=None)
-    def fields(self, fields: dict[str, ngs.CF]):
-        if fields is None:
-            fields = {}
-        return ngsdict(**fields)
-
-    def open(self, fields: dict[str, ngs.CF] | None = None):
-
-        if fields is None:
-            fields = self.fields
-
-        if not fields:
-            raise ValueError("No fields to evaluate!")
-
+    def open(self) -> None:
         # Create single compound field for concurrent evaluation
-        self._fields = fields
-        self._field = ngs.CF(tuple(fields.values()))
+        self._field = ngs.CF(tuple(self.fields.values()))
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         raise NotImplementedError("Method 'evaluate' is not implemented!")
@@ -699,7 +641,7 @@ class Sensor(UniqueConfiguration):
     def get_header(self):
         header = {'field': [], 'component': []}
 
-        for field, cf in self._fields.items():
+        for field, cf in self.fields.items():
             component = self.get_components_name(cf)
             header['field'].extend([field]*cf.dim)
             header['component'].extend(component)
@@ -721,76 +663,62 @@ class Sensor(UniqueConfiguration):
     def close(self):
         del self._field
 
-    sensor_name: str
-    rate: int
-    fields: ngsdict
-
 
 class RegionSensor(Sensor):
 
-    @configuration(default=5)
-    def integration_order(self, order: int):
-        return order
-
-    @configuration(default=None)
-    def regions(self, regions: tuple[str, ...]):
-        return regions
+    def __init__(self, fields, mesh, regions=None, name="region", rate=1, integration_order=5):
+        self.regions = regions
+        self.integration_order = integration_order
+        super().__init__(fields, mesh, name, rate)
 
     def get_header(self):
-        header = {'region': [region for region in self._regions for _ in range(self._field.dim)]}
+        header = {'region': [region for region in self._sensor_regions for _ in range(self._field.dim)]}
         for key, value in super().get_header().items():
-            header[key] = value*len(self._regions)
+            header[key] = value*len(self._sensor_regions)
         return header
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
-        for region in self._regions.values():
+        for region in self._sensor_regions.values():
             yield np.array(ngs.Integrate(self._field, self.mesh, order=self.integration_order, definedon=region))
 
-    def set_regions(self, expected: tuple[str], fregion: typing.Callable[[str], ngs.Region]) -> None:
+    def set_sensor_regions(self, expected: tuple[str], ngs_region: typing.Callable[[str], ngs.Region]) -> None:
 
         if self.regions is None:
-            self._regions = {get_pattern_from_sequence(expected): None}
+            self._sensor_regions = {get_pattern_from_sequence(expected): None}
 
         elif isinstance(self.regions, str):
             regions = get_regions_from_pattern(expected, self.regions)
 
             for miss in set(self.regions.split('|')).difference(regions):
-                logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted in sensor {self.sensor_name}!")
+                logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted in sensor {self.name}!")
 
             self.regions = get_pattern_from_sequence(regions)
-            self._regions = {self.regions: fregion(self.regions)}
+            self._sensor_regions = {self.regions: ngs_region(self.regions)}
 
         elif isinstance(self.regions, typing.Sequence):
             regions = tuple(region for region in self.regions if region in expected)
 
             for miss in set(self.regions).difference(regions):
-                logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted in sensor {self.sensor_name}!")
+                logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted in sensor {self.name}!")
 
             self.regions = regions
-            self._regions = {domain: fregion(domain) for domain in self.regions}
+            self._sensor_regions = {domain: ngs_region(domain) for domain in self.regions}
         else:
             raise ValueError("Domains must be None, a string or a sequence of strings!")
-
-    l2_norm: bool
-    integration_order: int
 
 
 class DomainSensor(RegionSensor):
 
-    name: str = "domain"
-
-    def open(self, fields: dict[str, ngs.CF] | None = None):
-        super().open(fields)
-        self.set_regions(self.mesh.GetMaterials(), self.mesh.Materials)
+    def open(self) -> None:
+        super().open()
+        self.set_sensor_regions(self.mesh.GetMaterials(), self.mesh.Materials)
 
 
 class DomainL2Sensor(DomainSensor):
 
-    name: str = "domain_L2"
-
-    def open(self, fields: dict[str, ngs.CF] | None = None):
-        fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
-        super().open(fields)
+    def __init__(self, fields, mesh, regions=None, name="region", rate=1, integration_order=5):
+        super().__init__(fields, mesh, regions, name, rate, integration_order)
+        self.fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for array in super().measure():
@@ -802,23 +730,18 @@ class DomainL2Sensor(DomainSensor):
 
 class BoundarySensor(RegionSensor):
 
-    name: str = "boundary"
-
-    def open(self, fields: dict[str, ngs.CF] | None = None):
-        super().open(fields)
+    def open(self):
+        super().open()
 
         self._field = ngs.BoundaryFromVolumeCF(self._field)
-        self.set_regions(self.mesh.GetBoundaries(), self.mesh.Boundaries)
+        self.set_sensor_regions(self.mesh.GetBoundaries(), self.mesh.Boundaries)
 
 
 class BoundaryL2Sensor(BoundarySensor):
 
-    name: str = "boundary_L2"
-
-    def open(self, fields: dict[str, ngs.CF] | None = None):
-        fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
-        self.field_header = tuple((field, 'L2') for field in fields)
-        super().open(fields)
+    def __init__(self, fields, mesh, regions=None, name="region", rate=1, integration_order=5):
+        super().__init__(fields, mesh, regions, name, rate, integration_order)
+        self.fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for array in super().measure():
@@ -830,17 +753,14 @@ class BoundaryL2Sensor(BoundarySensor):
 
 class PointSensor(Sensor):
 
-    @configuration(default=())
-    def points(self, points: tuple[tuple[float, float, float], ...]):
-        return points
+    @classmethod
+    def from_boundary(cls, fields: ngsdict, mesh: ngs.Mesh, boundary: str, **init):
+        return cls(
+            fields, mesh, tuple(set(mesh[v].point for el in mesh.Boundaries(boundary).Elements() for v in el.vertices)), **init)
 
-    def open(self, fields: dict[str, ngs.CF] | None = None):
-
-        if isinstance(self.points, str):
-            self.points = tuple(set(self.mesh[v].point for el in self.mesh.Boundaries(
-                self.points).Elements() for v in el.vertices))
-
-        super().open(fields)
+    def __init__(self, fields, mesh, points, name: str = "point", rate=1):
+        self.points = points
+        super().__init__(fields, mesh, name, rate)
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for point in self.points:
@@ -853,39 +773,130 @@ class PointSensor(Sensor):
         return header
 
 
-class IOConfiguration(UniqueConfiguration):
+class IOConfiguration(Configuration):
 
     name = "io"
 
-    cfg: SolverConfiguration
+    root: SolverConfiguration
 
-    @stream(default=True)
-    def log(self, activate: bool):
-        return LogStream(cfg=self.cfg, mesh=self.mesh)
+    def __init__(self, mesh, root=None, **default):
 
-    @stream(default=False)
-    def ngsmesh(self, activate: bool):
-        return MeshStream(cfg=self.cfg, mesh=self.mesh)
+        path = Path.cwd().joinpath("output")
+        DEFAULT = {
+            "path": path,
+            "log": LogStream(mesh, root=root, path=path),
+            "ngsmesh": False,
+            "gfu": False,
+            "settings": False,
+            "vtk": False,
+            "sensor": False,
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
 
-    @stream(default=False)
-    def gfu(self, activate: bool):
-        return GridfunctionStream(cfg=self.cfg, mesh=self.mesh)
+    @dream_configuration
+    def path(self) -> Path:
+        return self._path
 
-    @stream(default=False)
-    def settings(self, activate: bool):
-        return SettingsStream(cfg=self.cfg, mesh=self.mesh)
+    @path.setter
+    def path(self, path: str | Path):
+        if isinstance(path, str):
+            path = Path(path)
 
-    @stream(default=False)
-    def vtk(self, activate: bool):
-        return VTKStream(cfg=self.cfg, mesh=self.mesh)
+        if not path.is_absolute():
+            path = Path.cwd().joinpath(path)
 
-    @stream(default=False)
-    def sensor(self, activate: bool):
-        return SensorStream(cfg=self.cfg, mesh=self.mesh)
+        self._path = path
 
-    @interface(default=SingleFolders)
-    def folders(self, folders: IOFolders):
-        return folders
+    @dream_configuration
+    def log(self) -> LogStream:
+        if not hasattr(self, '_log'):
+            self.log = LogStream(self.mesh, root=self.root, path=self.path)
+        return self._log
+
+    @log.setter
+    def log(self, log: LogStream | bool):
+        if isinstance(log, LogStream):
+            self._log = log
+            self._log.mesh = self.mesh
+            self._log.root = self.root
+        elif hasattr(self, '_log'):
+            delattr(self, '_log')
+
+    @dream_configuration
+    def ngsmesh(self) -> MeshStream:
+        if not hasattr(self, '_ngsmesh'):
+            self.ngsmesh = MeshStream(self.mesh, root=self.root, path=self.path)
+        return self._ngsmesh
+
+    @ngsmesh.setter
+    def ngsmesh(self, ngsmesh: MeshStream | bool):
+        if isinstance(ngsmesh, MeshStream):
+            self._ngsmesh = ngsmesh
+            self._ngsmesh.mesh = self.mesh
+            self._ngsmesh.root = self.root
+        elif hasattr(self, '_ngsmesh'):
+            delattr(self, '_ngsmesh')
+
+    @dream_configuration
+    def gfu(self) -> GridfunctionStream:
+        if not hasattr(self, '_gfu'):
+            self.gfu = GridfunctionStream(self.mesh, root=self.root, path=self.path.joinpath("states"))
+        return self._gfu
+
+    @gfu.setter
+    def gfu(self, gfu: GridfunctionStream | bool):
+        if isinstance(gfu, GridfunctionStream):
+            self._gfu = gfu
+            self._gfu.mesh = self.mesh
+            self._gfu.root = self.root
+        elif hasattr(self, '_gfu'):
+            delattr(self, '_gfu')
+
+    @dream_configuration
+    def settings(self) -> SettingsStream:
+        if not hasattr(self, '_settings'):
+            self.settings = SettingsStream(self.mesh, root=self.root, path=self.path.joinpath("settings"))
+        return self._settings
+
+    @settings.setter
+    def settings(self, settings: SettingsStream | bool):
+        if isinstance(settings, SettingsStream):
+            self._settings = settings
+            self._settings.mesh = self.mesh
+            self._settings.root = self.root
+        elif hasattr(self, '_settings'):
+            delattr(self, '_settings')
+
+    @dream_configuration
+    def vtk(self) -> VTKStream:
+        if not hasattr(self, '_vtk'):
+            self.vtk = VTKStream(self.mesh, root=self.root, path=self.path.joinpath("vtk"))
+        return self._vtk
+
+    @vtk.setter
+    def vtk(self, vtk: VTKStream | bool):
+        if isinstance(vtk, VTKStream):
+            self._vtk = vtk
+            self._vtk.mesh = self.mesh
+            self._vtk.root = self.root
+        elif hasattr(self, '_vtk'):
+            delattr(self, '_vtk')
+
+    @dream_configuration
+    def sensor(self) -> SensorStream:
+        if not hasattr(self, '_sensor'):
+            self.sensor = SensorStream(self.mesh, root=self.root, path=self.path.joinpath("sensors"))
+        return self._sensor
+
+    @sensor.setter
+    def sensor(self, sensor: SensorStream | bool):
+        if isinstance(sensor, SensorStream):
+            self._sensor = sensor
+            self._sensor.mesh = self.mesh
+            self._sensor.root = self.root
+        elif hasattr(self, '_sensor'):
+            delattr(self, '_sensor')
 
     def draw(self, fields: ngsdict, **kwargs):
         if is_notebook():
@@ -906,14 +917,18 @@ class IOConfiguration(UniqueConfiguration):
 
     def open(self):
 
+        streams = [stream for stream in vars(self).values() if isinstance(stream, Stream)]
+
         self.single_streams = []
         self.file_streams = []
 
-        for stream in self.values():
-            if isinstance(stream, (MeshStream, SettingsStream)):
-                self.single_streams.append(stream.open())
-            elif isinstance(stream, (VTKStream, GridfunctionStream, SensorStream)):
-                self.file_streams.append(stream.open())
+        for stream in streams:
+            stream_ = stream.open()
+            if stream_ is not None:
+                if isinstance(stream_, (MeshStream, SettingsStream)):
+                    self.single_streams.append(stream_)
+                elif isinstance(stream_, (VTKStream, GridfunctionStream, SensorStream)):
+                    self.file_streams.append(stream_)
 
     def save_pre_time_routine(self, t: float | None = None):
         for stream in self.single_streams:
@@ -940,11 +955,3 @@ class IOConfiguration(UniqueConfiguration):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-
-    log: LogStream
-    ngsmesh: MeshStream
-    gfu: GridfunctionStream
-    settings: SettingsStream
-    vtk: VTKStream
-    sensor: SensorStream
-    folders: SingleFolders | BenchmarkFolders

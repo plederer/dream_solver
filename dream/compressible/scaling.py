@@ -1,30 +1,40 @@
+""" Definitions of dimensionless compressible flow equations """
 from __future__ import annotations
 import typing
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import InterfaceConfiguration, configuration
+from dream.config import Configuration, dream_configuration
 from dream.compressible.config import dimensionfulfields
 
 if typing.TYPE_CHECKING:
     from .solver import CompressibleFlowSolver
 
 
-class Scaling(InterfaceConfiguration, is_interface=True):
+class Scaling(Configuration, is_interface=True):
 
-    cfg: CompressibleFlowSolver
+    root: CompressibleFlowSolver
 
-    @configuration(default=None)
-    def dimensionful_values(self, fields: dimensionfulfields):
-        """ Set the dimensionful values for the scaling. 
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {"dimensionful_values": dimensionfulfields(
+            {'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325}), }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def dimensionful_values(self) -> dimensionfulfields:
+        """ Returns the dimensionful values for the scaling. 
 
             :setter: Sets the dimensionful values, defaults to {'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325}
             :getter: Returns the dimensionful values
         """
-        reference = dimensionfulfields({'L': 1, 'rho': 1.293, 'u': 1, 'c': 343, 'T': 293.15, 'p': 101325})
-        if fields is not None:
-            reference.update(fields)
-        return reference
+        return self._dimensionful_values
+
+    @dimensionful_values.setter
+    def dimensionful_values(self, fields: dimensionfulfields):
+        self._dimensionful_values = fields
 
     def density(self) -> float:
         return 1.0
@@ -39,8 +49,6 @@ class Scaling(InterfaceConfiguration, is_interface=True):
         mag = self.velocity_magnitude(mach_number)
         return mag * bla.unit_vector(direction)
 
-    dimensionful_values: dimensionfulfields
-
 
 class Aerodynamic(Scaling):
 
@@ -53,7 +61,7 @@ class Aerodynamic(Scaling):
             .. math:: 
                 \Re_{ref} = \Re_\infty
         """
-        return self.cfg.reynolds_number/self.velocity_magnitude(self.cfg.mach_number)
+        return self.root.reynolds_number/self.velocity_magnitude(self.root.mach_number)
 
     def _check_Mach_number(self, mach_number: float):
 
@@ -82,7 +90,7 @@ class Acoustic(Scaling):
             .. math:: 
                 \Re_{ref} = \frac{\Re_\infty}{\Ma_\infty}
         """
-        return self.cfg.reynolds_number/self.velocity_magnitude(self.cfg.mach_number)
+        return self.root.reynolds_number/self.velocity_magnitude(self.root.mach_number)
 
     def velocity_magnitude(self, mach_number: float):
         return mach_number
@@ -102,7 +110,7 @@ class Aeroacoustic(Scaling):
             .. math:: 
                 \Re_{ref} = \frac{\Re_\infty (1+\Ma_\infty)}{\Ma_\infty}
         """
-        return self.cfg.reynolds_number/self.velocity_magnitude(self.cfg.mach_number)
+        return self.root.reynolds_number/self.velocity_magnitude(self.root.mach_number)
 
     def velocity_magnitude(self, mach_number: float):
         Ma = mach_number

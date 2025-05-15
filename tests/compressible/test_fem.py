@@ -1,22 +1,18 @@
 from __future__ import annotations
 import unittest
-import numpy.testing as nptest
-from tests import simplex
 import ngsolve as ngs
 
-from dream.compressible.config import flowfields
-from tests.compressible.setup import cfg, mip
+from tests.compressible.setup import cfg
 
 
 class TestConservativeHDGFiniteElementMethod(unittest.TestCase):
 
     def setUp(self) -> None:
-
         cfg.fem = "conservative"
         cfg.fem.method = "hdg"
         cfg.fem.mixed_method = "inactive"
         cfg.dynamic_viscosity = "inviscid"
-        cfg.time = "stationary"
+        cfg.time = "transient"
 
     def test_inviscid_finite_element_spaces(self):
 
@@ -53,10 +49,10 @@ class TestConservativeHDGFiniteElementMethod(unittest.TestCase):
 
     def test_test_and_trial_functions(self):
 
-        cfg.initialize_finite_element_spaces()
-        cfg.initialize_trial_and_test_functions()
+        cfg.fem.initialize_finite_element_spaces()
+        cfg.fem.initialize_trial_and_test_functions()
 
-        self.assertTupleEqual(tuple(cfg.TnT), ('U', 'Uhat'))
-        for trial, test in cfg.TnT.values():
+        self.assertTupleEqual(tuple(cfg.fem.TnT), ('U', 'Uhat'))
+        for trial, test in cfg.fem.TnT.values():
             self.assertIsInstance(trial, ngs.comp.ProxyFunction)
             self.assertIsInstance(test, ngs.comp.ProxyFunction)

@@ -185,7 +185,7 @@ class TestCompressibleEquations(unittest.TestCase):
     def test_farfield_state(self):
 
         cfg.scaling = "aerodynamic"
-        INF = cfg.get_farfield_state((1, 0)).to_py()
+        INF = cfg.get_farfield_state((1, 0)).to_py(cfg.mesh)
         results = {"density": 1.0, "speed_of_sound": 10/3, "temperature": 1/(0.4 * 0.3**2),
                    "pressure": 1/(1.4 * 0.3**2), "velocity": (1.0, 0.0), "inner_energy": 1/(1.4 * 0.3**2 * 0.4),
                    "kinetic_energy": 0.5, "energy": 1/(1.4 * 0.3**2 * 0.4) + 0.5}
@@ -195,7 +195,7 @@ class TestCompressibleEquations(unittest.TestCase):
             nptest.assert_almost_equal(is_[1], exp_[1])
 
         cfg.scaling = "aeroacoustic"
-        INF = cfg.get_farfield_state((1, 0)).to_py()
+        INF = cfg.get_farfield_state((1, 0)).to_py(cfg.mesh)
         results = {
             "density": 1.0, "speed_of_sound": 10 / 13, "temperature": 1 / (0.4 * (1 + 0.3) ** 2),
             "pressure": 1 / (1.4 * (1 + 0.3) ** 2),
@@ -208,7 +208,7 @@ class TestCompressibleEquations(unittest.TestCase):
             nptest.assert_almost_equal(is_[1], exp_[1])
 
         cfg.scaling = "acoustic"
-        INF = cfg.get_farfield_state((1, 0)).to_py()
+        INF = cfg.get_farfield_state((1, 0)).to_py(cfg.mesh)
         results = {"density": 1.0, "speed_of_sound": 1, "temperature": 10/4,
                    "pressure": 1/1.4, "velocity": (0.3, 0.0), "inner_energy": 10/5.6,
                    "kinetic_energy": 0.045, "energy": 10/5.6 + 0.045}

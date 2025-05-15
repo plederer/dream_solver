@@ -1,8 +1,10 @@
 # %%
 from __future__ import annotations
 import unittest
+import ngsolve as ngs
+from tests import simplex
 
-from dream.config import configuration, ngsdict, quantity, InterfaceConfiguration, UniqueConfiguration, parameter, interface
+from dream.config import ngsdict, quantity, Configuration, dream_configuration
 
 # ------- Setup ------- #
 
@@ -13,66 +15,146 @@ class teststate(ngsdict):
     p = quantity('pressure')
 
 
-class Interface(InterfaceConfiguration, is_interface=True):
+class DummyConfiguration(Configuration, is_interface=True):
+
+    name = "point"
+
+    def __init__(self, mesh, root=None, **default):
+        DEFAULT = {
+            "x": 0.0,
+            "y": 0.0,
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, x):
+        self._x = float(x)
+
+    @dream_configuration
+    def y(self):
+        return self._y
+
+    @y.setter
+    def y(self, y):
+        self._y = float(y)
+
+
+class OptionConfiguration(Configuration, is_interface=True):
     ...
 
 
-class SubInterface(InterfaceConfiguration, is_interface=True):
-    ...
-
-
-class SubOptionA(SubInterface):
-    name = "sub_option_a"
-
-    @configuration(default=0.0)
-    def t(self, x: float):
-        return float(x)
-
-    @configuration(default=0.0)
-    def u(self, y: float):
-        return float(y)
-
-
-class OptionA(Interface):
+class OptionA(OptionConfiguration):
     name = "option_a"
-    aliases = ("A", )
 
-    @configuration(default=0.0)
-    def x(self, x: float):
+    def __init__(self, mesh, root=None, **default):
+        DEFAULT = {
+            "x": 0.0,
+            "y": 0.0
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def x(self):
+        return self._x
+
+    @x.setter
+    def x(self, x):
         if x < 0.0:
             raise ValueError("Non negative x not allowed!")
-        return float(x)
+        self._x = float(x)
 
-    @configuration(default=0.0)
-    def y(self, y: float):
-        return float(y)
-
-    @y.getter_check
+    @dream_configuration
     def y(self):
         if self.x >= 10:
             ValueError("x is too large!")
+        return self._y
+
+    @y.setter
+    def y(self, y):
+        self._y = float(y)
 
 
-class OptionB(Interface):
+class OptionB(OptionConfiguration):
     name = "option_b"
 
-    @configuration(default="abc")
+    def __init__(self, mesh, root=None, **default):
+
+        self._number = ngs.Parameter(2.0)
+
+        DEFAULT = {
+            "alphabet": "abc",
+            "number": 2.0,
+            "sub": DummyConfiguration(mesh, root),
+        }
+
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def alphabet(self):
+        return self._alphabet
+
+    @alphabet.setter
     def alphabet(self, abc: str):
-        return str(abc)
+        self._alphabet = str(abc)
 
-    @parameter(default=2.0)
+    @dream_configuration
+    def number(self) -> ngs.Parameter:
+        return self._number
+
+    @number.setter
     def number(self, number: float):
-        return number
+        if isinstance(number, ngs.Parameter):
+            self._number = number
+        else:
+            self._number.Set(number)
 
-    @interface(default=SubOptionA)
-    def sub(self, sub: SubInterface):
-        return sub
+    @dream_configuration
+    def sub(self):
+        return self._sub
+
+    @sub.setter
+    def sub(self, sub):
+        OPTIONS = [DummyConfiguration]
+        self._sub = self._get_configuration_option(sub, OPTIONS, DummyConfiguration)
 
 
-class MainConfiguration(UniqueConfiguration):
+class MainConfiguration(Configuration):
 
-    other = interface(default=OptionA)
-    param = parameter(default=2.0)
+    def __init__(self, mesh, root=None, **default):
+
+        self._param = ngs.Parameter(2.0)
+
+        DEFAULT = {
+            "other": OptionA(mesh, root),
+            "param": 2.0
+        }
+        DEFAULT.update(default)
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def other(self) -> OptionConfiguration:
+        return self._other
+
+    @other.setter
+    def other(self, other):
+        OPTIONS = [OptionA, OptionB]
+        self._other = self._get_configuration_option(other, OPTIONS, OptionConfiguration)
+
+    @dream_configuration
+    def param(self):
+        return self._param
+
+    @param.setter
+    def param(self, param):
+        self._param.Set(param)
+
 
 # ------- Tests ------- #
 
@@ -99,11 +181,12 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(self.obj.p, None)
 
     def test_setter(self):
+        mesh = simplex()
         self.obj.p = 10
-        self.assertEqual(self.obj.to_py()['pressure'], 10)
+        self.assertEqual(self.obj.to_py(mesh)['pressure'], 10)
 
         self.obj.p = None
-        self.assertEqual(self.obj.to_py()['pressure'], 10)
+        self.assertEqual(self.obj.to_py(mesh)['pressure'], 10)
 
     def test_deleter(self):
         self.obj.p = 20
@@ -120,28 +203,42 @@ class TestState(unittest.TestCase):
         self.obj.clear()
 
     def test_update(self):
+        mesh = simplex()
         self.obj.update({"rho": 2, "p": 5, "u": 5})
 
-        self.assertDictEqual(self.obj.to_py(), {"density": 2, "pressure": 5, 'u': 5})
+        self.assertDictEqual(self.obj.to_py(mesh), {"rho": 2, "p": 5, 'u': 5})
 
     def test_keys(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.keys()), ("density", "pressure", 'u'))
+        self.assertTupleEqual(tuple(self.obj.keys()), ("rho", "p", 'u'))
 
     def test_values(self):
+        mesh = simplex()
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.to_py().values()), (2, 5, 5))
+        self.assertTupleEqual(tuple(self.obj.to_py(mesh).values()), (2, 5, 5))
 
     def test_items(self):
+        mesh = simplex()
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj.to_py().items()), (('density', 2), ('pressure', 5), ('u', 5)))
+        self.assertTupleEqual(tuple(self.obj.to_py(mesh).items()), (('rho', 2), ('p', 5), ('u', 5)))
 
     def test_set_item(self):
+        mesh = simplex()
         self.obj["rho"] = 2
         self.obj["p"] = 5
         self.obj["u"] = 5
 
-        self.assertDictEqual(self.obj.to_py(), {"density": 2, "pressure": 5, 'u': 5})
+        self.assertDictEqual(self.obj.to_py(mesh), {"rho": 2, "p": 5, 'u': 5})
+
+    def test_set_quantity(self):
+        mesh = simplex()
+        self.obj.rho = 2
+        self.obj.p = 5
+        self.obj["u"] = 5
+
+
+        self.assertDictEqual(self.obj.to_py(mesh), {"density": 2, "pressure": 5, 'u': 5})
+
 
     def test_get_item(self):
         self.assertEqual(self.obj.p, None)
@@ -151,23 +248,20 @@ class TestState(unittest.TestCase):
 
     def test_iterator(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
-        self.assertTupleEqual(tuple(self.obj), ("density", "pressure", 'u'))
+        self.assertTupleEqual(tuple(self.obj), ("rho", "p", 'u'))
 
     def test_length(self):
         self.obj.update({"rho": 2, "p": 5, "u": 5})
         self.assertEqual(len(self.obj), 3)
 
 
-class TestDescriptorConfigurationChild(unittest.TestCase):
+class TestOptionConfiguration(unittest.TestCase):
 
     def setUp(self):
-        self.obj = OptionA()
+        self.obj = OptionA(None)
 
     def tearDown(self) -> None:
         self.obj.clear()
-
-    def test_inheritance_tree(self):
-        self.assertDictEqual(self.obj.tree.leafs, {'option_a': OptionA, 'a': OptionA,  'option_b': OptionB})
 
     def test_configurations_id_after_clear(self):
         old = [self.obj.x, self.obj.y]
@@ -188,108 +282,108 @@ class TestDescriptorConfigurationChild(unittest.TestCase):
             self.assertNotEqual(id(new), id(old))
 
     def test_clear(self):
-        self.obj["z"] = 2
+        self.obj.z = 2
+        self.obj.x = 5
+
+        self.assertDictEqual(self.obj.to_dict(), {'x': 5.0, 'y': 0.0})
+        self.assertDictEqual(self.obj.__dict__, {'root': self.obj.root,
+                             'mesh': None, '_x': 5.0, '_y': 0.0, 'z': 2})
+
         self.obj.clear()
 
-        self.assertDictEqual(self.obj.data, {'x': 0.0, 'y': 0.0})
-        self.assertDictEqual(self.obj.__dict__, {'cfg': self.obj.cfg,
-                             'mesh': None, 'data': {'x': 0.0, 'y': 0.0}, 'z': 2})
+        self.assertDictEqual(self.obj.to_dict(), {'x': 0.0, 'y': 0.0})
+        self.assertDictEqual(self.obj.__dict__, {'root': self.obj.root,
+                             'mesh': None, '_x': 0.0, '_y': 0.0, 'z': 2})
 
     def test_root_id(self):
-        self.assertEqual(id(self.obj.cfg), id(self.obj))
+        self.assertEqual(id(self.obj.root), id(self.obj))
 
     def test_export_default(self):
-        self.assertDictEqual(self.obj.to_tree(), {'x': 0.0, 'y': 0.0})
+        self.assertDictEqual(self.obj.to_dict(), {'x': 0.0, 'y': 0.0})
 
     def test_export_parent_argument(self):
-        self.assertDictEqual(self.obj.to_tree(root="parent"), {'parent.x': 0.0, 'parent.y': 0.0})
+        self.assertDictEqual(self.obj.to_dict(root="parent"), {'parent.x': 0.0, 'parent.y': 0.0})
 
     def test_export_data_argument(self):
-        self.assertDictEqual(self.obj.to_tree(data={'z': 2}), {'x': 0.0, 'y': 0.0, 'z': 2})
+        self.assertDictEqual(self.obj.to_dict(dict={'z': 2}), {'x': 0.0, 'y': 0.0, 'z': 2})
 
 
 class TestUniqueConfiguration(unittest.TestCase):
 
     def setUp(self):
-        self.obj = MainConfiguration()
+        self.obj = MainConfiguration(None)
 
     def tearDown(self) -> None:
         self.obj.clear()
 
     def test_root_id(self):
-        self.assertEqual(id(self.obj), id(self.obj.other.cfg))
+        self.assertEqual(id(self.obj), id(self.obj.other.root))
 
     def test_export_default(self):
-        self.assertDictEqual(self.obj.to_tree(), {'other': 'option_a',
+        self.assertDictEqual(self.obj.to_dict(), {'other': 'option_a',
                              'other.x': 0.0, 'other.y': 0.0, 'param': 2.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
-            self.obj.to_tree(root='unique'),
+            self.obj.to_dict(root='unique'),
             {'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
         self.assertDictEqual(
-            self.obj.to_tree(data={'z': 2}),
+            self.obj.to_dict(dict={'z': 2}),
             {'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_update_subconfiguration(self):
         self.obj.update({'other.x': 3.0, 'other.y': 5.0, 'param': 5})
-        self.assertDictEqual(self.obj.to_tree(), {'other': 'option_a',
+        self.assertDictEqual(self.obj.to_dict(), {'other': 'option_a',
                              'other.x': 3.0, 'other.y': 5.0, 'param': 5.0})
 
     def test_export_parent(self):
         self.assertDictEqual(
-            self.obj.to_tree(root='unique'),
+            self.obj.to_dict(root='unique'),
             {'unique.other': 'option_a', 'unique.other.x': 0.0, 'unique.other.y': 0.0, 'unique.param': 2.0})
 
     def test_export_data_argument(self):
         self.assertDictEqual(
-            self.obj.to_tree(data={'z': 2}),
+            self.obj.to_dict(dict={'z': 2}),
             {'other': 'option_a', 'other.x': 0.0, 'other.y': 0.0, 'param': 2.0, 'z': 2})
 
     def test_set_subconfiguration_by_string(self):
         self.obj.other = "option_b"
         self.assertDictEqual(
-            self.obj.to_tree(),
-            {'other': 'option_b', 'other.alphabet': 'abc', 'other.number': 2.0, 'other.sub': 'sub_option_a',
-             'other.sub.t': 0.0,
-             'other.sub.u': 0.0, 'param': 2.0})
+            self.obj.to_dict(),
+            {'other': 'option_b', 'other.alphabet': 'abc', 'other.number': 2.0, 'other.sub': 'point',
+             'other.sub.x': 0.0,
+             'other.sub.y': 0.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_instance(self):
-        self.obj.other = OptionB()
-        self.assertDictEqual(self.obj.to_tree(), {'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
+        self.obj.other = OptionB(None)
+        self.assertDictEqual(self.obj.to_dict(), {'other.alphabet': 'abc', 'other.number': 2.0, 'param': 2.0})
 
     def test_set_subconfiguration_by_dict(self):
         self.obj.other = {'x': 2.0, 'y': 3.0, 'z': 5}
-        self.assertDictEqual(self.obj.to_tree(), {'other': 'option_a',
+        self.assertDictEqual(self.obj.to_dict(), {'other': 'option_a',
                              'other.x': 2.0, 'other.y': 3.0, 'param': 2.0})
-
-    def test_set_subconfiguration_by_string_id(self):
-        old = id(self.obj.other)
-        self.obj.other = "option_a"
-        new = id(self.obj.other)
-        self.assertEqual(old, new)
 
     def test_set_subconfiguration_by_instance(self):
         old = id(self.obj.other)
-        self.obj.other = OptionA()
+        self.obj.other = OptionA(None)
         new = id(self.obj.other)
         self.assertNotEqual(old, new)
 
     def test_set_subconfiguration_by_dict(self):
         old = id(self.obj.other)
-        self.obj.other = {'x': 2.0, 'y': 3.0, 'z': 5}
+        self.obj.other.update({'x': 2.0, 'y': 3.0, 'z': 5})
         new = id(self.obj.other)
         self.assertEqual(old, new)
 
     def test_descriptor_set_recursive_update_subconfigurations(self):
 
-        sub_config = OptionB()
+        sub_config = OptionB(None)
 
         self.obj.other = sub_config
 
-        self.assertEqual(id(self.obj), id(self.obj.other.cfg))
+        self.assertEqual(id(self.obj), id(self.obj.other.root))
 
 
 # %%
