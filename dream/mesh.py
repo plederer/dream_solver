@@ -1081,7 +1081,7 @@ def get_cylinder_mesh(radius: float = 0.5,
     return ngs.Mesh(mesh)
 
 
-def get_naca_4digit_series_coordinates(number: str | int, n: int):
+def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
     """ Returns the coordinates of a NACA 4-digit airfoil.
 
         :param number: NACA 4-digit number
@@ -1143,30 +1143,40 @@ def get_naca_4digit_series_coordinates(number: str | int, n: int):
     return X, Y
 
 
-def get_2d_naca_occ_profile(number: str | int, AoA=0, n: int = 600) -> occ.TopoDS_Shape:
+def get_2d_naca_occ_profile(number: str | int,
+                            AoA=0,
+                            LE=(0, 0),
+                            chord: float = 1.0,
+                            n: int = 600) -> occ.TopoDS_Shape:
     """ Returns a 2D NACA airfoil profile with leading edge at position (0, 0).
-    
+
         :param number: NACA digit number
         :type number: str | int
         :param AOA: Angle of attack in degrees, defaults to 0
         :type AOA: float, optional
+        :param LE: Leading edge coordinates, defaults to (0, 0)
+        :type LE: tuple, optional
+        :param chord: Chord length, defaults to 1
+        :type chord: float, optional
         :param n: Number of coordinates, defaults to 600
         :type n: int, optional
         :return: NACA airfoil profile
         :rtype: occ.TopoDS_Shape
     """
-
-    xs, ys = get_naca_4digit_series_coordinates(number, n)
+    xs, ys = get_unit_chord_naca_4digit_series_coordinates(number, n)
+    xs = chord * xs + LE[0]
+    ys = chord * ys + LE[1]
     pnts = [(x, y, 0) for x, y in zip(xs, ys)]
 
     curve = occ.Wire(occ.SplineApproximation(pnts))
     wing = occ.Face(curve)
-    wing = wing.Rotate(occ.Axis((0, 0, 0), occ.Z), -AoA)
+    wing = wing.Rotate(occ.Axis((LE[0], LE[1], 0), occ.Z), -AoA)
     return wing
 
 
-def get_3d_naca_occ_profile(
-        number: str | int, depth: float, AoA=0, n: int = 600, periodic: bool = True) -> occ.TopoDS_Shape:
+def get_3d_naca_occ_profile(number: str | int, depth: float,
+                            AoA=0, LE=(0, 0), scale: int = 1,
+                            n: int = 600, periodic: bool = True) -> occ.TopoDS_Shape:
     """ Returns a 3D NACA airfoil profile with leading edge at position (0, 0, 0).
 
         :param number: NACA digit number
@@ -1175,6 +1185,10 @@ def get_3d_naca_occ_profile(
         :type depth: float
         :param AOA: Angle of attack in degrees, defaults to 0
         :type AOA: float, optional
+        :param LE: Leading edge coordinates, defaults to (0, 0)
+        :type LE: tuple, optional
+        :param scale: Chord scale factor, defaults to 1
+        :type scale: int, optional
         :param n: Number of coordinates, defaults to 600
         :type n: int, optional
         :param periodic: If True, the airfoil is periodic in the Z direction, defaults to True
@@ -1182,7 +1196,7 @@ def get_3d_naca_occ_profile(
         :return: NACA airfoil profile as occ.Shape
         :rtype: occ.TopoDS_Shape
     """
-    wing = get_2d_naca_occ_profile(number, AoA, n)
+    wing = get_2d_naca_occ_profile(number, AoA, LE, scale, n)
     wing = wing.Extrude(depth)
 
     if periodic:
