@@ -1,4 +1,4 @@
-[submodule "docs_"]
-	path = docs_
+[submodule "docs"]
+	path = docs
 	url = git@github.com:plederer/dream_solver.git
 	branch = docs
