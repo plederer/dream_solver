@@ -748,12 +748,60 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @equation
     def drag_coefficient(
-            self, U: flowfields, dU: flowfields, Uref: flowfields, drag_direction: tuple[float, ...]) -> bla.SCALAR:
-        stress = self.stress_tensor(U, dU) * self.mesh.normal
-        return bla.inner(stress, bla.unit_vector(drag_direction))/(self.kinetic_energy(Uref))
+            self, U: flowfields, dU: flowfields, Uinf: flowfields, drag_direction: tuple[float, ...] = (1, 0),
+            aera: float = 1.0) -> float:
+        r""" Returns the definition of the drag coefficient. 
+             Needs to be integrated over a surface, due to the inclusion of the boundary normal vector :math:`\bm{n}_{bnd}`.
+
+            .. math::
+                C_d = \frac{1}{\frac{1}{2} \rho_\infty |\bm{u}_\infty|^2 A} \bm{n}_{drag} \left(\mat{\tau} - p \mat{\I} \right) \bm{n}_{bnd}
+
+            :param U: A dictionary containing the flow quantities
+            :type U: flowfields
+            :param dU: A dictionary containing the gradients of the flow quantities for the evaluation of the viscous stress tensor
+            :type dU: flowfields
+            :param Uinf: A dictionary containing the reference flow quantities
+            :type Uinf: flowfields
+            :param drag_direction: A container containing the drag direction :math:`\bm{n}_{drag}`
+            :type drag_direction: tuple[float, ...]
+            :param aera: The reference area :math:`A`
+            :type aera: float
+            :return: The drag coefficient
+            :rtype: float
+        """
+        return self._get_aerodynamic_coefficient(U, dU, Uinf, drag_direction, aera)
 
     @equation
     def lift_coefficient(
-            self, U: flowfields, dU: flowfields, Uref: flowfields, lift_direction: tuple[float, ...]) -> bla.SCALAR:
-        stress = self.stress_tensor(U, dU) * self.mesh.normal
-        return bla.inner(stress, bla.unit_vector(lift_direction))/(self.kinetic_energy(Uref))
+            self, U: flowfields, dU: flowfields, Uinf: flowfields, lift_direction: tuple[float, ...] = (0, 1),
+            aera: float = 1.0) -> float:
+        r""" Returns the definition of the lift coefficient. 
+             Needs to be integrated over a surface, due to the inclusion of the boundary normal vector :math:`\bm{n}_{bnd}`.
+
+            .. math::
+                C_l = \frac{1}{\frac{1}{2} \rho_\infty |\bm{u}_\infty|^2 A} \bm{n}_{lift} \left(\mat{\tau} - p \mat{\I} \right) \bm{n}_{bnd} 
+
+            :param U: A dictionary containing the flow quantities
+            :type U: flowfields
+            :param dU: A dictionary containing the gradients of the flow quantities for the evaluation of the viscous stress tensor
+            :type dU: flowfields
+            :param Uinf: A dictionary containing the reference flow quantities
+            :type Uinf: flowfields
+            :param lift_direction: A container containing the lift direction :math:`\bm{n}_{lift}`
+            :type lift_direction: tuple[float, ...]
+            :param aera: The reference area :math:`A`
+            :type aera: float
+            :return: The drag coefficient
+            :rtype: float
+        """
+        return self._get_aerodynamic_coefficient(U, dU, Uinf, lift_direction, aera)
+
+    def _get_aerodynamic_coefficient(
+            self, U: flowfields, dU: flowfields, Uinf: flowfields, direction: tuple[float, ...],
+            aera: float) -> float:
+
+        sigma = -self.pressure(U) * ngs.Id(self.mesh.dim)
+        if not self.dynamic_viscosity.is_inviscid:
+            sigma += self.deviatoric_stress_tensor(U, dU)
+
+        return bla.inner(sigma * self.mesh.normal, bla.unit_vector(direction))/(aera * self.kinetic_energy(Uinf))
