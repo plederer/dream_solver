@@ -540,9 +540,6 @@ class SensorStream(Stream):
 
         super().open()
 
-        for instance in self._sensors:
-            instance.open()
-
         if self.to_csv:
             self.open_csv_writers()
 
@@ -557,23 +554,21 @@ class SensorStream(Stream):
             writer = csv.writer(file)
 
             if self.mode == "w":
-                for name, value in self.get_header(sensor).items():
-                    writer.writerow([name, *value])
+                names, header = self.get_header(sensor)
+
+                for i in range(len(names)):
+                    writer.writerow([names[i]] + [header_[i] for header_ in header])
 
             self.csv[sensor.name] = (file, writer)
 
     def get_header(self, sensor: Sensor) -> dict[str, list[str]]:
-        header = sensor.get_header()
-
-        for value in header.values():
-            if len(value) != len(header['field']):
-                print(value, header['field'])
-                raise ValueError("Header fields are not consistent!")
+        names, header = sensor.get_header()
 
         if not self.root.time.is_stationary:
-            header['t'] = [' ']*len(header['field'])
+            names.append('t')
+            header = [(*header_, ' ') for header_ in header]
 
-        return header
+        return names, header
 
     def save_pre_time_routine(self, t: float | None = None) -> None:
 
@@ -631,7 +626,6 @@ class Sensor:
         self.name = name
         self.rate = rate
 
-    def open(self) -> None:
         # Create single compound field for concurrent evaluation
         self._field = ngs.CF(tuple(self.fields.values()))
 
@@ -639,16 +633,12 @@ class Sensor:
         raise NotImplementedError("Method 'evaluate' is not implemented!")
 
     def get_header(self):
-        header = {'field': [], 'component': []}
+        names = ['field', 'component']
+        header = [(field, component) for field, cf in self.fields.items()
+                  for component in self.get_field_components(cf)]
+        return names, header
 
-        for field, cf in self.fields.items():
-            component = self.get_components_name(cf)
-            header['field'].extend([field]*cf.dim)
-            header['component'].extend(component)
-
-        return header
-
-    def get_components_name(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
         if bla.is_scalar(cf):
             return bla.SCALAR_COMPONENT
         elif bla.is_vector(cf) and cf.dim <= 3:
@@ -666,88 +656,111 @@ class Sensor:
 
 class RegionSensor(Sensor):
 
-    def __init__(self, fields, mesh, regions=None, name="region", rate=1, integration_order=5):
+    def __init__(self, fields, mesh, regions: dict[str, ngs.Region | None], name="region", rate=1, integration_order=5):
         self.regions = regions
         self.integration_order = integration_order
         super().__init__(fields, mesh, name, rate)
 
     def get_header(self):
-        header = {'region': [region for region in self._sensor_regions for _ in range(self._field.dim)]}
-        for key, value in super().get_header().items():
-            header[key] = value*len(self._sensor_regions)
-        return header
+        names = ['region']
+        names_, header_ = super().get_header()
+
+        names.extend(names_)
+        header = [(region, *header) for region in self.regions for header in header_]
+        return names, header
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
-        for region in self._sensor_regions.values():
+        for region in self.regions.values():
             yield np.array(ngs.Integrate(self._field, self.mesh, order=self.integration_order, definedon=region))
 
-    def set_sensor_regions(self, expected: tuple[str], ngs_region: typing.Callable[[str], ngs.Region]) -> None:
+    def measure_as_dict(self) -> dict[tuple[float, float, float], np.ndarray]:
+        return {region: value for region, value in zip(self.regions, self.measure())}
 
-        if self.regions is None:
-            self._sensor_regions = {get_pattern_from_sequence(expected): None}
+    def measure_as_dataframe(self):
+        import pandas as pd
 
-        elif isinstance(self.regions, str):
-            regions = get_regions_from_pattern(expected, self.regions)
+        names, columns = self.get_header()
+        columns = pd.MultiIndex.from_tuples(columns, names=names)
+        values = np.array([value for value in self.measure()])
 
-            for miss in set(self.regions.split('|')).difference(regions):
+        return pd.DataFrame(values, columns=columns)
+
+    def parse_region(self, region: str | None, expected: tuple[str],
+                     REGION: typing.Callable[[str],
+                                             ngs.Region]) -> dict[str, ngs.Region | None]:
+
+        if region is None:
+            return {get_pattern_from_sequence(expected): None}
+
+        elif isinstance(region, str):
+            regions = get_regions_from_pattern(expected, region)
+
+            for miss in set(region.split('|')).difference(regions):
                 logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted in sensor {self.name}!")
 
-            self.regions = get_pattern_from_sequence(regions)
-            self._sensor_regions = {self.regions: ngs_region(self.regions)}
+            regions = get_pattern_from_sequence(regions)
+            return {regions: REGION(regions)}
 
-        elif isinstance(self.regions, typing.Sequence):
-            regions = tuple(region for region in self.regions if region in expected)
+        elif isinstance(region, typing.Sequence):
+            regions = tuple(region_ for region_ in region if region_ in expected)
 
-            for miss in set(self.regions).difference(regions):
+            for miss in set(region).difference(regions):
                 logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted in sensor {self.name}!")
 
-            self.regions = regions
-            self._sensor_regions = {domain: ngs_region(domain) for domain in self.regions}
+            return {region_: REGION(region_) for region_ in regions}
+
         else:
             raise ValueError("Domains must be None, a string or a sequence of strings!")
 
 
 class DomainSensor(RegionSensor):
 
-    def open(self) -> None:
-        super().open()
-        self.set_sensor_regions(self.mesh.GetMaterials(), self.mesh.Materials)
+    def __init__(
+            self, fields: dict[str, ngs.CF],
+            mesh, domain: str = None, name="domain", rate=1, integration_order=5):
+        domain = self.parse_region(domain, mesh.GetMaterials(), mesh.Materials)
+        super().__init__(fields, mesh, domain, name, rate, integration_order)
 
 
 class DomainL2Sensor(DomainSensor):
 
-    def __init__(self, fields, mesh, regions=None, name="region", rate=1, integration_order=5):
-        super().__init__(fields, mesh, regions, name, rate, integration_order)
-        self.fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
+    def __init__(
+            self, fields: dict[str, ngs.CF],
+            mesh, domain: str = None, name="domainL2", rate=1, integration_order=5):
+        if not isinstance(fields, ngsdict):
+            fields = ngsdict(**fields)
+        fields = {field: ngs.InnerProduct(cf, cf) for field, cf in fields.items()}
+        super().__init__(fields, mesh, domain, name, rate, integration_order)
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for array in super().measure():
             yield np.sqrt(array)
 
-    def get_components_name(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
         return ('L2',)
 
 
 class BoundarySensor(RegionSensor):
 
-    def open(self):
-        super().open()
-
+    def __init__(self, fields: dict[str, ngs.CF], mesh, boundary: str, name="boundary", rate=1, integration_order=5):
+        boundary = self.parse_region(boundary, mesh.GetBoundaries(), mesh.Boundaries)
+        super().__init__(fields, mesh, boundary, name, rate, integration_order)
         self._field = ngs.BoundaryFromVolumeCF(self._field)
-        self.set_sensor_regions(self.mesh.GetBoundaries(), self.mesh.Boundaries)
 
 
 class BoundaryL2Sensor(BoundarySensor):
 
-    def __init__(self, fields, mesh, regions=None, name="region", rate=1, integration_order=5):
-        super().__init__(fields, mesh, regions, name, rate, integration_order)
-        self.fields = {field: ngs.InnerProduct(cf, cf) for field, cf in self.fields.items()}
+    def __init__(self, fields: dict[str, ngs.CF], mesh, boundary: str, name="boundaryL2", rate=1, integration_order=5):
+        if not isinstance(fields, ngsdict):
+            fields = ngsdict(**fields)
+        fields = {field: ngs.InnerProduct(cf, cf) for field, cf in fields.items()}
+        super().__init__(fields, mesh, boundary, name, rate, integration_order)
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for array in super().measure():
             yield np.sqrt(array)
 
-    def get_components_name(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
         return ('L2',)
 
 
@@ -756,7 +769,9 @@ class PointSensor(Sensor):
     @classmethod
     def from_boundary(cls, fields: ngsdict, mesh: ngs.Mesh, boundary: str, **init):
         return cls(
-            fields, mesh, tuple(set(mesh[v].point for el in mesh.Boundaries(boundary).Elements() for v in el.vertices)), **init)
+            fields, mesh, tuple(
+                set(mesh[v].point for el in mesh.Boundaries(boundary).Elements() for v in el.vertices)),
+            **init)
 
     def __init__(self, fields, mesh, points, name: str = "point", rate=1):
         self.points = points
@@ -766,11 +781,26 @@ class PointSensor(Sensor):
         for point in self.points:
             yield np.atleast_1d(self._field(self.mesh(*point)))
 
+    def measure_as_dict(self) -> dict[tuple[float, float, float], np.ndarray]:
+        return {point: value for point, value in zip(self.points, self.measure())}
+
+    def measure_as_dataframe(self):
+        import pandas as pd
+
+        names, columns = super().get_header()
+        columns = pd.MultiIndex.from_tuples(columns, names=names)
+        values = np.array([value for value in self.measure()])
+        index = pd.Index(list(self.points), name=('x', 'y', 'z')[:self.mesh.dim])
+
+        return pd.DataFrame(values, index=index, columns=columns)
+
     def get_header(self):
-        header = {'point': [point for point in self.points for _ in range(self._field.dim)]}
-        for key, value in super().get_header().items():
-            header[key] = value*len(self.points)
-        return header
+        names = ['point']
+        names_, header_ = super().get_header()
+
+        names.extend(names_)
+        header = [(point, *header) for point in self.points for header in header_]
+        return names, header
 
 
 class IOConfiguration(Configuration):

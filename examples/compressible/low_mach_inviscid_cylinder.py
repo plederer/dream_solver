@@ -56,7 +56,7 @@ cfg.optimizations.static_condensation = True
 mesh.Curve(cfg.fem.order)
 
 # ------- Setup Boundary Conditions and Domain Conditions ------- #
-Uinf = cfg.get_farfield_state((1, 0))
+Uinf = cfg.get_farfield_fields((1, 0))
 cfg.bcs['left|right'] = FarField(fields=Uinf)
 cfg.bcs['cylinder'] = InviscidWall()
 cfg.dcs['default'] = Initial(fields=Uinf)
@@ -65,7 +65,7 @@ cfg.dcs['default'] = Initial(fields=Uinf)
 cfg.initialize()
 
 # ------- Setup Outputs ------- #
-fields = cfg.fem.get_fields()
+fields = cfg.get_solution_fields()
 cfg.io.draw(fields, autoscale=False, min=-1e-4, max=1e-4)
 
 c_p = flowfields(c_p=cfg.pressure_coefficient(fields, Uinf))

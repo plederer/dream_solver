@@ -97,7 +97,7 @@ class DummyFiniteElementMethod(FiniteElementMethod):
     def add_symbolic_temporal_forms(self, blf, lf):
         pass
 
-    def get_fields(self, quantities: dict[str, bool]):
+    def get_solution_fields(self):
         pass
 
     def set_initial_conditions(self) -> None:

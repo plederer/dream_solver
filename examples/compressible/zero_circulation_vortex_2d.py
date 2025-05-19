@@ -50,7 +50,7 @@ cfg.optimizations.bonus_int_order.vol = 4
 cfg.optimizations.bonus_int_order.bnd = 4
 
 # ------- Setup Boundary Conditions and Domain Conditions ------- #
-Uinf = cfg.get_farfield_state((1, 0))
+Uinf = cfg.get_farfield_fields((1, 0))
 M = cfg.mach_number
 gamma = cfg.equation_of_state.heat_capacity_ratio
 
@@ -81,7 +81,7 @@ cfg.dcs['default'] = initial
 cfg.initialize()
 
 # ------- Setup Outputs ------- #
-drawing = cfg.fem.get_fields('p', default=False)
+drawing = cfg.get_solution_fields('p', default_fields=False)
 drawing['p*'] = (drawing.p - Uinf.p)/(p_00 - Uinf.p)
 cfg.io.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
 
