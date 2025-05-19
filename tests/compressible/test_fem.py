@@ -49,10 +49,10 @@ class TestConservativeHDGFiniteElementMethod(unittest.TestCase):
 
     def test_test_and_trial_functions(self):
 
-        cfg.initialize_finite_element_spaces()
-        cfg.initialize_trial_and_test_functions()
+        cfg.fem.initialize_finite_element_spaces()
+        cfg.fem.initialize_trial_and_test_functions()
 
-        self.assertTupleEqual(tuple(cfg.TnT), ('U', 'Uhat'))
-        for trial, test in cfg.TnT.values():
+        self.assertTupleEqual(tuple(cfg.fem.TnT), ('U', 'Uhat'))
+        for trial, test in cfg.fem.TnT.values():
             self.assertIsInstance(trial, ngs.comp.ProxyFunction)
             self.assertIsInstance(test, ngs.comp.ProxyFunction)

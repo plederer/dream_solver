@@ -145,7 +145,7 @@ class TestGridfunctionStream(unittest.TestCase):
         self.cfg.time = "transient"
         self.cfg.time.timer.step = 1
         self.cfg.initialize()
-        self.cfg.gfu.vec[:] = 1
+        self.cfg.fem.gfu.vec[:] = 1
 
         self.handler = GridfunctionStream(self.cfg.mesh, self.cfg.root, path="gfu_test")
 
@@ -162,7 +162,7 @@ class TestGridfunctionStream(unittest.TestCase):
         self.assertTrue(path.exists())
 
         self.cfg.time = "transient"
-        self.cfg.time.initialize()
+        self.cfg.fem.initialize_time_scheme_gridfunctions()
         handler.save_pre_time_routine(0.0)
 
         path = handler.path.joinpath(f"gfu_0.0.ngs")
@@ -178,7 +178,7 @@ class TestGridfunctionStream(unittest.TestCase):
 
         gfu = ngs.GridFunction(ngs.L2(self.cfg.mesh, order=0)**2)
         gfu.Load(str(path))
-        np.testing.assert_array_equal(gfu.vec, self.cfg.gfu.vec)
+        np.testing.assert_array_equal(gfu.vec, self.cfg.fem.gfu.vec)
 
     def test_saving_rate_in_time_routine(self):
         self.handler.rate = 2
@@ -213,11 +213,11 @@ class TestGridfunctionStream(unittest.TestCase):
 
         handler = self.handler.open()
 
-        handler.save_gridfunction(self.cfg.gfu, 'test')
+        handler.save_gridfunction(self.cfg.fem.gfu, 'test')
         self.assertTrue(path.exists())
 
         handler.load_gridfunction(gfu, 'test')
-        np.testing.assert_array_equal(gfu.vec, self.cfg.gfu.vec)
+        np.testing.assert_array_equal(gfu.vec, self.cfg.fem.gfu.vec)
 
     def test_load_transient_routine(self):
 
@@ -225,35 +225,35 @@ class TestGridfunctionStream(unittest.TestCase):
         handler = self.handler.open()
 
         for t in self.cfg.time.timer.start(True):
-            self.cfg.gfu.vec[:] = t
+            self.cfg.fem.gfu.vec[:] = t
             handler.save_in_time_routine(t)
 
         gfu = ngs.GridFunction(ngs.L2(self.cfg.mesh, order=0)**2)
         for t in handler.load_transient_routine():
             gfu.vec[:] = t
-            np.testing.assert_array_equal(gfu.vec, self.cfg.gfu.vec)
+            np.testing.assert_array_equal(gfu.vec, self.cfg.fem.gfu.vec)
 
     def test_save_and_load_gridfunction(self):
 
         self.handler.filename = 'test'
         handler = self.handler.open()
 
-        for fes in self.cfg.time.scheme.gfus:
-            for level in self.cfg.time.scheme.gfus[fes]:
-                gfu = self.cfg.time.scheme.gfus[fes][level]
+        for fes in self.cfg.fem.scheme.gfus:
+            for level in self.cfg.fem.scheme.gfus[fes]:
+                gfu = self.cfg.fem.scheme.gfus[fes][level]
                 gfu.vec[:] = 1
 
         handler.save_in_time_routine(0.0, it=0)
-        for fes in self.cfg.time.scheme.gfus:
-            for level in self.cfg.time.scheme.gfus[fes]:
+        for fes in self.cfg.fem.scheme.gfus:
+            for level in self.cfg.fem.scheme.gfus[fes]:
                 self.assertTrue(handler.path.joinpath(f"test_0.0_{fes}_{level}.ngs").exists())
 
         handler.load_time_levels(0.0)
-        for fes in self.cfg.time.scheme.gfus:
-            for level in self.cfg.time.scheme.gfus[fes]:
+        for fes in self.cfg.fem.scheme.gfus:
+            for level in self.cfg.fem.scheme.gfus[fes]:
                 np.testing.assert_array_equal(
-                    self.cfg.time.scheme.gfus[fes][level].vec, np.ones_like(
-                        self.cfg.time.scheme.gfus[fes][level].vec))
+                    self.cfg.fem.scheme.gfus[fes][level].vec, np.ones_like(
+                        self.cfg.fem.scheme.gfus[fes][level].vec))
 
     def tearDown(self):
         for path in self.handler.path.iterdir():

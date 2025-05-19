@@ -137,8 +137,7 @@ class Configuration:
             value.root = self.root
             return value
         else:
-            raise ValueError(f"{INTERFACE.__name__} '{
-                             value}' not available! Available configurations: {list(OPTIONS.keys())}")
+            raise ValueError(f"{INTERFACE.__name__} '{value}' not available! Available configurations: {list(OPTIONS.keys())}")
 
     def __init_subclass__(cls, is_interface: bool = False) -> None:
 
@@ -215,5 +214,8 @@ class Configuration:
     def clear(self) -> None:
         self.__init__(self.mesh, self.root)
 
+    def __str__(self) -> str:
+        return self.name
+    
     def __repr__(self) -> str:
         return "\n".join([f"{key}: {value}" for key, value in self.to_dict().items()])

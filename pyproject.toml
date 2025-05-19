@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dream"
+requires-python = ">=3.10"
+license = "LGPL-2.1"
+license-files = ["LICENSE"]
+readme = "README.md"
+authors = [
+  {name = "Philip Lederer", email = "philip.lederer@uni-hamburg.de"},
+  {name = "Jan Ellmenreich", email = "jan.ellmenreich@tuwien.ac.at"},
+  {name = "Edmond Shehadi", email = "edmond.shehadi@tuwien.ac.at"},
+]
+
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[project.urls]
+Repository = "https://github.com/plederer/dream_solver"
+
+[tool.setuptools.packages.find]
+where = ["."] 
+include = ["dream*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "dream.__version__"}
