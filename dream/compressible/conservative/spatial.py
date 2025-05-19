@@ -482,9 +482,6 @@ class DG(ConservativeMethod):
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
-    def get_time_scheme(self, scheme) -> ExplicitEuler | SSPRK3 | CRK4:
-        OPTIONS = [ExplicitEuler, SSPRK3, CRK4]
-        return self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
 
 
 class HDG(ConservativeMethod):
@@ -839,7 +836,7 @@ class HDG(ConservativeMethod):
             \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
 
         See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
-            
+
         .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
                 Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
                 28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
@@ -994,7 +991,7 @@ class DG_HDG(ConservativeMethod):
             \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
 
         See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
-            
+
         .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
                 Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
                 28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
@@ -1129,25 +1126,11 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
         self.method.add_boundary_conditions(blf, lf)
         self.method.add_domain_conditions(blf, lf)
 
-    def get_fields(self, *fields: str, default: bool = True) -> flowfields:
-
-        if default:
-            fields = ('density', 'velocity', 'pressure') + fields
-
+    def get_solution_fields(self) -> flowfields:
         U = self.method.get_conservative_fields(self.method.gfu['U'], with_gradients=True)
         if not isinstance(self.mixed_method, Inactive):
             U.update(self.mixed_method.get_mixed_fields(self.mixed_method.gfu['Q']))
-
-        fields_ = flowfields()
-        for field_ in fields:
-            if field_ in U:
-                fields_[field_] = U[field_]
-            elif hasattr(U, field_):
-                fields_[field_] = getattr(U, field_)
-            else:
-                logger.info(f"Field {field_} not predefined!")
-
-        return fields_
+        return U
 
     def initialize_time_scheme_gridfunctions(self):
         spaces = self.method.get_time_scheme_spaces()

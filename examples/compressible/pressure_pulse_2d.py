@@ -76,7 +76,7 @@ if circle:
     mesh.Curve(cfg.fem.order)
 
 # ------- Setup Boundary Conditions and Domain Conditions ------- #
-Uinf = cfg.get_farfield_state((1, 0))
+Uinf = cfg.get_farfield_fields((1, 0))
 
 Gamma = 0.1
 Rv = 0.1
@@ -96,7 +96,7 @@ else:
 cfg.initialize()
 
 # ------- Setup Outputs ------- #
-drawing = cfg.fem.get_fields()
+drawing = cfg.get_solution_fields()
 drawing["p'"] = drawing.p - Uinf.p
 cfg.io.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
 cfg.io.vtk.fields = drawing

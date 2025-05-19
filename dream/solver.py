@@ -283,7 +283,7 @@ class NonlinearSolver(Solver, is_interface=True):
         if it is not None:
             msg += f" | iteration: {it}"
         if t is not None:
-            msg += f" | t: {t}" 
+            msg += f" | t: {t}"
         logger.info(msg)
 
     def reset_status(self):
@@ -399,13 +399,13 @@ class FiniteElementMethod(Configuration, is_interface=True):
     @property
     def scheme(self) -> Scheme | TimeSchemes:
         raise NotImplementedError("Overload this configuration in derived class!")
-    
+
     def initialize(self) -> None:
         self.initialize_finite_element_spaces()
         self.initialize_trial_and_test_functions()
         self.initialize_gridfunctions()
         self.initialize_time_scheme_gridfunctions()
-        
+
         self.set_boundary_conditions()
         self.set_initial_conditions()
 
@@ -456,7 +456,7 @@ class FiniteElementMethod(Configuration, is_interface=True):
         if isinstance(self.scheme, TimeSchemes):
             self.scheme.add_symbolic_temporal_forms(self.blf, self.lf)
 
-    def set_initial_conditions(self) -> None:    
+    def set_initial_conditions(self) -> None:
         # Make sure to call the upper class method after having set the initial conditions
         if isinstance(self.scheme, TimeSchemes):
             self.scheme.set_initial_conditions()
@@ -467,7 +467,7 @@ class FiniteElementMethod(Configuration, is_interface=True):
     def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def get_fields(self, *fields: str, default: bool = True) -> ngsdict:
+    def get_solution_fields(self) -> ngsdict:
         raise NotImplementedError("Overload this method in derived class!")
 
     def set_boundary_conditions(self) -> None:
@@ -504,11 +504,11 @@ class SolverConfiguration(Configuration, is_interface=True):
     @property
     def fem(self) -> FiniteElementMethod:
         raise NotImplementedError("Overload this configuration in derived class!")
-    
+
     @dream_configuration
     def time(self) -> TimeRoutine:
         return self._time
-    
+
     @time.setter
     def time(self, time: str | TimeRoutine):
         OPTIONS = [StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine]
@@ -568,8 +568,23 @@ class SolverConfiguration(Configuration, is_interface=True):
 
         if self.mesh.is_periodic and not self.root.bcs.has_condition(Periodic):
             raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
-        
+
         self.fem.initialize()
+
+    def get_solution_fields(self, *fields) -> ngsdict:
+
+        uh = self.fem.get_solution_fields()
+
+        fields_ = type(uh)()
+        for field_ in fields:
+            if field_ in uh:
+                fields_[field_] = uh[field_]
+            elif hasattr(uh, field_):
+                fields_[field_] = getattr(uh, field_)
+            else:
+                logger.info(f"Field {field_} not predefined!")
+
+        return fields_
 
     def set_grid_deformation(self):
         grid_deformation = self.dcs.get_grid_deformation_function()

@@ -170,7 +170,14 @@ class CompressibleFlowSolver(SolverConfiguration):
         OPTIONS = [LaxFriedrich, Roe, HLL, HLLEM, Upwind]
         self._riemann_solver = self._get_configuration_option(riemann_solver, OPTIONS, RiemannSolver)
 
-    def get_farfield_state(self, direction: tuple[float, ...]) -> flowfields:
+    def get_solution_fields(self, *fields: str, default_fields: bool = True) -> flowfields:
+
+        if default_fields:
+            fields = ('density', 'velocity', 'pressure') + fields
+
+        return super().get_solution_fields(*fields)
+
+    def get_farfield_fields(self, direction: tuple[float, ...]) -> flowfields:
         r""" Returns the dimensionless farfield fields depending on the scaling in use and the flow direction. 
 
             Aerodynamic Scaling
@@ -227,7 +234,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         return INF
 
-    def get_dimensionful_state(self, U: flowfields) -> flowfields:
+    def get_dimensionful_fields(self, U: flowfields) -> flowfields:
         r""" Returns the dimensionful fields from given fields depending on the scaling. 
 
             :param U: A dictionary containing the flow quantities
