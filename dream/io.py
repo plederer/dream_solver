@@ -413,6 +413,9 @@ class LogStream(Stream):
 
         super().__init__(mesh, root, **DEFAULT)
 
+    def open(self):
+        return self
+
     def _get_handler(self, name: str) -> logging.Handler:
         for handler in self.logger.handlers:
             if handler.get_name() == name:
