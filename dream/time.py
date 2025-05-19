@@ -127,6 +127,12 @@ class Scheme(Configuration, is_interface=True):
         raise NotImplementedError("Overload this method in derived class!")
 
 
+class StationaryScheme(Scheme):
+
+    def solve(self) -> None:
+        raise NotImplementedError("Overload this method in derived class!")
+
+
 class TimeSchemes(Scheme):
 
     time_levels: tuple[str, ...]
@@ -191,6 +197,7 @@ class StationaryRoutine(TimeRoutine):
             # Solution routine ends here
 
             io.save_post_time_routine()
+        io.redraw()
 
 
 class TransientRoutine(TimeRoutine):
