@@ -10,16 +10,14 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b6f29fd6" />
-      <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-      <script src="../_static/design-tabs.js?v=f930bc37"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1]}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
@@ -357,7 +355,7 @@
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "1291ded7d86d45bebed4bb0dcf49f69c"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "36a6d3be83654b00a2c5c572689b8d76"}</script></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
@@ -411,8 +409,6 @@
 <span class="n">cfg</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s2">&quot;lax_friedrich&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">True</span>
 
-<span class="n">cfg</span><span class="o">.</span><span class="n">nonlinear_solver</span> <span class="o">=</span> <span class="s2">&quot;pardiso&quot;</span>
-
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;pseudo_time_stepping&quot;</span>
 
 <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative&quot;</span>
@@ -461,64 +457,64 @@
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.solver    (INFO) | residual: 6.523635e-02 | iteration: 0
-dream.solver    (INFO) | residual: 1.377432e+02 | iteration: 1
-dream.solver    (INFO) | residual: 9.491204e+01 | iteration: 2
-dream.solver    (INFO) | residual: 7.423600e+01 | iteration: 3
-dream.solver    (INFO) | residual: 6.234886e+01 | iteration: 4
-dream.solver    (INFO) | residual: 5.452241e+01 | iteration: 5
-dream.solver    (INFO) | residual: 4.870760e+01 | iteration: 6
-dream.solver    (INFO) | residual: 4.413781e+01 | iteration: 7
-dream.solver    (INFO) | residual: 4.042130e+01 | iteration: 8
-dream.solver    (INFO) | residual: 3.730160e+01 | iteration: 9
+dream.solver    (INFO) | residual: 6.527468e-02 | iteration: 0
+dream.solver    (INFO) | residual: 1.369797e+02 | iteration: 1
+dream.solver    (INFO) | residual: 9.413612e+01 | iteration: 2
+dream.solver    (INFO) | residual: 7.416178e+01 | iteration: 3
+dream.solver    (INFO) | residual: 6.257375e+01 | iteration: 4
+dream.solver    (INFO) | residual: 5.474328e+01 | iteration: 5
+dream.solver    (INFO) | residual: 4.890540e+01 | iteration: 6
+dream.solver    (INFO) | residual: 4.434764e+01 | iteration: 7
+dream.solver    (INFO) | residual: 4.066006e+01 | iteration: 8
+dream.solver    (INFO) | residual: 3.756120e+01 | iteration: 9
 dream.time      (INFO) | Successfully updated time step at iteration 10
 dream.time      (INFO) | Updated time step 𝚫t = 0.01. Previous time step 𝚫t = 0.001
-dream.solver    (INFO) | residual: 1.188107e+02 | iteration: 10
-dream.solver    (INFO) | residual: 4.896780e+01 | iteration: 11
-dream.solver    (INFO) | residual: 3.109144e+01 | iteration: 12
-dream.solver    (INFO) | residual: 2.539195e+01 | iteration: 13
-dream.solver    (INFO) | residual: 2.242879e+01 | iteration: 14
-dream.solver    (INFO) | residual: 1.938185e+01 | iteration: 15
-dream.solver    (INFO) | residual: 1.619581e+01 | iteration: 16
-dream.solver    (INFO) | residual: 1.336857e+01 | iteration: 17
-dream.solver    (INFO) | residual: 1.108364e+01 | iteration: 18
-dream.solver    (INFO) | residual: 9.279898e+00 | iteration: 19
+dream.solver    (INFO) | residual: 1.185736e+02 | iteration: 10
+dream.solver    (INFO) | residual: 4.900885e+01 | iteration: 11
+dream.solver    (INFO) | residual: 3.115978e+01 | iteration: 12
+dream.solver    (INFO) | residual: 2.536746e+01 | iteration: 13
+dream.solver    (INFO) | residual: 2.237988e+01 | iteration: 14
+dream.solver    (INFO) | residual: 1.938417e+01 | iteration: 15
+dream.solver    (INFO) | residual: 1.622656e+01 | iteration: 16
+dream.solver    (INFO) | residual: 1.338744e+01 | iteration: 17
+dream.solver    (INFO) | residual: 1.108755e+01 | iteration: 18
+dream.solver    (INFO) | residual: 9.278745e+00 | iteration: 19
 dream.time      (INFO) | Successfully updated time step at iteration 20
 dream.time      (INFO) | Updated time step 𝚫t = 0.1. Previous time step 𝚫t = 0.01
-dream.solver    (INFO) | residual: 1.524843e+01 | iteration: 20
-dream.solver    (INFO) | residual: 2.158938e+00 | iteration: 21
-dream.solver    (INFO) | residual: 4.319529e-01 | iteration: 22
-dream.solver    (INFO) | residual: 5.211128e-02 | iteration: 23
-dream.solver    (INFO) | residual: 2.999187e-03 | iteration: 24
-dream.solver    (INFO) | residual: 3.377086e-04 | iteration: 25
-dream.solver    (INFO) | residual: 3.470861e-04 | iteration: 26
-dream.solver    (INFO) | residual: 2.017171e-04 | iteration: 27
-dream.solver    (INFO) | residual: 9.553505e-05 | iteration: 28
-dream.solver    (INFO) | residual: 5.112619e-05 | iteration: 29
+dream.solver    (INFO) | residual: 1.518437e+01 | iteration: 20
+dream.solver    (INFO) | residual: 2.161493e+00 | iteration: 21
+dream.solver    (INFO) | residual: 4.321877e-01 | iteration: 22
+dream.solver    (INFO) | residual: 5.217739e-02 | iteration: 23
+dream.solver    (INFO) | residual: 3.017118e-03 | iteration: 24
+dream.solver    (INFO) | residual: 3.427553e-04 | iteration: 25
+dream.solver    (INFO) | residual: 3.500241e-04 | iteration: 26
+dream.solver    (INFO) | residual: 2.036373e-04 | iteration: 27
+dream.solver    (INFO) | residual: 9.644757e-05 | iteration: 28
+dream.solver    (INFO) | residual: 5.137576e-05 | iteration: 29
 dream.time      (INFO) | Successfully updated time step at iteration 30
 dream.time      (INFO) | Updated time step 𝚫t = 1.0. Previous time step 𝚫t = 0.1
-dream.solver    (INFO) | residual: 1.553697e-04 | iteration: 30
-dream.solver    (INFO) | residual: 5.382496e-05 | iteration: 31
-dream.solver    (INFO) | residual: 2.101119e-05 | iteration: 32
-dream.solver    (INFO) | residual: 6.041086e-06 | iteration: 33
-dream.solver    (INFO) | residual: 1.329604e-06 | iteration: 34
-dream.solver    (INFO) | residual: 2.722507e-07 | iteration: 35
-dream.solver    (INFO) | residual: 6.803229e-08 | iteration: 36
-dream.solver    (INFO) | residual: 2.175961e-08 | iteration: 37
-dream.solver    (INFO) | residual: 7.658317e-09 | iteration: 38
-dream.solver    (INFO) | residual: 2.732773e-09 | iteration: 39
+dream.solver    (INFO) | residual: 1.554975e-04 | iteration: 30
+dream.solver    (INFO) | residual: 5.558946e-05 | iteration: 31
+dream.solver    (INFO) | residual: 2.116324e-05 | iteration: 32
+dream.solver    (INFO) | residual: 6.122476e-06 | iteration: 33
+dream.solver    (INFO) | residual: 1.388903e-06 | iteration: 34
+dream.solver    (INFO) | residual: 2.915707e-07 | iteration: 35
+dream.solver    (INFO) | residual: 7.297719e-08 | iteration: 36
+dream.solver    (INFO) | residual: 2.308508e-08 | iteration: 37
+dream.solver    (INFO) | residual: 8.065518e-09 | iteration: 38
+dream.solver    (INFO) | residual: 2.872964e-09 | iteration: 39
 dream.time      (INFO) | Successfully updated time step at iteration 40
 dream.time      (INFO) | Updated time step 𝚫t = 10.0. Previous time step 𝚫t = 1.0
-dream.solver    (INFO) | residual: 2.111604e-09 | iteration: 40
-dream.solver    (INFO) | residual: 3.529312e-11 | iteration: 41
-dream.solver    (INFO) | residual: 5.904523e-13 | iteration: 42
+dream.solver    (INFO) | residual: 2.227451e-09 | iteration: 40
+dream.solver    (INFO) | residual: 3.742295e-11 | iteration: 41
+dream.solver    (INFO) | residual: 6.293430e-13 | iteration: 42
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "17a71e6623aa4a83b8a007faf318b123"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "107c55d0bff1420f81e25d9071d43224"}</script></div>
 </div>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -540,7 +536,7 @@ dream.solver    (INFO) | residual: 5.904523e-13 | iteration: 42
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;airfoil&#39;: array([ 0.02579041, -0.0001848 ])}
+{&#39;airfoil&#39;: array([-0.02608199, -0.00024716])}
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -577,7 +573,7 @@ Text(0.5, 1.0, &#39;Pressure coefficient over chord length&#39;)
 </div>
 </div>
 <script type="application/vnd.jupyter.widget-state+json">
-{"state": {"a8542d7d07ed417f9ea898e8869da34c": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "1291ded7d86d45bebed4bb0dcf49f69c": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_a8542d7d07ed417f9ea898e8869da34c", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_0.json", "preview": "preview_0.png"}}}, "314d6a5876cf43eb90ae40836026ae9c": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "17a71e6623aa4a83b8a007faf318b123": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_314d6a5876cf43eb90ae40836026ae9c", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_1.json", "preview": "preview_1.png"}}}}, "version_major": 2, "version_minor": 0}
+{"state": {"5d2841256ed84860a1ff153aa624ac7d": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "36a6d3be83654b00a2c5c572689b8d76": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_5d2841256ed84860a1ff153aa624ac7d", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_0.json", "preview": "preview_0.png"}}}, "3ddc139a406b49c2a718e96622610ce9": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "107c55d0bff1420f81e25d9071d43224": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_3ddc139a406b49c2a718e96622610ce9", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_1.json", "preview": "preview_1.png"}}}}, "version_major": 2, "version_minor": 0}
 </script></section>
 
 
@@ -590,7 +586,7 @@ Text(0.5, 1.0, &#39;Pressure coefficient over chord length&#39;)
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2023, Philip Lederer.</p>
+    <p>&#169; Copyright 2025.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
