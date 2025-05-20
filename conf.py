@@ -14,8 +14,8 @@ import sphinx_rtd_theme
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'dream'
-copyright = '2023, Philip Lederer'
-author = 'Philip Lederer'
+copyright = '2025'
+author = 'Philip Lederer, Jan Ellmenreich, Edmond Shehadi'
 release = '0.1'
 
 # -- General configuration ---------------------------------------------------
@@ -25,7 +25,7 @@ release = '0.1'
 
 extensions = ["sphinxcontrib.bibtex", "sphinx.ext.autodoc","sphinx.ext.mathjax","sphinx.ext.todo", "sphinxcontrib.jquery",
               "IPython.sphinxext.ipython_console_highlighting", "IPython.sphinxext.ipython_directive",
-              "nbsphinx", "myst_parser", 'sphinx.ext.autosummary', 'sphinx_design']
+              "nbsphinx", "myst_parser", 'sphinx.ext.autosummary']
 
 templates_path = ['_templates']
 exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints"]
