@@ -23,8 +23,8 @@
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1]}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-      <script src="../../_static/webgui.js?v=6c659205"></script>
-      <script src="../../_static/webgui_jupyter_widgets.js?v=26c7eb45"></script>
+      <script src="../../_static/webgui.js"></script>
+      <script src="../../_static/webgui_jupyter_widgets.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -51,7 +51,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/literature.html">Literature</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">compressible</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">dream.compressible.solver</a><ul>
@@ -64,13 +71,16 @@
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dynamic_viscosity</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.scaling</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_farfield_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_state()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_reynolds_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.deviatoric_stress_tensor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.drag_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.solver.CompressibleFlowSolver.lift_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.lift_coefficient()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -92,6 +102,7 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_convective_numerical_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_diffusive_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_diffusive_numerical_flux()</span></code></a></li>
 </ul>
@@ -422,9 +433,23 @@
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="dream.compressible.solver.CompressibleFlowSolver.get_farfield_state">
-<span class="sig-name descname"><span class="pre">get_farfield_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></span><a class="headerlink" href="#dream.compressible.solver.CompressibleFlowSolver.get_farfield_state" title="Link to this definition"></a></dt>
-<dd><p>Returns the dimensionless farfield fields depending on the scaling in use and the flow direction.</p>
+<dt class="sig sig-object py" id="dream.compressible.solver.CompressibleFlowSolver.get_solution_fields">
+<span class="sig-name descname"><span class="pre">get_solution_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></span><a class="headerlink" href="#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields" title="Link to this definition"></a></dt>
+<dd><p>Returns the solution fields depending on the underlying finite element method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fields</strong> (<em>str</em>) – A list of fields as strings to be returned</p></li>
+<li><p><strong>default_fields</strong> (<em>bool</em>) – If True, the default fields ‘density’, ‘velocity’, ‘pressure’ are included in the returned fields</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields">
+<span class="sig-name descname"><span class="pre">get_farfield_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></span><a class="headerlink" href="#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield fields <span class="math notranslate nohighlight">\(\vec{U}_\infty\)</span> depending on the scaling in use and the flow direction.</p>
 <dl>
 <dt>Aerodynamic Scaling</dt><dd><div class="math notranslate nohighlight">
 \[\begin{align*}
@@ -462,8 +487,8 @@
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_state">
-<span class="sig-name descname"><span class="pre">get_dimensionful_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></span><a class="headerlink" href="#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_state" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields">
+<span class="sig-name descname"><span class="pre">get_dimensionful_fields</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></span><a class="headerlink" href="#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields" title="Link to this definition"></a></dt>
 <dd><p>Returns the dimensionful fields from given fields depending on the scaling.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -539,6 +564,62 @@
 <li><p><strong>U</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the flow quantities</p></li>
 <li><p><strong>dU</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the gradients of the flow quantities</p></li>
 </ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.solver.CompressibleFlowSolver.drag_coefficient">
+<span class="sig-name descname"><span class="pre">drag_coefficient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Uinf</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">drag_direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(1,</span> <span class="pre">0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aera</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient" title="Link to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>Returns the definition of the drag coefficient. </dt><dd><p>Needs to be integrated over a surface, due to the inclusion of the boundary normal vector <span class="math notranslate nohighlight">\(\bm{n}_{bnd}\)</span>.</p>
+</dd>
+</dl>
+<div class="math notranslate nohighlight">
+\[C_d = \frac{1}{\frac{1}{2} \rho_\infty |\bm{u}_\infty|^2 A} \bm{n}_{drag} \left(\mat{\tau} - p \mat{\I} \right) \bm{n}_{bnd}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>U</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the flow quantities</p></li>
+<li><p><strong>dU</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the gradients of the flow quantities for the evaluation of the viscous stress tensor</p></li>
+<li><p><strong>Uinf</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the reference flow quantities</p></li>
+<li><p><strong>drag_direction</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>...</em><em>]</em>) – A container containing the drag direction <span class="math notranslate nohighlight">\(\bm{n}_{drag}\)</span></p></li>
+<li><p><strong>aera</strong> (<em>float</em>) – The reference area <span class="math notranslate nohighlight">\(A\)</span></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The drag coefficient</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.solver.CompressibleFlowSolver.lift_coefficient">
+<span class="sig-name descname"><span class="pre">lift_coefficient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Uinf</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lift_direction</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(0,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aera</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#dream.compressible.solver.CompressibleFlowSolver.lift_coefficient" title="Link to this definition"></a></dt>
+<dd><dl class="simple">
+<dt>Returns the definition of the lift coefficient. </dt><dd><p>Needs to be integrated over a surface, due to the inclusion of the boundary normal vector <span class="math notranslate nohighlight">\(\bm{n}_{bnd}\)</span>.</p>
+</dd>
+</dl>
+<div class="math notranslate nohighlight">
+\[C_l = \frac{1}{\frac{1}{2} \rho_\infty |\bm{u}_\infty|^2 A} \bm{n}_{lift} \left(\mat{\tau} - p \mat{\I} \right) \bm{n}_{bnd} \]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>U</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the flow quantities</p></li>
+<li><p><strong>dU</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the gradients of the flow quantities for the evaluation of the viscous stress tensor</p></li>
+<li><p><strong>Uinf</strong> (<a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – A dictionary containing the reference flow quantities</p></li>
+<li><p><strong>lift_direction</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>...</em><em>]</em>) – A container containing the lift direction <span class="math notranslate nohighlight">\(\bm{n}_{lift}\)</span></p></li>
+<li><p><strong>aera</strong> (<em>float</em>) – The reference area <span class="math notranslate nohighlight">\(A\)</span></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The drag coefficient</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
 </dd>
 </dl>
 </dd></dl>

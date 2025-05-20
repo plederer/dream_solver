@@ -23,8 +23,8 @@
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1]}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-      <script src="../../_static/webgui.js?v=6c659205"></script>
-      <script src="../../_static/webgui_jupyter_widgets.js?v=26c7eb45"></script>
+      <script src="../../_static/webgui.js"></script>
+      <script src="../../_static/webgui_jupyter_widgets.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -51,7 +51,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/literature.html">Literature</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">compressible</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.solver.html">dream.compressible.solver</a><ul>
@@ -64,13 +71,16 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dynamic_viscosity</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.scaling</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_state()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_reynolds_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.deviatoric_stress_tensor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.drag_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.lift_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.lift_coefficient()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -92,6 +102,7 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.conservative.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_convective_numerical_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.conservative.spatial.HDG.get_diffusive_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_diffusive_numerical_flux()</span></code></a></li>
 </ul>
@@ -341,14 +352,15 @@
 <span class="sig-name descname"><span class="pre">get_diffusive_numerical_flux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Uhat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.spatial.DG_HDG.get_diffusive_numerical_flux" title="Link to this definition"></a></dt>
 <dd><p>Diffusive numerical flux</p>
 <div class="math notranslate nohighlight">
-\[\widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]\]</div>
-<p>See <a class="reference internal" href="#dream.compressible.conservative.spatial.MixedMethod" title="dream.compressible.conservative.spatial.MixedMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">MixedMethod</span></code></a> for more details on the definition of <span class="math notranslate nohighlight">\(\mat{\tau}_d\)</span></p>
+\[\widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).\]</div>
 <aside class="footnote-list brackets">
 <aside class="footnote brackets" id="id1" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].</p>
+<p>See equation <span class="math notranslate nohighlight">\([E22b]\)</span> in <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id39" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">1</a>]</span></p>
+</aside>
+<aside class="footnote brackets" id="id3" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
+<p>See <a class="reference internal" href="#dream.compressible.conservative.spatial.MixedMethod" title="dream.compressible.conservative.spatial.MixedMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">MixedMethod</span></code></a> for more details on the definition of <span class="math notranslate nohighlight">\(\mat{\tau}_d\)</span></p>
 </aside>
 </aside>
 </dd></dl>
@@ -363,19 +375,34 @@ Formulation of Compressible Flows”. In: Archives of Computational Methods in E
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.conservative.spatial.HDG">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">HDG</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.spatial.HDG" title="Link to this definition"></a></dt>
-<dd><dl class="py method">
+<dd><dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.conservative.spatial.HDG.scheme">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scheme</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.ImplicitEuler" title="dream.compressible.conservative.time.implicit.ImplicitEuler"><span class="pre">ImplicitEuler</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.BDF2" title="dream.compressible.conservative.time.implicit.BDF2"><span class="pre">BDF2</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.imex.html#dream.compressible.conservative.time.imex.IMEXRK_ARS443" title="dream.compressible.conservative.time.imex.IMEXRK_ARS443"><span class="pre">IMEXRK_ARS443</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK22" title="dream.compressible.conservative.time.implicit.SDIRK22"><span class="pre">SDIRK22</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK33" title="dream.compressible.conservative.time.implicit.SDIRK33"><span class="pre">SDIRK33</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK54" title="dream.compressible.conservative.time.implicit.SDIRK54"><span class="pre">SDIRK54</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK34_LDD" title="dream.compressible.conservative.time.implicit.DIRK34_LDD"><span class="pre">DIRK34_LDD</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK43_WSO2" title="dream.compressible.conservative.time.implicit.DIRK43_WSO2"><span class="pre">DIRK43_WSO2</span></a></em><a class="headerlink" href="#dream.compressible.conservative.spatial.HDG.scheme" title="Link to this definition"></a></dt>
+<dd><p>Time scheme for the HDG method depending on the choosen time routine.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the time scheme</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the time scheme</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux">
 <span class="sig-name descname"><span class="pre">get_convective_numerical_flux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Uhat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux" title="Link to this definition"></a></dt>
 <dd><p>Convective numerical flux</p>
 <div class="math notranslate nohighlight">
 \[\widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}}) \qquad [E22a]\]</div>
-<p>See <a class="reference internal" href="dream.compressible.riemann_solver.html#module-dream.compressible.riemann_solver" title="dream.compressible.riemann_solver"><code class="xref py py-class docutils literal notranslate"><span class="pre">dream.compressible.riemann_solver</span></code></a> for more details on the definition of <span class="math notranslate nohighlight">\(\mat{\tau}_c\)</span></p>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id2" role="doc-footnote">
+<aside class="footnote brackets" id="id4" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].</p>
+<p>See equation <span class="math notranslate nohighlight">\([E22a]\)</span> in <span id="id5">[<a class="reference internal" href="../../introduction/literature.html#id39" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">1</a>]</span></p>
+</aside>
+<aside class="footnote brackets" id="id6" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
+<p>See <a class="reference internal" href="dream.compressible.riemann_solver.html#module-dream.compressible.riemann_solver" title="dream.compressible.riemann_solver"><code class="xref py py-class docutils literal notranslate"><span class="pre">dream.compressible.riemann_solver</span></code></a> for more details on the definition of <span class="math notranslate nohighlight">\(\mat{\tau}_c\)</span></p>
 </aside>
 </aside>
 </dd></dl>
@@ -385,14 +412,15 @@ Formulation of Compressible Flows”. In: Archives of Computational Methods in E
 <span class="sig-name descname"><span class="pre">get_diffusive_numerical_flux</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Uhat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.spatial.HDG.get_diffusive_numerical_flux" title="Link to this definition"></a></dt>
 <dd><p>Diffusive numerical flux</p>
 <div class="math notranslate nohighlight">
-\[\widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]\]</div>
-<p>See <a class="reference internal" href="#dream.compressible.conservative.spatial.MixedMethod" title="dream.compressible.conservative.spatial.MixedMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">MixedMethod</span></code></a> for more details on the definition of <span class="math notranslate nohighlight">\(\mat{\tau}_d\)</span></p>
+\[\widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).\]</div>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id3" role="doc-footnote">
+<aside class="footnote brackets" id="id7" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].</p>
+<p>See equation <span class="math notranslate nohighlight">\([E22b]\)</span> in <span id="id8">[<a class="reference internal" href="../../introduction/literature.html#id39" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">1</a>]</span></p>
+</aside>
+<aside class="footnote brackets" id="id9" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
+<p>See <a class="reference internal" href="#dream.compressible.conservative.spatial.MixedMethod" title="dream.compressible.conservative.spatial.MixedMethod"><code class="xref py py-class docutils literal notranslate"><span class="pre">MixedMethod</span></code></a> for more details on the definition of <span class="math notranslate nohighlight">\(\mat{\tau}_d\)</span></p>
 </aside>
 </aside>
 </dd></dl>
