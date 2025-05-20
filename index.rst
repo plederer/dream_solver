@@ -7,28 +7,18 @@ Galerkin Finite element method. The main emphasis lies in high
 fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation (dream).
 
 
-.. dropdown:: **Installation**
+.. toctree::
+   :maxdepth: 1
+   :caption: Introduction
 
-   .. include:: installation.md
-      :parser: myst_parser.sphinx_
-   
+   introduction/about.md
+   introduction/installation.md
+   introduction/funding.md
+   introduction/literature.md
 
 .. toctree::
    :maxdepth: 1
    :caption: Solvers
 
    modules/compressible/index.rst
-
    examples/euler_around_naca.ipynb
-
-Funding
-==================
-
-This code is funded by the Austrian-Science fund `FWF
-<https://www.fwf.at>`_ via the stand alone project P35391N.
-
-Developed at:
-
-* (2022 - ) TU Wien, Institute of Analysis and Scientific Computing
-* (2023 - 2024) University of Twente, Department of Applied Mathematics
-* (2024 - ) University of Hamburg, Department of Mathematics

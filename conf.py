@@ -23,7 +23,7 @@ release = '0.1'
 
 # extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc', "myst_parser", 'sphinx_rtd_theme', 'nbsphinx']
 
-extensions = ["sphinx.ext.autodoc","sphinx.ext.mathjax","sphinx.ext.todo", "sphinxcontrib.jquery",
+extensions = ["sphinxcontrib.bibtex", "sphinx.ext.autodoc","sphinx.ext.mathjax","sphinx.ext.todo", "sphinxcontrib.jquery",
               "IPython.sphinxext.ipython_console_highlighting", "IPython.sphinxext.ipython_directive",
               "nbsphinx", "myst_parser", 'sphinx.ext.autosummary', 'sphinx_design']
 
@@ -34,6 +34,10 @@ add_module_names = False
 autodoc_member_order = 'bysource'
 highlight_language = 'python3'
 pygments_style = "sphinx"
+
+bibtex_bibfiles = ['introduction/literature.bib']
+bibtex_default_style = 'unsrt'
+
 
 
 

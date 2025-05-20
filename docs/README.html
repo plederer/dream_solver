@@ -21,8 +21,8 @@
       <script src="_static/design-tabs.js?v=f930bc37"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
-      <script src="_static/webgui.js?v=6c659205"></script>
-      <script src="_static/webgui_jupyter_widgets.js?v=26c7eb45"></script>
+      <script src="_static/webgui.js"></script>
+      <script src="_static/webgui_jupyter_widgets.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -47,7 +47,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/literature.html">Literature</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/compressible/index.html">compressible</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html">dream.compressible.solver</a><ul>
@@ -60,13 +67,16 @@
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dynamic_viscosity</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.scaling</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_state()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_reynolds_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.deviatoric_stress_tensor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.drag_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.lift_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.lift_coefficient()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -88,6 +98,7 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_convective_numerical_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_diffusive_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_diffusive_numerical_flux()</span></code></a></li>
 </ul>

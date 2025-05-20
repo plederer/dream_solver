@@ -7,3 +7,7 @@ __pycache__/
 *.swp
 *.vtu
 *.vtk
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+Makefile

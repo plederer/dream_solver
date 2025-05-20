@@ -8,6 +8,7 @@ compressible
     :toctree:
     :recursive:
 
+
     solver
     conservative.spatial
     conservative.time.explicit

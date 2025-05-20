@@ -8,6 +8,7 @@ compressible
     :toctree:
     :recursive:
 
+
     solver
     conservative.spatial
     conservative.time.explicit
@@ -21,17 +22,4 @@ compressible
     
 .. include:: equations.md
     :parser: myst_parser.sphinx_
-
-
-
-
-.. .. automodule:: dream.compressible
-..     :members:
-
-
-
-
-
-
-
 

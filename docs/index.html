@@ -23,12 +23,12 @@
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1]}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-      <script src="_static/webgui.js?v=6c659205"></script>
-      <script src="_static/webgui_jupyter_widgets.js?v=26c7eb45"></script>
+      <script src="_static/webgui.js"></script>
+      <script src="_static/webgui_jupyter_widgets.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="compressible" href="modules/compressible/index.html" /> 
+    <link rel="next" title="About" href="introduction/about.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -50,7 +50,14 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/literature.html">Literature</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/compressible/index.html">compressible</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html">dream.compressible.solver</a><ul>
@@ -63,13 +70,16 @@
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dynamic_viscosity</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.scaling</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_state()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_state()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_reynolds_number()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.deviatoric_stress_tensor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.drag_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.lift_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.lift_coefficient()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -91,6 +101,7 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_convective_numerical_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_diffusive_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_diffusive_numerical_flux()</span></code></a></li>
 </ul>
@@ -301,45 +312,16 @@
 Euler and Navier-Stokes equations by means of an hybrid discontinuous
 Galerkin Finite element method. The main emphasis lies in high
 fidelity and efficient <strong>d</strong>i<strong>r</strong>ect <strong>ae</strong>rocoustic si<strong>m</strong>ulation (dream).</p>
-<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
-<summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text"><strong>Installation</strong></span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text">We strongly advice the use of a virtual environment for the installation of the <em>dream</em> package
-and its dependencies.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p class="sd-card-text">To setup and activate a virtual environment run the following commands:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">user:~$ </span>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>~/env-path/dream
-<span class="gp">user:~$ </span><span class="nb">source</span><span class="w"> </span>~/env-path/dream/bin/activate
-<span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$  </span>which<span class="w"> </span>python3
-<span class="go">/home/user/env-path/dream/bin/python3</span>
-</pre></div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="introduction/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/literature.html">Literature</a></li>
+</ul>
 </div>
-<p class="sd-card-text">To deactivate the virtual environment run:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$ </span>deactivate
-<span class="gp">user:~$</span>
-</pre></div>
-</div>
-</div>
-<p class="sd-card-text">To install the <em>dream</em> package clone the repository to your local machine.</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$ </span>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:plederer/dream_solver.git<span class="w"> </span>~/target-path
-</pre></div>
-</div>
-<p class="sd-card-text">Run <code class="docutils literal notranslate"><span class="pre">setuptools</span></code> in the directory by executing the commands:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$ </span>python3<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>~/target-path/.
-</pre></div>
-</div>
-<p class="sd-card-text">This will install the <em>dream</em> package and all its dependencies from pip including <a class="reference external" href="https://ngsolve.org/"><code class="docutils literal notranslate"><span class="pre">ngsolve</span></code></a>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p class="sd-card-text">If <code class="docutils literal notranslate"><span class="pre">setuptools</span></code> finds an underlying installation of <code class="docutils literal notranslate"><span class="pre">ngsolve</span></code> it will not install the package from pip, but use the existing installation.</p>
-</div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p class="sd-card-text">The <em>dream</em> package requires Python 3.10 and later versions.</p>
-</div>
-</div>
-</details><div class="toctree-wrapper compound">
+<div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="modules/compressible/index.html">compressible</a></li>
@@ -347,22 +329,12 @@ and its dependencies.</p>
 </ul>
 </div>
 </section>
-<section id="funding">
-<h1>Funding<a class="headerlink" href="#funding" title="Link to this heading"></a></h1>
-<p>This code is funded by the Austrian-Science fund <a class="reference external" href="https://www.fwf.at">FWF</a> via the stand alone project P35391N.</p>
-<p>Developed at:</p>
-<ul class="simple">
-<li><p>(2022 - ) TU Wien, Institute of Analysis and Scientific Computing</p></li>
-<li><p>(2023 - 2024) University of Twente, Department of Applied Mathematics</p></li>
-<li><p>(2024 - ) University of Hamburg, Department of Mathematics</p></li>
-</ul>
-</section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="modules/compressible/index.html" class="btn btn-neutral float-right" title="compressible" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="introduction/about.html" class="btn btn-neutral float-right" title="About" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
