@@ -171,6 +171,13 @@ class CompressibleFlowSolver(SolverConfiguration):
         self._riemann_solver = self._get_configuration_option(riemann_solver, OPTIONS, RiemannSolver)
 
     def get_solution_fields(self, *fields: str, default_fields: bool = True) -> flowfields:
+        """ Returns the solution fields depending on the underlying finite element method.
+
+            :param fields: A list of fields as strings to be returned
+            :type fields: str
+            :param default_fields: If True, the default fields 'density', 'velocity', 'pressure' are included in the returned fields
+            :type default_fields: bool
+        """
 
         if default_fields:
             fields = ('density', 'velocity', 'pressure') + fields
@@ -178,7 +185,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return super().get_solution_fields(*fields)
 
     def get_farfield_fields(self, direction: tuple[float, ...]) -> flowfields:
-        r""" Returns the dimensionless farfield fields depending on the scaling in use and the flow direction. 
+        r""" Returns the dimensionless farfield fields :math:`\vec{U}_\infty` depending on the scaling in use and the flow direction. 
 
             Aerodynamic Scaling
                 .. math:: 

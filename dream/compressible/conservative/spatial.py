@@ -490,6 +490,11 @@ class HDG(ConservativeMethod):
 
     @dream_configuration
     def scheme(self) -> ImplicitEuler | BDF2 | IMEXRK_ARS443 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK34_LDD | DIRK43_WSO2:
+        """ Time scheme for the HDG method depending on the choosen time routine.
+
+            :getter: Returns the time scheme
+            :setter: Sets the time scheme
+        """
         return self._scheme
 
     @scheme.setter
@@ -814,11 +819,8 @@ class HDG(ConservativeMethod):
 
             \widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}}) \qquad [E22a]
 
-        See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`
-
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        .. [1] See equation :math:`[E22a]` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
+        .. [2] See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -833,13 +835,10 @@ class HDG(ConservativeMethod):
 
         .. math::
 
-            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
+            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
 
-        See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
-
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        .. [1] See equation :math:`[E22b]` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
+        .. [2] See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -988,13 +987,10 @@ class DG_HDG(ConservativeMethod):
 
         .. math::
 
-            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
+            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
 
-        See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
-
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        .. [1] See equation :math:`[E22b]` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
+        .. [2] See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
         """
         unit_vector = bla.as_vector(unit_vector)
 
