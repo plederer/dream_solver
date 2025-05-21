@@ -625,6 +625,21 @@ class HDG(ConservativeMethod):
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
     def add_farfield_formulation(self, blf: Integrals, lf: Integrals, bc: FarField, bnd: str):
+        r""" Implementation of the farfield boundary condition :class:`dream.compressible.config.FarField`.
+
+        On the boundary :math:`\Gamma` we solve :cite:`peraireHybridizableDiscontinuousGalerkin2010, vila-perezHybridisableDiscontinuousGalerkin2021`
+
+        .. math::
+            \int_{\Gamma} \left[ \widehat{\mat{A}}^+_n (\widehat{\vec{U}}_h - \vec{U}_h) - \widehat{\mat{A}}^-_n(\widehat{\vec{U}}_h - \vec{U}_\infty) \right] \cdot \widehat{\vec{V}}_h = \vec{0},
+
+        where :math:`\widehat{\mat{A}}^\pm_n` are  the convective Jacobians in normal direction :math:`\vec{n}`.
+
+        To increse the stability of the farfield condition on boundaries which are aligned with the flow,
+        the identity Jacobian can be used instead of the convective Jacobian :cite:`PellmenreichCharacteristicBoundaryConditions2025`
+
+        .. math::
+            \int_{\Gamma} \left[\widehat{\vec{U}}_h - \widehat{\mat{Q}}^+_n \vec{U}_h - \widehat{\mat{Q}}^-_n \vec{U}_\infty \right] \cdot \widehat{\vec{V}}_h  = \vec{0}.
+        """
 
         bonus = self.root.optimizations.bonus_int_order
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
@@ -817,10 +832,10 @@ class HDG(ConservativeMethod):
 
         .. math::
 
-            \widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}}) \qquad [E22a]
+            \widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}})
 
-        .. [1] See equation :math:`[E22a]` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
-        .. [2] See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`
+        :note: See equation :math:`(E22a)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
+        :note: See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -837,8 +852,8 @@ class HDG(ConservativeMethod):
 
             \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
 
-        .. [1] See equation :math:`[E22b]` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
-        .. [2] See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
+        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
+        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -989,8 +1004,8 @@ class DG_HDG(ConservativeMethod):
 
             \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
 
-        .. [1] See equation :math:`[E22b]` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
-        .. [2] See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
+        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
+        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
         """
         unit_vector = bla.as_vector(unit_vector)
 

@@ -79,20 +79,17 @@ class dimensionfulfields(ngsdict):
 class FarField(Condition):
     r""" Farfield condition for compressible flow.
 
-    The farfield condition is used to set the subsonic and supersonic inflow/outflow conditions for compressible flows in a characteristic way.
-    It acts partially non-reflecting for acoustic waves on both inflow and outflow boundaries. 
+    The farfield condition is used to set the subsonic and supersonic inflow/outflow conditions for compressible 
+    flows in a characteristic way. It acts partially non-reflecting for acoustic waves on both inflow and outflow boundaries. 
 
-    A possible implementation is given by the HDG method (see :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`)
-
-    .. math::
-        \widehat{\mat{A}}^+_n (\widehat{\vec{U}}_h - \vec{U}_h) - \widehat{\mat{A}}^-_n(\widehat{\vec{U}}_h - \vec{U}_\infty) = 0,
-
-    where :math:`\widehat{\mat{A}}^\pm_n` are  the convective Jacobians in normal direction :math:`\vec{n}`.
-    
     :param fields: Dictionary of flow quantities :math:`\vec{U}_\infty` to be set at the farfield boundaries.
-    :type fields: ngsdict | flowfields
+    :type fields: flowfields
     :param use_identity_jacobian: Flag to use the identity jacobian for the farfield condition.
     :type use_identity_jacobian: bool
+
+    :note: See :func:`dream.compressible.conservative.spatial.HDG.add_farfield_formulation` for the implementation of 
+              the farfield condition in the HDG formulation.
+
     """
 
     name = "farfield"
@@ -258,6 +255,9 @@ class CBC(Condition):
 
 
 class GRCBC(CBC):
+    r""" Generalized Relaxation Condition Boundary Condition
+
+    """
 
     name = "grcbc"
 

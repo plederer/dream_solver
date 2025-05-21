@@ -28,7 +28,7 @@ class Upwind(RiemannSolver):
     name = "upwind"
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        r""" Returns the convective stabilisation matrix :math:`\mat{\tau}_c` for HDG.
 
         .. math::
             \bm{\tau}_c := \bm{A}_n^+
@@ -45,14 +45,12 @@ class LaxFriedrich(RiemannSolver):
     name = "lax_friedrich"
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        r""" Returns the convective stabilisation matrix :math:`\mat{\tau}_c` for HDG.
 
         .. math::
             \bm{\tau}_c := (|u_n| + c) \bm{I}
 
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See equation :math:`(35)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -99,14 +97,12 @@ class Roe(RiemannSolver):
     name = "roe"
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        r""" Returns the convective stabilisation matrix :math:`\mat{\tau}_c` for HDG.
 
         .. math::
-            \bm{\tau}_c := |A_n|
+            \bm{\tau}_c := |\mat{A}_n|
 
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See equation :math:`(36)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -123,14 +119,12 @@ class HLL(RiemannSolver):
     name = "hll"
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
-        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        r""" Returns the convective stabilisation matrix :math:`\mat{\tau}_c` for HDG.
 
         .. math::
             \bm{\tau}_c := \max(u_n + c, 0) \bm{I}
 
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See equation :math:`(38)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -158,15 +152,10 @@ class HLLEM(RiemannSolver):
 
     @dream_configuration
     def theta_0(self):
-        r""" Defines a threshold value used to stabilize contact waves, when the eigenvalue tends to zero.
+        r""" Defines a threshold value :math:`\theta_0` used to stabilize contact waves, when the eigenvalue tends to zero.
         This can occur if the flow is parallel to the element or domain boundary!
 
-        .. math::
-            \theta_0
-
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See Remark :math:`11` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
         """
         return self._theta_0
 
@@ -177,7 +166,7 @@ class HLLEM(RiemannSolver):
         self._theta_0 = theta_0
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: bla.VECTOR) -> ngs.CF:
-        r""" Returns the convective stabilisation matrix for the upwind scheme.
+        r""" Returns the convective stabilisation matrix :math:`\mat{\tau}_c` for HDG.
 
         .. math::
             \begin{align*}
@@ -186,9 +175,7 @@ class HLLEM(RiemannSolver):
             \bm{\tau}_c &:= \bm{P} \bm{\Theta} \bm{P}^{-1}
             \end{align*}
 
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See equation :math:`(40)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
         """
         unit_vector = bla.as_vector(unit_vector)
 
