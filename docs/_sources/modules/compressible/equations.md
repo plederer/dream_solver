@@ -24,7 +24,7 @@ To close the system of equations we need to specify the equation of state ({py:c
 
 ## Quasi-linear Euler equations
 The hyperbolic nature of the Navier-Stokes equations with respect to time lies in the Euler
-equations
+equations {cite}`hirschNumericalComputationInternal2002`
 \begin{align*}
     \frac{\partial \vec{U}}{\partial t} + \div(\vec{F}(\vec{U}))  = \vec{0},
 \end{align*}
@@ -34,12 +34,3 @@ it is essential to express these equations in quasi-linear form
     \frac{\partial \vec{U}}{\partial t} + \sum_{i=1}^d \mat{A}_i \frac{\partial \vec{U}}{\partial x_i}  &= \vec{0}, \\
 \end{align*}
 where the $\mat{A}_i$ are the directional convective Jacobians.
-
-## References
-[^1]: C. Hirsch, Numerical Computation of Internal and External Flows. 2: Computational Methods for
-Inviscid and Viscous Flows, repr Edition, A Wiley Interscience Publication, Wiley, Chichester, 2002.
-[^2]: J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-        Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-        28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
-[^3]: Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic
-boundary conditions for Hybridizable Discontinuous Galerkin methods, March 2025.

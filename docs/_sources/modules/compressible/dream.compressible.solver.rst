@@ -1,15 +1,17 @@
-﻿dream.compressible.solver
-=========================
+﻿solver
+======
 
+.. currentmodule:: dream.compressible
 .. automodule:: dream.compressible.solver
 
    
-   
-    .. autoclass:: CompressibleFlowSolver
-        :members:
-        :member-order: bysource
+      
+      .. autoclass:: CompressibleFlowSolver
+         :members:
+         :member-order: bysource
 
    
 
    
 
+   

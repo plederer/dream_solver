@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>dream.compressible.config &mdash; dream 0.1 documentation</title>
+  <title>config &mdash; dream 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=b6f29fd6" />
@@ -28,8 +28,8 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="Example 1" href="../../examples/euler_around_naca.html" />
-    <link rel="prev" title="dream.compressible.scaling" href="dream.compressible.scaling.html" /> 
+    <link rel="next" title="Flow around NACA 0012 airfoil" href="../../examples/euler_around_naca.html" />
+    <link rel="prev" title="scaling" href="dream.compressible.scaling.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -56,12 +56,16 @@
 <li class="toctree-l1"><a class="reference internal" href="../../introduction/about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../introduction/funding.html">Funding</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../introduction/literature.html">Literature</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/literature.html">References</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/literature.html#publications">Publications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/literature.html#literature">Literature</a></li>
+</ul>
+</li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="index.html">compressible</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.solver.html">dream.compressible.solver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dream.compressible.solver.html">solver</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.fem"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.fem</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.mach_number</span></code></a></li>
@@ -85,58 +89,28 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.conservative.spatial.html">dream.compressible.conservative.spatial</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod.method"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod.method</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod.mixed_method"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod.mixed_method</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dream.compressible.conservative.html">conservative</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html">spatial</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG"><code class="docutils literal notranslate"><span class="pre">DG_HDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod.get_domain_boundary_mask()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.html">time</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html">explicit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.imex.html">imex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html">implicit</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG"><code class="docutils literal notranslate"><span class="pre">DG_HDG</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG.get_diffusive_numerical_flux"><code class="docutils literal notranslate"><span class="pre">DG_HDG.get_diffusive_numerical_flux()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_convective_numerical_flux()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_diffusive_numerical_flux"><code class="docutils literal notranslate"><span class="pre">HDG.get_diffusive_numerical_flux()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html">dream.compressible.conservative.time.explicit</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.CRK4"><code class="docutils literal notranslate"><span class="pre">CRK4</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.ExplicitEuler"><code class="docutils literal notranslate"><span class="pre">ExplicitEuler</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.ExplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ExplicitSchemes</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.SSPRK3"><code class="docutils literal notranslate"><span class="pre">SSPRK3</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html">dream.compressible.conservative.time.implicit</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.BDF2"><code class="docutils literal notranslate"><span class="pre">BDF2</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK34_LDD"><code class="docutils literal notranslate"><span class="pre">DIRK34_LDD</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK43_WSO2"><code class="docutils literal notranslate"><span class="pre">DIRK43_WSO2</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRKSchemes"><code class="docutils literal notranslate"><span class="pre">DIRKSchemes</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.ImplicitEuler"><code class="docutils literal notranslate"><span class="pre">ImplicitEuler</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.ImplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ImplicitSchemes</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK22"><code class="docutils literal notranslate"><span class="pre">SDIRK22</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK33"><code class="docutils literal notranslate"><span class="pre">SDIRK33</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK54"><code class="docutils literal notranslate"><span class="pre">SDIRK54</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.conservative.time.imex.html">dream.compressible.conservative.time.imex</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.imex.html#dream.compressible.conservative.time.imex.IMEXRKSchemes"><code class="docutils literal notranslate"><span class="pre">IMEXRKSchemes</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.imex.html#dream.compressible.conservative.time.imex.IMEXRK_ARS443"><code class="docutils literal notranslate"><span class="pre">IMEXRK_ARS443</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.eos.html">dream.compressible.eos</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dream.compressible.eos.html">eos</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.EquationOfState"><code class="docutils literal notranslate"><span class="pre">EquationOfState</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas"><code class="docutils literal notranslate"><span class="pre">IdealGas</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.density"><code class="docutils literal notranslate"><span class="pre">IdealGas.density()</span></code></a></li>
@@ -162,7 +136,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.riemann_solver.html">dream.compressible.riemann_solver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dream.compressible.riemann_solver.html">riemann_solver</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
@@ -187,14 +161,14 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.viscosity.html">dream.compressible.viscosity</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dream.compressible.viscosity.html">viscosity</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.scaling.html">dream.compressible.scaling</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dream.compressible.scaling.html">scaling</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
 </ul>
@@ -213,7 +187,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">dream.compressible.config</a><ul>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">config</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.config.AdiabaticWall"><code class="docutils literal notranslate"><span class="pre">AdiabaticWall</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.config.CBC"><code class="docutils literal notranslate"><span class="pre">CBC</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.config.CBC.fields"><code class="docutils literal notranslate"><span class="pre">CBC.fields</span></code></a></li>
@@ -277,10 +251,12 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#compressible-flow-equations">Compressible flow equations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#quasi-linear-euler-equations">Quasi-linear Euler equations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="index.html#references">References</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/euler_around_naca.html">Flow around NACA 0012 airfoil</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../../examples/euler_around_naca.html">Example 1</a></li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -298,7 +274,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="index.html">compressible</a></li>
-      <li class="breadcrumb-item active">dream.compressible.config</li>
+      <li class="breadcrumb-item active">config</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/modules/compressible/dream.compressible.config.rst" rel="nofollow"> View page source</a>
       </li>
@@ -309,7 +285,7 @@
            <div itemprop="articleBody">
              
   <section id="module-dream.compressible.config">
-<span id="dream-compressible-config"></span><h1>dream.compressible.config<a class="headerlink" href="#module-dream.compressible.config" title="Link to this heading"></a></h1>
+<span id="config"></span><h1>config<a class="headerlink" href="#module-dream.compressible.config" title="Link to this heading"></a></h1>
 <p>Definitions of boundary/domain conditions for compressible flow</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.AdiabaticWall">
@@ -366,18 +342,18 @@
 <dt class="sig sig-object py" id="dream.compressible.config.FarField">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FarField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_identity_jacobian</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.config.FarField" title="Link to this definition"></a></dt>
 <dd><p>Farfield condition for compressible flow.</p>
-<p>The farfield condition is used to set the subsonic and supersonic inflow/outflow conditions for compressible flows in a characteristic way.
-It acts partially non-reflecting for acoustic waves on both inflow and outflow boundaries.</p>
-<p>A possible implementation is given by the HDG method (see <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id39" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">1</a>]</span>)</p>
-<div class="math notranslate nohighlight">
-\[\widehat{\mat{A}}^+_n (\widehat{\vec{U}}_h - \vec{U}_h) - \widehat{\mat{A}}^-_n(\widehat{\vec{U}}_h - \vec{U}_\infty) = 0,\]</div>
-<p>where <span class="math notranslate nohighlight">\(\widehat{\mat{A}}^\pm_n\)</span> are  the convective Jacobians in normal direction <span class="math notranslate nohighlight">\(\vec{n}\)</span>.</p>
+<p>The farfield condition is used to set the subsonic and supersonic inflow/outflow conditions for compressible 
+flows in a characteristic way. It acts partially non-reflecting for acoustic waves on both inflow and outflow boundaries.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>fields</strong> (<em>ngsdict</em><em> | </em><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – Dictionary of flow quantities <span class="math notranslate nohighlight">\(\vec{U}_\infty\)</span> to be set at the farfield boundaries.</p></li>
+<li><p><strong>fields</strong> (<a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><em>flowfields</em></a>) – Dictionary of flow quantities <span class="math notranslate nohighlight">\(\vec{U}_\infty\)</span> to be set at the farfield boundaries.</p></li>
 <li><p><strong>use_identity_jacobian</strong> (<em>bool</em>) – Flag to use the identity jacobian for the farfield condition.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Note<span class="colon">:</span></dt>
+<dd class="field-even"><p>See <a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.add_farfield_formulation" title="dream.compressible.conservative.spatial.HDG.add_farfield_formulation"><code class="xref py py-func docutils literal notranslate"><span class="pre">dream.compressible.conservative.spatial.HDG.add_farfield_formulation()</span></code></a> for the implementation of 
+the farfield condition in the HDG formulation.</p>
 </dd>
 </dl>
 <dl class="py property">
@@ -397,7 +373,8 @@ It acts partially non-reflecting for acoustic waves on both inflow and outflow b
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.GRCBC">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GRCBC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'farfield'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relaxation_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.28</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangential_relaxation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_viscous_fluxes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.config.GRCBC" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Generalized Relaxation Condition Boundary Condition</p>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.InviscidWall">
@@ -599,8 +576,8 @@ if predefined. Values are converted to NGSolve CoefficientFunctions.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="dream.compressible.scaling.html" class="btn btn-neutral float-left" title="dream.compressible.scaling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../../examples/euler_around_naca.html" class="btn btn-neutral float-right" title="Example 1" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="dream.compressible.scaling.html" class="btn btn-neutral float-left" title="scaling" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../../examples/euler_around_naca.html" class="btn btn-neutral float-right" title="Flow around NACA 0012 airfoil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -21,22 +21,36 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-# extensions = ['sphinx.ext.mathjax', 'sphinx.ext.autodoc', "myst_parser", 'sphinx_rtd_theme', 'nbsphinx']
-
-extensions = ["sphinxcontrib.bibtex", "sphinx.ext.autodoc","sphinx.ext.mathjax","sphinx.ext.todo", "sphinxcontrib.jquery",
-              "IPython.sphinxext.ipython_console_highlighting", "IPython.sphinxext.ipython_directive",
-              "nbsphinx", "myst_parser", 'sphinx.ext.autosummary', 'sphinx_design']
+extensions = ["sphinxcontrib.bibtex", 
+              "sphinx.ext.autodoc",
+              'sphinx.ext.autosummary',
+              "sphinx.ext.mathjax",
+              "sphinx.ext.todo", 
+              "sphinxcontrib.jquery",
+              "IPython.sphinxext.ipython_console_highlighting", 
+              "IPython.sphinxext.ipython_directive",
+              "nbsphinx", 
+              "myst_parser", 
+              ]
 
 templates_path = ['_templates']
 exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints"]
 
+# autodoc settings
 add_module_names = False
 autodoc_member_order = 'bysource'
+
+# autosummary settings
+autosummary_generate = True
+
 highlight_language = 'python3'
 pygments_style = "sphinx"
 
+#bibtex settings
 bibtex_bibfiles = ['introduction/literature.bib']
 bibtex_default_style = 'unsrt'
+
+
 
 
 

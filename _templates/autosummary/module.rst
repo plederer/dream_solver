@@ -1,15 +1,15 @@
-{{ fullname | escape | underline}}
+{{ name | escape | underline}}
 
+.. currentmodule:: {{ module }}
 .. automodule:: {{ fullname }}
 
    {% block classes %}
    {%- if classes %}
-   {% for item in classes %}
-    .. autoclass:: {{item}}
-        :members:
-        :member-order: bysource
-
-   {%- endfor %}
+      {% for item in classes %}
+      .. autoclass:: {{item}}
+         :members:
+         :member-order: bysource
+      {%- endfor %}
    {%- endif %}
    {%- endblock %}
 
@@ -35,13 +35,13 @@
    {%- endif %}
    {%- endblock %}
 
-{% block modules %}
-{%- if modules %}
-.. rubric:: {{ _('Modules') }}
-.. autosummary::
-   :toctree:
-{% for item in modules %}
-   {{ item }}
-{%- endfor %}
-{%- endif %}
-{%- endblock %}
+   {% block modules %}
+   {%- if modules %}
+   .. autosummary::
+      :toctree:
+      :recursive:
+   {% for item in modules %}
+      {{ item }}
+   {%- endfor %}
+   {%- endif %}
+   {%- endblock %}

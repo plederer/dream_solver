@@ -21,4 +21,3 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
    :caption: Solvers
 
    modules/compressible/index.rst
-   examples/euler_around_naca.ipynb

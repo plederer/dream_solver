@@ -6,11 +6,10 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>viscosity &mdash; dream 0.1 documentation</title>
+  <title>time &mdash; dream 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=b6f29fd6" />
-      <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
@@ -18,7 +17,6 @@
       <script src="../../_static/documentation_options.js?v=e1a75a79"></script>
       <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
-      <script src="../../_static/design-tabs.js?v=f930bc37"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script src="../../_static/webgui.js"></script>
@@ -26,8 +24,8 @@
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="scaling" href="dream.compressible.scaling.html" />
-    <link rel="prev" title="riemann_solver" href="dream.compressible.riemann_solver.html" /> 
+    <link rel="next" title="explicit" href="dream.compressible.conservative.time.explicit.html" />
+    <link rel="prev" title="spatial" href="dream.compressible.conservative.spatial.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -87,7 +85,7 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="dream.compressible.conservative.html">conservative</a><ul>
+<li class="toctree-l2 current"><a class="reference internal" href="dream.compressible.conservative.html">conservative</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.spatial.html">spatial</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod</span></code></a></li>
@@ -100,7 +98,7 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.html">time</a><ul>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">time</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html">explicit</a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.imex.html">imex</a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html">implicit</a></li>
@@ -159,11 +157,11 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">viscosity</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dream.compressible.viscosity.html">viscosity</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.scaling.html">scaling</a><ul>
@@ -272,9 +270,10 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="index.html">compressible</a></li>
-      <li class="breadcrumb-item active">viscosity</li>
+          <li class="breadcrumb-item"><a href="dream.compressible.conservative.html">conservative</a></li>
+      <li class="breadcrumb-item active">time</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../../_sources/modules/compressible/dream.compressible.viscosity.rst" rel="nofollow"> View page source</a>
+            <a href="../../_sources/modules/compressible/dream.compressible.conservative.time.rst" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -282,43 +281,36 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-dream.compressible.viscosity">
-<span id="viscosity"></span><h1>viscosity<a class="headerlink" href="#module-dream.compressible.viscosity" title="Link to this heading"></a></h1>
-<p>Definitions of viscous constitutive relations for compressible flow</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.viscosity.Constant">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Constant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.viscosity.Constant" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.viscosity.DynamicViscosity">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DynamicViscosity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.viscosity.DynamicViscosity" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.viscosity.Inviscid">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Inviscid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.viscosity.Inviscid" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.viscosity.Sutherland">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Sutherland</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.viscosity.Sutherland" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
+  <section id="module-dream.compressible.conservative.time">
+<span id="time"></span><h1>time<a class="headerlink" href="#module-dream.compressible.conservative.time" title="Link to this heading"></a></h1>
+<p>Definitions of conservative time discretizations</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="dream.compressible.conservative.time.explicit.html#module-dream.compressible.conservative.time.explicit" title="dream.compressible.conservative.time.explicit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">explicit</span></code></a></p></td>
+<td><p>Definitions of explicit time integration schemes for conservative methods</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible.conservative.time.imex.html#module-dream.compressible.conservative.time.imex" title="dream.compressible.conservative.time.imex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">imex</span></code></a></p></td>
+<td><p>Definitions of IMEX time integration schemes for conservative methods</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="dream.compressible.conservative.time.implicit.html#module-dream.compressible.conservative.time.implicit" title="dream.compressible.conservative.time.implicit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">implicit</span></code></a></p></td>
+<td><p>Definitions of implicit time integration schemes for conservative methods</p></td>
+</tr>
+</tbody>
+</table>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="dream.compressible.riemann_solver.html" class="btn btn-neutral float-left" title="riemann_solver" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="dream.compressible.scaling.html" class="btn btn-neutral float-right" title="scaling" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="dream.compressible.conservative.spatial.html" class="btn btn-neutral float-left" title="spatial" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dream.compressible.conservative.time.explicit.html" class="btn btn-neutral float-right" title="explicit" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2023, Philip Lederer.</p>
+    <p>&#169; Copyright 2025.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

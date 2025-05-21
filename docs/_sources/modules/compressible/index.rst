@@ -8,12 +8,8 @@ compressible
     :toctree:
     :recursive:
 
-
     solver
-    conservative.spatial
-    conservative.time.explicit
-    conservative.time.implicit
-    conservative.time.imex
+    conservative
     eos
     riemann_solver
     viscosity
@@ -23,16 +19,9 @@ compressible
 .. include:: equations.md
     :parser: myst_parser.sphinx_
 
+Examples
+--------
+.. toctree::
+    :maxdepth: 1
 
-
-
-.. .. automodule:: dream.compressible
-..     :members:
-
-
-
-
-
-
-
-
+    ../../examples/euler_around_naca.ipynb
