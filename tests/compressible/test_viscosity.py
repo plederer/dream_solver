@@ -1,67 +1,77 @@
-from __future__ import annotations
-import unittest
+import pytest
+import ngsolve as ngs
 
-from dream.compressible import flowfields
-from tests.compressible.setup import cfg, mip
+from dream.compressible import CompressibleFlowSolver, flowfields
 
-class TestInviscid(unittest.TestCase):
-
-    def setUp(self) -> None:
-        cfg.dynamic_viscosity = "inviscid"
-        self.mu = cfg.dynamic_viscosity
-
-    def test_is_inviscid(self):
-        self.assertTrue(self.mu.is_inviscid)
-
-    def test_viscosity(self):
-        with self.assertRaises(TypeError):
-            self.mu.viscosity(flowfields())
+mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+mip = mesh(0.5, 0.5)
 
 
-class TestConstant(unittest.TestCase):
-
-    def setUp(self) -> None:
-        cfg.dynamic_viscosity = "constant"
-        self.mu = cfg.dynamic_viscosity
-
-    def test_is_inviscid(self):
-        self.assertFalse(self.mu.is_inviscid)
-
-    def test_viscosity(self):
-        fields = flowfields()
-        self.assertAlmostEqual(self.mu.viscosity(fields), 1)
+@pytest.fixture
+def inviscid():
+    cfg = CompressibleFlowSolver(mesh)
+    cfg.dynamic_viscosity = "inviscid"
+    return cfg.dynamic_viscosity
 
 
-class TestSutherland(unittest.TestCase):
+def test_is_inviscid(inviscid):
+    assert inviscid.is_inviscid
 
-    def setUp(self) -> None:
-        cfg.mach_number = 1
-        cfg.equation_of_state.heat_capacity_ratio = 1.4
 
-        cfg.dynamic_viscosity = "sutherland"
-        cfg.dynamic_viscosity.measurement_temperature = 1
+def test_viscosity_inviscid(inviscid):
+    with pytest.raises(TypeError):
+        inviscid.viscosity(flowfields())
 
-        self.mu = cfg.dynamic_viscosity
 
-    def test_is_inviscid(self):
-        self.assertFalse(self.mu.is_inviscid)
+@pytest.fixture
+def constant():
+    cfg = CompressibleFlowSolver(mesh)
+    cfg.dynamic_viscosity = "constant"
+    return cfg.dynamic_viscosity
 
-    def test_viscosity(self):
 
-        fields = flowfields()
-        self.assertIs(self.mu.viscosity(fields), None)
+def test_is_not_inviscid(constant):
+    assert not constant.is_inviscid
 
-        fields = flowfields(temperature=1)
 
-        cfg.scaling = "aerodynamic"
-        cfg.scaling.dimensionful_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(fields)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
+def test_viscosity_constant(constant):
+    assert pytest.approx(constant.viscosity(flowfields())) == 1
 
-        cfg.scaling = "acoustic"
-        cfg.scaling.dimensionful_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(fields)(mip), (0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
-        cfg.scaling = "aeroacoustic"
-        cfg.scaling.dimensionful_values.T = 1
-        self.assertAlmostEqual(self.mu.viscosity(fields)(mip), (1.6)**(3/2) * (2/1.6)/(1+1/1.6))
+@pytest.fixture
+def sutherland():
+    cfg = CompressibleFlowSolver(mesh)
+    cfg.mach_number = 1
+    cfg.equation_of_state = "ideal"
+    cfg.equation_of_state.heat_capacity_ratio = 1.4
 
+    cfg.dynamic_viscosity = "sutherland"
+    cfg.dynamic_viscosity.measurement_temperature = 1
+
+    return cfg
+
+
+def test_is_not_inviscid_sutherland(sutherland):
+    mu = sutherland.dynamic_viscosity
+    assert not mu.is_inviscid
+
+
+def test_viscosity_sutherland(sutherland):
+
+    mu = sutherland.dynamic_viscosity
+    fields = flowfields()
+    assert mu.viscosity(fields) is None
+
+    fields = flowfields(temperature=1)
+
+    sutherland.scaling = "aerodynamic"
+    sutherland.scaling.dimensionful_values.T = 1
+    assert mu.viscosity(fields)(mip) == pytest.approx((0.4)**(3/2) * (2/0.4)/(1+1/0.4))
+
+    sutherland.scaling = "acoustic"
+    sutherland.scaling.dimensionful_values.T = 1
+    assert mu.viscosity(fields)(mip) == pytest.approx((0.4)**(3/2) * (2/0.4)/(1+1/0.4))
+
+    sutherland.scaling = "aeroacoustic"
+    sutherland.scaling.dimensionful_values.T = 1
+    assert mu.viscosity(fields)(mip) == pytest.approx((1.6)**(3/2) * (2/1.6)/(1+1/1.6))

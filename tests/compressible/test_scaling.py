@@ -1,47 +1,37 @@
-from __future__ import annotations
-import unittest
-from tests.compressible.setup import cfg, mip
+import pytest
+import ngsolve as ngs
+
+from dream.compressible import CompressibleFlowSolver
+
+mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+mip = mesh(0.5, 0.5)
 
 
-class TestAerodynamic(unittest.TestCase):
-
-    def setUp(self) -> None:
-        cfg.scaling = "aerodynamic"
-        self.scaling = cfg.scaling
-
-    def test_velocity_magnitude(self):
-        self.assertAlmostEqual(self.scaling.velocity_magnitude(0.1), 1)
-
-    def test_speed_of_sound(self):
-        self.assertAlmostEqual(self.scaling.speed_of_sound(0.2), 5)
-
-        with self.assertRaises(ValueError):
-            self.scaling.speed_of_sound(0)
+def cfg(scaling_name):
+    cfg = CompressibleFlowSolver(mesh)
+    cfg.scaling = scaling_name
+    return cfg.scaling
 
 
-class TestAcoustic(unittest.TestCase):
-
-    def setUp(self) -> None:
-        cfg.scaling = "acoustic"
-        self.scaling = cfg.scaling
-
-
-    def test_velocity_magnitude(self):
-        self.assertAlmostEqual(self.scaling.velocity_magnitude(0.1), 0.1)
-
-    def test_speed_of_sound(self):
-        self.assertAlmostEqual(self.scaling.speed_of_sound(0.2), 1)
+@pytest.mark.parametrize("scaling, velocity_input, expected_velocity", [
+    (cfg("aerodynamic"), 0.1, 1),
+    (cfg("acoustic"), 0.1, 0.1),
+    (cfg("aeroacoustic"), 0.1, 0.1 / (1 + 0.1)),
+])
+def test_velocity_magnitude(scaling, velocity_input, expected_velocity):
+    assert scaling.velocity_magnitude(velocity_input) == pytest.approx(expected_velocity)
 
 
-class TestAeroacoustic(unittest.TestCase):
+@pytest.mark.parametrize("scaling, sound_input, expected_sound", [
+    (cfg("aerodynamic"), 0.2, 5),
+    (cfg("acoustic"), 0.2, 1),
+    (cfg("aeroacoustic"), 0.2, 1 / (1 + 0.2)),
+])
+def test_speed_of_sound(scaling, sound_input, expected_sound):
+    assert scaling.speed_of_sound(sound_input) == pytest.approx(expected_sound)
 
-    def setUp(self) -> None:
-        cfg.scaling = "aeroacoustic"
-        self.scaling = cfg.scaling
 
-
-    def test_velocity_magnitude(self):
-        self.assertAlmostEqual(self.scaling.velocity_magnitude(0.1), 0.1/(1 + 0.1))
-
-    def test_speed_of_sound(self):
-        self.assertAlmostEqual(self.scaling.speed_of_sound(0.2), 1/(1 + 0.2))
+def test_aerodynamic_speed_of_sound_raises():
+    scaling = cfg("aerodynamic")
+    with pytest.raises(ValueError):
+        scaling.speed_of_sound(0)
