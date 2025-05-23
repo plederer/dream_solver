@@ -334,7 +334,9 @@ class ConservativeMethod(Configuration, is_interface=True):
 
     def get_conservative_fields(self, U: ngs.CoefficientFunction, with_gradients: bool = False) -> flowfields:
 
+        dU = None
         if isinstance(U, ngs.GridFunction):
+            dU = ngs.grad(U)
             U = U.components
 
         U_ = flowfields()
@@ -352,9 +354,7 @@ class ConservativeMethod(Configuration, is_interface=True):
         if isinstance(U, ngs.comp.ProxyFunction):
             U_.U = U
 
-        if isinstance(U, ngs.GridFunction) and with_gradients:
-            dU = ngs.grad(U)
-
+        if dU is not None and with_gradients:
             U_.grad_rho = dU[0, :]
             U_.grad_rho_u = dU[slice(1, self.mesh.dim + 1), :]
             U_.grad_rho_E = dU[self.mesh.dim + 1, :]
@@ -783,12 +783,12 @@ class HDG(ConservativeMethod):
         Uhat = self.get_conservative_fields(Uhat)
         Q = self.mixed_method.get_mixed_fields(Q)
 
-        tau = self.mixed_method.get_diffusive_stabilisation_matrix(U)
-        T_grad = self.root.temperature_gradient(U, Q)
+        tau = self.mixed_method.get_diffusive_stabilisation_matrix(Uhat)[self.mesh.dim+1, self.mesh.dim+1]
+        q = self.root.heat_flux(Uhat, Q)
 
-        U_bc = ngs.CF((Uhat.rho - U.rho, Uhat.rho_u, tau * (Uhat.rho_E - U.rho_E + T_grad * n)))
+        U_bc = ngs.CF((Uhat.rho - U.rho, Uhat.rho_u, tau * (Uhat.rho_E - U.rho_E) - q * n))
 
-        Gamma_ad = ngs.InnerProduct(Uhat.U - U_bc, Vhat)
+        Gamma_ad = ngs.InnerProduct(U_bc, Vhat)
         blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_ad * dS
 
     def add_sponge_layer_formulation(self, blf: Integrals, lf: Integrals, dc: SpongeLayer, dom: str):

@@ -506,7 +506,7 @@ class SolverConfiguration(Configuration, is_interface=True):
         raise NotImplementedError("Overload this configuration in derived class!")
 
     @dream_configuration
-    def time(self) -> TimeRoutine:
+    def time(self) -> StationaryRoutine | TransientRoutine | PseudoTimeSteppingRoutine:
         return self._time
 
     @time.setter

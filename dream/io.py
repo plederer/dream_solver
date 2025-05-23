@@ -839,6 +839,12 @@ class IOConfiguration(Configuration):
         if not path.is_absolute():
             path = Path.cwd().joinpath(path)
 
+        # Change paths of all streams if they are relative to the current path
+        streams = [stream for stream in vars(self).values() if isinstance(stream, Stream)]
+        for stream in streams:
+            if stream.path.is_relative_to(self._path):
+                stream.path = path.joinpath(stream.path.relative_to(self._path))
+
         self._path = path
 
     @dream_configuration
