@@ -347,8 +347,10 @@ class CompressibleFlowSolver(SolverConfiguration):
             lambdas = (ngs.IfPos(-lam, 1, 0) for lam in lambdas)
         elif type == "outgoing":
             lambdas = (ngs.IfPos(lam, 1, 0) for lam in lambdas)
+        elif type == None:
+            lambdas = (ngs.IfPos(lam, 1, ngs.IfPos(-lam, -1, 0)) for lam in lambdas)
         else:
-            raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {['incoming', 'outgoing']}")
+            raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {['incoming', 'outgoing', None]}")
 
         return bla.diagonal(lambdas)
 

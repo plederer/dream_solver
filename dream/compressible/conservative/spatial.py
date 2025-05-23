@@ -654,9 +654,11 @@ class HDG(ConservativeMethod):
              self.root.energy(bc.fields)))
 
         if bc.use_identity_jacobian:
-            Q_in = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, 'incoming')
-            Q_out = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, 'outgoing')
-            Gamma_infty = ngs.InnerProduct(Uhat.U - Q_out * U - Q_in * U_infty, Vhat)
+            # Q_in = self.root.get_conservative_convective_identity(Uhat, -self.mesh.normal, 'outgoing')
+            # Q_out = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, 'outgoing')
+            Qn = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, None)
+            # Gamma_infty = ngs.InnerProduct(Uhat.U - Q_out * U - Q_in * U_infty, Vhat)
+            Gamma_infty = ngs.InnerProduct(Uhat.U - 0.5 * Qn * (U - U_infty) - 0.5 * (U + U_infty), Vhat)
         else:
             An_in = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'incoming')
             An_out = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'outgoing')
