@@ -608,7 +608,7 @@ class SensorStream(Stream):
 
     def measure(self) -> typing.Generator[tuple[Sensor, np.ndarray], None, None]:
         for sensor in self._sensors:
-            yield sensor, np.concatenate([measurement for measurement in sensor.measure()])
+            yield sensor, np.concatenate([data for data in sensor.measure()])
 
     def close(self):
         if hasattr(self, 'csv'):
@@ -674,7 +674,7 @@ class RegionSensor(Sensor):
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for region in self.regions.values():
-            yield np.array(ngs.Integrate(self._field, self.mesh, order=self.integration_order, definedon=region))
+            yield np.array(ngs.Integrate(self._field, self.mesh, order=self.integration_order, definedon=region), ndmin=1)
 
     def measure_as_dict(self) -> dict[tuple[float, float, float], np.ndarray]:
         return {region: value for region, value in zip(self.regions, self.measure())}
@@ -699,7 +699,7 @@ class RegionSensor(Sensor):
             regions = get_regions_from_pattern(expected, region)
 
             for miss in set(region.split('|')).difference(regions):
-                logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted in sensor {self.name}!")
+                logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted!")
 
             regions = get_pattern_from_sequence(regions)
             return {regions: REGION(regions)}
@@ -708,7 +708,7 @@ class RegionSensor(Sensor):
             regions = tuple(region_ for region_ in region if region_ in expected)
 
             for miss in set(region).difference(regions):
-                logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted in sensor {self.name}!")
+                logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted!")
 
             return {region_: REGION(region_) for region_ in regions}
 
@@ -782,7 +782,7 @@ class PointSensor(Sensor):
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for point in self.points:
-            yield np.atleast_1d(self._field(self.mesh(*point)))
+            yield np.array(self._field(self.mesh(*point)), ndmin=1)
 
     def measure_as_dict(self) -> dict[tuple[float, float, float], np.ndarray]:
         return {point: value for point, value in zip(self.points, self.measure())}

@@ -190,11 +190,13 @@ def test_characteristic_identity(cfg):
     U = flowfields(velocity=(1, 0), speed_of_sound=1.4)
     unit_vector = (1, 0)
     with pytest.raises(ValueError):
-        cfg.get_characteristic_identity(U, unit_vector)(mip)
+        cfg.get_characteristic_identity(U, unit_vector, "unknown")(mip)
     nptest.assert_almost_equal(cfg.get_characteristic_identity(U, unit_vector, "incoming")(mip),
                                (1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
     nptest.assert_almost_equal(cfg.get_characteristic_identity(U, unit_vector, "outgoing")(mip),
                                (0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
+    nptest.assert_almost_equal(cfg.get_characteristic_identity(U, unit_vector, None)(mip),
+                               (-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
 
 
 def test_farfield_state(cfg):
