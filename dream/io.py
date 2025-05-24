@@ -31,7 +31,7 @@ class Stream(Configuration, is_interface=True):
 
     def __init__(self, mesh, root=None, **default):
 
-        DEFAULT = {"filename": None, "path": Path.cwd()}
+        DEFAULT = {"filename": None, "enable": False, "path": Path.cwd()}
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
 
@@ -44,6 +44,14 @@ class Stream(Configuration, is_interface=True):
         if filename is None:
             filename = self.name
         self._filename = filename
+
+    @dream_configuration
+    def enable(self) -> bool:
+        return self._enable
+
+    @enable.setter
+    def enable(self, enable: bool):
+        self._enable = bool(enable)
 
     @dream_configuration
     def path(self) -> Path:
@@ -81,7 +89,7 @@ class MeshStream(Stream):
 
     name: str = "mesh"
 
-    def save_pre_time_routine(self) -> None:
+    def save_pre_time_routine(self, t: float | None = None) -> None:
 
         path = self.path.joinpath(self.filename + ".pickle")
 
@@ -133,7 +141,7 @@ class SettingsStream(Stream):
     def yaml(self, yaml: bool):
         self._yaml = bool(yaml)
 
-    def save_pre_time_routine(self):
+    def save_pre_time_routine(self, t: float | None = None):
 
         if self.pickle:
             self.save_to_pickle()
@@ -252,6 +260,8 @@ class VTKStream(Stream):
             logger.warning("No fields to save! VTK stream is deactivated!")
             return None
 
+        super().open()
+
         self.drawelems = None
         if self.region is not None:
             self.drawelems = ngs.BitArray(self.mesh.ne)
@@ -263,7 +273,7 @@ class VTKStream(Stream):
         self.writer = ngs.VTKOutput(ma=self.root.mesh, coefs=list(self.fields.values()), names=list(
             self.fields.keys()), filename=str(path), subdivision=self.subdivision)
 
-        return super().open()
+        return self
 
     def save_pre_time_routine(self, t: float | None = None) -> None:
         if t is None:
@@ -817,12 +827,12 @@ class IOConfiguration(Configuration):
         path = Path.cwd().joinpath("output")
         DEFAULT = {
             "path": path,
-            "log": LogStream(mesh, root=root, path=path),
-            "ngsmesh": False,
-            "gfu": False,
-            "settings": False,
-            "vtk": False,
-            "sensor": False,
+            "log": LogStream(mesh, root=root, path=path, enable=True),
+            "ngsmesh": MeshStream(mesh, root=root, path=path),
+            "gfu": GridfunctionStream(mesh, root=root, path=path.joinpath("states")),
+            "settings": SettingsStream(mesh, root=root, path=path.joinpath("settings")),
+            "vtk": VTKStream(mesh, root=root, path=path.joinpath("vtk")),
+            "sensor": SensorStream(mesh, root=root, path=path.joinpath("sensors")),
         }
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
@@ -849,93 +859,51 @@ class IOConfiguration(Configuration):
 
     @dream_configuration
     def log(self) -> LogStream:
-        if not hasattr(self, '_log'):
-            self.log = LogStream(self.mesh, root=self.root, path=self.path)
         return self._log
 
     @log.setter
     def log(self, log: LogStream | bool):
-        if isinstance(log, LogStream):
-            self._log = log
-            self._log.mesh = self.mesh
-            self._log.root = self.root
-        elif hasattr(self, '_log'):
-            delattr(self, '_log')
+        self._log = self._parse_stream(log, LogStream)
 
     @dream_configuration
     def ngsmesh(self) -> MeshStream:
-        if not hasattr(self, '_ngsmesh'):
-            self.ngsmesh = MeshStream(self.mesh, root=self.root, path=self.path)
         return self._ngsmesh
 
     @ngsmesh.setter
     def ngsmesh(self, ngsmesh: MeshStream | bool):
-        if isinstance(ngsmesh, MeshStream):
-            self._ngsmesh = ngsmesh
-            self._ngsmesh.mesh = self.mesh
-            self._ngsmesh.root = self.root
-        elif hasattr(self, '_ngsmesh'):
-            delattr(self, '_ngsmesh')
+        self._ngsmesh = self._parse_stream(ngsmesh, MeshStream)
 
     @dream_configuration
     def gfu(self) -> GridfunctionStream:
-        if not hasattr(self, '_gfu'):
-            self.gfu = GridfunctionStream(self.mesh, root=self.root, path=self.path.joinpath("states"))
         return self._gfu
 
     @gfu.setter
     def gfu(self, gfu: GridfunctionStream | bool):
-        if isinstance(gfu, GridfunctionStream):
-            self._gfu = gfu
-            self._gfu.mesh = self.mesh
-            self._gfu.root = self.root
-        elif hasattr(self, '_gfu'):
-            delattr(self, '_gfu')
+        self._gfu = self._parse_stream(gfu, GridfunctionStream)
 
     @dream_configuration
     def settings(self) -> SettingsStream:
-        if not hasattr(self, '_settings'):
-            self.settings = SettingsStream(self.mesh, root=self.root, path=self.path.joinpath("settings"))
         return self._settings
 
     @settings.setter
     def settings(self, settings: SettingsStream | bool):
-        if isinstance(settings, SettingsStream):
-            self._settings = settings
-            self._settings.mesh = self.mesh
-            self._settings.root = self.root
-        elif hasattr(self, '_settings'):
-            delattr(self, '_settings')
+        self._settings = self._parse_stream(settings, SettingsStream)
 
     @dream_configuration
     def vtk(self) -> VTKStream:
-        if not hasattr(self, '_vtk'):
-            self.vtk = VTKStream(self.mesh, root=self.root, path=self.path.joinpath("vtk"))
         return self._vtk
 
     @vtk.setter
     def vtk(self, vtk: VTKStream | bool):
-        if isinstance(vtk, VTKStream):
-            self._vtk = vtk
-            self._vtk.mesh = self.mesh
-            self._vtk.root = self.root
-        elif hasattr(self, '_vtk'):
-            delattr(self, '_vtk')
+        self._vtk = self._parse_stream(vtk, VTKStream)
 
     @dream_configuration
     def sensor(self) -> SensorStream:
-        if not hasattr(self, '_sensor'):
-            self.sensor = SensorStream(self.mesh, root=self.root, path=self.path.joinpath("sensors"))
         return self._sensor
 
     @sensor.setter
     def sensor(self, sensor: SensorStream | bool):
-        if isinstance(sensor, SensorStream):
-            self._sensor = sensor
-            self._sensor.mesh = self.mesh
-            self._sensor.root = self.root
-        elif hasattr(self, '_sensor'):
-            delattr(self, '_sensor')
+        self._sensor = self._parse_stream(sensor, SensorStream)
 
     def draw(self, fields: ngsdict, **kwargs):
         if is_notebook():
@@ -956,18 +924,13 @@ class IOConfiguration(Configuration):
 
     def open(self):
 
-        streams = [stream for stream in vars(self).values() if isinstance(stream, Stream)]
+        SINGLE = (MeshStream, SettingsStream)
+        FILE = (VTKStream, GridfunctionStream, SensorStream)
 
-        self.single_streams = []
-        self.file_streams = []
+        streams = [stream.open() for stream in vars(self).values() if isinstance(stream, Stream) and stream.enable]
 
-        for stream in streams:
-            stream_ = stream.open()
-            if stream_ is not None:
-                if isinstance(stream_, (MeshStream, SettingsStream)):
-                    self.single_streams.append(stream_)
-                elif isinstance(stream_, (VTKStream, GridfunctionStream, SensorStream)):
-                    self.file_streams.append(stream_)
+        self.single_streams = [stream for stream in streams if isinstance(stream, SINGLE)]
+        self.file_streams = [stream for stream in streams if isinstance(stream, FILE)]
 
     def save_pre_time_routine(self, t: float | None = None):
         for stream in self.single_streams:
@@ -987,6 +950,13 @@ class IOConfiguration(Configuration):
     def close(self):
         for stream in self.file_streams:
             stream.close()
+
+    def _parse_stream(self, stream: Stream, type: Stream):
+        if not isinstance(stream, type):
+            raise ValueError(f"Stream must be of type '{type}'!")
+        stream.mesh = self.mesh
+        stream.root = self.root
+        return stream
 
     def __enter__(self):
         self.open()

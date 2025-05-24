@@ -99,6 +99,8 @@ cfg.initialize()
 drawing = cfg.get_solution_fields()
 drawing["p'"] = drawing.p - Uinf.p
 cfg.io.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
+
+cfg.io.vtk.enable = True
 cfg.io.vtk.fields = drawing
 
 # ------- Solve System ------- #

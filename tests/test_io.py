@@ -434,11 +434,11 @@ def test_settingsstream_save_and_load_to_pickle(cfg):
 
 @pytest.fixture
 def sensor_handler(cfg):
-    cfg.io.sensor.path = "sensor_test"
-    handler = SensorStream(cfg.mesh, cfg, path="sensor_test")
-    handler.to_csv = True
-    yield handler, cfg
-    cleanup_path(handler.path)
+    cfg.io.sensor = SensorStream(cfg.mesh, cfg, path="sensor_test")
+    cfg.io.sensor.enable = True
+    cfg.io.sensor.to_csv = True
+    yield cfg.io.sensor, cfg
+    cleanup_path(cfg.io.sensor.path)
     cleanup_path(cfg.io.path)
 
 
