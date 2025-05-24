@@ -97,6 +97,14 @@ def test_speed_of_sound(eos):
     assert eos.speed_of_sound(U)(mip) == pytest.approx(ngs.sqrt(2/7))
 
 
+def test_specific_entropy(eos):
+    U = flowfields()
+    assert eos.specific_entropy(U) is None
+
+    U = flowfields(rho=2, p=1)
+    assert eos.specific_entropy(U)(mip) == pytest.approx(1/2**1.4)
+
+
 def test_density_gradient(eos):
     U = flowfields()
     dU = flowfields()
