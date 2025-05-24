@@ -53,7 +53,7 @@ class MixedMethod(Configuration, is_interface=True):
     def get_cbc_viscous_terms(self, bc: CBC) -> ngs.CF:
         return ngs.CF(tuple(0 for _ in range(self.mesh.dim + 2)))
 
-    def get_diffusive_stabilisation_matrix(self, U: flowfields) -> bla.MATRIX:
+    def get_diffusive_stabilisation_matrix(self, U: flowfields) -> ngs.CF:
         Re = self.root.scaling.reference_reynolds_number
         Pr = self.root.prandtl_number
         mu = self.root.viscosity(U)
@@ -828,7 +828,7 @@ class HDG(ConservativeMethod):
 
         blf['Uhat'][f"{dc.name}_{dom}"] = dc.function * Delta_U * V * dX
 
-    def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: bla.VECTOR):
+    def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: ngs.CF):
         r"""
         Convective numerical flux
 
@@ -846,7 +846,7 @@ class HDG(ConservativeMethod):
         return self.root.get_convective_flux(Uhat) * unit_vector + tau_c * (U.U - Uhat.U)
 
     def get_diffusive_numerical_flux(
-            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
+            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: ngs.CF):
         r"""
         Diffusive numerical flux
 
@@ -998,7 +998,7 @@ class DG_HDG(ConservativeMethod):
                                                       Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
     def get_diffusive_numerical_flux(
-            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
+            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: ngs.CF):
         r"""
         Diffusive numerical flux
 

@@ -641,7 +641,7 @@ class Sensor:
                   for component in self.get_field_components(cf)]
         return names, header
 
-    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: ngs.CF):
         if bla.is_scalar(cf):
             return bla.SCALAR_COMPONENT
         elif bla.is_vector(cf) and cf.dim <= 3:
@@ -739,7 +739,7 @@ class DomainL2Sensor(DomainSensor):
         for array in super().measure():
             yield np.sqrt(array)
 
-    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: ngs.CF):
         return ('L2',)
 
 
@@ -763,7 +763,7 @@ class BoundaryL2Sensor(BoundarySensor):
         for array in super().measure():
             yield np.sqrt(array)
 
-    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: ngs.CF):
         return ('L2',)
 
 

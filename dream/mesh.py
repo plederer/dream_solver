@@ -68,7 +68,7 @@ class BufferCoord(ngs.CF):
         r = ngs.sqrt(sum([(x - x0)**2 for x, x0 in zip([ngs.x, ngs.y, ngs.z], shift)]))
         return cls(r, r0, rn, shift)
 
-    def __init__(self, x: ngs.CF, x0: bla.SCALAR, xn: bla.SCALAR, shift: tuple[float]):
+    def __init__(self, x: ngs.CF, x0: float | ngs.CF, xn: float | ngs.CF, shift: tuple[float]):
         self._x0 = x0
         self._xn = xn
         self._shift = shift
@@ -209,7 +209,7 @@ class GridMapping:
 
         return cls(coordinate, map)
 
-    def __init__(self, x: ngs.CF, map: Callable[[bla.SCALAR], bla.SCALAR]) -> None:
+    def __init__(self, x: ngs.CF, map: Callable[[float | ngs.CF], float | ngs.CF]) -> None:
         self.x = x
         self.map = map
 
@@ -234,14 +234,14 @@ class GridMapping:
         return mapping_x, mapping_y
 
     @property
-    def deformation(self) -> bla.SCALAR:
+    def deformation(self) -> float | ngs.CF:
         return self(self.x) - self.x
 
     @property
     def length(self) -> float:
         return bla.abs(self(self.x.xn) - self(self.x.x0))
 
-    def __call__(self, x_: bla.SCALAR) -> bla.SCALAR:
+    def __call__(self, x_: float | ngs.CF) -> float | ngs.CF:
         return self.map(x_)
 
 
