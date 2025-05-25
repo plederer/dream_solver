@@ -705,7 +705,7 @@ class HDG(ConservativeMethod):
             U_bc = ngs.CF((self.root.density(U_bc), self.root.momentum(U_bc), self.root.energy(U_bc)))
 
         elif bc.target == "mass_inflow":
-            U_bc = flowfields(rho=bc.fields.rho, rho_u=bc.fields.rho_u, rho_Ek=bc.fields.rho_Ek, p=U.p)
+            U_bc = flowfields(rho=bc.fields.rho, u=bc.fields.u, rho_Ek=bc.fields.rho_Ek, p=U.p)
             U_bc = ngs.CF((self.root.density(U_bc), self.root.momentum(U_bc), self.root.energy(U_bc)))
 
         elif bc.target == "temperature_inflow":
