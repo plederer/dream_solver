@@ -69,6 +69,7 @@ fields = cfg.get_solution_fields()
 cfg.io.draw(fields, autoscale=False, min=-1e-4, max=1e-4)
 
 c_p = flowfields(c_p=cfg.pressure_coefficient(fields, Uinf))
+cfg.io.sensor.enable = True
 cfg.io.sensor.add(PointSensor.from_boundary(c_p, mesh, 'cylinder', name='pressure_coefficient'))
 
 # ------- Solve System ------- #
@@ -76,19 +77,12 @@ with TaskManager():
     cfg.solve()
 
 # ------- Postprocess Results ------- #
-try:
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import numpy as np
-except ImportError:
-    raise ImportError("This example requires pandas and matplotlib to be installed")
+import numpy as np
+import matplotlib.pyplot as plt
 
-df = cfg.io.sensor.load_as_dataframe('pressure_coefficient')
-df.sort_index(axis=1, inplace=True)
-
-# ------- Extract Coords and Pressure Coefficient ------- #
-coords = np.array([eval(point) for point in df.columns.levels[0]])
-cp_h = df.iloc[-1].to_numpy()
+index, data = cfg.io.sensor.load_csv_as_dict('pressure_coefficient')
+coords = np.array([header[0][1:-1].split(',') for header in data], dtype=float)
+cp_h = np.array(list(data.values()))[:, 1]
 
 # ------- Calculate Angle and Sort ------- #
 phi_h = np.angle(coords[:, 0] + 1j*coords[:, 1])

@@ -109,45 +109,45 @@ class SettingsStream(Stream):
     def __init__(self, mesh, root=None, **default):
 
         DEFAULT = {
-            "pickle": True,
-            "txt": True,
-            "yaml": False,
+            "to_pickle": True,
+            "to_txt": True,
+            "to_yaml": False,
         }
         DEFAULT.update(default)
 
         super().__init__(mesh, root, **DEFAULT)
 
     @dream_configuration
-    def pickle(self) -> bool:
-        return self._pickle
+    def to_pickle(self) -> bool:
+        return self._to_pickle
 
-    @pickle.setter
-    def pickle(self, pickle: bool):
-        self._pickle = bool(pickle)
-
-    @dream_configuration
-    def txt(self) -> bool:
-        return self._txt
-
-    @txt.setter
-    def txt(self, txt: bool):
-        self._txt = bool(txt)
+    @to_pickle.setter
+    def to_pickle(self, pickle: bool):
+        self._to_pickle = bool(pickle)
 
     @dream_configuration
-    def yaml(self) -> bool:
-        return self._yaml
+    def to_txt(self) -> bool:
+        return self._to_txt
 
-    @yaml.setter
-    def yaml(self, yaml: bool):
-        self._yaml = bool(yaml)
+    @to_txt.setter
+    def to_txt(self, txt: bool):
+        self._to_txt = bool(txt)
+
+    @dream_configuration
+    def to_yaml(self) -> bool:
+        return self._to_yaml
+
+    @to_yaml.setter
+    def to_yaml(self, yaml: bool):
+        self._to_yaml = bool(yaml)
 
     def save_pre_time_routine(self, t: float | None = None):
 
-        if self.pickle:
+        if self.to_pickle:
             self.save_to_pickle()
-        if self.txt:
+        if self.to_txt:
             self.save_to_txt()
-        if self.yaml:
+        if self.to_yaml:
             self.save_to_yaml()
 
     def save_to_pickle(self, filename: str | None = None) -> None:
@@ -579,36 +579,73 @@ class SensorStream(Stream):
 
         if not self.root.time.is_stationary:
             names.append('t')
-            header = [(*header_, ' ') for header_ in header]
+            header = [(*header_, '') for header_ in header]
 
         return names, header
 
     def save_pre_time_routine(self, t: float | None = None) -> None:
 
+        if t is None:
+            t = ''
+
         for sensor, data in self.measure():
 
-            if t is not None:
-                data = [t, *data]
-
             if self.to_csv:
-                self.csv[sensor.name][1].writerow(data)
+                self.csv[sensor.name][1].writerow([t, *data])
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
+
         for sensor, data in self.measure():
             if it % sensor.rate == 0:
                 if self.to_csv:
                     self.csv[sensor.name][1].writerow([t, *data])
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
+
+        if t is None:
+            t = ''
+
         for sensor, data in self.measure():
-            if t is None:
-                if self.to_csv:
-                    self.csv[sensor.name][1].writerow(data)
-            elif not it % sensor.rate == 0:
-                if self.to_csv:
+            if self.to_csv:
+                if t == '' or not it % sensor.rate == 0:
                     self.csv[sensor.name][1].writerow([t, *data])
 
-    def load_as_dataframe(self, sensor: Sensor | str, header: tuple = [0, 1, 2, 3], index_col: int = [0], **pd_kwargs):
+    def load_csv_as_dict(self, sensor: Sensor | str) -> tuple[np.ndarray, dict[tuple[str, str, str], np.ndarray]]:
+        import csv
+
+        if isinstance(sensor, Sensor):
+            sensor = sensor.name
+
+        names = []
+        data = []
+        with self.path.joinpath(sensor + ".csv").open('r') as file:
+            reader = csv.reader(file)
+
+            for row in reader:
+                names.append(row[0])
+                data.append(row[1:])
+
+        header = {(loc, field, component): None for
+                  loc, field, component
+                  in zip(data.pop(0), data.pop(0), data.pop(0))}
+        names = names[3:]
+
+        if names[0] == "t":
+            data.pop(0)
+            names.pop(0)
+
+        data = np.array(data, dtype=float)
+        index = np.array(names)
+
+        for idx, key in enumerate(header):
+            header[key] = data[:, idx]
+
+        return index, header
+
+    def load_csv_as_dataframe(
+            self, sensor: Sensor | str, header: tuple = [0, 1, 2, 3],
+            index_col: int = [0],
+            **pd_kwargs):
         import pandas as pd
 
         if isinstance(sensor, Sensor):

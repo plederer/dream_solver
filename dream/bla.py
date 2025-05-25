@@ -8,7 +8,7 @@ from typing import Sequence, Generator, TypeAlias
 
 logger = logging.getLogger(__name__)
 
-SCALAR_COMPONENT = (" ",)
+SCALAR_COMPONENT = ('',)
 VECTOR_COMPONENT = ("x", "y", "z")
 MATRIX_COMPONENT = ("xx", "xy", "xz", "yx", "yy", "yz", "zx", "zy", "zz")
 
