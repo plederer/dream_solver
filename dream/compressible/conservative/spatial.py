@@ -654,10 +654,7 @@ class HDG(ConservativeMethod):
              self.root.energy(bc.fields)))
 
         if bc.use_identity_jacobian:
-            # Q_in = self.root.get_conservative_convective_identity(Uhat, -self.mesh.normal, 'outgoing')
-            # Q_out = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, 'outgoing')
             Qn = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, None)
-            # Gamma_infty = ngs.InnerProduct(Uhat.U - Q_out * U - Q_in * U_infty, Vhat)
             Gamma_infty = ngs.InnerProduct(Uhat.U - 0.5 * Qn * (U - U_infty) - 0.5 * (U + U_infty), Vhat)
         else:
             An_in = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'incoming')
@@ -720,14 +717,14 @@ class HDG(ConservativeMethod):
         D = self.root.transform_characteristic_to_conservative(D, Uhat, self.mesh.normal)
 
         beta = bc.tangential_relaxation
+        Qn = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, None)
         Qin = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, "incoming")
-        Qout = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, "outgoing")
         B = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.tangential)
 
         dt = scheme.get_time_step(True)
         Uhat_n = scheme.get_current_level('Uhat', True)
 
-        blf['Uhat'][label] = (Uhat.U - Qout * U.U - Qin * Uhat_n) * Vhat * dS
+        blf['Uhat'][label] = (Uhat.U - 0.5 * Qn * (U.U - Uhat_n) - 0.5 * (U.U + Uhat_n)) * Vhat * dS
         blf['Uhat'][label] -= dt * Qin * D * (U_bc - Uhat.U) * Vhat * dS
         blf['Uhat'][label] += dt * beta * Qin * B * (ngs.grad(Uhat.U) * self.mesh.tangential) * Vhat * dS
 
