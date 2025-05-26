@@ -81,7 +81,7 @@ class Stream(Configuration, is_interface=True):
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
         raise NotImplementedError("Method 'save_post_routine' is not implemented!")
 
-    def close(self):
+    def close(self) -> None:
         return None
 
 
@@ -415,30 +415,11 @@ class LogStream(Stream):
         self.logger = logging.getLogger('dream')
 
         DEFAULT = {
-            "level": logging.INFO,
-            "to_terminal": True,
-            "to_file": False,
+            "level": logging.INFO
         }
         DEFAULT.update(default)
 
         super().__init__(mesh, root, **DEFAULT)
-
-    def open(self):
-        return self
-
-    def _get_handler(self, name: str) -> logging.Handler:
-        for handler in self.logger.handlers:
-            if handler.get_name() == name:
-                return handler
-        return False
-
-    def _get_formatter(self) -> logging.Formatter:
-
-        if self.level == logging.DEBUG:
-            return logging.Formatter(
-                "%(name)-15s (%(levelname)8s) | %(message)s (%(filename)s:%(lineno)s)", "%Y-%m-%d %H:%M:%S")
-        else:
-            return logging.Formatter("%(name)-15s (%(levelname)s) | %(message)s")
 
     @dream_configuration
     def level(self) -> int:
@@ -447,6 +428,19 @@ class LogStream(Stream):
     @level.setter
     def level(self, level: int | str):
         self.logger.setLevel(level)
+
+    @Stream.enable.setter
+    def enable(self, enable: bool):
+        enable = bool(enable)
+
+        if enable:
+            self.to_terminal = True
+            self.to_file = False
+        else:
+            self.to_terminal = False
+            self.to_file = False
+
+        self._enable = bool(enable)
 
     @dream_configuration
     def to_terminal(self) -> bool:
@@ -502,6 +496,36 @@ class LogStream(Stream):
             self.logger.removeHandler(handler)
 
         self._to_file = to_file
+
+    def open(self):
+
+        # Set logger to carriage return
+        stream_handler = self._get_handler("terminal")
+        if stream_handler:
+            stream_handler.terminator = "\r"
+
+        return self
+
+    def close(self):
+
+        # Unset logger to carriage return
+        stream_handler = self._get_handler("terminal")
+        if stream_handler:
+            stream_handler.terminator = "\n"
+
+    def _get_handler(self, name: str) -> logging.Handler:
+        for handler in self.logger.handlers:
+            if handler.get_name() == name:
+                return handler
+        return False
+
+    def _get_formatter(self) -> logging.Formatter:
+
+        if self.level == logging.DEBUG:
+            return logging.Formatter(
+                "%(name)-15s (%(levelname)8s) | %(message)s (%(filename)s:%(lineno)s)", "%Y-%m-%d %H:%M:%S")
+        else:
+            return logging.Formatter("%(name)-15s (%(levelname)s) | %(message)s")
 
 
 class SensorStream(Stream):
@@ -985,6 +1009,9 @@ class IOConfiguration(Configuration):
             stream.save_post_time_routine(t, it)
 
     def close(self):
+
+        self.log.close()
+
         for stream in self.file_streams:
             stream.close()
 
