@@ -534,7 +534,7 @@ class SensorStream(Stream):
 
     def __init__(self, mesh, root=None, **default):
 
-        self._sensors: list[Sensor] = []
+        self.list: list[Sensor] = []
 
         DEFAULT = {
             "mode": "w",
@@ -567,11 +567,11 @@ class SensorStream(Stream):
 
         sensor.mesh = self.mesh
 
-        self._sensors.append(sensor)
+        self.list.append(sensor)
 
     def open(self) -> SensorStream:
 
-        if not self._sensors:
+        if not self.list:
             logger.warning("No sensors to save! Sensor stream is deactivated!")
             return None
 
@@ -586,7 +586,7 @@ class SensorStream(Stream):
         import csv
 
         self.csv = {}
-        for sensor in self._sensors:
+        for sensor in self.list:
             file = self.path.joinpath(sensor.name + ".csv").open(self.mode)
             writer = csv.writer(file)
 
@@ -678,7 +678,7 @@ class SensorStream(Stream):
         return pd.read_csv(self.path.joinpath(sensor + ".csv"), header=header, index_col=index_col, **pd_kwargs)
 
     def measure(self) -> typing.Generator[tuple[Sensor, np.ndarray], None, None]:
-        for sensor in self._sensors:
+        for sensor in self.list:
             yield sensor, np.concatenate([data for data in sensor.measure()])
 
     def close(self):
