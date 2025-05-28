@@ -16,10 +16,13 @@ class RiemannSolver(Configuration, is_interface=True):
     root: CompressibleFlowSolver
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        NotImplementedError()
+        NotImplementedError("Override this method in the derived class")
+
+    def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
+        NotImplementedError("Override this method in the derived class")
 
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        NotImplementedError()
+        NotImplementedError("Override this method in the derived class")
 
 
 class Upwind(RiemannSolver):
@@ -36,12 +39,25 @@ class Upwind(RiemannSolver):
         unit_vector = bla.as_vector(unit_vector)
         return self.root.get_conservative_convective_jacobian(U, unit_vector, 'outgoing')
 
+    def get_simplified_convective_stabilisation_matrix_hdg(self, U, unit_vector):
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+
+        This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+        variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
+
+        .. math::
+            \bm{\tau}_{cs} := \bm{Q}_n + \bm{I}
+        """
+        Qn = self.root.get_conservative_convective_identity(U, unit_vector, None)
+        return Qn + ngs.Id(unit_vector.dim + 2)
+
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         raise ValueError("FVS solver in a standard DG has not been implemented (yet).")
 
 
 class LaxFriedrich(RiemannSolver):
     """ Lax-Friedrich scheme for the convective flux. """
+
     name = "lax_friedrich"
 
     def get_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
@@ -59,6 +75,17 @@ class LaxFriedrich(RiemannSolver):
 
         lambda_max = bla.abs(bla.inner(u, unit_vector)) + c
         return lambda_max * ngs.Id(unit_vector.dim + 2)
+
+    def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+
+        This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+        variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
+
+        .. math::
+            \bm{\tau}_{cs} := \bm{I}
+        """
+        return ngs.Id(unit_vector.dim + 2)
 
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
 
@@ -109,6 +136,17 @@ class Roe(RiemannSolver):
         lambdas = self.root.characteristic_velocities(U, unit_vector, "absolute")
         return self.root.transform_characteristic_to_conservative(bla.diagonal(lambdas), U, unit_vector)
 
+    def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+
+        This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+        variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
+
+        .. math::
+            \bm{\tau}_{cs} := \bm{I}
+        """
+        return ngs.Id(unit_vector.dim + 2)
+
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         raise ValueError("Roe solver in a standard DG has not been implemented (yet).")
 
@@ -135,6 +173,23 @@ class HLL(RiemannSolver):
         s_plus = bla.max(un + c)
 
         return s_plus * ngs.Id(unit_vector.dim + 2)
+
+    def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+
+        This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+        variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
+
+        .. math::
+            \bm{\tau}_{cs} := (1 + \Ma_n) \bm{I}, \quad \Ma_n := -1 \leq \frac{u_n}{c} \leq 1
+        """
+        unit_vector = bla.as_vector(unit_vector)
+
+        u = self.root.velocity(U)
+        c = self.root.speed_of_sound(U)
+        Mn = bla.inner(u, unit_vector)/c
+
+        return (1 + bla.interval(Mn, -1, 1)) * ngs.Id(unit_vector.dim + 2)
 
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         raise ValueError("HLL solver in a standard DG has not been implemented (yet).")
@@ -191,6 +246,23 @@ class HLLEM(RiemannSolver):
         THETA = self.root.transform_characteristic_to_conservative(THETA, U, unit_vector)
 
         return s_plus * THETA
+
+    def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+
+        This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+        variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
+
+        .. math::
+            \bm{\tau}_{cs} := (1 + \Ma_n) \bm{I}, \quad \Ma_n := -1 \leq \frac{u_n}{c} \leq 1
+        """
+        unit_vector = bla.as_vector(unit_vector)
+
+        u = self.root.velocity(U)
+        c = self.root.speed_of_sound(U)
+        Mn = bla.inner(u, unit_vector)/c
+
+        return (1 + bla.interval(Mn, -1, 1)) * ngs.Id(unit_vector.dim + 2)
 
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         raise ValueError("HLLEM solver in a standard DG has not been implemented (yet).")

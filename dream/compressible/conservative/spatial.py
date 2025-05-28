@@ -483,7 +483,6 @@ class DG(ConservativeMethod):
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
 
-
 class HDG(ConservativeMethod):
 
     name: str = "hdg"
@@ -533,6 +532,7 @@ class HDG(ConservativeMethod):
     def add_convection_form(self, blf: Integrals, lf: Integrals):
 
         bonus = self.root.optimizations.bonus_int_order
+        dX = ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
         mask = self.get_domain_boundary_mask()
 
@@ -546,13 +546,18 @@ class HDG(ConservativeMethod):
         Fn = self.get_convective_numerical_flux(U, Uhat, self.mesh.normal)
 
         blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['U']['convection'] += bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-        blf['Uhat']['convection'] = -mask * bla.inner(Fn,
-                                                      Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        blf['U']['convection'] += bla.inner(Fn, V) * dX
+
+        if self.root.dynamic_viscosity.is_inviscid:
+            tau_cs = self.root.riemann_solver.get_simplified_convective_stabilisation_matrix_hdg(Uhat, self.mesh.normal)
+            blf['Uhat']['convection'] = -mask * (tau_cs*U.U - Uhat.U) * Vhat * dX
+        else:
+            blf['Uhat']['convection'] = -mask * bla.inner(Fn, Vhat) * dX
 
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
 
         bonus = self.root.optimizations.bonus_int_order
+        dX = ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
         mask = self.get_domain_boundary_mask()
 
@@ -568,9 +573,8 @@ class HDG(ConservativeMethod):
         Gn = self.get_diffusive_numerical_flux(U, Uhat, Q, self.mesh.normal)
 
         blf['U']['diffusion'] = ngs.InnerProduct(G, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['U']['diffusion'] -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn,
-                                                           Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        blf['U']['diffusion'] -= ngs.InnerProduct(Gn, V) * dX
+        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn, Vhat) * dX
 
     def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
 
@@ -980,7 +984,8 @@ class DG_HDG(ConservativeMethod):
 
         blf['U']['diffusion'] = ngs.InnerProduct(G, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
         blf['U']['diffusion'] -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn, Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn,
+                                                           Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
         # NOTE, to obtain a well-posed formulation, we require a value for rho_hat, since we need it on the facets.
         # To this end, we estimate its value as the average of the density on the surface (w.r.t. neighboring elements).
