@@ -79,7 +79,7 @@ class Inviscid(DynamicViscosity):
     name: str = "inviscid"
 
     def viscosity(self, U: flowfields):
-        """ Returns the dynamic viscosity and heat conductivity for an inviscid flow. 
+        r""" Returns the dynamic viscosity and heat conductivity for an inviscid flow. 
 
         .. math::
             \mu = k = 0
@@ -95,7 +95,7 @@ class Constant(DynamicViscosity):
     name: str = "constant"
 
     def viscosity(self, U: flowfields):
-        """ Returns the dynamic viscosity and heat conductivity for a constant viscosity flow.
+        r""" Returns the dynamic viscosity and heat conductivity for a constant viscosity flow.
 
         .. math::
             \mu = k = 1
@@ -118,7 +118,7 @@ class Sutherland(DynamicViscosity):
 
     @dream_configuration
     def sutherland_temperature(self) -> float:
-        """ The Sutherland temperature :math:`\overline{S}` in Kelvin.
+        r""" The Sutherland temperature :math:`\overline{S}` in Kelvin.
 
             :getter: Returns the Sutherland temperature.
             :setter: Sets the Sutherland temperature. Defaults to :math:`110.4 \, K`

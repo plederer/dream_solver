@@ -642,7 +642,7 @@ class HDG(ConservativeMethod):
         the identity Jacobian can be used instead of the convective Jacobian :cite:`PellmenreichCharacteristicBoundaryConditions2025`
 
         .. math::
-            \int_{\Gamma} \left[\widehat{\vec{U}}_h - \widehat{\mat{Q}}^+_n \vec{U}_h - \widehat{\mat{Q}}^-_n \vec{U}_\infty \right] \cdot \widehat{\vec{V}}_h  = \vec{0}.
+            \int_{\Gamma} \left[\widehat{\vec{U}}_h - \frac{\vec{U}_h + \vec{U}_\infty}{2} - \widehat{\mat{Q}}_n \frac{\vec{U}_h - \vec{U}_\infty}{2} \right] \cdot \widehat{\vec{V}}_h  = \vec{0}.
         """
 
         bonus = self.root.optimizations.bonus_int_order
@@ -837,8 +837,8 @@ class HDG(ConservativeMethod):
 
             \widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}})
 
-        :note: See equation :math:`(E22a)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
-        :note: See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`
+        :note: See equation :math:`(E22a)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
+        :note: See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`.
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -855,8 +855,8 @@ class HDG(ConservativeMethod):
 
             \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
 
-        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
-        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
+        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
+        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`.
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -1008,8 +1008,8 @@ class DG_HDG(ConservativeMethod):
 
             \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
 
-        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`
-        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
+        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
+        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`.
         """
         unit_vector = bla.as_vector(unit_vector)
 
