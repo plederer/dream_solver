@@ -77,6 +77,9 @@ class Timer(Configuration):
     def to_array(self, include_start: bool = False, stride: int = 1) -> np.ndarray:
         return np.array(list(self.start(include_start, stride)))
 
+    def reset(self):
+        self.t = self.interval[0]
+
     def __call__(self, **kwargs):
         self.update(**kwargs)
         for t in self.start(stride=1):
@@ -220,6 +223,8 @@ class TransientRoutine(TimeRoutine):
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
+        self.timer.reset()
+
         scheme = self.root.fem.scheme
 
         if reassemble:
@@ -298,6 +303,8 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
         self._increment_factor = int(increment_factor)
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
+
+        self.timer.reset()
 
         scheme = self.root.fem.scheme
 
