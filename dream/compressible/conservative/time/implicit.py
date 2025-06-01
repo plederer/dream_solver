@@ -1,3 +1,4 @@
+""" Definitions of implicit time integration schemes for conservative methods """
 from __future__ import annotations
 from dream.config import Integrals
 from dream.time import TimeSchemes

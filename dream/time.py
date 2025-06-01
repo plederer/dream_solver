@@ -305,7 +305,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
             scheme.assemble()
 
         with self.root.io as io:
-            io.save_pre_time_routine(self.timer.t.Get())
+            io.save_pre_time_routine()
 
             # Solution routine starts here
             for it in scheme.solve_current_time_level():
@@ -316,11 +316,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
             yield None
 
             # Solution routine ends here
-            io.save_in_time_routine(self.timer.t.Get(), it=0)
-
-            io.redraw()
-
-            io.save_post_time_routine(self.timer.t.Get())
+            io.save_post_time_routine()
 
     def solver_iteration_update(self, it: int):
         old_time_step = self.timer.step.Get()

@@ -1,1 +1,0 @@
-# Hybrid Discontinuous Galerkin Method

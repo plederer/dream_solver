@@ -1,5 +1,5 @@
 from dream import *
-from dream.scalar_transport import Initial, flowfields, ScalarTransportSolver
+from dream.scalar_transport import Initial, transportfields, ScalarTransportSolver
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
@@ -125,7 +125,7 @@ yc0 = -x0*sin(t0) + y0*cos(t0)
 
 r2 = (x-xc0)**2 + (y-yc0)**2
 
-U0 = flowfields()
+U0 = transportfields()
 U0.phi = a0*exp( -r2*b0 )
 
 
@@ -168,7 +168,7 @@ yc = -x0*sin(t) + y0*cos(t)
 
 r2 = (x-xc)**2 + (y-yc)**2
 
-#Uex = flowfields()
+#Uex = transportfields()
 #Uex.phi = at*exp( -r2*bt )
 #fields = cfg.fem.get_fields()
 #fields["Exact[phi]"]  = Uex.phi

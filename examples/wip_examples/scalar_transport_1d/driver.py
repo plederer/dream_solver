@@ -1,5 +1,5 @@
 from dream import *
-from dream.scalar_transport import Initial, flowfields, ScalarTransportSolver
+from dream.scalar_transport import Initial, transportfields, ScalarTransportSolver
 from ngsolve import *
 from ngsolve.meshes import Make1DMesh
 import numpy as np 
@@ -127,7 +127,7 @@ xc0 =  x0*cos(t0)
 
 r2 = (x-xc0)**2
 
-U0 = flowfields()
+U0 = transportfields()
 U0.phi = a0*exp( -r2*b0 )
 
 

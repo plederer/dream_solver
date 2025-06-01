@@ -1,3 +1,4 @@
+""" Compressible flow solver configuration """
 from __future__ import annotations
 
 import logging
@@ -64,8 +65,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Ma_\infty = \frac{|\bm{u}_\infty|}{c_\infty}
 
-            :setter: Sets the Mach number, defaults to 0.3
             :getter: Returns the Mach number
+            :setter: Sets the Mach number, defaults to 0.3
         """
         return self._mach_number
 
@@ -83,8 +84,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Re_\infty = \frac{\rho_\infty |\bm{u}_\infty| L}{\mu_\infty}
 
-            :setter: Sets the Reynolds number, defaults to 150
             :getter: Returns the Reynolds number
+            :setter: Sets the Reynolds number, defaults to 150
         """
         return self._reynolds_number
 
@@ -101,8 +102,8 @@ class CompressibleFlowSolver(SolverConfiguration):
             .. math::
                 \Pr_\infty = \frac{c_p \mu_\infty}{k_\infty}
 
-            :setter: Sets the Prandtl number, defaults to 0.72
             :getter: Returns the Prandtl number
+            :setter: Sets the Prandtl number, defaults to 0.72
         """
         return self._prandtl_number
 
@@ -168,8 +169,22 @@ class CompressibleFlowSolver(SolverConfiguration):
         OPTIONS = [LaxFriedrich, Roe, HLL, HLLEM, Upwind]
         self._riemann_solver = self._get_configuration_option(riemann_solver, OPTIONS, RiemannSolver)
 
-    def get_farfield_state(self, direction: tuple[float, ...]) -> flowfields:
-        r""" Returns the dimensionless farfield fields depending on the scaling in use and the flow direction. 
+    def get_solution_fields(self, *fields: str, default_fields: bool = True) -> flowfields:
+        """ Returns the solution fields depending on the underlying finite element method.
+
+            :param fields: A list of fields as strings to be returned
+            :type fields: str
+            :param default_fields: If True, the default fields 'density', 'velocity', 'pressure' are included in the returned fields
+            :type default_fields: bool
+        """
+
+        if default_fields:
+            fields = ('density', 'velocity', 'pressure') + fields
+
+        return super().get_solution_fields(*fields)
+
+    def get_farfield_fields(self, direction: tuple[float, ...]) -> flowfields:
+        r""" Returns the dimensionless farfield fields :math:`\vec{U}_\infty` depending on the scaling in use and the flow direction. 
 
             Aerodynamic Scaling
                 .. math:: 
@@ -225,7 +240,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         return INF
 
-    def get_dimensionful_state(self, U: flowfields) -> flowfields:
+    def get_dimensionful_fields(self, U: flowfields) -> flowfields:
         r""" Returns the dimensionful fields from given fields depending on the scaling. 
 
             :param U: A dictionary containing the flow quantities
@@ -240,7 +255,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         return DIM
 
-    def get_convective_flux(self, U: flowfields) -> bla.MATRIX:
+    def get_convective_flux(self, U: flowfields) -> ngs.CF:
         r""" Returns the conservative convective flux from given fields.
 
             .. math::
@@ -259,7 +274,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         return bla.as_matrix(flux, dims=(u.dim + 2, u.dim))
 
-    def get_diffusive_flux(self, U: flowfields, dU: flowfields) -> bla.MATRIX:
+    def get_diffusive_flux(self, U: flowfields, dU: flowfields) -> ngs.CF:
         r""" Returns the conservative diffusive flux from given states.
 
             .. math::
@@ -305,58 +320,60 @@ class CompressibleFlowSolver(SolverConfiguration):
         mu = self.viscosity(U)
         return rho * ngs.sqrt(bla.inner(u, u)) / mu
 
-    def get_primitive_convective_jacobian(self, U: flowfields, unit_vector: bla.VECTOR, type: str = None):
+    def get_primitive_convective_jacobian(self, U: flowfields, unit_vector: ngs.CF, type: str = None):
         lambdas = self.characteristic_velocities(U, unit_vector, type)
         LAMBDA = bla.diagonal(lambdas)
         return self.transform_characteristic_to_primitive(LAMBDA, U, unit_vector)
 
-    def get_primitive_convective_identity(self, U: flowfields, unit_vector: bla.VECTOR, type: str = None):
+    def get_primitive_convective_identity(self, U: flowfields, unit_vector: ngs.CF, type: str = None):
         LAMBDA = self.get_characteristic_identity(U, unit_vector, type)
         return self.transform_characteristic_to_primitive(LAMBDA, U, unit_vector)
 
-    def get_conservative_convective_jacobian(self, U: flowfields, unit_vector: bla.VECTOR, type: str = None):
+    def get_conservative_convective_jacobian(self, U: flowfields, unit_vector: ngs.CF, type: str = None):
         lambdas = self.characteristic_velocities(U, unit_vector, type)
         LAMBDA = bla.diagonal(lambdas)
         return self.transform_characteristic_to_conservative(LAMBDA, U, unit_vector)
 
-    def get_conservative_convective_identity(self, U: flowfields, unit_vector: bla.VECTOR, type: str = None):
+    def get_conservative_convective_identity(self, U: flowfields, unit_vector: ngs.CF, type: str = None):
         LAMBDA = self.get_characteristic_identity(U, unit_vector, type)
         return self.transform_characteristic_to_conservative(LAMBDA, U, unit_vector)
 
     def get_characteristic_identity(
-            self, U: flowfields, unit_vector: bla.VECTOR, type: str = None) -> bla.MATRIX:
+            self, U: flowfields, unit_vector: ngs.CF, type: str = None) -> ngs.CF:
         lambdas = self.characteristic_velocities(U, unit_vector, type)
 
         if type == "incoming":
             lambdas = (ngs.IfPos(-lam, 1, 0) for lam in lambdas)
         elif type == "outgoing":
             lambdas = (ngs.IfPos(lam, 1, 0) for lam in lambdas)
+        elif type == None:
+            lambdas = (ngs.IfPos(lam, 1, ngs.IfPos(-lam, -1, 0)) for lam in lambdas)
         else:
-            raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {['incoming', 'outgoing']}")
+            raise ValueError(f"{str(type).capitalize()} invalid! Alternatives: {['incoming', 'outgoing', None]}")
 
         return bla.diagonal(lambdas)
 
-    def transform_primitive_to_conservative(self, matrix: bla.MATRIX, U: flowfields):
+    def transform_primitive_to_conservative(self, matrix: ngs.CF, U: flowfields):
         M = self.conservative_from_primitive(U)
         Minv = self.primitive_from_conservative(U)
         return M * matrix * Minv
 
-    def transform_characteristic_to_primitive(self, matrix: bla.MATRIX, U: flowfields, unit_vector: bla.VECTOR):
+    def transform_characteristic_to_primitive(self, matrix: ngs.CF, U: flowfields, unit_vector: ngs.CF):
         L = self.primitive_from_characteristic(U, unit_vector)
         Linv = self.characteristic_from_primitive(U, unit_vector)
         return L * matrix * Linv
 
-    def transform_characteristic_to_conservative(self, matrix: bla.MATRIX, U: flowfields, unit_vector: bla.VECTOR):
+    def transform_characteristic_to_conservative(self, matrix: ngs.CF, U: flowfields, unit_vector: ngs.CF):
         P = self.conservative_from_characteristic(U, unit_vector)
         Pinv = self.characteristic_from_conservative(U, unit_vector)
         return P * matrix * Pinv
 
     @equation
-    def density(self, U: flowfields) -> bla.SCALAR:
+    def density(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.density(U)
 
     @equation
-    def velocity(self, U: flowfields) -> bla.VECTOR:
+    def velocity(self, U: flowfields) -> ngs.CF:
         if U.u is not None:
             return U.u
 
@@ -369,7 +386,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return U.rho_u/U.rho
 
     @equation
-    def momentum(self, U: flowfields) -> bla.VECTOR:
+    def momentum(self, U: flowfields) -> ngs.CF:
         if U.rho_u is not None:
             return U.rho_u
 
@@ -378,15 +395,15 @@ class CompressibleFlowSolver(SolverConfiguration):
             return U.rho * U.u
 
     @equation
-    def pressure(self, U: flowfields) -> bla.SCALAR:
+    def pressure(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.pressure(U)
 
     @equation
-    def temperature(self, U: flowfields) -> bla.SCALAR:
+    def temperature(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.temperature(U)
 
     @equation
-    def inner_energy(self, U: flowfields) -> bla.SCALAR:
+    def inner_energy(self, U: flowfields) -> ngs.CF:
         rho_Ei = self.equation_of_state.inner_energy(U)
 
         if rho_Ei is None:
@@ -398,7 +415,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return rho_Ei
 
     @equation
-    def specific_inner_energy(self, U: flowfields) -> bla.SCALAR:
+    def specific_inner_energy(self, U: flowfields) -> ngs.CF:
         Ei = self.equation_of_state.specific_inner_energy(U)
 
         if Ei is None:
@@ -415,7 +432,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return Ei
 
     @equation
-    def kinetic_energy(self, U: flowfields) -> bla.SCALAR:
+    def kinetic_energy(self, U: flowfields) -> ngs.CF:
         if U.rho_Ek is not None:
             return U.rho_Ek
 
@@ -438,7 +455,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return None
 
     @equation
-    def specific_kinetic_energy(self, U: flowfields) -> bla.SCALAR:
+    def specific_kinetic_energy(self, U: flowfields) -> ngs.CF:
         if U.Ek is not None:
             return U.Ek
 
@@ -461,7 +478,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return None
 
     @equation
-    def energy(self, U: flowfields) -> bla.SCALAR:
+    def energy(self, U: flowfields) -> ngs.CF:
         if U.rho_E is not None:
             return U.rho_E
 
@@ -478,7 +495,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return self.inner_energy(U) + self.kinetic_energy(U)
 
     @equation
-    def specific_energy(self, U: flowfields) -> bla.SCALAR:
+    def specific_energy(self, U: flowfields) -> ngs.CF:
         if U.E is not None:
             return U.E
 
@@ -493,7 +510,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return None
 
     @equation
-    def enthalpy(self, U: flowfields) -> bla.SCALAR:
+    def enthalpy(self, U: flowfields) -> ngs.CF:
         if U.rho_H is not None:
             return U.rho_H
 
@@ -508,7 +525,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         return None
 
     @equation
-    def specific_enthalpy(self, U: flowfields) -> bla.SCALAR:
+    def specific_enthalpy(self, U: flowfields) -> ngs.CF:
         if U.H is not None:
             return U.H
 
@@ -523,15 +540,19 @@ class CompressibleFlowSolver(SolverConfiguration):
         return None
 
     @equation
-    def speed_of_sound(self, U: flowfields) -> bla.SCALAR:
+    def speed_of_sound(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.speed_of_sound(U)
 
     @equation
-    def density_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def specific_entropy(self, U: flowfields):
+        return self.equation_of_state.specific_entropy(U)
+
+    @equation
+    def density_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         return self.equation_of_state.density_gradient(U, dU)
 
     @equation
-    def velocity_gradient(self, U: flowfields, dU: flowfields) -> bla.MATRIX:
+    def velocity_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_u is not None:
             return dU.grad_u
         elif all((U.rho, U.rho_u, dU.grad_rho, dU.grad_rho_u)):
@@ -539,7 +560,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return dU.grad_rho_u/U.rho - bla.outer(U.rho_u, dU.grad_rho)/U.rho**2
 
     @equation
-    def momentum_gradient(self, U: flowfields, dU: flowfields) -> bla.MATRIX:
+    def momentum_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_u is not None:
             return dU.grad_rho_u
         elif all((U.rho, U.u, dU.grad_rho, dU.grad_u)):
@@ -547,15 +568,15 @@ class CompressibleFlowSolver(SolverConfiguration):
             return U.rho * dU.grad_u + bla.outer(U.u, dU.grad_rho)
 
     @equation
-    def pressure_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def pressure_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         return self.equation_of_state.pressure_gradient(U, dU)
 
     @equation
-    def temperature_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def temperature_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         return self.equation_of_state.temperature_gradient(U, dU)
 
     @equation
-    def energy_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_E is not None:
             return dU.grad_rho_E
         elif all((dU.grad_rho_Ei, dU.grad_rho_Ek)):
@@ -563,7 +584,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return dU.grad_rho_Ei + dU.grad_rho_Ek
 
     @equation
-    def specific_energy_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def specific_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_E is not None:
             return dU.grad_E
         elif all((dU.grad_Ei, dU.grad_Ek)):
@@ -572,7 +593,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return dU.grad_Ei + dU.grad_Ek
 
     @equation
-    def inner_energy_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def inner_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_Ei is not None:
             return dU.grad_rho_Ei
         elif all((dU.grad_rho_E, dU.grad_rho_Ek)):
@@ -580,7 +601,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return dU.grad_rho_E - dU.grad_rho_Ek
 
     @equation
-    def specific_inner_energy_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def specific_inner_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_Ei is not None:
             return dU.grad_Ei
         elif all((dU.grad_E, dU.grad_Ek)):
@@ -589,7 +610,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return dU.grad_E - dU.grad_Ek
 
     @equation
-    def kinetic_energy_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def kinetic_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_Ek is not None:
             return dU.grad_rho_Ek
         elif all((dU.grad_rho_E, dU.grad_rho_Ei)):
@@ -605,7 +626,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return (dU.grad_rho_u.trans * U.rho_u)/U.rho - 0.5 * dU.grad_rho * bla.inner(U.rho_u, U.rho_u)/U.rho**2
 
     @equation
-    def specific_kinetic_energy_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def specific_kinetic_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_Ek is not None:
             return dU.grad_Ek
         elif all((dU.grad_E, dU.grad_Ei)):
@@ -622,7 +643,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return (dU.grad_rho_u.trans * U.rho_u)/U.rho**2 - dU.grad_rho * bla.inner(U.rho_u, U.rho_u)/U.rho**3
 
     @equation
-    def enthalpy_gradient(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def enthalpy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_H is not None:
             return dU.grad_rho_H
         elif all((dU.grad_rho_E, dU.grad_p)):
@@ -630,7 +651,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             return dU.grad_rho_E + dU.grad_p
 
     @equation
-    def strain_rate_tensor(self, dU: flowfields) -> bla.MATRIX:
+    def strain_rate_tensor(self, dU: flowfields) -> ngs.CF:
         if dU.eps is not None:
             return dU.eps
         elif dU.grad_u is not None:
@@ -659,11 +680,11 @@ class CompressibleFlowSolver(SolverConfiguration):
             return 2*mu/Re * eps
 
     @equation
-    def viscosity(self, U: flowfields) -> bla.SCALAR:
+    def viscosity(self, U: flowfields) -> ngs.CF:
         return self.dynamic_viscosity.viscosity(U)
 
     @equation
-    def heat_flux(self, U: flowfields, dU: flowfields) -> bla.VECTOR:
+    def heat_flux(self, U: flowfields, dU: flowfields) -> ngs.CF:
 
         k = self.viscosity(U)
         Re = self.scaling.reference_reynolds_number
@@ -674,61 +695,61 @@ class CompressibleFlowSolver(SolverConfiguration):
             return -k/(Re * Pr) * dU.grad_T
 
     @equation
-    def characteristic_velocities(self, U: flowfields, unit_vector: bla.VECTOR, type: str = None) -> bla.VECTOR:
+    def characteristic_velocities(self, U: flowfields, unit_vector: ngs.CF, type: str = None) -> ngs.CF:
         return self.equation_of_state.characteristic_velocities(U, unit_vector, type)
 
     @equation
     def characteristic_variables(
-            self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR) -> bla.VECTOR:
+            self, U: flowfields, dU: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         return self.equation_of_state.characteristic_variables(U, dU, unit_vector)
 
     @equation
-    def characteristic_amplitudes(self, U: flowfields, dU: flowfields, unit_vector: bla.VECTOR,
-                                  type: str = None) -> bla.VECTOR:
+    def characteristic_amplitudes(self, U: flowfields, dU: flowfields, unit_vector: ngs.CF,
+                                  type: str = None) -> ngs.CF:
         return self.equation_of_state.characteristic_amplitudes(U, dU, unit_vector, type)
 
     @equation
-    def primitive_from_conservative(self, U: flowfields) -> bla.MATRIX:
+    def primitive_from_conservative(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.primitive_from_conservative(U)
 
     @equation
-    def primitive_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def primitive_from_characteristic(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         return self.equation_of_state.primitive_from_characteristic(U, unit_vector)
 
     @equation
-    def primitive_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
+    def primitive_convective_jacobian_x(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.primitive_convective_jacobian_x(U)
 
     @equation
-    def primitive_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
+    def primitive_convective_jacobian_y(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.primitive_convective_jacobian_y(U)
 
     @equation
-    def conservative_from_primitive(self, U: flowfields) -> bla.MATRIX:
+    def conservative_from_primitive(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.conservative_from_primitive(U)
 
     @equation
-    def conservative_from_characteristic(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def conservative_from_characteristic(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         return self.equation_of_state.conservative_from_characteristic(U, unit_vector)
 
     @equation
-    def conservative_convective_jacobian_x(self, U: flowfields) -> bla.MATRIX:
+    def conservative_convective_jacobian_x(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.conservative_convective_jacobian_x(U)
 
     @equation
-    def conservative_convective_jacobian_y(self, U: flowfields) -> bla.MATRIX:
+    def conservative_convective_jacobian_y(self, U: flowfields) -> ngs.CF:
         return self.equation_of_state.conservative_convective_jacobian_y(U)
 
     @equation
-    def characteristic_from_primitive(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_primitive(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         return self.equation_of_state.characteristic_from_primitive(U, unit_vector)
 
     @equation
-    def characteristic_from_conservative(self, U: flowfields, unit_vector: bla.VECTOR) -> bla.MATRIX:
+    def characteristic_from_conservative(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         return self.equation_of_state.characteristic_from_conservative(U, unit_vector)
 
     @equation
-    def isentropic_density(self, U: flowfields, Uref: flowfields) -> bla.SCALAR:
+    def isentropic_density(self, U: flowfields, Uref: flowfields) -> ngs.CF:
         return self.equation_of_state.isentropic_density(U, Uref)
 
     @equation
@@ -736,7 +757,11 @@ class CompressibleFlowSolver(SolverConfiguration):
         return (self.pressure(U) - self.pressure(Uref))/(self.kinetic_energy(Uref))
 
     @equation
-    def stress_tensor(self, U: flowfields, dU: flowfields = None) -> bla.MATRIX:
+    def specific_entropy(self, U: flowfields):
+        return self.equation_of_state.specific_entropy(U)
+
+    @equation
+    def stress_tensor(self, U: flowfields, dU: flowfields = None) -> ngs.CF:
 
         sigma = -self.pressure(U) * ngs.Id(self.mesh.dim)
         if not self.dynamic_viscosity.is_inviscid:
@@ -746,12 +771,60 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @equation
     def drag_coefficient(
-            self, U: flowfields, dU: flowfields, Uref: flowfields, drag_direction: tuple[float, ...]) -> bla.SCALAR:
-        stress = self.stress_tensor(U, dU) * self.mesh.normal
-        return bla.inner(stress, bla.unit_vector(drag_direction))/(self.kinetic_energy(Uref))
+            self, U: flowfields, dU: flowfields, Uinf: flowfields, drag_direction: tuple[float, ...] = (1, 0),
+            aera: float = 1.0) -> float:
+        r""" Returns the definition of the drag coefficient. 
+             Needs to be integrated over a surface, due to the inclusion of the boundary normal vector :math:`\bm{n}_{bnd}`.
+
+            .. math::
+                C_d = \frac{1}{\frac{1}{2} \rho_\infty |\bm{u}_\infty|^2 A} \bm{n}_{drag} \left(\mat{\tau} - p \mat{\I} \right) \bm{n}_{bnd}
+
+            :param U: A dictionary containing the flow quantities
+            :type U: flowfields
+            :param dU: A dictionary containing the gradients of the flow quantities for the evaluation of the viscous stress tensor
+            :type dU: flowfields
+            :param Uinf: A dictionary containing the reference flow quantities
+            :type Uinf: flowfields
+            :param drag_direction: A container containing the drag direction :math:`\bm{n}_{drag}`
+            :type drag_direction: tuple[float, ...]
+            :param aera: The reference area :math:`A`
+            :type aera: float
+            :return: The drag coefficient
+            :rtype: float
+        """
+        return self._get_aerodynamic_coefficient(U, dU, Uinf, drag_direction, aera)
 
     @equation
     def lift_coefficient(
-            self, U: flowfields, dU: flowfields, Uref: flowfields, lift_direction: tuple[float, ...]) -> bla.SCALAR:
-        stress = self.stress_tensor(U, dU) * self.mesh.normal
-        return bla.inner(stress, bla.unit_vector(lift_direction))/(self.kinetic_energy(Uref))
+            self, U: flowfields, dU: flowfields, Uinf: flowfields, lift_direction: tuple[float, ...] = (0, 1),
+            aera: float = 1.0) -> float:
+        r""" Returns the definition of the lift coefficient. 
+             Needs to be integrated over a surface, due to the inclusion of the boundary normal vector :math:`\bm{n}_{bnd}`.
+
+            .. math::
+                C_l = \frac{1}{\frac{1}{2} \rho_\infty |\bm{u}_\infty|^2 A} \bm{n}_{lift} \left(\mat{\tau} - p \mat{\I} \right) \bm{n}_{bnd} 
+
+            :param U: A dictionary containing the flow quantities
+            :type U: flowfields
+            :param dU: A dictionary containing the gradients of the flow quantities for the evaluation of the viscous stress tensor
+            :type dU: flowfields
+            :param Uinf: A dictionary containing the reference flow quantities
+            :type Uinf: flowfields
+            :param lift_direction: A container containing the lift direction :math:`\bm{n}_{lift}`
+            :type lift_direction: tuple[float, ...]
+            :param aera: The reference area :math:`A`
+            :type aera: float
+            :return: The drag coefficient
+            :rtype: float
+        """
+        return self._get_aerodynamic_coefficient(U, dU, Uinf, lift_direction, aera)
+
+    def _get_aerodynamic_coefficient(
+            self, U: flowfields, dU: flowfields, Uinf: flowfields, direction: tuple[float, ...],
+            aera: float) -> float:
+
+        sigma = -self.pressure(U) * ngs.Id(self.mesh.dim)
+        if not self.dynamic_viscosity.is_inviscid:
+            sigma += self.deviatoric_stress_tensor(U, dU)
+
+        return bla.inner(sigma * self.mesh.normal, bla.unit_vector(direction))/(aera * self.kinetic_energy(Uinf))

@@ -1,3 +1,4 @@
+""" Definitions of explicit time integration schemes for conservative methods """
 from __future__ import annotations
 
 import ngsolve as ngs
@@ -124,20 +125,20 @@ class SSPRK3(ExplicitSchemes):
 
         # First stage.
         self.blf.Apply(Un.vec, self.rhs)
-        Un.data = self.U0 + self.minv * self.rhs
+        Un.vec.data = self.U0 + self.minv * self.rhs
 
         # Second stage.
         self.blf.Apply(Un.vec, self.rhs)
 
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
-        Un.data *= self.alpha21
-        Un.data += self.alpha20 * self.U0 + self.beta21 * self.minv * self.rhs
+        Un.vec.data *= self.alpha21
+        Un.vec.data += self.alpha20 * self.U0 + self.beta21 * self.minv * self.rhs
 
         # Third stage.
         self.blf.Apply(Un.vec, self.rhs)
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
-        Un.data *= self.alpha32
-        Un.data += self.alpha30 * self.U0 + self.beta32 * self.minv * self.rhs
+        Un.vec.data *= self.alpha32
+        Un.vec.data += self.alpha30 * self.U0 + self.beta32 * self.minv * self.rhs
 
 
 class CRK4(ExplicitSchemes):

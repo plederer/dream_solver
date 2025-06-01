@@ -1,12 +1,12 @@
 from .solver import ScalarTransportSolver 
 from .spatial import ScalarTransportFiniteElementMethod 
-from .config import (flowfields,
+from .config import (transportfields,
                      Periodic,
                      FarField,
                      Initial)
 
 __all__ = ['ScalarTransportSolver',
-           'flowfields',
+           'transportfields',
            'Periodic',
            'FarField',
            'Initial']

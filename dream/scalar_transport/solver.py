@@ -1,3 +1,4 @@
+""" Scalar transport solver configuration """
 from __future__ import annotations
 
 import logging
@@ -8,7 +9,7 @@ from dream.config import dream_configuration, equation
 from dream.mesh import (BoundaryConditions, DomainConditions)
 from dream.solver import SolverConfiguration
 
-from .config import flowfields, BCS, DCS
+from .config import transportfields, BCS, DCS
 from .spatial import ScalarTransportFiniteElementMethod, HDG, DG
 from .riemann_solver import RiemannSolver, LaxFriedrich
 
@@ -37,6 +38,11 @@ class ScalarTransportSolver(SolverConfiguration):
 
     @dream_configuration
     def fem(self) -> HDG:
+        r""" Sets the finite element for the scalar transport solver. 
+
+            :getter: Returns the finite element
+            :setter: Sets the finite element method, defaults to HDG 
+        """
         return self._fem
 
     @fem.setter
@@ -63,7 +69,7 @@ class ScalarTransportSolver(SolverConfiguration):
         r""" Sets the convection/wind velocity.
 
             :getter: Returns the convection speed
-            :setter: Sets the convection speed, defaults to (1.0, 0.0)
+            :setter: Sets the convection speed, defaults to (1.0, 0.0, 0.0)
         """
         return self._convection_velocity
 
@@ -93,17 +99,24 @@ class ScalarTransportSolver(SolverConfiguration):
 
     @dream_configuration
     def is_inviscid(self) -> bool:
+        r""" Sets whether the formulation is inviscid (no diffusion)
+
+            :getter: Returns whether this a pure convection equation
+            :setter: Sets whether this is a pure convection equation, defaults to False
+        """
         return self._is_inviscid
 
     @is_inviscid.setter
     def is_inviscid(self, is_inviscid: bool) -> None:
         self._is_inviscid = bool(is_inviscid)
 
-    def get_convective_flux(self, U: flowfields) -> ngs.CF:
+    def get_convective_flux(self, U: transportfields) -> ngs.CF:
         return self.convection_velocity * U.phi 
 
     @equation
-    def phi(self, U: flowfields):
+    def phi(self, U: transportfields):
+        r""" Returns the definition of our scalar variable: :math:`\phi`.
+        """
         if U.phi is not None:
             return U.phi
 

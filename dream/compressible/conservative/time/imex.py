@@ -1,3 +1,4 @@
+""" Definitions of IMEX time integration schemes for conservative methods """
 from __future__ import annotations
 
 import ngsolve as ngs

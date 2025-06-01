@@ -1,5 +1,5 @@
 from dream import *
-from dream.compressible import Initial, flowfields
+from dream.compressible import Initial, transportfields
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
@@ -89,7 +89,7 @@ def AnalyticSolution(cfg, t, lx, ly):
     p = ovg*(1.0 + dT)**govgm1 
 
     # Return the analytic expression of the vortices.
-    return flowfields( rho=r, u=(u, v), p=p )
+    return transportfields( rho=r, u=(u, v), p=p )
 
 
 # Function that generates a single isentropic perturbations in the velocity and temperature.
