@@ -4,7 +4,7 @@ import ngsolve as ngs
 import typing
 import dream.bla as bla
 
-from dream.time import TransientRoutine, PseudoTimeSteppingRoutine
+from dream.time import TimeSchemes, TransientRoutine, PseudoTimeSteppingRoutine
 from dream.config import Configuration, dream_configuration, Integrals
 from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
 from dream.compressible.config import (flowfields,
@@ -17,7 +17,7 @@ from dream.compressible.config import (flowfields,
                                        AdiabaticWall,
                                        CBC)
 
-from .time import TimeSchemes, ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2, ExplicitEuler, SSPRK3, CRK4, IMEXRK_ARS443
+from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2, ExplicitEuler, SSPRK3, CRK4, IMEXRK_ARS443
 
 logger = logging.getLogger(__name__)
 
@@ -481,9 +481,7 @@ class DG(ConservativeMethod):
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
-    def get_time_scheme(self, scheme) -> ExplicitEuler | SSPRK3 | CRK4:
-        OPTIONS = [ExplicitEuler, SSPRK3, CRK4]
-        return self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
+
 
 
 class HDG(ConservativeMethod):

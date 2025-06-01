@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from dream.config import Integrals
 from dream.time import TimeSchemes
 
@@ -9,8 +8,6 @@ import typing
 
 logger = logging.getLogger(__name__)
 
-#from .time import TimeSchemes
-from dream.time import TimeSchemes
 
 class ImplicitSchemes(TimeSchemes):
 
@@ -106,7 +103,7 @@ class DIRKSchemes(TimeSchemes):
            z = (y,yhat), are the stage values. Also, we do not explicitly need uhat^{n+1}.
 
         The residual is defined as R_i = (r_i, rhat_i), as such:
-           r_i = M_i * y_i - M_i * u^{n} + (1/a_{ii}) * sum_{j=1}^{i-1} * f(z_j) + f(z_i),
+           r_i = M_i * y_i - M_i * u^{n} + (1/a_{ii}) * sum_{j=1}^{i-1} a_{ij} * f(z_j) + f(z_i),
         rhat_i = g(z_i).
 
         where, 

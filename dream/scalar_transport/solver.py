@@ -7,20 +7,10 @@ from dream import bla
 from dream.config import dream_configuration, equation
 from dream.mesh import (BoundaryConditions, DomainConditions)
 from dream.solver import SolverConfiguration
-from dream.time import TimeConfig
-
-#from .eos import IdealGas, EquationOfState
-#from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
-#from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
-#from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
-#from .config import flowfields, BCS, DCS, CompressibleFiniteElementMethod
-#from .formulations import ConservativeFiniteElementMethod
-#from .time import CompressibleTransient, CompressiblePseudoTimeStepping 
 
 from .config import flowfields, BCS, DCS
-from .conservative import ScalarTransportFiniteElementMethod, HDG
-from .time import ScalarTransportTransient 
-from .riemann_solver import RiemannSolver, LaxFriedrich, Upwind
+from .spatial import ScalarTransportFiniteElementMethod, HDG, DG
+from .riemann_solver import RiemannSolver, LaxFriedrich
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +26,6 @@ class ScalarTransportSolver(SolverConfiguration):
         self._diffusion_coefficient = ngs.Parameter(1.0e-2)
 
         DEFAULT = {
-            "fem": HDG(mesh, self),
-            "time": ScalarTransportTransient(mesh, self),
             "riemann_solver": LaxFriedrich(mesh, self),
             "convection_velocity": [1.0] + [0.0 for _ in range(mesh.dim-1)],
             "diffusion_coefficient": 1.0e-2,
@@ -48,30 +36,16 @@ class ScalarTransportSolver(SolverConfiguration):
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
 
     @dream_configuration
-    def fem(self) -> ScalarTransportFiniteElementMethod:
+    def fem(self) -> HDG:
         return self._fem
 
     @fem.setter
     def fem(self, fem):
-        OPTIONS = [ScalarTransportFiniteElementMethod]
+        OPTIONS = [HDG, DG]
         self._fem = self._get_configuration_option(fem, OPTIONS, ScalarTransportFiniteElementMethod)
 
     @dream_configuration
-    def time(self) -> ScalarTransportTransient:
-        r""" Sets the time configuration for the scalar transport solver. 
-
-            :getter: Returns the time configuration
-            :setter: Sets the time configuration, defaults to ScalarTransportTransient
-        """
-        return self._time
-    
-    @time.setter
-    def time(self, time: TimeConfig):
-        OPTIONS = [ScalarTransportTransient]
-        self._time = self._get_configuration_option(time, OPTIONS, TimeConfig)
-
-    @dream_configuration
-    def riemann_solver(self) -> LaxFriedrich | Upwind:
+    def riemann_solver(self) -> LaxFriedrich:
         r""" Sets the Riemann solver for the scalar transport solver.
 
             :getter: Returns the Riemann solver
@@ -80,8 +54,8 @@ class ScalarTransportSolver(SolverConfiguration):
         return self._riemann_solver
 
     @riemann_solver.setter
-    def riemann_solver(self, riemann_solver: str | LaxFriedrich | Upwind):
-        OPTIONS = [LaxFriedrich, Upwind]
+    def riemann_solver(self, riemann_solver: str | LaxFriedrich):
+        OPTIONS = [LaxFriedrich]
         self._riemann_solver = self._get_configuration_option(riemann_solver, OPTIONS, RiemannSolver)
 
     @dream_configuration

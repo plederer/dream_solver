@@ -1,0 +1,6 @@
+#!/bin/bash
+
+rm output/vtk/*.vtk
+rm output/vtk/*.vtu
+rm output/vtk/*.pvd
+rm output/sensors/*.csv

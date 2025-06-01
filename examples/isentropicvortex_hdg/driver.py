@@ -1,5 +1,5 @@
 from dream import *
-from dream.scalar_transport import Initial, flowfields, ScalarTransportSolver
+from dream.compressible import Initial, CompressibleFlowSolver
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
@@ -7,6 +7,8 @@ from ngsolve.meshes import MakeStructured2DMesh
 
 # Needed to create simple grids.
 from gridmaker import *
+# Needed to initialize and verify the solution.
+from vnv import *
 
 # Message output detail from netgen.
 ngsglobals.msg_level = 0
@@ -32,7 +34,8 @@ mesh = CreateSimpleGrid(nElem1D, xLength, yLength)
 # # # # # # # # # # # #
 
 # Base configuration.
-cfg = ScalarTransportSolver(mesh)
+cfg = CompressibleFlowSolver(mesh)
+
 
 # Number of threads.
 nThread = 4
@@ -43,17 +46,21 @@ nPoly = 4
 # Number of subdivisions, for visualization.
 nSubdiv = 3
 
+
 # Set the number of threads.
 SetNumThreads(nThread)
+
 
 
 # # # # # # # # # # # #
 # Physical parameters.
 # # # # # # # # # # # #
 
-cfg.convection_velocity = (1.0, 1.0)
-cfg.diffusion_coefficient = 1.0e-03
-cfg.is_inviscid = True
+cfg.dynamic_viscosity = "inviscid"
+cfg.equation_of_state = "ideal"
+cfg.equation_of_state.heat_capacity_ratio = 1.4
+cfg.scaling = "acoustic"
+cfg.mach_number = 0.0
 
 
 # # # # # # # # # # # # #
@@ -61,9 +68,10 @@ cfg.is_inviscid = True
 # # # # # # # # # # # # #
 
 cfg.riemann_solver = "lax_friedrich"
-cfg.fem = "hdg"
+#cfg.riemann_solver = "upwind"
+cfg.fem = "conservative"
 cfg.fem.order = nPoly
-cfg.fem.interior_penalty_coefficient = 10.0
+cfg.fem.method = "hdg"
 
 
 # # # # # # # # # # # # # #
@@ -72,11 +80,16 @@ cfg.fem.interior_penalty_coefficient = 10.0
 
 cfg.time = "transient"
 TEMPORAL = cfg.time
-cfg.fem.scheme = "implicit_euler"
-#cfg.fem.scheme = "bdf2"
-#cfg.fem.scheme = "sdirk22"
-TEMPORAL.timer.interval = (0, 50.0)
-TEMPORAL.timer.step = 0.05
+#TEMPORAL.scheme = "dirk34_ldd"
+#TEMPORAL.scheme = "dirk43_wso2"
+#TEMPORAL.scheme = "sdirk22"
+#TEMPORAL.scheme = "sdirk33"
+#TEMPORAL.scheme = "sdirk54"
+cfg.fem.scheme = "bdf2"
+#TEMPORAL.scheme = "implicit_euler"
+#TEMPORAL.scheme = "imex_rk_ars443"
+TEMPORAL.timer.interval = (0, 10000.0)
+TEMPORAL.timer.step = 1.0
 
 
 # # # # # # # # # # #
@@ -84,6 +97,11 @@ TEMPORAL.timer.step = 0.05
 # # # # # # # # # # #
 
 cfg.linear_solver = "pardiso"
+cfg.nonlinear_solver = "pardiso"
+cfg.nonlinear_solver.method = "newton"
+cfg.nonlinear_solver.method.damping_factor = 1
+cfg.nonlinear_solver.max_iterations = 10
+cfg.nonlinear_solver.convergence_criterion = 1e-10
 
 
 # # # # # # # # # # #
@@ -91,8 +109,9 @@ cfg.linear_solver = "pardiso"
 # # # # # # # # # # #
 
 OPTIMIZATION = cfg.optimizations
-OPTIMIZATION.static_condensation = True # NOTE, for now this cannot be true!
+OPTIMIZATION.static_condensation = True
 OPTIMIZATION.compile.realcompile = False
+
 
 
 # # # # # # # # # # #
@@ -100,13 +119,7 @@ OPTIMIZATION.compile.realcompile = False
 # # # # # # # # # # #
 
 # Obtain the initial condition.
-a0 = 1.0
-rv = 1.0
-x0 = 5.0
-y0 = 5.0
-U0 = flowfields()
-r = sqrt((x-x0)**2 + (y-y0)**2)
-U0.phi = 1.0 * (1 + a0 * exp(-r**2/rv**2))
+Uic = InitialCondition(cfg, TEMPORAL, xLength, yLength)
 
 
 # # # # # # # # # # # # # # # # #
@@ -116,8 +129,7 @@ U0.phi = 1.0 * (1 + a0 * exp(-r**2/rv**2))
 # cfg.bcs['left|top|bottom|right'] = FarField(state=Uinf)
 cfg.bcs['left|right'] = "periodic"
 cfg.bcs['top|bottom'] = "periodic"
-cfg.dcs['internal'] = Initial(fields=U0)
-
+cfg.dcs['internal'] = Initial(fields=Uic)
 
 # # # # # # # # # # # #
 # Output/Visualization.
@@ -126,16 +138,18 @@ cfg.dcs['internal'] = Initial(fields=U0)
 # Set the spaces and associated grid functions.
 cfg.initialize()
 
+# Get the analytic solution, function of time.
+Uexact = AnalyticSolution(cfg, TEMPORAL.timer.t, xLength, yLength)
+
 # Write output VTK file.
 IO = cfg.io
-IO.vtk.rate = 10
+IO.vtk.rate = 50
 IO.vtk.subdivision = nSubdiv
 IO.log.level = 10
 
 
-## VTK Visualization data.
-fields = cfg.fem.get_fields()
-IO.vtk.fields = fields 
+# VTK Visualization data.
+ProcessVTKData(IO, cfg, Uexact)
 
 
 # # # # # # # # # # #
@@ -145,6 +159,3 @@ IO.vtk.fields = fields
 # This passes all our configuration to NGSolve to solve.
 with TaskManager():
     cfg.solve()
-
-
-

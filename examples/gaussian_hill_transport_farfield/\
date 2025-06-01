@@ -1,9 +1,10 @@
 from dream import *
-from dream.scalar_transport import Initial, flowfields, ScalarTransportSolver
+from dream.scalar_transport import Initial, flowfields, ScalarTransportSolver, FarField
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
 from ngsolve.meshes import MakeStructured2DMesh
+from dream.io import DomainL2Sensor
 
 # Needed to create simple grids.
 from gridmaker import *
@@ -20,8 +21,8 @@ ngsglobals.msg_level = 0
 nElem1D = 10
 
 # Dimension of the rectangular domain.
-xLength = 10.0
-yLength = 10.0
+xLength = 2.0
+yLength = 2.0
 
 # Generate a simple grid.
 mesh = CreateSimpleGrid(nElem1D, xLength, yLength)
@@ -50,10 +51,9 @@ SetNumThreads(nThread)
 # # # # # # # # # # # #
 # Physical parameters.
 # # # # # # # # # # # #
-
-cfg.convection_velocity = (1.0, 1.0)
+cfg.convection_velocity = (-y, x)
 cfg.diffusion_coefficient = 1.0e-03
-cfg.is_inviscid = True
+cfg.is_inviscid = False
 
 
 # # # # # # # # # # # # #
@@ -61,7 +61,7 @@ cfg.is_inviscid = True
 # # # # # # # # # # # # #
 
 cfg.riemann_solver = "lax_friedrich"
-cfg.fem = "hdg"
+cfg.fem = "dg"
 cfg.fem.order = nPoly
 cfg.fem.interior_penalty_coefficient = 10.0
 
@@ -70,13 +70,21 @@ cfg.fem.interior_penalty_coefficient = 10.0
 # Temporal discretization.
 # # # # # # # # # # # # # #
 
+t0 = pi/2
+tf = 5*pi/2
+
 cfg.time = "transient"
 TEMPORAL = cfg.time
-cfg.fem.scheme = "implicit_euler"
+#cfg.fem.scheme = "implicit_euler"
 #cfg.fem.scheme = "bdf2"
 #cfg.fem.scheme = "sdirk22"
-TEMPORAL.timer.interval = (0, 50.0)
-TEMPORAL.timer.step = 0.05
+#cfg.fem.scheme = "sdirk33"
+#cfg.fem.scheme = "imex_rk_ars443"
+#cfg.fem.scheme = "explicit_euler"
+cfg.fem.scheme = "ssprk3"
+#cfg.fem.scheme = "crk4"
+TEMPORAL.timer.interval = (t0, tf)
+TEMPORAL.timer.step = 0.002
 
 
 # # # # # # # # # # #
@@ -91,31 +99,45 @@ cfg.linear_solver = "pardiso"
 # # # # # # # # # # #
 
 OPTIMIZATION = cfg.optimizations
-OPTIMIZATION.static_condensation = True # NOTE, for now this cannot be true!
+OPTIMIZATION.static_condensation = False
 OPTIMIZATION.compile.realcompile = False
-
+OPTIMIZATION.bonus_int_order = 10
 
 # # # # # # # # # # #
 # Initial conditions.
 # # # # # # # # # # #
 
 # Obtain the initial condition.
-a0 = 1.0
-rv = 1.0
-x0 = 5.0
-y0 = 5.0
+k = cfg.diffusion_coefficient
+
+x0 = 0.0
+y0 = 0.5
+
+b = 1.0/(4.0*k)
+a = b/pi
+
+a0 = a/t0
+b0 = b/t0
+
+xc0 =  x0*cos(t0) - y0*sin(t0)
+yc0 = -x0*sin(t0) + y0*cos(t0)
+
+r2 = (x-xc0)**2 + (y-yc0)**2
+
 U0 = flowfields()
-r = sqrt((x-x0)**2 + (y-y0)**2)
-U0.phi = 1.0 * (1 + a0 * exp(-r**2/rv**2))
+U0.phi = a0*exp( -r2*b0 )
+
 
 
 # # # # # # # # # # # # # # # # #
 # Boundary and domain conditions.
 # # # # # # # # # # # # # # # # #
 
-# cfg.bcs['left|top|bottom|right'] = FarField(state=Uinf)
-cfg.bcs['left|right'] = "periodic"
-cfg.bcs['top|bottom'] = "periodic"
+
+Uic = flowfields()
+Uic.phi = 2.25
+
+cfg.bcs['left|top|bottom|right'] = FarField(fields=Uic)
 cfg.dcs['internal'] = Initial(fields=U0)
 
 
@@ -126,6 +148,7 @@ cfg.dcs['internal'] = Initial(fields=U0)
 # Set the spaces and associated grid functions.
 cfg.initialize()
 
+
 # Write output VTK file.
 IO = cfg.io
 IO.vtk.rate = 10
@@ -133,8 +156,32 @@ IO.vtk.subdivision = nSubdiv
 IO.log.level = 10
 
 
-## VTK Visualization data.
+# # # # # # # # # # #
+# Analytic Solution. 
+# # # # # # # # # # #
+t = TEMPORAL.timer.t
+
+at = a/t 
+bt = b/t 
+
+xc =  x0*cos(t) - y0*sin(t)
+yc = -x0*sin(t) + y0*cos(t)
+
+r2 = (x-xc)**2 + (y-yc)**2
+
+Uex = flowfields()
+Uex.phi = at*exp( -r2*bt )
 fields = cfg.fem.get_fields()
+fields["Exact[phi]"]  = Uex.phi
+fields["Diff[phi]"]  = Uex.phi - fields["phi"] 
+
+
+sensor = DomainL2Sensor( fields, mesh=mesh )
+IO.sensor.add(sensor)
+
+
+## VTK Visualization data.
+#fields = cfg.fem.get_fields()
 IO.vtk.fields = fields 
 
 
@@ -145,6 +192,16 @@ IO.vtk.fields = fields
 # This passes all our configuration to NGSolve to solve.
 with TaskManager():
     cfg.solve()
+        
+
+    
+    #for t in cfg.time.start_solution_routine(True):
+    #    print( "... time: ", t )
+    #    # Step: 1
+    #    alpha(t) = u(t)
+    #    # Step: 2
+    #    sigma(t) = f( u, alpha)
 
 
-
+    
+    

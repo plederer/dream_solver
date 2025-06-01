@@ -7,7 +7,6 @@ from dream import bla
 from dream.config import dream_configuration, equation
 from dream.mesh import (BoundaryConditions, DomainConditions)
 from dream.solver import SolverConfiguration
-from dream.time import TransientRoutine
 
 from .eos import IdealGas, EquationOfState
 from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
@@ -32,7 +31,6 @@ class CompressibleFlowSolver(SolverConfiguration):
         self._prandtl_number = ngs.Parameter(0.72)
 
         DEFAULT = {
-            "time": TransientRoutine(mesh, self),
             "equation_of_state": IdealGas(mesh, self),
             "dynamic_viscosity": Inviscid(mesh, self),
             "scaling": Aerodynamic(mesh, self),

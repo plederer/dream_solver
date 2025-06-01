@@ -457,7 +457,6 @@ class FiniteElementMethod(Configuration, is_interface=True):
             self.scheme.add_symbolic_temporal_forms(self.blf, self.lf)
 
     def set_initial_conditions(self) -> None:    
-        # Make sure to call the upper class method after having set the initial conditions
         if isinstance(self.scheme, TimeSchemes):
             self.scheme.set_initial_conditions()
 
@@ -487,7 +486,6 @@ class SolverConfiguration(Configuration, is_interface=True):
         mesh.is_periodic = is_mesh_periodic(mesh)
 
         DEFAULT = {
-            "time": StationaryRoutine(mesh, self),
             "linear_solver": UmfpackLinearSolver(mesh, self),
             "nonlinear_solver": UmfpackNonlinearSolver(mesh, self),
             "optimizations": Optimizations(mesh, self),

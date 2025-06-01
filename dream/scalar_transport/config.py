@@ -14,13 +14,26 @@ from dream.mesh import (Condition,
                         GridDeformation)
 
 
-
-
 class flowfields(ngsdict):
-    phi = quantity('scalar_quantity', r"\phi")
+    phi = quantity('phi', r"\phi")
+    grad_phi = quantity('phi gradient', r"\nabla \phi")
 
 
-BCS = [Periodic]
+class FarField(Condition):
+
+    name = "farfield"
+    
+    def __init__(self, fields: flowfields | None = None):
+
+        self.fields = fields
+
+        super().__init__()
+
+
+    
+
+
+BCS = [Periodic, FarField]
 DCS = [Perturbation, Initial, GridDeformation]
 
 
