@@ -75,7 +75,6 @@
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
@@ -117,6 +116,7 @@
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">IdealGas.speed_of_sound()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_entropy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.density_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.density_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.pressure_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature_gradient()</span></code></a></li>
@@ -137,50 +137,85 @@
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html">riemann_solver</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.theta_0"><code class="docutils literal notranslate"><span class="pre">HLLEM.theta_0</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html">viscosity</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant.viscosity"><code class="docutils literal notranslate"><span class="pre">Constant.viscosity()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid.viscosity"><code class="docutils literal notranslate"><span class="pre">Inviscid.viscosity()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.sutherland_temperature"><code class="docutils literal notranslate"><span class="pre">Sutherland.sutherland_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.viscosity"><code class="docutils literal notranslate"><span class="pre">Sutherland.viscosity()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html">scaling</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Acoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Acoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.pressure"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.dimensionful_values"><code class="docutils literal notranslate"><span class="pre">Scaling.dimensionful_values</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.farfield"><code class="docutils literal notranslate"><span class="pre">Scaling.farfield</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.reference_density"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.density"><code class="docutils literal notranslate"><span class="pre">Scaling.density</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -220,7 +255,6 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.dimensionfulfields"><code class="docutils literal notranslate"><span class="pre">dimensionfulfields</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho"><code class="docutils literal notranslate"><span class="pre">flowfields.rho</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.u"><code class="docutils literal notranslate"><span class="pre">flowfields.u</span></code></a></li>
@@ -332,7 +366,7 @@
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "6cbb7f4518294ed48a91ff72ffb0d25d"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "1ac2e18df966407faf2bd13d65ef53ae"}</script></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
@@ -434,64 +468,14 @@
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.solver    (INFO) | residual: 6.523635e-02 | iteration: 0
-dream.solver    (INFO) | residual: 1.377432e+02 | iteration: 1
-dream.solver    (INFO) | residual: 9.491204e+01 | iteration: 2
-dream.solver    (INFO) | residual: 7.423600e+01 | iteration: 3
-dream.solver    (INFO) | residual: 6.234886e+01 | iteration: 4
-dream.solver    (INFO) | residual: 5.452241e+01 | iteration: 5
-dream.solver    (INFO) | residual: 4.870760e+01 | iteration: 6
-dream.solver    (INFO) | residual: 4.413781e+01 | iteration: 7
-dream.solver    (INFO) | residual: 4.042130e+01 | iteration: 8
-dream.solver    (INFO) | residual: 3.730160e+01 | iteration: 9
-dream.time      (INFO) | Successfully updated time step at iteration 10
-dream.time      (INFO) | Updated time step 𝚫t = 0.01. Previous time step 𝚫t = 0.001
-dream.solver    (INFO) | residual: 1.188107e+02 | iteration: 10
-dream.solver    (INFO) | residual: 4.896780e+01 | iteration: 11
-dream.solver    (INFO) | residual: 3.109144e+01 | iteration: 12
-dream.solver    (INFO) | residual: 2.539195e+01 | iteration: 13
-dream.solver    (INFO) | residual: 2.242879e+01 | iteration: 14
-dream.solver    (INFO) | residual: 1.938185e+01 | iteration: 15
-dream.solver    (INFO) | residual: 1.619581e+01 | iteration: 16
-dream.solver    (INFO) | residual: 1.336857e+01 | iteration: 17
-dream.solver    (INFO) | residual: 1.108364e+01 | iteration: 18
-dream.solver    (INFO) | residual: 9.279898e+00 | iteration: 19
-dream.time      (INFO) | Successfully updated time step at iteration 20
-dream.time      (INFO) | Updated time step 𝚫t = 0.1. Previous time step 𝚫t = 0.01
-dream.solver    (INFO) | residual: 1.524843e+01 | iteration: 20
-dream.solver    (INFO) | residual: 2.158938e+00 | iteration: 21
-dream.solver    (INFO) | residual: 4.319529e-01 | iteration: 22
-dream.solver    (INFO) | residual: 5.211128e-02 | iteration: 23
-dream.solver    (INFO) | residual: 2.999187e-03 | iteration: 24
-dream.solver    (INFO) | residual: 3.377086e-04 | iteration: 25
-dream.solver    (INFO) | residual: 3.470861e-04 | iteration: 26
-dream.solver    (INFO) | residual: 2.017171e-04 | iteration: 27
-dream.solver    (INFO) | residual: 9.553505e-05 | iteration: 28
-dream.solver    (INFO) | residual: 5.112619e-05 | iteration: 29
-dream.time      (INFO) | Successfully updated time step at iteration 30
-dream.time      (INFO) | Updated time step 𝚫t = 1.0. Previous time step 𝚫t = 0.1
-dream.solver    (INFO) | residual: 1.553697e-04 | iteration: 30
-dream.solver    (INFO) | residual: 5.382496e-05 | iteration: 31
-dream.solver    (INFO) | residual: 2.101119e-05 | iteration: 32
-dream.solver    (INFO) | residual: 6.041086e-06 | iteration: 33
-dream.solver    (INFO) | residual: 1.329604e-06 | iteration: 34
-dream.solver    (INFO) | residual: 2.722507e-07 | iteration: 35
-dream.solver    (INFO) | residual: 6.803229e-08 | iteration: 36
-dream.solver    (INFO) | residual: 2.175961e-08 | iteration: 37
-dream.solver    (INFO) | residual: 7.658317e-09 | iteration: 38
-dream.solver    (INFO) | residual: 2.732773e-09 | iteration: 39
-dream.time      (INFO) | Successfully updated time step at iteration 40
-dream.time      (INFO) | Updated time step 𝚫t = 10.0. Previous time step 𝚫t = 1.0
-dream.solver    (INFO) | residual: 2.111604e-09 | iteration: 40
-dream.solver    (INFO) | residual: 3.529313e-11 | iteration: 41
-dream.solver    (INFO) | residual: 5.904524e-13 | iteration: 42
+dream.solver    (INFO) | residual: 3.805809e-13 | iteration: 42
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "bbd5fdff25ef4f8ca96f1a2a1dba8feb"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "ded8a57c97be4623993c0a1f70bab8cd"}</script></div>
 </div>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -550,7 +534,7 @@ Text(0.5, 1.0, &#39;Pressure coefficient over chord length&#39;)
 </div>
 </div>
 <script type="application/vnd.jupyter.widget-state+json">
-{"state": {"d1f7a782b4084cbb889dee58e3a33620": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "6cbb7f4518294ed48a91ff72ffb0d25d": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_d1f7a782b4084cbb889dee58e3a33620", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_0.json", "preview": "preview_0.png"}}}, "d7a999ec5f6d42f6a453139e32bbc377": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "bbd5fdff25ef4f8ca96f1a2a1dba8feb": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_d7a999ec5f6d42f6a453139e32bbc377", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_1.json", "preview": "preview_1.png"}}}}, "version_major": 2, "version_minor": 0}
+{"state": {"e799cafb6c59420c8b61db0b2db624ca": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "1ac2e18df966407faf2bd13d65ef53ae": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_e799cafb6c59420c8b61db0b2db624ca", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_0.json", "preview": "preview_0.png"}}}, "7852e961d49e4060993eb88b62802e92": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "ded8a57c97be4623993c0a1f70bab8cd": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_7852e961d49e4060993eb88b62802e92", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_1.json", "preview": "preview_1.png"}}}}, "version_major": 2, "version_minor": 0}
 </script></section>
 
 

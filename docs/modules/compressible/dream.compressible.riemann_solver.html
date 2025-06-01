@@ -75,7 +75,6 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
@@ -117,6 +116,7 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">IdealGas.speed_of_sound()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_entropy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.density_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.density_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.pressure_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature_gradient()</span></code></a></li>
@@ -137,50 +137,85 @@
 <li class="toctree-l2 current"><a class="current reference internal" href="#">riemann_solver</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.HLLEM.theta_0"><code class="docutils literal notranslate"><span class="pre">HLLEM.theta_0</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.viscosity.html">viscosity</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant.viscosity"><code class="docutils literal notranslate"><span class="pre">Constant.viscosity()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid.viscosity"><code class="docutils literal notranslate"><span class="pre">Inviscid.viscosity()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.sutherland_temperature"><code class="docutils literal notranslate"><span class="pre">Sutherland.sutherland_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.viscosity"><code class="docutils literal notranslate"><span class="pre">Sutherland.viscosity()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.scaling.html">scaling</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Acoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Acoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.pressure"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.dimensionful_values"><code class="docutils literal notranslate"><span class="pre">Scaling.dimensionful_values</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.farfield"><code class="docutils literal notranslate"><span class="pre">Scaling.farfield</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.reference_density"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.density"><code class="docutils literal notranslate"><span class="pre">Scaling.density</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -220,7 +255,6 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.dimensionfulfields"><code class="docutils literal notranslate"><span class="pre">dimensionfulfields</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields.rho"><code class="docutils literal notranslate"><span class="pre">flowfields.rho</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields.u"><code class="docutils literal notranslate"><span class="pre">flowfields.u</span></code></a></li>
@@ -302,6 +336,16 @@
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg">
+<span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
+<dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
+<p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+variable, when the flow is parallel to the facet <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+<div class="math notranslate nohighlight">
+\[\bm{\tau}_{cs} := (1 + \Ma_n) \bm{I}, \quad \Ma_n := -1 \leq \frac{u_n}{c} \leq 1\]</div>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -315,7 +359,7 @@
 This can occur if the flow is parallel to the element or domain boundary!</p>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See Remark <span class="math notranslate nohighlight">\(11\)</span> in <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See Remark <span class="math notranslate nohighlight">\(11\)</span> in <span id="id3">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -332,9 +376,19 @@ This can occur if the flow is parallel to the element or domain boundary!</p>
 \end{align*}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((40)\)</span> in <span id="id3">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((40)\)</span> in <span id="id4">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg">
+<span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
+<dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
+<p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+variable, when the flow is parallel to the facet <span id="id5">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+<div class="math notranslate nohighlight">
+\[\bm{\tau}_{cs} := (1 + \Ma_n) \bm{I}, \quad \Ma_n := -1 \leq \frac{u_n}{c} \leq 1\]</div>
 </dd></dl>
 
 </dd></dl>
@@ -351,9 +405,19 @@ This can occur if the flow is parallel to the element or domain boundary!</p>
 \[\bm{\tau}_c := (|u_n| + c) \bm{I}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((35)\)</span> in <span id="id4">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((35)\)</span> in <span id="id6">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg">
+<span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
+<dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
+<p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+variable, when the flow is parallel to the facet <span id="id7">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+<div class="math notranslate nohighlight">
+\[\bm{\tau}_{cs} := \bm{I}\]</div>
 </dd></dl>
 
 </dd></dl>
@@ -375,9 +439,19 @@ This can occur if the flow is parallel to the element or domain boundary!</p>
 \[\bm{\tau}_c := |\mat{A}_n|\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((36)\)</span> in <span id="id5">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((36)\)</span> in <span id="id8">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg">
+<span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
+<dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
+<p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+variable, when the flow is parallel to the facet <span id="id9">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+<div class="math notranslate nohighlight">
+\[\bm{\tau}_{cs} := \bm{I}\]</div>
 </dd></dl>
 
 </dd></dl>
@@ -392,6 +466,16 @@ This can occur if the flow is parallel to the element or domain boundary!</p>
 <dd><p>Returns the convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_c\)</span> for HDG.</p>
 <div class="math notranslate nohighlight">
 \[\bm{\tau}_c := \bm{A}_n^+\]</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg">
+<span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
+<dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
+<p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
+variable, when the flow is parallel to the facet <span id="id10">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+<div class="math notranslate nohighlight">
+\[\bm{\tau}_{cs} := \bm{Q}_n + \bm{I}\]</div>
 </dd></dl>
 
 </dd></dl>

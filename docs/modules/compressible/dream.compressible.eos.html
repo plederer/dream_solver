@@ -75,7 +75,6 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
@@ -117,6 +116,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.eos.IdealGas.inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.eos.IdealGas.specific_inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.eos.IdealGas.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">IdealGas.speed_of_sound()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.eos.IdealGas.specific_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_entropy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.eos.IdealGas.density_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.density_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.eos.IdealGas.pressure_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.eos.IdealGas.temperature_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature_gradient()</span></code></a></li>
@@ -137,50 +137,85 @@
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.riemann_solver.html">riemann_solver</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.theta_0"><code class="docutils literal notranslate"><span class="pre">HLLEM.theta_0</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.viscosity.html">viscosity</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant.viscosity"><code class="docutils literal notranslate"><span class="pre">Constant.viscosity()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid.viscosity"><code class="docutils literal notranslate"><span class="pre">Inviscid.viscosity()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.sutherland_temperature"><code class="docutils literal notranslate"><span class="pre">Sutherland.sutherland_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.viscosity"><code class="docutils literal notranslate"><span class="pre">Sutherland.viscosity()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.scaling.html">scaling</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Acoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Acoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.pressure"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.dimensionful_values"><code class="docutils literal notranslate"><span class="pre">Scaling.dimensionful_values</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.farfield"><code class="docutils literal notranslate"><span class="pre">Scaling.farfield</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.reference_density"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.scaling.html#dream.compressible.scaling.Scaling.density"><code class="docutils literal notranslate"><span class="pre">Scaling.density</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -220,7 +255,6 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.dimensionfulfields"><code class="docutils literal notranslate"><span class="pre">dimensionfulfields</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields.rho"><code class="docutils literal notranslate"><span class="pre">flowfields.rho</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields.u"><code class="docutils literal notranslate"><span class="pre">flowfields.u</span></code></a></li>
@@ -284,7 +318,20 @@
              
   <section id="module-dream.compressible.eos">
 <span id="eos"></span><h1>eos<a class="headerlink" href="#module-dream.compressible.eos" title="Link to this heading"></a></h1>
-<p>Definitions of equation of states for compressible flow</p>
+<p>Definitions of equation of states for compressible flow.</p>
+<p>This module defines the equations of state for the 
+compressible flow solvers, which establish the relationship between
+the thermodynamic variables such as density <span class="math notranslate nohighlight">\(\rho\)</span>, pressure <span class="math notranslate nohighlight">\(p\)</span> and
+temperature <span class="math notranslate nohighlight">\(T\)</span>.</p>
+<dl>
+<dt>Ideal gas</dt><dd><p>We derive the dimensionless ideal gas equation from the dimensional one, namely:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\overline{p} &amp;= \overline{\rho} \overline{R} \overline{T}, \\
+\rho_{ref} u^2_{ref} p &amp;= \rho_{ref} \rho \overline{R} T_{ref} T, \\
+u^2_{ref} p &amp;= \rho \frac{\overline{c}_\infty^2}{\gamma \overline{T}_\infty} T_{ref} T, \\
+\gamma p &amp;= ( \gamma - 1) \rho T.\end{split}\]</div>
+</dd>
+</dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.eos.EquationOfState">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">EquationOfState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.eos.EquationOfState" title="Link to this definition"></a></dt>
@@ -295,71 +342,67 @@
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">IdealGas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.eos.IdealGas" title="Link to this definition"></a></dt>
 <dd><dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.density">
-<span class="sig-name descname"><span class="pre">density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Number</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.density" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.density" title="Link to this definition"></a></dt>
 <dd><p>Returns the density from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-\rho &amp;= \frac{\gamma}{\gamma - 1} \frac{p}{T}, &amp;
-\rho &amp;= \gamma \frac{\rho E_i}{T}, &amp;
-\rho &amp;= \gamma \frac{p}{c^2}
-\end{align*}\]</div>
+\[\begin{split}(1) \quad \rho &amp;= \frac{\gamma}{\gamma - 1} \frac{p}{T}, \\
+(2) \quad \rho &amp;= \gamma \frac{\rho E_i}{T}, \\
+(3) \quad \rho &amp;= \gamma \frac{p}{c^2}.\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.pressure">
-<span class="sig-name descname"><span class="pre">pressure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Number</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.pressure" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">pressure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.pressure" title="Link to this definition"></a></dt>
 <dd><p>Returns the density from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-p &amp;= \frac{\gamma - 1}{\gamma} \rho T, &amp;
-p &amp;= (\gamma - 1) \rho E_i, &amp;
-p &amp;= \rho \frac{c^2}{\gamma}
-\end{align*}\]</div>
+\[\begin{split}(1) \quad p &amp;= \frac{\gamma - 1}{\gamma} \rho T, \\
+(2) \quad p &amp;= (\gamma - 1) \rho E_i, \\
+(3) \quad p &amp;= \rho \frac{c^2}{\gamma}.\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.temperature">
-<span class="sig-name descname"><span class="pre">temperature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Number</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.temperature" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">temperature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.temperature" title="Link to this definition"></a></dt>
 <dd><p>Returns the temperature from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-T &amp;= \frac{\gamma}{\gamma - 1} \frac{p}{\rho}, &amp;
-T &amp;= \gamma E_i, &amp;
-T &amp;= \frac{c^2}{\gamma - 1}
-\end{align*}\]</div>
+\[\begin{split}(1) \quad T &amp;= \frac{\gamma}{\gamma - 1} \frac{p}{\rho}, \\
+(2) \quad T &amp;= \gamma E_i, \\
+(3) \quad T &amp;= \frac{c^2}{\gamma - 1}.\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.inner_energy">
-<span class="sig-name descname"><span class="pre">inner_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Number</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.inner_energy" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">inner_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.inner_energy" title="Link to this definition"></a></dt>
 <dd><p>Returns the inner energy from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-\rho E_i &amp;= \frac{p}{\gamma - 1}, &amp;
-\rho E_i &amp;= \rho \frac{T}{\gamma}
-\end{align*}\]</div>
+\[\begin{split}(1) \quad \rho E_i &amp;= \frac{p}{\gamma - 1}, \\
+(2) \quad \rho E_i &amp;= \rho \frac{T}{\gamma}.\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.specific_inner_energy">
-<span class="sig-name descname"><span class="pre">specific_inner_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Number</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.specific_inner_energy" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">specific_inner_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.specific_inner_energy" title="Link to this definition"></a></dt>
 <dd><p>Returns the specific inner energy from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-E_i &amp;= \frac{T}{\gamma}, &amp;
-E_i &amp;= \frac{p}{\rho (\gamma - 1)}
-\end{align*}\]</div>
+\[\begin{split}(1) \quad E_i &amp;= \frac{T}{\gamma}, \\
+(2) \quad E_i &amp;= \frac{p}{\rho (\gamma - 1)}.\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.speed_of_sound">
-<span class="sig-name descname"><span class="pre">speed_of_sound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Number</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.speed_of_sound" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">speed_of_sound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.speed_of_sound" title="Link to this definition"></a></dt>
 <dd><p>Returns the speed of sound from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-c &amp;= \sqrt{\gamma \frac{p}{\rho}}, &amp;
-c &amp;= \sqrt{(\gamma - 1) T}
-\end{align*}\]</div>
+\[\begin{split}(1) \quad c &amp;= \sqrt{\gamma \frac{p}{\rho}}, \\
+(2) \quad c &amp;= \sqrt{(\gamma - 1) T}.\end{split}\]</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.specific_entropy">
+<span class="sig-name descname"><span class="pre">specific_entropy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.specific_entropy" title="Link to this definition"></a></dt>
+<dd><p>Returns the specific entropy from given fields</p>
+<div class="math notranslate nohighlight">
+\[s = \frac{p}{\rho^{\gamma}}.\]</div>
 </dd></dl>
 
 <dl class="py method">
@@ -367,10 +410,8 @@ c &amp;= \sqrt{(\gamma - 1) T}
 <span class="sig-name descname"><span class="pre">density_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.density_gradient" title="Link to this definition"></a></dt>
 <dd><p>Returns the density gradient from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-\nabla \rho &amp;= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{T} - p \frac{\nabla T}{T^2} \right], &amp;
-\nabla \rho &amp;= \gamma \left[ \frac{ \nabla (\rho E_i)}{T} - \rho E_i \frac{\nabla T}{T^2} \right]
-\end{align*}\]</div>
+\[\begin{split}(1) \quad \nabla \rho &amp;= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{T} - p \frac{\nabla T}{T^2} \right], \\
+(2) \quad \nabla \rho &amp;= \gamma \left[ \frac{ \nabla (\rho E_i)}{T} - \rho E_i \frac{\nabla T}{T^2} \right].\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
@@ -378,10 +419,8 @@ c &amp;= \sqrt{(\gamma - 1) T}
 <span class="sig-name descname"><span class="pre">pressure_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.pressure_gradient" title="Link to this definition"></a></dt>
 <dd><p>Returns the pressure gradient from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-\nabla p &amp;= \frac{\gamma - 1}{\gamma} \left[ (\nabla \rho) T + (\nabla T) \rho \right], &amp;
-\nabla p &amp;= (\gamma - 1) \nabla \rho E_i
-\end{align*}\]</div>
+\[\begin{split}(1) \quad \nabla p &amp;= \frac{\gamma - 1}{\gamma} \left[ (\nabla \rho) T + (\nabla T) \rho \right], \\
+(2) \quad \nabla p &amp;= (\gamma - 1) \nabla \rho E_i.\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
@@ -389,10 +428,8 @@ c &amp;= \sqrt{(\gamma - 1) T}
 <span class="sig-name descname"><span class="pre">temperature_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.temperature_gradient" title="Link to this definition"></a></dt>
 <dd><p>Returns the temperature gradient from given fields</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-\nabla T &amp;= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{\rho} - p \frac{\nabla \rho}{\rho^2} \right], &amp;
-\nabla T &amp;= \gamma \nabla E_i
-\end{align*}\]</div>
+\[\begin{split}(1) \quad \nabla T &amp;= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{\rho} - p \frac{\nabla \rho}{\rho^2} \right], \\
+(2) \quad \nabla T &amp;= \gamma \nabla E_i.\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
@@ -400,173 +437,135 @@ c &amp;= \sqrt{(\gamma - 1) T}
 <span class="sig-name descname"><span class="pre">characteristic_amplitudes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.characteristic_amplitudes" title="Link to this definition"></a></dt>
 <dd><p>Returns the charachteristic amplitudes</p>
 <div class="math notranslate nohighlight">
-\[\begin{align*}
-    \bm{\mathcal{L}} &amp;:= \bm{\Lambda} \bm{P}_n^{-1} \frac{\partial \bm{U}}{\partial n} = \bm{\Lambda} \bm{L}_n^{-1} \frac{\partial \bm{V}}{\partial n} = \bm{\Lambda} \frac{\partial \bm{W}}{\partial n},
-\end{align*}\]</div>
+\[\vec{\mathcal{L}} := \vec{\Lambda} \mat{P}_n^{-1} \frac{\partial \vec{U}}{\partial n} = \vec{\Lambda} \vec{L}_n^{-1} \frac{\partial \vec{V}}{\partial n} = \vec{\Lambda} \frac{\partial \vec{W}}{\partial n},\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.conservative_from_primitive">
 <span class="sig-name descname"><span class="pre">conservative_from_primitive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.conservative_from_primitive" title="Link to this definition"></a></dt>
-<dd><p>The <span class="math notranslate nohighlight">\(\bm{M}\)</span> matrix transforms primitive variables to conservative variables</p>
+<dd><p>The <span class="math notranslate nohighlight">\(\mat{M}\)</span> matrix transforms primitive variables to conservative variables</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
- \bm{M} &amp;:=
-\begin{pmatrix}
+\[\begin{split}\mat{M} := \begin{pmatrix}
             1 &amp; 0 &amp; 0 &amp; 0 \\
             u_x &amp; \rho &amp; 0 &amp; 0 \\
             u_y &amp; 0 &amp; \rho &amp; 0 \\
             \frac{|u|^2}{2} &amp; \rho u_x &amp; \rho u_y &amp; \frac{1}{\gamma - 1}
-\end{pmatrix}
-\qquad [E16.2.10]
-\end{align*}\end{split}\]</div>
-<aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id1" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp</p>
-</aside>
-</aside>
+\end{pmatrix}\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Note<span class="colon">:</span></dt>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.10)\)</span> in <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.primitive_from_conservative">
 <span class="sig-name descname"><span class="pre">primitive_from_conservative</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.primitive_from_conservative" title="Link to this definition"></a></dt>
-<dd><p>The <span class="math notranslate nohighlight">\(\bm{M}^{-1}\)</span>  matrix transforms conservative variables to primitive variables</p>
+<dd><p>The <span class="math notranslate nohighlight">\(\mat{M}^{-1}\)</span> matrix transforms conservative variables to primitive variables</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
- \bm{M}^{-1} &amp;:=
-\begin{pmatrix}
+\[\begin{split}\mat{M}^{-1} := \begin{pmatrix}
             1 &amp; 0 &amp; 0 &amp; 0 \\
             -\frac{u_x}{\rho} &amp; \frac{1}{\rho} &amp; 0 &amp; 0 \\
             -\frac{u_y}{\rho} &amp; 0 &amp; \frac{1}{\rho} &amp; 0 \\
             (\gamma - 1)\frac{|u|^2}{2}  &amp; -(\gamma - 1) u_x &amp; -(\gamma - 1) u_y &amp; \gamma - 1
-\end{pmatrix}
-\qquad [E16.2.11]
-\end{align*}\end{split}\]</div>
-<aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id2" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp</p>
-</aside>
-</aside>
+\end{pmatrix}\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Note<span class="colon">:</span></dt>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.11)\)</span> in <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.primitive_from_characteristic">
 <span class="sig-name descname"><span class="pre">primitive_from_characteristic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.primitive_from_characteristic" title="Link to this definition"></a></dt>
-<dd><p>The <span class="math notranslate nohighlight">\(\bm{L}_n\)</span> matrix transforms characteristic variables to primitive variables</p>
+<dd><p>The <span class="math notranslate nohighlight">\(\mat{L}_n\)</span> matrix transforms characteristic variables to primitive variables</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
-\bm{L}_n &amp;:=
-\begin{pmatrix}
+\[\begin{split}\mat{L}_n := \begin{pmatrix}
 \frac{0.5}{c^2} &amp; \frac{1}{c^2} &amp; 0 &amp; \frac{0.5}{c^2} \\
 -\frac{n_x}{2c\rho} &amp; 0 &amp; n_y &amp; \frac{n_x}{2c\rho} \\
 -\frac{n_y}{2c\rho} &amp; 0 &amp; -n_x &amp; \frac{n_y}{2c\rho} \\
 0.5 &amp; 0 &amp; 0 &amp; 0.5
-\end{pmatrix}
-\end{align*}\end{split}\]</div>
+\end{pmatrix}\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.characteristic_from_primitive">
 <span class="sig-name descname"><span class="pre">characteristic_from_primitive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.characteristic_from_primitive" title="Link to this definition"></a></dt>
-<dd><p>The <span class="math notranslate nohighlight">\(\bm{L}^{-1}_n\)</span> matrix transforms primitive variables to charactersitic variables</p>
+<dd><p>The <span class="math notranslate nohighlight">\(\mat{L}^{-1}_n\)</span> matrix transforms primitive variables to charactersitic variables</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
-\bm{L}^{-1}_n &amp;:=
-\begin{pmatrix}
+\[\begin{split}\mat{L}^{-1}_n := \begin{pmatrix}
 0    &amp; -\rho c n_x &amp; -\rho c n_y &amp; 1 \\
 c^2 &amp; 0             &amp; 0             &amp; -1 \\
 0   &amp; n_y           &amp; -n_x          &amp; 0 \\
 0   &amp; \rho c n_x  &amp; \rho c n_y  &amp; 1
-\end{pmatrix}
-\end{align*}\end{split}\]</div>
+\end{pmatrix}\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.conservative_from_characteristic">
 <span class="sig-name descname"><span class="pre">conservative_from_characteristic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.conservative_from_characteristic" title="Link to this definition"></a></dt>
-<dd><p>The <span class="math notranslate nohighlight">\(\bm{P}_n\)</span> matrix transforms characteristic variables to conservative variables</p>
+<dd><p>The <span class="math notranslate nohighlight">\(\mat{P}_n\)</span> matrix transforms characteristic variables to conservative variables</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
-\bm{P}_n &amp;:= \bm{M} \bm{L}_n =
+\[\begin{split}\mat{P}_n := \mat{M} \mat{L}_n =
 \begin{pmatrix}
 \frac{1}{2 c^{2}}                                                      &amp; \frac{1}{c^{2}}         &amp; 0                           &amp; \frac{1}{2 c^{2}}                                                      \\
 - \frac{n_{x}}{2 c} + \frac{u}{2 c^{2}}                                &amp; \frac{u}{c^{2}}         &amp; \rho n_{y}                  &amp; \frac{n_{x}}{2 c} + \frac{u}{2 c^{2}}                                  \\
 - \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                &amp; \frac{v}{c^{2}}         &amp; - \rho n_{x}                &amp; \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                  \\
-\frac{1}{2(\gamma - 1)} - \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}} &amp; \frac{|\bm{u}|^2}{2c^{2}} &amp; \rho u n_{y} - \rho v n_{x} &amp; \frac{1}{2(\gamma - 1)} + \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}}
-\end{pmatrix}
-\qquad [E16.5.3]
-\end{align*}\end{split}\]</div>
+\frac{1}{2(\gamma - 1)} - \frac{u_{n}}{2 c} + \frac{|\vec{u}|^2}{4 c^{2}} &amp; \frac{|\vec{u}|^2}{2c^{2}} &amp; \rho u n_{y} - \rho v n_{x} &amp; \frac{1}{2(\gamma - 1)} + \frac{u_{n}}{2 c} + \frac{|\vec{u}|^2}{4 c^{2}}
+\end{pmatrix}\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.characteristic_from_conservative">
 <span class="sig-name descname"><span class="pre">characteristic_from_conservative</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.characteristic_from_conservative" title="Link to this definition"></a></dt>
-<dd><p>The <span class="math notranslate nohighlight">\(\bm{P}^{-1}_n\)</span> matrix transforms conservative variables to characteristic variables</p>
+<dd><p>The <span class="math notranslate nohighlight">\(\mat{P}^{-1}_n\)</span> matrix transforms conservative variables to characteristic variables</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
-\bm{P}^{-1}_n &amp;:= \bm{M}^{-1} \bm{L}^{-1}_n =
+\[\begin{split}\mat{P}^{-1}_n := \mat{M}^{-1} \mat{L}^{-1}_n =
 \begin{pmatrix}
-c u_{n} + \frac{\gamma - 1}{2}|\bm{u}|^2        &amp; - c n_{x} + u (1 - \gamma) &amp; - c n_{y} + v (1 - \gamma) &amp; \gamma - 1 \\
-c^{2} - \frac{\gamma - 1}{2}|\bm{u}|^2          &amp; - u (1 - \gamma)           &amp; - v (1 - \gamma)           &amp; 1 - \gamma \\
+c u_{n} + \frac{\gamma - 1}{2}|\vec{u}|^2        &amp; - c n_{x} + u (1 - \gamma) &amp; - c n_{y} + v (1 - \gamma) &amp; \gamma - 1 \\
+c^{2} - \frac{\gamma - 1}{2}|\vec{u}|^2          &amp; - u (1 - \gamma)           &amp; - v (1 - \gamma)           &amp; 1 - \gamma \\
 - \frac{u n_{y}}{\rho} + \frac{v n_{x}}{\rho} &amp; \frac{n_{y}}{\rho}         &amp; - \frac{n_{x}}{\rho}       &amp; 0          \\
-- c u_{n} + \frac{\gamma - 1}{2}|\bm{u}|^2      &amp; c n_{x} + u (1 - \gamma)   &amp; c n_{y} + v (1 - \gamma)   &amp; \gamma - 1
-\end{pmatrix}
-\qquad [E16.5.4]
-\end{align*}\end{split}\]</div>
+- c u_{n} + \frac{\gamma - 1}{2}|\vec{u}|^2      &amp; c n_{x} + u (1 - \gamma)   &amp; c n_{y} + v (1 - \gamma)   &amp; \gamma - 1
+\end{pmatrix}\end{split}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.conservative_convective_jacobian_x">
 <span class="sig-name descname"><span class="pre">conservative_convective_jacobian_x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.conservative_convective_jacobian_x" title="Link to this definition"></a></dt>
-<dd><p>Convective flux Jacobian <span class="math notranslate nohighlight">\(\bm{A}\)</span> in x-direction</p>
+<dd><p>Convective flux Jacobian <span class="math notranslate nohighlight">\(\mat{A}\)</span> in x-direction</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
-\bm{A} &amp;:= 
-\begin{pmatrix}
+\[\begin{split}\mat{A} := \begin{pmatrix}
     0 &amp; 1 &amp; 0 &amp; 0 \\
    \frac{\gamma - 3}{2} u_x^2 + \frac{\gamma - 1}{2} u_y^2 &amp; (3 - \gamma) u_x &amp; -(\gamma - 1) u_y &amp; \gamma - 1\\
          -u_x u_y &amp; u_y &amp; u_x &amp; 0 \\
-         -\gamma u_x E + (\gamma - 1) u_x |\bm{u}|^2 &amp; \gamma E - \frac{\gamma - 1}{2} (u_y^2 + 3 u_x^2)&amp;  -(\gamma - 1) u_x u_y &amp; \gamma u_x
-\end{pmatrix}
-\qquad [E16.2.5]
-\end{align*}\end{split}\]</div>
-<aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id3" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp</p>
-</aside>
-</aside>
+         -\gamma u_x E + (\gamma - 1) u_x |\vec{u}|^2 &amp; \gamma E - \frac{\gamma - 1}{2} (u_y^2 + 3 u_x^2)&amp;  -(\gamma - 1) u_x u_y &amp; \gamma u_x
+\end{pmatrix}\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Note<span class="colon">:</span></dt>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.5)\)</span> in <span id="id3">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas.conservative_convective_jacobian_y">
 <span class="sig-name descname"><span class="pre">conservative_convective_jacobian_y</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.conservative_convective_jacobian_y" title="Link to this definition"></a></dt>
-<dd><p>Convective flux Jacobian <span class="math notranslate nohighlight">\(\bm{B}\)</span> in y-direction</p>
+<dd><p>Convective flux Jacobian <span class="math notranslate nohighlight">\(\mat{B}\)</span> in y-direction</p>
 <div class="math notranslate nohighlight">
-\[\begin{split}\begin{align*}
-\bm{B} &amp;:= 
-\begin{pmatrix}
+\[\begin{split}\mat{B} := \begin{pmatrix}
     0 &amp; 0 &amp; 1 &amp; 0 \\
       -u_x u_y &amp; u_y &amp; u_x&amp;  0 \\ 
       \frac{\gamma - 3}{2} u_y^2 + \frac{\gamma - 1}{2} u_x^2&amp; -(\gamma - 1) u_x&amp;
     (3 - \gamma) u_y &amp; \gamma - 1 \\ 
-    -\gamma u_y E + (\gamma - 1) u_y |\bm{u}|^2 &amp; -(\gamma - 1) u_x u_y &amp; \gamma E -
+    -\gamma u_y E + (\gamma - 1) u_y |\vec{u}|^2 &amp; -(\gamma - 1) u_x u_y &amp; \gamma E -
     \frac{\gamma - 1}{2} (u_x^2 + 3 u_y^2) &amp; \gamma u_y
-\end{pmatrix}
-\qquad [E16.2.6]
-\end{align*}\end{split}\]</div>
-<aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id4" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></span>
-<p>C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp</p>
-</aside>
-</aside>
+\end{pmatrix}\end{split}\]</div>
+<dl class="field-list simple">
+<dt class="field-odd">Note<span class="colon">:</span></dt>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.6)\)</span> in <span id="id4">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -574,8 +573,8 @@ for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichest
 <span class="sig-name descname"><span class="pre">isentropic_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">Uref</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.eos.IdealGas.isentropic_density" title="Link to this definition"></a></dt>
 <dd><p>Returns the isentropic density from given fields</p>
 <div class="math notranslate nohighlight">
-\[\rho = \rho_{ref} (\frac{T}{T_{ref}})^{\frac{1}{\gamma - 1}}
-\rho = \rho_{ref} (\frac{p}{p_{ref}})^{\frac{1}{\gamma}}\]</div>
+\[\begin{split}(1) \quad \rho &amp;= \rho_{ref} (\frac{T}{T_{ref}})^{\frac{1}{\gamma - 1}}, \\
+(2) \quad \rho &amp;= \rho_{ref} (\frac{p}{p_{ref}})^{\frac{1}{\gamma}}.\end{split}\]</div>
 </dd></dl>
 
 </dd></dl>

@@ -39,9 +39,6 @@
       .. autoclass:: Symmetry
          :members:
          :member-order: bysource
-      .. autoclass:: dimensionfulfields
-         :members:
-         :member-order: bysource
       .. autoclass:: flowfields
          :members:
          :member-order: bysource

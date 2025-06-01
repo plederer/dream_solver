@@ -75,7 +75,6 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_dimensionful_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_dimensionful_fields()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
@@ -117,6 +116,7 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">IdealGas.speed_of_sound()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_entropy()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.density_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.density_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.pressure_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure_gradient()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature_gradient()</span></code></a></li>
@@ -137,50 +137,85 @@
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.riemann_solver.html">riemann_solver</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.theta_0"><code class="docutils literal notranslate"><span class="pre">HLLEM.theta_0</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="dream.compressible.viscosity.html">viscosity</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Constant.viscosity"><code class="docutils literal notranslate"><span class="pre">Constant.viscosity()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid.viscosity"><code class="docutils literal notranslate"><span class="pre">Inviscid.viscosity()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.sutherland_temperature"><code class="docutils literal notranslate"><span class="pre">Sutherland.sutherland_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.viscosity"><code class="docutils literal notranslate"><span class="pre">Sutherland.viscosity()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">scaling</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Acoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Acoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Acoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Acoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Acoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Acoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Acoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Acoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aeroacoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic.velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic.temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic.pressure"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.pressure</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Aerodynamic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#dream.compressible.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Scaling.dimensionful_values"><code class="docutils literal notranslate"><span class="pre">Scaling.dimensionful_values</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Scaling.farfield"><code class="docutils literal notranslate"><span class="pre">Scaling.farfield</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Scaling.reference_density"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.scaling.Scaling.density"><code class="docutils literal notranslate"><span class="pre">Scaling.density</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -220,7 +255,6 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.dimensionfulfields"><code class="docutils literal notranslate"><span class="pre">dimensionfulfields</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields.rho"><code class="docutils literal notranslate"><span class="pre">flowfields.rho</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields.u"><code class="docutils literal notranslate"><span class="pre">flowfields.u</span></code></a></li>
@@ -284,16 +318,164 @@
              
   <section id="module-dream.compressible.scaling">
 <span id="scaling"></span><h1>scaling<a class="headerlink" href="#module-dream.compressible.scaling" title="Link to this heading"></a></h1>
-<p>Definitions of dimensionless compressible flow equations</p>
+<p>Definitions of dimensionless compressible flow equations.</p>
+<p>This module defines the scaling for compressible flow equations, which are used to
+scale the governing equations of compressible flow to dimensionless form.</p>
+<p>In the following, we derive the dimensionless compressible flow equations based on the choice
+of three different scalings: <strong>aerodynamic</strong>, <strong>acoustic</strong>, and <strong>aeroacoustic</strong>. We denote the 
+dimensionful and dimensionless variables with and without overline e.g. the density <span class="math notranslate nohighlight">\(\overline{\rho}, \rho\)</span>, respectively.
+Let us introduce the reference quantities used for the:</p>
+<blockquote>
+<div><table class="docutils align-default" id="id1">
+<caption><span class="caption-text"><strong>Reference quantities</strong></span><a class="headerlink" href="#id1" title="Link to this table"></a></caption>
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 26.7%" />
+<col style="width: 26.7%" />
+<col style="width: 26.7%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Quantity</p></th>
+<th class="head"><p>Aerodynamic</p></th>
+<th class="head"><p>Acoustic</p></th>
+<th class="head"><p>Aeroacoustic</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\rho_{ref}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{\rho}_\infty\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{\rho}_\infty\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{\rho}_\infty\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(u_{ref}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(|\overline{\vec{u}}_\infty|\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{c}_\infty\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(|\overline{\vec{u}}_\infty| + \overline{c}_\infty\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(T_{ref}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{T}_\infty \Ma_\infty^2 (\gamma - 1)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{T}_\infty (\gamma - 1)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{T}_\infty (1+\Ma_\infty)^2 (\gamma - 1)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(L_{ref}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{L}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{L}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\overline{L}\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>From Buckingham <span class="math notranslate nohighlight">\(\pi\)</span> theorem, the remaining quantitites are all functions of the reference quantities above:</p>
+<blockquote>
+<div><table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 26.7%" />
+<col style="width: 26.7%" />
+<col style="width: 26.7%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(p_{ref}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\rho_{ref} u_{ref}^2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\rho_{ref} u_{ref}^2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\rho_{ref} u_{ref}^2\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(t_{ref}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\frac{L_{ref}}{u_{ref}}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\frac{L_{ref}}{u_{ref}}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\frac{L_{ref}}{u_{ref}}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\rho E_{ref}\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\rho_{ref} u_{ref}^2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\rho_{ref} u_{ref}^2\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\rho_{ref} u_{ref}^2\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>With these reference quantities, we can now start deriving the dimensionless compressible flow equations.</p>
+<dl>
+<dt>Continuity equation</dt><dd><div class="math notranslate nohighlight">
+\[\begin{split}\frac{\partial \overline{\rho}}{\partial \overline{t}} + \overline{\div}(\overline{\rho \vec{u}}) &amp;= 0, \\
+\frac{\rho_{ref}}{t_{ref}}\frac{\partial \rho}{\partial t} + \frac{\rho_{ref} u_{ref}}{L_{ref}} \div(\rho \vec{u}) &amp;= 0, \\
+\frac{\partial \rho}{\partial t} + \div(\rho \vec{u}) &amp;= 0.\end{split}\]</div>
+</dd>
+<dt>Momentum equation</dt><dd><div class="math notranslate nohighlight">
+\[\begin{split}\frac{\partial \overline{\rho \vec{u}}}{\partial \overline{t}} + \overline{\div}(\overline{\rho \vec{u}} \otimes \overline{\vec{u}} + \overline{p} \mat{I} - \overline{\mat{\tau}})&amp;= 0, \\
+\frac{\rho_{ref} u_{ref}}{t_{ref}}\frac{\partial \rho \vec{u}}{\partial t} +  \frac{\rho_{ref} u_{ref}^2}{L_{ref}} \div(\rho \vec{u} \otimes \vec{u} + p \mat{I} - \mat{\tau})&amp;= 0, \\
+\frac{\partial \rho \vec{u}}{\partial t} +  \div(\rho \vec{u} \otimes \vec{u} + p \mat{I} - \mat{\tau})&amp;= 0.\end{split}\]</div>
+</dd>
+<dt>Energy equation</dt><dd><div class="math notranslate nohighlight">
+\[\begin{split}\frac{\partial \overline{\rho E}}{\partial \overline{t}} + \overline{\div}((\overline{\rho E}  + \overline{p}) \overline{\vec{u}}  - \overline{\mat{\tau}}\overline{\vec{u}} + \overline{\vec{q}}) &amp;= 0, \\
+\frac{\rho E_{ref}}{t_{ref}}\frac{\partial \rho E}{\partial t} + \frac{\rho_{ref} u^3_{ref}}{L_{ref}} \div((\rho E  + p) \vec{u}  - \mat{\tau}\vec{u} + \vec{q}) &amp;= 0, \\
+\frac{\partial \rho E}{\partial t} + \div((\rho E  + p) \vec{u}  - \mat{\tau}\vec{u} + \vec{q}) &amp;= 0.\end{split}\]</div>
+</dd>
+<dt>Equations of state</dt><dd><dl>
+<dt>Ideal gas law</dt><dd><div class="math notranslate nohighlight">
+\[\begin{split}\overline{p} &amp;= \overline{\rho} \overline{R} \overline{T}, \\
+p_{ref} p &amp;= \rho_{ref} T_{ref} \overline{R} \rho T, \\
+\gamma p &amp;= (\gamma - 1) \rho T. \end{split}\]</div>
+</dd>
+</dl>
+</dd>
+</dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Acoustic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.scaling.Acoustic" title="Link to this definition"></a></dt>
 <dd><dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic.reference_velocity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_velocity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Acoustic.reference_velocity" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference velocity.</p>
+<div class="math notranslate nohighlight">
+\[u_{ref} = \overline{c}_\infty\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic.velocity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">velocity</span></span><a class="headerlink" href="#dream.compressible.scaling.Acoustic.velocity" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield velocity.</p>
+<div class="math notranslate nohighlight">
+\[|\vec{u}_\infty| = \Ma_\infty\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic.reference_temperature">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Acoustic.reference_temperature" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference temperature.</p>
+<div class="math notranslate nohighlight">
+\[T_{ref} = \overline{T}_\infty (\gamma - 1)\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic.temperature">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Acoustic.temperature" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield temperature.</p>
+<div class="math notranslate nohighlight">
+\[T_\infty = \frac{1}{(\gamma - 1)}\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic.pressure">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pressure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Acoustic.pressure" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield pressure.</p>
+<div class="math notranslate nohighlight">
+\[p_\infty = \frac{1}{\gamma}\]</div>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic.reference_reynolds_number">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_reynolds_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Acoustic.reference_reynolds_number" title="Link to this definition"></a></dt>
 <dd><p>Returns the reference Reynolds number.</p>
 <div class="math notranslate nohighlight">
 \[\Re_{ref} = \frac{\Re_\infty}{\Ma_\infty}\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Acoustic.speed_of_sound">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">speed_of_sound</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#dream.compressible.scaling.Acoustic.speed_of_sound" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield speed of sound.</p>
+<div class="math notranslate nohighlight">
+\[c_\infty = 1\]</div>
 </dd></dl>
 
 </dd></dl>
@@ -302,11 +484,59 @@
 <dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Aeroacoustic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic" title="Link to this definition"></a></dt>
 <dd><dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic.reference_velocity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_velocity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic.reference_velocity" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference velocity.</p>
+<div class="math notranslate nohighlight">
+\[u_{ref} = |\overline{\vec{u}}_\infty| + \overline{c}_\infty\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic.velocity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">velocity</span></span><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic.velocity" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield velocity.</p>
+<div class="math notranslate nohighlight">
+\[|\vec{u}_\infty| = \frac{\Ma_\infty}{1 + \Ma_\infty}\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic.reference_temperature">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic.reference_temperature" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference temperature.</p>
+<div class="math notranslate nohighlight">
+\[T_{ref} = \overline{T}_\infty (1+ \Ma_\infty)^2 (\gamma - 1)\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic.temperature">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic.temperature" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield temperature.</p>
+<div class="math notranslate nohighlight">
+\[T_\infty = \frac{1}{(1+\Ma_\infty)^2 (\gamma - 1)}\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic.pressure">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pressure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic.pressure" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield pressure.</p>
+<div class="math notranslate nohighlight">
+\[p_\infty = \frac{1}{(1+\Ma_\infty)^2 \gamma}\]</div>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic.reference_reynolds_number">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_reynolds_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic.reference_reynolds_number" title="Link to this definition"></a></dt>
 <dd><p>Returns the reference Reynolds number.</p>
 <div class="math notranslate nohighlight">
 \[\Re_{ref} = \frac{\Re_\infty (1+\Ma_\infty)}{\Ma_\infty}\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aeroacoustic.speed_of_sound">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">speed_of_sound</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#dream.compressible.scaling.Aeroacoustic.speed_of_sound" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield speed of sound.</p>
+<div class="math notranslate nohighlight">
+\[c_\infty = \frac{1}{1 + \Ma_\infty}\]</div>
 </dd></dl>
 
 </dd></dl>
@@ -315,11 +545,59 @@
 <dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Aerodynamic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic" title="Link to this definition"></a></dt>
 <dd><dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic.reference_velocity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_velocity</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic.reference_velocity" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference velocity.</p>
+<div class="math notranslate nohighlight">
+\[u_{ref} = |\overline{\vec{u}}_\infty|\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic.velocity">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">velocity</span></span><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic.velocity" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield velocity.</p>
+<div class="math notranslate nohighlight">
+\[|\vec{u}_\infty| = 1\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic.reference_temperature">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic.reference_temperature" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference temperature.</p>
+<div class="math notranslate nohighlight">
+\[T_{ref} = \overline{T}_\infty \Ma^2_\infty (\gamma - 1)\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic.temperature">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic.temperature" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield temperature.</p>
+<div class="math notranslate nohighlight">
+\[T_\infty = \frac{1}{\Ma^2_\infty (\gamma - 1)}\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic.pressure">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pressure</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic.pressure" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield pressure.</p>
+<div class="math notranslate nohighlight">
+\[p_\infty = \frac{1}{\Ma^2_\infty \gamma}\]</div>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic.reference_reynolds_number">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_reynolds_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic.reference_reynolds_number" title="Link to this definition"></a></dt>
 <dd><p>Returns the reference Reynolds number.</p>
 <div class="math notranslate nohighlight">
 \[\Re_{ref} = \Re_\infty\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Aerodynamic.speed_of_sound">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">speed_of_sound</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#dream.compressible.scaling.Aerodynamic.speed_of_sound" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield speed of sound.</p>
+<div class="math notranslate nohighlight">
+\[c_\infty = \frac{1}{\Ma_\infty}\]</div>
 </dd></dl>
 
 </dd></dl>
@@ -328,17 +606,41 @@
 <dt class="sig sig-object py" id="dream.compressible.scaling.Scaling">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Scaling</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.scaling.Scaling" title="Link to this definition"></a></dt>
 <dd><dl class="py property">
-<dt class="sig sig-object py" id="dream.compressible.scaling.Scaling.dimensionful_values">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dimensionful_values</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.dimensionfulfields" title="dream.compressible.config.dimensionfulfields"><span class="pre">dimensionfulfields</span></a></em><a class="headerlink" href="#dream.compressible.scaling.Scaling.dimensionful_values" title="Link to this definition"></a></dt>
-<dd><p>Returns the dimensionful values for the scaling.</p>
+<dt class="sig sig-object py" id="dream.compressible.scaling.Scaling.farfield">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">farfield</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dream.compressible.scaling.Scaling.farfield" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionful farfield values <span class="math notranslate nohighlight">\(\overline{\cdot}_\infty\)</span> for the scaling.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Setter<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Sets the dimensionful values, defaults to {‘L’: 1, ‘rho’: 1.293, ‘u’: 1, ‘c’: 343, ‘T’: 293.15, ‘p’: 101325}</p>
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the farfield values as dictionary.</p>
 </dd>
-<dt class="field-even">Getter<span class="colon">:</span></dt>
-<dd class="field-even"><p>Returns the dimensionful values</p>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the farfield values, defaults to</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\overline{L} = 1 \, \mathrm{m}\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(\overline{\rho}_\infty = 1.293 \, \mathrm{kg/m^3}\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(|\overline{\vec{u}}_\infty| = 1 \, \mathrm{m/s}\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(\overline{c}_\infty = 343 \, \mathrm{m/s}\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(\overline{T}_\infty = 293.15 \, \mathrm{K}\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(\overline{p}_\infty = 101325 \, \mathrm{Pa}\)</span></p></li>
+</ul>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Scaling.reference_density">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">reference_density</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">CoefficientFunction</span></em><a class="headerlink" href="#dream.compressible.scaling.Scaling.reference_density" title="Link to this definition"></a></dt>
+<dd><p>Returns the reference density.</p>
+<div class="math notranslate nohighlight">
+\[\rho_{ref} = \overline{\rho}_\infty\]</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.compressible.scaling.Scaling.density">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">density</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#dream.compressible.scaling.Scaling.density" title="Link to this definition"></a></dt>
+<dd><p>Returns the dimensionless farfield density.</p>
+<div class="math notranslate nohighlight">
+\[\rho_\infty = 1\]</div>
 </dd></dl>
 
 </dd></dl>
