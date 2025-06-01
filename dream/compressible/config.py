@@ -66,16 +66,6 @@ class flowfields(ngsdict):
     eps = quantity('strain_rate_tensor', r"\bm{\varepsilon}")
 
 
-class dimensionfulfields(ngsdict):
-    L = quantity("length")
-    rho = quantity("density")
-    rho_u = quantity("momentum")
-    u = quantity("velocity")
-    c = quantity("speed_of_sound")
-    T = quantity("temperature")
-    p = quantity("pressure")
-
-
 class FarField(Condition):
     r""" Farfield condition for compressible flow.
 

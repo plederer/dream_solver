@@ -63,7 +63,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Sets the ratio of the farfield flow velocity to the farfield speed of sound.
 
             .. math::
-                \Ma_\infty = \frac{|\bm{u}_\infty|}{c_\infty}
+                \Ma_\infty = \frac{|\overline{\vec{u}}_\infty|}{\overline{c}_\infty}
 
             :getter: Returns the Mach number
             :setter: Sets the Mach number, defaults to 0.3
@@ -79,10 +79,10 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @dream_configuration
     def reynolds_number(self) -> ngs.Parameter:
-        r""" Sets the ratio of inertial to viscous forces 
+        r""" Sets the ratio of inertial to viscous forces. 
 
             .. math::
-                \Re_\infty = \frac{\rho_\infty |\bm{u}_\infty| L}{\mu_\infty}
+                \Re_\infty = \frac{\overline{\rho}_\infty |\overline{\vec{u}}_\infty| \overline{L}}{\overline{\mu}_\infty}
 
             :getter: Returns the Reynolds number
             :setter: Sets the Reynolds number, defaults to 150
@@ -97,10 +97,10 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @dream_configuration
     def prandtl_number(self) -> ngs.Parameter:
-        r""" Sets the ratio of momentum diffusivity to thermal diffusivity 
+        r""" Sets the ratio of momentum diffusivity to thermal diffusivity. 
 
             .. math::
-                \Pr_\infty = \frac{c_p \mu_\infty}{k_\infty}
+                \Pr_\infty = \frac{\overline{c}_p \overline{\mu}_\infty}{\overline{k}_\infty}
 
             :getter: Returns the Prandtl number
             :setter: Sets the Prandtl number, defaults to 0.72
@@ -184,76 +184,31 @@ class CompressibleFlowSolver(SolverConfiguration):
         return super().get_solution_fields(*fields)
 
     def get_farfield_fields(self, direction: tuple[float, ...]) -> flowfields:
-        r""" Returns the dimensionless farfield fields :math:`\vec{U}_\infty` depending on the scaling in use and the flow direction. 
-
-            Aerodynamic Scaling
-                .. math:: 
-                    \begin{align*}
-                        \rho &= 1, &
-                        | \bm{u} |  &= 1, &
-                        c &= \frac{1}{\Ma_\infty}, &
-                        T &= \frac{1}{(\gamma - 1)\Ma_\infty^2}, &
-                        p &= \frac{1}{\gamma \Ma_\infty^2}.
-                    \end{align*}
-
-            Acoustic Scaling
-                .. math::
-                    \begin{align*}
-                        \rho &= 1, &
-                        | \bm{u} |  &= \Ma_\infty, &
-                        c &= 1, &
-                        T &= \frac{1}{(\gamma - 1)}, &
-                        p &= \frac{1}{\gamma}.
-                    \end{align*}
-
-            Aeroacoustic Scaling
-                .. math::
-                    \begin{align*}
-                        \rho &= 1, &
-                        | \bm{u} |  &= \frac{\Ma_\infty}{1 + \Ma_\infty}, &
-                        c &= \frac{1}{1 + \Ma_\infty}, &
-                        T &= \frac{1}{(\gamma - 1) ( 1+ \Ma_\infty^2)}, &
-                        p &= \frac{1}{\gamma (1+ \Ma_\infty^2)}.
-                    \end{align*}
+        r""" Returns the dimensionless farfield fields :math:`\vec{U}_\infty` depending on the scaling in use and the flow direction.
 
             :param direction: A container containing the flow direction
             :type direction: tuple[float, ...]
+
+            :note: See :class:`dream.compressible.scaling` for the different scalings.
         """
 
-        Ma = self.mach_number
         INF = flowfields()
-
-        INF.rho = self.scaling.density()
-        INF.c = self.scaling.speed_of_sound(Ma)
-        INF.T = self.temperature(INF)
-        INF.p = self.pressure(INF)
+        INF.rho = self.scaling.density
+        INF.c = self.scaling.speed_of_sound
+        INF.T = self.scaling.temperature
+        INF.p = self.scaling.pressure
 
         direction = bla.as_vector(direction)
 
         if not direction.dim == self.mesh.dim:
             raise ValueError(f"Direction dimension {direction.dim} does not match mesh dimension {self.mesh.dim}")
 
-        INF.u = self.scaling.velocity(direction, Ma)
+        INF.u = self.scaling.velocity * direction
         INF.rho_Ei = self.inner_energy(INF)
         INF.rho_Ek = self.kinetic_energy(INF)
         INF.rho_E = self.energy(INF)
 
         return INF
-
-    def get_dimensionful_fields(self, U: flowfields) -> flowfields:
-        r""" Returns the dimensionful fields from given fields depending on the scaling. 
-
-            :param U: A dictionary containing the flow quantities
-            :type U: flowfields
-        """
-
-        REF = self.scaling.dimensionful_values
-        DIM = flowfields()
-        for key, value in U.items():
-            if key in REF:
-                DIM[key] = value * REF[key]
-
-        return DIM
 
     def get_convective_flux(self, U: flowfields) -> ngs.CF:
         r""" Returns the conservative convective flux from given fields.

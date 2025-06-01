@@ -46,7 +46,7 @@ def sutherland():
     cfg.equation_of_state.heat_capacity_ratio = 1.4
 
     cfg.dynamic_viscosity = "sutherland"
-    cfg.dynamic_viscosity.measurement_temperature = 1
+    cfg.dynamic_viscosity.sutherland_temperature = 1
 
     return cfg
 
@@ -65,13 +65,13 @@ def test_viscosity_sutherland(sutherland):
     fields = flowfields(temperature=1)
 
     sutherland.scaling = "aerodynamic"
-    sutherland.scaling.dimensionful_values.T = 1
+    sutherland.scaling.farfield["T_inf"] = 1
     assert mu.viscosity(fields)(mip) == pytest.approx((0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
     sutherland.scaling = "acoustic"
-    sutherland.scaling.dimensionful_values.T = 1
+    sutherland.scaling.farfield["T_inf"] = 1
     assert mu.viscosity(fields)(mip) == pytest.approx((0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
     sutherland.scaling = "aeroacoustic"
-    sutherland.scaling.dimensionful_values.T = 1
+    sutherland.scaling.farfield["T_inf"] = 1
     assert mu.viscosity(fields)(mip) == pytest.approx((1.6)**(3/2) * (2/1.6)/(1+1/1.6))

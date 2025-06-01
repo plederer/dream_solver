@@ -40,7 +40,7 @@ class Upwind(RiemannSolver):
         return self.root.get_conservative_convective_jacobian(U, unit_vector, 'outgoing')
 
     def get_simplified_convective_stabilisation_matrix_hdg(self, U, unit_vector):
-        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_{cs}` for HDG.
 
         This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
         variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
@@ -77,7 +77,7 @@ class LaxFriedrich(RiemannSolver):
         return lambda_max * ngs.Id(unit_vector.dim + 2)
 
     def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_{cs}` for HDG.
 
         This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
         variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
@@ -137,7 +137,7 @@ class Roe(RiemannSolver):
         return self.root.transform_characteristic_to_conservative(bla.diagonal(lambdas), U, unit_vector)
 
     def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_{cs}` for HDG.
 
         This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
         variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
@@ -175,7 +175,7 @@ class HLL(RiemannSolver):
         return s_plus * ngs.Id(unit_vector.dim + 2)
 
     def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_{cs}` for HDG.
 
         This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
         variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
@@ -248,7 +248,7 @@ class HLLEM(RiemannSolver):
         return s_plus * THETA
 
     def get_simplified_convective_stabilisation_matrix_hdg(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_cs` for HDG.
+        r""" Returns the simplified convective stabilisation matrix :math:`\mat{\tau}_{cs}` for HDG.
 
         This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
         variable, when the flow is parallel to the facet :cite:`PellmenreichCharacteristicBoundaryConditions2025`.

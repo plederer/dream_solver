@@ -1,4 +1,19 @@
-""" Definitions of equation of states for compressible flow """
+r""" Definitions of equation of states for compressible flow.
+
+This module defines the equations of state for the 
+compressible flow solvers, which establish the relationship between
+the thermodynamic variables such as density :math:`\rho`, pressure :math:`p` and
+temperature :math:`T`.
+
+Ideal gas
+    We derive the dimensionless ideal gas equation from the dimensional one, namely:
+
+    .. math::
+        \overline{p} &= \overline{\rho} \overline{R} \overline{T}, \\
+        \rho_{ref} u^2_{ref} p &= \rho_{ref} \rho \overline{R} T_{ref} T, \\
+        u^2_{ref} p &= \rho \frac{\overline{c}_\infty^2}{\gamma \overline{T}_\infty} T_{ref} T, \\
+        \gamma p &= ( \gamma - 1) \rho T.
+"""
 from __future__ import annotations
 
 import logging
@@ -113,11 +128,9 @@ class IdealGas(EquationOfState):
         r"""Returns the density from given fields
 
         .. math::
-            \begin{align*}
-            \rho &= \frac{\gamma}{\gamma - 1} \frac{p}{T}, &
-            \rho &= \gamma \frac{\rho E_i}{T}, &
-            \rho &= \gamma \frac{p}{c^2}
-            \end{align*}
+            (1) \quad \rho &= \frac{\gamma}{\gamma - 1} \frac{p}{T}, \\
+            (2) \quad \rho &= \gamma \frac{\rho E_i}{T}, \\
+            (3) \quad \rho &= \gamma \frac{p}{c^2}.
         """
 
         gamma = self.heat_capacity_ratio
@@ -142,11 +155,9 @@ class IdealGas(EquationOfState):
         r"""Returns the density from given fields
 
         .. math::
-            \begin{align*}
-            p &= \frac{\gamma - 1}{\gamma} \rho T, &
-            p &= (\gamma - 1) \rho E_i, &
-            p &= \rho \frac{c^2}{\gamma}
-            \end{align*}
+            (1) \quad p &= \frac{\gamma - 1}{\gamma} \rho T, \\
+            (2) \quad p &= (\gamma - 1) \rho E_i, \\
+            (3) \quad p &= \rho \frac{c^2}{\gamma}.
         """
 
         gamma = self.heat_capacity_ratio
@@ -171,11 +182,9 @@ class IdealGas(EquationOfState):
         r"""Returns the temperature from given fields
 
         .. math::
-            \begin{align*}
-            T &= \frac{\gamma}{\gamma - 1} \frac{p}{\rho}, &
-            T &= \gamma E_i, &
-            T &= \frac{c^2}{\gamma - 1}
-            \end{align*}
+            (1) \quad T &= \frac{\gamma}{\gamma - 1} \frac{p}{\rho}, \\
+            (2) \quad T &= \gamma E_i, \\
+            (3) \quad T &= \frac{c^2}{\gamma - 1}.
         """
 
         gamma = self.heat_capacity_ratio
@@ -200,10 +209,8 @@ class IdealGas(EquationOfState):
         r"""Returns the inner energy from given fields
 
         .. math::
-            \begin{align*}
-            \rho E_i &= \frac{p}{\gamma - 1}, &
-            \rho E_i &= \rho \frac{T}{\gamma}
-            \end{align*}
+            (1) \quad \rho E_i &= \frac{p}{\gamma - 1}, \\
+            (2) \quad \rho E_i &= \rho \frac{T}{\gamma}.
         """
 
         gamma = self.heat_capacity_ratio
@@ -224,10 +231,8 @@ class IdealGas(EquationOfState):
         r"""Returns the specific inner energy from given fields
 
         .. math::
-            \begin{align*}
-            E_i &= \frac{T}{\gamma}, &
-            E_i &= \frac{p}{\rho (\gamma - 1)}
-            \end{align*}
+            (1) \quad E_i &= \frac{T}{\gamma}, \\
+            (2) \quad E_i &= \frac{p}{\rho (\gamma - 1)}.
         """
 
         gamma = self.heat_capacity_ratio
@@ -248,10 +253,8 @@ class IdealGas(EquationOfState):
         r"""Returns the speed of sound from given fields
 
         .. math::
-            \begin{align*}
-            c &= \sqrt{\gamma \frac{p}{\rho}}, &
-            c &= \sqrt{(\gamma - 1) T}
-            \end{align*}
+            (1) \quad c &= \sqrt{\gamma \frac{p}{\rho}}, \\
+            (2) \quad c &= \sqrt{(\gamma - 1) T}.
         """
 
         gamma = self.heat_capacity_ratio
@@ -277,7 +280,7 @@ class IdealGas(EquationOfState):
         r""" Returns the specific entropy from given fields 
 
             .. math::
-                s = \frac{p}{\rho^{\gamma}}
+                s = \frac{p}{\rho^{\gamma}}.
         """
         if all((U.p, U.rho)):
             return U.p/U.rho**self.heat_capacity_ratio
@@ -288,10 +291,8 @@ class IdealGas(EquationOfState):
         r"""Returns the density gradient from given fields
 
         .. math::
-            \begin{align*}
-            \nabla \rho &= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{T} - p \frac{\nabla T}{T^2} \right], &
-            \nabla \rho &= \gamma \left[ \frac{ \nabla (\rho E_i)}{T} - \rho E_i \frac{\nabla T}{T^2} \right]
-            \end{align*}
+            (1) \quad \nabla \rho &= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{T} - p \frac{\nabla T}{T^2} \right], \\
+            (2) \quad \nabla \rho &= \gamma \left[ \frac{ \nabla (\rho E_i)}{T} - \rho E_i \frac{\nabla T}{T^2} \right].
         """
 
         gamma = self.heat_capacity_ratio
@@ -310,10 +311,8 @@ class IdealGas(EquationOfState):
         r"""Returns the pressure gradient from given fields
 
         .. math::
-            \begin{align*}
-            \nabla p &= \frac{\gamma - 1}{\gamma} \left[ (\nabla \rho) T + (\nabla T) \rho \right], &
-            \nabla p &= (\gamma - 1) \nabla \rho E_i
-            \end{align*}
+            (1) \quad \nabla p &= \frac{\gamma - 1}{\gamma} \left[ (\nabla \rho) T + (\nabla T) \rho \right], \\
+            (2) \quad \nabla p &= (\gamma - 1) \nabla \rho E_i.
         """
 
         gamma = self.heat_capacity_ratio
@@ -332,10 +331,8 @@ class IdealGas(EquationOfState):
         r"""Returns the temperature gradient from given fields
 
         .. math::
-            \begin{align*}
-            \nabla T &= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{\rho} - p \frac{\nabla \rho}{\rho^2} \right], &
-            \nabla T &= \gamma \nabla E_i
-            \end{align*}
+            (1) \quad \nabla T &= \frac{\gamma}{\gamma - 1} \left[ \frac{\nabla p}{\rho} - p \frac{\nabla \rho}{\rho^2} \right], \\
+            (2) \quad \nabla T &= \gamma \nabla E_i.
         """
 
         gamma = self.heat_capacity_ratio
@@ -416,9 +413,7 @@ class IdealGas(EquationOfState):
         r""" Returns the charachteristic amplitudes
 
             .. math::
-                \begin{align*}
-                    \bm{\mathcal{L}} &:= \bm{\Lambda} \bm{P}_n^{-1} \frac{\partial \bm{U}}{\partial n} = \bm{\Lambda} \bm{L}_n^{-1} \frac{\partial \bm{V}}{\partial n} = \bm{\Lambda} \frac{\partial \bm{W}}{\partial n},
-                \end{align*}
+                \vec{\mathcal{L}} := \vec{\Lambda} \mat{P}_n^{-1} \frac{\partial \vec{U}}{\partial n} = \vec{\Lambda} \vec{L}_n^{-1} \frac{\partial \vec{V}}{\partial n} = \vec{\Lambda} \frac{\partial \vec{W}}{\partial n},
 
         """
         velocities = self.characteristic_velocities(U, unit_vector, type_)
@@ -429,22 +424,17 @@ class IdealGas(EquationOfState):
 
     def conservative_from_primitive(self, U: flowfields) -> ngs.CF:
         r"""
-        The :math:`\bm{M}` matrix transforms primitive variables to conservative variables
+        The :math:`\mat{M}` matrix transforms primitive variables to conservative variables
 
         .. math::
-            \begin{align*}
-             \bm{M} &:=
-            \begin{pmatrix}
+            \mat{M} := \begin{pmatrix}
                         1 & 0 & 0 & 0 \\
                         u_x & \rho & 0 & 0 \\
                         u_y & 0 & \rho & 0 \\
                         \frac{|u|^2}{2} & \rho u_x & \rho u_y & \frac{1}{\gamma - 1}
             \end{pmatrix}
-            \qquad [E16.2.10]
-            \end{align*}
 
-        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
+        :note: See equation :math:`(E16.2.10)` in :cite:`hirschNumericalComputationInternal2002`.
         """
         gamma = self.heat_capacity_ratio
 
@@ -466,22 +456,17 @@ class IdealGas(EquationOfState):
 
     def primitive_from_conservative(self, U: flowfields) -> ngs.CF:
         r"""
-        The :math:`\bm{M}^{-1}`  matrix transforms conservative variables to primitive variables
+        The :math:`\mat{M}^{-1}` matrix transforms conservative variables to primitive variables
 
         .. math::
-            \begin{align*}
-             \bm{M}^{-1} &:=
-            \begin{pmatrix}
+            \mat{M}^{-1} := \begin{pmatrix}
                         1 & 0 & 0 & 0 \\
                         -\frac{u_x}{\rho} & \frac{1}{\rho} & 0 & 0 \\
                         -\frac{u_y}{\rho} & 0 & \frac{1}{\rho} & 0 \\
                         (\gamma - 1)\frac{|u|^2}{2}  & -(\gamma - 1) u_x & -(\gamma - 1) u_y & \gamma - 1
             \end{pmatrix}
-            \qquad [E16.2.11]
-            \end{align*}
 
-        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
+        :note: See equation :math:`(E16.2.11)` in :cite:`hirschNumericalComputationInternal2002`.
         """
         gamma = self.heat_capacity_ratio
 
@@ -505,19 +490,15 @@ class IdealGas(EquationOfState):
 
     def primitive_from_characteristic(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         r"""
-        The :math:`\bm{L}_n` matrix transforms characteristic variables to primitive variables
+        The :math:`\mat{L}_n` matrix transforms characteristic variables to primitive variables
 
         .. math::
-            \begin{align*}
-            \bm{L}_n &:=
-            \begin{pmatrix}
+            \mat{L}_n := \begin{pmatrix}
             \frac{0.5}{c^2} & \frac{1}{c^2} & 0 & \frac{0.5}{c^2} \\
             -\frac{n_x}{2c\rho} & 0 & n_y & \frac{n_x}{2c\rho} \\
             -\frac{n_y}{2c\rho} & 0 & -n_x & \frac{n_y}{2c\rho} \\
             0.5 & 0 & 0 & 0.5
             \end{pmatrix}
-            \end{align*}
-
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -538,18 +519,15 @@ class IdealGas(EquationOfState):
 
     def characteristic_from_primitive(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         r"""
-        The :math:`\bm{L}^{-1}_n` matrix transforms primitive variables to charactersitic variables
+        The :math:`\mat{L}^{-1}_n` matrix transforms primitive variables to charactersitic variables
 
         .. math::
-            \begin{align*}
-            \bm{L}^{-1}_n &:=
-            \begin{pmatrix}
+            \mat{L}^{-1}_n := \begin{pmatrix}
             0    & -\rho c n_x & -\rho c n_y & 1 \\
             c^2 & 0             & 0             & -1 \\
             0   & n_y           & -n_x          & 0 \\
             0   & \rho c n_x  & \rho c n_y  & 1
             \end{pmatrix}
-            \end{align*}
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -607,19 +585,16 @@ class IdealGas(EquationOfState):
 
     def conservative_from_characteristic(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         r"""
-        The :math:`\bm{P}_n` matrix transforms characteristic variables to conservative variables
+        The :math:`\mat{P}_n` matrix transforms characteristic variables to conservative variables
 
         .. math::
-            \begin{align*}
-            \bm{P}_n &:= \bm{M} \bm{L}_n =
+            \mat{P}_n := \mat{M} \mat{L}_n =
             \begin{pmatrix}
             \frac{1}{2 c^{2}}                                                      & \frac{1}{c^{2}}         & 0                           & \frac{1}{2 c^{2}}                                                      \\
             - \frac{n_{x}}{2 c} + \frac{u}{2 c^{2}}                                & \frac{u}{c^{2}}         & \rho n_{y}                  & \frac{n_{x}}{2 c} + \frac{u}{2 c^{2}}                                  \\
             - \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                & \frac{v}{c^{2}}         & - \rho n_{x}                & \frac{n_{y}}{2 c} + \frac{v}{2 c^{2}}                                  \\
-            \frac{1}{2(\gamma - 1)} - \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}} & \frac{|\bm{u}|^2}{2c^{2}} & \rho u n_{y} - \rho v n_{x} & \frac{1}{2(\gamma - 1)} + \frac{u_{n}}{2 c} + \frac{|\bm{u}|^2}{4 c^{2}}
+            \frac{1}{2(\gamma - 1)} - \frac{u_{n}}{2 c} + \frac{|\vec{u}|^2}{4 c^{2}} & \frac{|\vec{u}|^2}{2c^{2}} & \rho u n_{y} - \rho v n_{x} & \frac{1}{2(\gamma - 1)} + \frac{u_{n}}{2 c} + \frac{|\vec{u}|^2}{4 c^{2}}
             \end{pmatrix}
-            \qquad [E16.5.3]
-            \end{align*}
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -651,19 +626,16 @@ class IdealGas(EquationOfState):
 
     def characteristic_from_conservative(self, U: flowfields, unit_vector: ngs.CF) -> ngs.CF:
         r"""
-        The :math:`\bm{P}^{-1}_n` matrix transforms conservative variables to characteristic variables
+        The :math:`\mat{P}^{-1}_n` matrix transforms conservative variables to characteristic variables
 
         .. math::
-            \begin{align*}
-            \bm{P}^{-1}_n &:= \bm{M}^{-1} \bm{L}^{-1}_n =
+            \mat{P}^{-1}_n := \mat{M}^{-1} \mat{L}^{-1}_n =
             \begin{pmatrix}
-            c u_{n} + \frac{\gamma - 1}{2}|\bm{u}|^2        & - c n_{x} + u (1 - \gamma) & - c n_{y} + v (1 - \gamma) & \gamma - 1 \\
-            c^{2} - \frac{\gamma - 1}{2}|\bm{u}|^2          & - u (1 - \gamma)           & - v (1 - \gamma)           & 1 - \gamma \\
+            c u_{n} + \frac{\gamma - 1}{2}|\vec{u}|^2        & - c n_{x} + u (1 - \gamma) & - c n_{y} + v (1 - \gamma) & \gamma - 1 \\
+            c^{2} - \frac{\gamma - 1}{2}|\vec{u}|^2          & - u (1 - \gamma)           & - v (1 - \gamma)           & 1 - \gamma \\
             - \frac{u n_{y}}{\rho} + \frac{v n_{x}}{\rho} & \frac{n_{y}}{\rho}         & - \frac{n_{x}}{\rho}       & 0          \\
-            - c u_{n} + \frac{\gamma - 1}{2}|\bm{u}|^2      & c n_{x} + u (1 - \gamma)   & c n_{y} + v (1 - \gamma)   & \gamma - 1
+            - c u_{n} + \frac{\gamma - 1}{2}|\vec{u}|^2      & c n_{x} + u (1 - \gamma)   & c n_{y} + v (1 - \gamma)   & \gamma - 1
             \end{pmatrix}
-            \qquad [E16.5.4]
-            \end{align*}
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -687,22 +659,17 @@ class IdealGas(EquationOfState):
             return bla.as_matrix(Pinv, dims=(dim, dim))
 
     def conservative_convective_jacobian_x(self, U: flowfields) -> ngs.CF:
-        r""" Convective flux Jacobian :math:`\bm{A}` in x-direction
+        r""" Convective flux Jacobian :math:`\mat{A}` in x-direction
 
         .. math::
-            \begin{align*}
-            \bm{A} &:= 
-            \begin{pmatrix}
+            \mat{A} := \begin{pmatrix}
                 0 & 1 & 0 & 0 \\
                \frac{\gamma - 3}{2} u_x^2 + \frac{\gamma - 1}{2} u_y^2 & (3 - \gamma) u_x & -(\gamma - 1) u_y & \gamma - 1\\
                      -u_x u_y & u_y & u_x & 0 \\
-                     -\gamma u_x E + (\gamma - 1) u_x |\bm{u}|^2 & \gamma E - \frac{\gamma - 1}{2} (u_y^2 + 3 u_x^2)&  -(\gamma - 1) u_x u_y & \gamma u_x
+                     -\gamma u_x E + (\gamma - 1) u_x |\vec{u}|^2 & \gamma E - \frac{\gamma - 1}{2} (u_y^2 + 3 u_x^2)&  -(\gamma - 1) u_x u_y & \gamma u_x
             \end{pmatrix}
-            \qquad [E16.2.5]
-            \end{align*}
 
-        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
+        :note: See equation :math:`(E16.2.5)` in :cite:`hirschNumericalComputationInternal2002`.
         """
 
         gamma = self.heat_capacity_ratio
@@ -724,24 +691,19 @@ class IdealGas(EquationOfState):
             return bla.as_matrix(A, dims=(dim, dim))
 
     def conservative_convective_jacobian_y(self, U: flowfields) -> ngs.CF:
-        r""" Convective flux Jacobian :math:`\bm{B}` in y-direction
+        r""" Convective flux Jacobian :math:`\mat{B}` in y-direction 
 
         .. math::
-            \begin{align*}
-            \bm{B} &:= 
-            \begin{pmatrix}
+            \mat{B} := \begin{pmatrix}
                 0 & 0 & 1 & 0 \\
                   -u_x u_y & u_y & u_x&  0 \\ 
                   \frac{\gamma - 3}{2} u_y^2 + \frac{\gamma - 1}{2} u_x^2& -(\gamma - 1) u_x&
                 (3 - \gamma) u_y & \gamma - 1 \\ 
-                -\gamma u_y E + (\gamma - 1) u_y |\bm{u}|^2 & -(\gamma - 1) u_x u_y & \gamma E -
+                -\gamma u_y E + (\gamma - 1) u_y |\vec{u}|^2 & -(\gamma - 1) u_x u_y & \gamma E -
                 \frac{\gamma - 1}{2} (u_x^2 + 3 u_y^2) & \gamma u_y
             \end{pmatrix}
-            \qquad [E16.2.6]
-            \end{align*}
 
-        .. [1] C. Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods 
-               for Inviscid and Viscous Flows. Repr. A Wiley Interscience Publication. Chichester: Wiley, 2002. 691 pp
+        :note: See equation :math:`(E16.2.6)` in :cite:`hirschNumericalComputationInternal2002`.
         """
 
         gamma = self.heat_capacity_ratio
@@ -767,8 +729,8 @@ class IdealGas(EquationOfState):
         r"""Returns the isentropic density from given fields
 
         .. math::
-            \rho = \rho_{ref} (\frac{T}{T_{ref}})^{\frac{1}{\gamma - 1}}
-            \rho = \rho_{ref} (\frac{p}{p_{ref}})^{\frac{1}{\gamma}}
+            (1) \quad \rho &= \rho_{ref} (\frac{T}{T_{ref}})^{\frac{1}{\gamma - 1}}, \\
+            (2) \quad \rho &= \rho_{ref} (\frac{p}{p_{ref}})^{\frac{1}{\gamma}}.
         """
         if U.p is not None and all((Uref.rho, Uref.p)):
             logger.debug("Returning isentropic density from pressure.")
