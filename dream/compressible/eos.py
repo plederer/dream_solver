@@ -1,4 +1,19 @@
-""" Definitions of equation of states for compressible flow """
+r""" Definitions of equation of states for compressible flow.
+
+This module defines the equations of state for the 
+compressible flow solvers, which establish the relationship between
+the thermodynamic variables such as density :math:`\rho`, pressure :math:`p` and
+temperature :math:`T`.
+
+Ideal gas
+    We derive the dimensionless ideal gas equation from the dimensional one, namely:
+
+    .. math::
+        \overline{p} &= \overline{\rho} \overline{R} \overline{T}, \\
+        \rho_{ref} u^2_{ref} p &= \rho_{ref} \rho \overline{R} T_{ref} T, \\
+        u^2_{ref} p &= \rho \frac{\overline{c}_\infty^2}{\gamma \overline{T}_\infty} T_{ref} T, \\
+        \gamma p &= ( \gamma - 1) \rho T.
+"""
 from __future__ import annotations
 
 import logging

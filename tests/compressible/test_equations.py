@@ -199,7 +199,7 @@ def test_characteristic_identity(cfg):
                                (-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
 
 
-def test_farfield_state(cfg):
+def test_farfield_fields(cfg):
     cfg.scaling = "aerodynamic"
     INF = cfg.get_farfield_fields((1, 0)).to_py(cfg.mesh)
     results = {"density": 1.0, "speed_of_sound": 10/3, "temperature": 1/(0.4 * 0.3**2),
