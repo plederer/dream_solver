@@ -22,6 +22,7 @@ release = '0.1'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ["sphinxcontrib.bibtex", 
+              'sphinxcontrib.tikz',
               "sphinx.ext.autodoc",
               'sphinx.ext.autosummary',
               "sphinx.ext.mathjax",
@@ -50,9 +51,7 @@ pygments_style = "sphinx"
 bibtex_bibfiles = ['introduction/literature.bib']
 bibtex_default_style = 'unsrt'
 
-
-
-
+tikz_latex_preamble = r"\usepackage{bm}"
 
 
 # html_static_path = [os.path.abspath('.') + '/_static']
