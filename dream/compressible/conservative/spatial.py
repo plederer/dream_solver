@@ -73,6 +73,37 @@ class Inactive(MixedMethod):
 
 
 class StrainHeat(MixedMethod):
+    r""" Strain-tensor and temperature gradient mixed method for compressible flow.
+
+    This mixed method is based on the strain-rate tensor 
+
+    .. math::
+        \mat{\varepsilon} = \frac{1}{2} \left( \grad{\vec{u}} + \grad{\vec{u}}^\T \right) - \frac{1}{3} \div{(\vec{u})} \mat{I}
+    
+    and the temperature gradient :math:`\phi = \grad{T}` as additional variables to the conservative variables. 
+    It is used to solve the compressible Navier-Stokes equations with viscous effects.
+
+    Find :math:`\left(\vec{U}_h,\hat{\vec{U}}_h, (\mat{\varepsilon}_h, \vec{\phi}_h) \right) \in U_h \times \hat{U}_h \times Q_h` such that
+
+    .. math::
+
+        \sum_{T  \in \mesh} \int_{T} \mat{\varepsilon}_h : \mat{\zeta}_h \, d\bm{x} + \int_{T} \vec{u}_h \cdot \div(\mat{\zeta}_h - \frac{1}{3}\tr(\mat{\zeta}_h)\I) \, d\bm{x}  - \int_{\partial T} \hat{\vec{u}}_h \cdot \left[\mat{\zeta}_h - \frac{1}{3}\tr(\mat{\zeta}_h)\mat{I} \right] \vec{n} \, d\bm{s} & = 0, \\
+        \sum_{T  \in \mesh} \int_{T} \vec{\phi}_h \cdot \vec{\varphi}_h \, d\bm{x} + \int_{T} T_h \div(\vec{\varphi}_h) \, d\bm{x} - \int_{\partial T} \hat{T}_h \vec{\varphi}_h \cdot \vec{n}    \, d\bm{s}                                    & = 0,
+
+    for all :math:`(\mat{\zeta}_h, \vec{\varphi}_h ) \in Q_h`. With the discrete space choosen as
+
+    .. math::
+        Q_h       & := \Xi_h \times \Theta_h, \\
+        \Xi_h     & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\mesh, \mathbb{R}^{d \times d}_{\mathrm{sym}}) \right), \\
+        \Theta_h  & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\mesh, \mathbb{R}^{d})                 \right).
+
+    The discrete velocities :math:`\vec{u}_h := \vec{u}(\vec{U}_h)`, :math:`\hat{\vec{u}}_h := \vec{u}(\hat{\vec{U}}_h)`, 
+    and the discrete temperatures :math:`\theta_h := \theta(\vec{U}_h)`, :math:`\hat{\theta}_h := \theta(\hat{\vec{U}}_h)` are functions
+    of the conservative fields :math:`\vec{U}_h` and :math:`\hat{\vec{U}}_h`, respectively.
+
+    :note: See :class:`HDG` for the definition of the conservative spaces :math:`U_h` and :math:`\hat{U}_h`.
+
+    """
 
     name: str = "strain_heat"
 
@@ -484,6 +515,27 @@ class DG(ConservativeMethod):
 
 
 class HDG(ConservativeMethod):
+    r""" Conservative hybridizable Discontinuous Galerkin method for compressible flow.
+
+    Find :math:`\left(\vec{U}_h,\hat{\vec{U}}_h, \vec{Q}_h \right) \in U_h \times \hat{U}_h \times Q_h` such that
+
+    .. math::
+
+        \sum_{T \in \mesh} \int_{T} \frac{\partial \vec{U}_h}{\partial t} \cdot \vec{V}_h \, d\bm{x} - \int_{T} \left(\vec{F}(\vec{U}_h) - \vec{G}(\vec{U}_h, \vec{Q}_h)\right)  : \grad{\vec{V}_h} \, d\bm{x}+ \int_{\partial T} (\hat{\vec{F}}_h - \hat{\vec{G}}_h) \vec{n} \cdot \vec{V}_h   \, d\bm{s}   & = 0, \\
+        - \sum_{F \in \facets^{\text{int}}} \int_{F} \jump{(\hat{\vec{F}}_h - \hat{\vec{G}}_h) \vec{n}} \cdot \hat{\vec{V}}_h \, d\bm{s} + \sum_{F \in \facets^{\text{ext}}} \int_{F} \hat{\vec{\Gamma}}_h \cdot \hat{\vec{V}}_h  \, d\bm{s} & = 0, 
+
+    for all :math:`\left(\vec{V}_h,\hat{\vec{V}}_h \right) \in U_h \times \hat{U}_h`. With the discrete spaces choosen as
+
+    .. math::
+
+        U_h       & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\mesh, \mathbb{R}^{d+2}) \right),   \\
+        \hat{U}_h & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\facets, \mathbb{R}^{d+2}) \right). 
+
+    In the formulation, :math:`\hat{\vec{\Gamma}}_h` represents the boundary operator. 
+
+    :note: See :class:`MixedMethod` for the definition of :math:`\vec{Q}_h` and :math:`Q_h`.
+
+    """
 
     name: str = "hdg"
 
@@ -835,7 +887,7 @@ class HDG(ConservativeMethod):
 
         .. math::
 
-            \widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}})
+            \hat{\vec{F}}_h  \vec{n}^\pm  := \vec{F}(\hat{\vec{U}}_h) \vec{n}^\pm + \mat{\tau}_c(\hat{\vec{U}}_h) (\vec{U}_h - \hat{\vec{U}}_h)
 
         :note: See equation :math:`(E22a)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
         :note: See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`.
@@ -853,7 +905,7 @@ class HDG(ConservativeMethod):
 
         .. math::
 
-            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
+            \hat{\vec{G}}_h \vec{n}^\pm  := \vec{G}(\hat{\vec{U}_h}, \vec{Q}_h) \vec{n}^\pm + \mat{\tau}_d (\vec{U}_h - \hat{\vec{U}}_h).
 
         :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
         :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`.
@@ -1006,7 +1058,7 @@ class DG_HDG(ConservativeMethod):
 
         .. math::
 
-            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}).
+            \hat{\vec{G}}_h \vec{n}^\pm  := \vec{G}(\hat{\vec{U}_h}, \vec{Q}_h) \vec{n}^\pm + \mat{\tau}_d (\vec{U}_h - \hat{\vec{U}}_h).
 
         :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
         :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`.

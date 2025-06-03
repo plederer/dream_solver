@@ -27,6 +27,23 @@ various classical and modern approaches from the literature.
     \node at (0.8, 1.3) {\footnotesize{$\bm{U}^*_R$}};
     \node[below] at (0,0) {\footnotesize $0$};
 
+For HDG methods, the approximate Riemann solver is incorporated into the numerical flux
+
+.. math::
+    \hat{\vec{F}}_h \vec{n}^\pm := \vec{F}(\hat{\vec{U}}_h) \vec{n}^\pm + \mat{\tau}_c(\hat{\vec{U}}_h) (\vec{U}_h - \hat{\vec{U}}_h),
+
+by means of the convective stabilization matrix :math:`\mat{\tau}^\pm_c`, where :math:`\hat{\vec{U}}_h` are the conservative 
+facet variables and :math:`\vec{U}^\pm_h` are the conservative element variables. The transmission condition
+
+.. math::
+    \hat{\vec{F}}_h  \vec{n}^+ + \hat{\vec{F}}_h  \vec{n}^- = 0,
+
+then assures the continuity of the numerical flux across the facet.
+
+Whereas, for DG methods, the numerical flux is derived by applying the Rankine-Hugoniot conditions across
+each wave speeds.
+
+
 Available Riemann solvers:
     - Upwind: Standard upwind flux for convective stabilization.
     - LaxFriedrich: Lax-Friedrichs (Rusanov) flux, providing robust stabilization.
@@ -53,6 +70,7 @@ if typing.TYPE_CHECKING:
 
 
 class RiemannSolver(Configuration, is_interface=True):
+    """ Base class for Riemann solvers in compressible flow. """
 
     root: CompressibleFlowSolver
 

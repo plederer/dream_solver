@@ -99,6 +99,7 @@ if typing.TYPE_CHECKING:
 
 
 class Scaling(Configuration, is_interface=True):
+    """ Base class for compressible flow scalings. """
 
     root: CompressibleFlowSolver
 

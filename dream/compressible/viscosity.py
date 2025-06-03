@@ -63,6 +63,7 @@ if typing.TYPE_CHECKING:
 
 
 class DynamicViscosity(Configuration, is_interface=True):
+    """ Base class for dynamic viscosity and heat conductivity definitions. """
 
     root: CompressibleFlowSolver
 
