@@ -1,9 +1,9 @@
+import sphinx_rtd_theme
 import os
 import sys
 sys.path.append(os.path.abspath('../'))
 sys.path.append(os.path.abspath('.'))
 
-import sphinx_rtd_theme
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -21,17 +21,17 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinxcontrib.bibtex", 
+extensions = ["sphinxcontrib.bibtex",
               'sphinxcontrib.tikz',
               "sphinx.ext.autodoc",
               'sphinx.ext.autosummary',
               "sphinx.ext.mathjax",
-              "sphinx.ext.todo", 
+              "sphinx.ext.todo",
               "sphinxcontrib.jquery",
-              "IPython.sphinxext.ipython_console_highlighting", 
+              "IPython.sphinxext.ipython_console_highlighting",
               "IPython.sphinxext.ipython_directive",
-              "nbsphinx", 
-              "myst_parser", 
+              "nbsphinx",
+              "myst_parser",
               ]
 
 templates_path = ['_templates']
@@ -47,7 +47,7 @@ autosummary_generate = True
 highlight_language = 'python3'
 pygments_style = "sphinx"
 
-#bibtex settings
+# bibtex settings
 bibtex_bibfiles = ['introduction/literature.bib']
 bibtex_default_style = 'unsrt'
 
@@ -80,11 +80,13 @@ mathjax3_config = {
             "skw": ["{{\\rm skw} (#1) }", 1],
             "vec": ["{\\bm{#1}}", 1],
             "mat": ["{\\bm{#1}}", 1],
+            "facets": r"\mathcal{F}_h",
+            "mesh": r"\mathcal{T}_h",
         }
     }
 }
 
-myst_enable_extensions = ["amsmath", "dollarmath","fieldlist"]
+myst_enable_extensions = ["amsmath", "dollarmath", "fieldlist"]
 suppress_warnings = ["myst.header"]
 
 # -- Options for HTML output -------------------------------------------------
@@ -149,12 +151,14 @@ html_theme_options = {
     'titles_only': False,
 }
 
+
 def setup(app):
     app.add_css_file("custom.css")
 
 # html_static_path = ['_static']
 
-rst_prolog ="""
+
+rst_prolog = """
 .. role:: py(code)
   :language: python3
 """
