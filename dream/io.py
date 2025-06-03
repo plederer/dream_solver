@@ -353,15 +353,19 @@ class GridfunctionStream(Stream):
         import time
 
         logger.info(f"Loading gridfunction from '{self.filename}'")
-        for t in self.root.time.timer.start(stride=self.rate):
-            self.load_routine(t)
 
-            self.root.io.redraw()
-            logger.info(f"file: {self.filename} | t: {t}")
+        with self.root.io as io:
 
-            yield t
+            for it, t in enumerate(self.root.time.timer.start(stride=self.rate)):
+                logger.info(f"file: {self.filename} | t: {t}")
+                
+                self.load_routine(t)
+                io.redraw()
+                io.save_in_time_routine(t, it)
 
-            time.sleep(sleep)
+                yield t
+
+                time.sleep(sleep)
 
     def load_time_levels(self, t: float) -> None:
 
@@ -583,6 +587,14 @@ class SensorStream(Stream):
     @to_csv.setter
     def to_csv(self, to_csv: bool):
         self._to_csv = bool(to_csv)
+
+    @Stream.enable.setter
+    def enable(self, enable: bool):
+
+        if not enable:
+            self.list = []
+
+        self._enable = bool(enable)
 
     def add(self, sensor: Sensor) -> None:
         if not isinstance(sensor, Sensor):
@@ -989,6 +1001,13 @@ class IOConfiguration(Configuration):
     def sensor(self, sensor: SensorStream | bool):
         self._sensor = self._parse_stream(sensor, SensorStream)
 
+    def disable(self):
+        """Disable all streams except for LogStream."""
+        for stream in vars(self).values():
+            if isinstance(stream, Stream) and not isinstance(stream, LogStream):
+                stream.enable = False
+        self.undraw()
+
     def draw(self, fields: ngsdict, **kwargs):
         if is_notebook():
             from ngsolve.webgui import Draw
@@ -1005,6 +1024,11 @@ class IOConfiguration(Configuration):
                 if scene is not None:
                     scene.Redraw()
             ngs.Redraw(blocking)
+
+    def undraw(self):
+
+        if hasattr(self, "scenes"):
+            del self.scenes
 
     def open(self):
 
