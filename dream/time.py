@@ -65,12 +65,11 @@ class Timer(Configuration):
 
     def start(self, include_start: bool = False, stride: int = 1):
 
-        start, end = self.interval
+        start, _ = self.interval
         step = self.step.Get()
+        size = self.num_steps(include_start, stride)
 
-        N = round((end - start)/(stride*step)) + 1
-
-        for i in range(1 - include_start, N):
+        for i in range(1 - include_start, size + 1):
             self.t = start + stride*i*step
             yield round(self.t.Get(), self.digit)
 
@@ -79,6 +78,16 @@ class Timer(Configuration):
 
     def reset(self):
         self.t = self.interval[0]
+
+    def num_steps(self, include_start: bool = False, stride: int = 1) -> int:
+        start, end = self.interval
+        step = self.step.Get()
+
+        size = round((end - start)/(stride * step))
+        if include_start:
+            size += 1
+
+        return size
 
     def __call__(self, **kwargs):
         self.update(**kwargs)

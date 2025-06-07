@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class EquationOfState(Configuration, is_interface=True):
+    """ Base class for equations of state in compressible flow solvers. """
 
     def density(self, U: flowfields) -> ngs.CF:
         raise NotImplementedError()

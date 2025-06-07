@@ -817,7 +817,8 @@ def get_cylinder_omesh(ri: float,
                        n_polar: int,
                        n_radial: int,
                        geom: float = 1,
-                       bnd: tuple[str, str, str] = ('cylinder', 'left', 'right')) -> ngs.Mesh:
+                       bnd: tuple[str, str, str] = ('cylinder', 'left', 'right'),
+                       dom: str = "default") -> ngs.Mesh:
     """ Generates a ring mesh with a given inner and outer radius.
 
     :param ri: Inner radius of the ring
@@ -923,6 +924,8 @@ def get_cylinder_omesh(ri: float,
 
     for i, name in enumerate(bnd):
         mesh.SetBCName(i, name)
+
+    mesh.SetMaterial(1, dom)
 
     return ngs.Mesh(mesh)
 

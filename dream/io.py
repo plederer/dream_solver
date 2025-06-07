@@ -72,7 +72,7 @@ class Stream(Configuration, is_interface=True):
 
         return self
 
-    def save_pre_time_routine(self) -> None:
+    def save_pre_time_routine(self, t: float | None = None) -> None:
         raise NotImplementedError("Method 'save_pre_routine' is not implemented!")
 
     def save_in_time_routine(self, t: float, it: int) -> None:
@@ -301,7 +301,7 @@ class GridfunctionStream(Stream):
     def __init__(self, mesh, root=None, **default):
         DEFAULT = {
             "rate": 1,
-            "time_level_rate": 100,
+            "time_level_rate": 0,
         }
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
@@ -313,8 +313,8 @@ class GridfunctionStream(Stream):
     @rate.setter
     def rate(self, rate: int):
         rate = int(rate)
-        if rate <= 0:
-            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the gfu writer!")
+        if rate < 0:
+            raise ValueError("Saving rate must be greater equal than 0!")
         self._rate = rate
 
     @dream_configuration
@@ -324,8 +324,8 @@ class GridfunctionStream(Stream):
     @time_level_rate.setter
     def time_level_rate(self, time_level_rate: int):
         time_level_rate = int(time_level_rate)
-        if time_level_rate <= 0:
-            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the gfu writer!")
+        if time_level_rate < 0:
+            raise ValueError("Saving rate must be greater equal than 0!")
         self._time_level_rate = time_level_rate
 
     def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
@@ -353,15 +353,19 @@ class GridfunctionStream(Stream):
         import time
 
         logger.info(f"Loading gridfunction from '{self.filename}'")
-        for t in self.root.time.timer.start(stride=self.rate):
-            self.load_routine(t)
 
-            self.root.io.redraw()
-            logger.info(f"file: {self.filename} | t: {t}")
+        with self.root.io as io:
 
-            yield t
+            for it, t in enumerate(self.root.time.timer.start(stride=self.rate)):
+                logger.info(f"file: {self.filename} | t: {t}")
+                
+                self.load_routine(t)
+                io.redraw()
+                io.save_in_time_routine(t, it)
 
-            time.sleep(sleep)
+                yield t
+
+                time.sleep(sleep)
 
     def load_time_levels(self, t: float) -> None:
 
@@ -374,21 +378,6 @@ class GridfunctionStream(Stream):
 
                 self.load_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
 
-    def save_in_time_routine(self, t: float | None = None, it: int = 0):
-
-        filename = self.filename
-        if t is not None:
-            filename = f"{filename}_{t}"
-
-            if it % self.time_level_rate == 0:
-
-                for fes, gfus in self.root.fem.scheme.gfus.items():
-                    for level, gfu in gfus.items():
-                        self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
-
-        if it % self.rate == 0:
-            self.save_gridfunction(self.root.fem.gfu, filename)
-
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
         if filename is None:
@@ -398,12 +387,50 @@ class GridfunctionStream(Stream):
 
         gfu.Save(str(file))
 
+    def save_in_time_routine(self, t: float, it: int = 0):
+
+        filename = f"{self.filename}_{t}"
+
+        if self.rate:
+            self._save_routine_gridfunction(filename, it % self.rate == 0)
+
+        if self.time_level_rate:
+            self._save_routine_gridfunction_level(filename, it % self.time_level_rate == 0)
+
     def save_pre_time_routine(self, t: float | None = None) -> None:
-        self.save_in_time_routine(t, it=0)
+
+        filename = self.filename
+        if t is None:
+            # Stationary case
+            self._save_routine_gridfunction(filename, True)
+        else:
+            # Transient case
+            filename = f"{filename}_{t}"
+            self._save_routine_gridfunction(filename, True)
+            self._save_routine_gridfunction_level(filename, True)
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
-        if t is None or not it % self.rate == 0:
-            self.save_in_time_routine(t, it=0)
+
+        filename = self.filename
+        if t is None:
+            # Stationary case
+            self._save_routine_gridfunction(filename, True)
+        else:
+            # Transient case
+            filename = f"{filename}_{t}"
+
+            self._save_routine_gridfunction(filename, True)
+            self._save_routine_gridfunction_level(filename, True)
+
+    def _save_routine_gridfunction(self, filename: str, predicate: bool):
+        if predicate:
+            self.save_gridfunction(self.root.fem.gfu, filename)
+
+    def _save_routine_gridfunction_level(self, filename: str, predicate: bool):
+        if predicate:
+            for fes, gfus in self.root.fem.scheme.gfus.items():
+                for level, gfu in gfus.items():
+                    self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
 
 
 class LogStream(Stream):
@@ -560,6 +587,14 @@ class SensorStream(Stream):
     @to_csv.setter
     def to_csv(self, to_csv: bool):
         self._to_csv = bool(to_csv)
+
+    @Stream.enable.setter
+    def enable(self, enable: bool):
+
+        if not enable:
+            self.list = []
+
+        self._enable = bool(enable)
 
     def add(self, sensor: Sensor) -> None:
         if not isinstance(sensor, Sensor):
@@ -966,6 +1001,13 @@ class IOConfiguration(Configuration):
     def sensor(self, sensor: SensorStream | bool):
         self._sensor = self._parse_stream(sensor, SensorStream)
 
+    def disable(self):
+        """Disable all streams except for LogStream."""
+        for stream in vars(self).values():
+            if isinstance(stream, Stream) and not isinstance(stream, LogStream):
+                stream.enable = False
+        self.undraw()
+
     def draw(self, fields: ngsdict, **kwargs):
         if is_notebook():
             from ngsolve.webgui import Draw
@@ -982,6 +1024,11 @@ class IOConfiguration(Configuration):
                 if scene is not None:
                     scene.Redraw()
             ngs.Redraw(blocking)
+
+    def undraw(self):
+
+        if hasattr(self, "scenes"):
+            del self.scenes
 
     def open(self):
 

@@ -1,4 +1,62 @@
-""" Definitions of riemann solvers for compressible flow """
+r""" Definitions of Riemann solvers for compressible flow.
+
+This module provides a set of Riemann solver classes for use in the discretization of compressible flow equations,
+particularly in the context of hybridizable discontinuous Galerkin (HDG) and discontinuous Galerkin (DG) methods.
+Each solver implements different numerical flux and stabilization strategies for the convective terms, following
+various classical and modern approaches from the literature.
+
+.. tikz:: Representation of the Riemann problem solution in the x-t plane for the one-dimensional, 
+    transient Euler equations. :cite:`toroRiemannSolversNumerical2009`
+    :libs: arrows.meta
+
+    % Coordinates
+    \draw[-Latex] (-2,0) -- (2,0) node[right] {\footnotesize{$x$}};
+    \draw[-Latex] (0, 0) -- (0,2) node[above] {\footnotesize{$t$}};
+
+    % Wave speeds
+    \draw (0,0) -- (-2, 1.95) node[left] {\footnotesize{$u - c$}};
+    \draw (0,0) -- (-1.95, 2);
+    \draw (0,0) -- (1.95, 2);
+    \draw (0,0) -- (2, 1.95) node[right] {\footnotesize{$u + c$}};
+    \draw[dashed] (0,0) -- (0.5, 2) node[right] {\footnotesize{$u$}};
+
+    % Labels
+    \node at (-1.2, 0.5) {\footnotesize{$\bm{U}_L$}};
+    \node at (1.2, 0.5) {\footnotesize{$\bm{U}_R$}};
+    \node at (-0.5, 1.3) {\footnotesize{$\bm{U}^*_L$}};
+    \node at (0.8, 1.3) {\footnotesize{$\bm{U}^*_R$}};
+    \node[below] at (0,0) {\footnotesize $0$};
+
+For HDG methods, the approximate Riemann solver is incorporated into the numerical flux
+
+.. math::
+    \hat{\vec{F}}_h \vec{n}^\pm := \vec{F}(\hat{\vec{U}}_h) \vec{n}^\pm + \mat{\tau}_c(\hat{\vec{U}}_h) (\vec{U}_h - \hat{\vec{U}}_h),
+
+by means of the convective stabilization matrix :math:`\mat{\tau}^\pm_c`, where :math:`\hat{\vec{U}}_h` are the conservative 
+facet variables and :math:`\vec{U}^\pm_h` are the conservative element variables. The transmission condition
+
+.. math::
+    \hat{\vec{F}}_h  \vec{n}^+ + \hat{\vec{F}}_h  \vec{n}^- = 0,
+
+then assures the continuity of the numerical flux across the facet.
+
+Whereas, for DG methods, the numerical flux is derived by applying the Rankine-Hugoniot conditions across
+each wave speeds.
+
+
+Available Riemann solvers:
+    - Upwind: Standard upwind flux for convective stabilization.
+    - LaxFriedrich: Lax-Friedrichs (Rusanov) flux, providing robust stabilization.
+    - Roe: Roe's approximate Riemann solver, based on characteristic decomposition.
+    - HLL: Harten-Lax-van Leer (HLL) flux, using estimates of the fastest wave speeds.
+    - HLLEM: Harten-Lax-van Leer-Contact (HLLEM) flux, with improved contact wave resolution.
+
+Each solver provides methods to compute:
+    - The convective stabilization matrix for HDG methods.
+    - A simplified stabilization matrix for inviscid flows or special boundary conditions.
+    - The numerical flux for standard DG methods (where implemented).
+"""
+
 from __future__ import annotations
 import typing
 import ngsolve as ngs
@@ -12,6 +70,7 @@ if typing.TYPE_CHECKING:
 
 
 class RiemannSolver(Configuration, is_interface=True):
+    """ Base class for Riemann solvers in compressible flow. """
 
     root: CompressibleFlowSolver
 

@@ -396,6 +396,7 @@ def test_gridfunctionstream_load_transient_routine(gfu_handler):
 def test_gridfunctionstream_save_and_load_gridfunction_levels(gfu_handler):
     handler, cfg = gfu_handler
     handler.filename = 'test'
+    handler.time_level_rate = 1
     handler = handler.open()
     for fes in cfg.fem.scheme.gfus:
         for level in cfg.fem.scheme.gfus[fes]:

@@ -120,6 +120,12 @@ class FarField(Condition):
 
 
 class Outflow(Condition):
+    r""" Outflow condition for subsonic compressible flow.
+
+    The outflow condition is used to set the subsonic outflow conditions for compressible flows by setting
+    the static pressure :math:`p_\infty` at the outflow boundaries. By the hard imposition of the pressure,
+    the outflow condition acts reflecting for acoustic waves.
+    """
 
     name = "outflow"
 
@@ -247,6 +253,12 @@ class CBC(Condition):
 class GRCBC(CBC):
     r""" Generalized Relaxation Condition Boundary Condition
 
+    The GRCBC is a generalized relaxation condition for compressible flows. It is used to relax 
+    the conservative variables at the boundary towards a given target state :math:`\vec{U}^-`. 
+    The relaxation is done by a CFL-like diagonal matrix. Additionally, tangential relaxation and 
+    viscous fluxes can improve the non-reflecting behavior on planar boundaries :cite:`PellmenreichCharacteristicBoundaryConditions2025`.
+
+    :note: Currently, only supported with implicit time schemes.
     """
 
     name = "grcbc"
@@ -271,7 +283,7 @@ class NSCBC(CBC):
                  tangential_relaxation=0.0,
                  is_viscous_fluxes=False,
                  length: float = 1.0):
-        self.length = 1.0
+        self.length = length
         super().__init__(fields, target, relaxation_factor, tangential_relaxation, is_viscous_fluxes)
 
     @dream_configuration
@@ -296,16 +308,31 @@ class NSCBC(CBC):
 
 
 class InviscidWall(Condition):
+    r""" Inviscid wall condition for compressible flow.
+
+    The inviscid wall condition is used to set the no-penetration condition 
+    i.e. :math:`\vec{u} \cdot \vec{n} = 0` for compressible flows.
+
+    """
 
     name = "inviscid_wall"
 
 
 class Symmetry(Condition):
+    r""" Symmetry condition for compressible flow.
+
+    The symmetry condition imposes :math:`\vec{u} \cdot \vec{n} = 0` on a symmetry plane.
+
+    """
 
     name = "symmetry"
 
 
 class IsothermalWall(Condition):
+    """ Isothermal wall condition for compressible flow.
+    
+    The isothermal wall condition sets the temperature :math:`T_w` and no-slip conditions at the wall boundaries.
+    """
 
     name = "isothermal_wall"
 
@@ -335,6 +362,10 @@ class IsothermalWall(Condition):
 
 
 class AdiabaticWall(Condition):
+    r""" Adiabatic wall condition for compressible flow.
+    
+    The adiabatic wall condition sets zero heat flux :math:`\vec{q} \cdot \vec{n}$` and no-slip conditions at the wall boundaries.
+    """
 
     name = "adiabatic_wall"
 
