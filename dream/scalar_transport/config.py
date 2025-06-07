@@ -1,4 +1,4 @@
-""" Definitions of boundary/domain conditions for a scalar transport equation """
+""" Definitions of boundary/domain conditions for a scalar transport equation. """
 from __future__ import annotations
 import ngsolve as ngs
 

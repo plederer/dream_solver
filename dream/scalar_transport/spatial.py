@@ -1,4 +1,4 @@
-""" Definitions of the spatial discretizations for the scalar transport equation """
+""" Definitions of the spatial discretizations for the scalar transport equation. """
 from __future__ import annotations
 import logging
 import ngsolve as ngs
@@ -164,7 +164,28 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
 
 class HDG(ScalarTransportFiniteElementMethod):
     r""" Class containing the tools that define a hybridized discontinuous Galerkin (HDG) finite element method for the scalar transport equation.
+
+    This may be compactly written as: Find :math:`u_h, v_h \in U_h` and :math:`\hat{u}_{h}, \hat{v}_{h} \in \hat{U}_h`, such that
+    
+    .. math::
+        \bm{M} \partial_t u_h + B_c\Big(\{u_h, \hat{u}_{h}\}, \{v_h, \hat{v}_{h}\}\Big) + B_d\Big(\{u_h, \hat{u}_{h}\}, \{v_h, \hat{v}_{h}\}\Big) = l_c\Big(\{v_h, \hat{v}_{h}\}\Big) + l_d\Big(\{v_h, \hat{v}_{h}\}\Big),
+
+    where the first term, involving the mass matrix :math:`\bm{M} = (u_h, v_h)` is treated separately, depending on the chosen temporal scheme, see :mod:`~dream.scalar_transport.time`. The discrete spaces are defined as
+
+    .. math::
+        U_h        &:= L^2\left(\mathbb{P}^k(\Omega, \mathbb{R}^{d}) \right),\\
+        \hat{U}_h  &:= L^2\left(\mathbb{P}^k(\facets, \mathbb{R}^{d}) \right). 
+
+    The above bilinear and linear forms correspond to
+
+    - :math:`B_d`: bilinear form for the diffusion/elliptic terms, see :func:`~dream.scalar_transport.spatial.HDG.add_diffusion_form`.
+    - :math:`B_c`: bilinear form for the convective terms, see :func:`~dream.scalar_transport.spatial.HDG.add_convection_form`.
+    - :math:`l_d`: linear form for the diffusion/elliptic terms, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions`.
+    - :math:`l_c`: linear form for the convective terms, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions`.
+
+    :note: For readability, the :math:`(\cdot)_h` is dropped throughout the documentation.
     """
+
     name: str = "hdg"
 
     @dream_configuration
@@ -206,9 +227,9 @@ class HDG(ScalarTransportFiniteElementMethod):
         r""" Discretization (in the internal domain) of the convection terms using a standard Riemann solver. The `convective` bilinear form over an internal element is:
         
         .. math::
-            B_c(\{u,\hat{u}\},v)       &= -\int\limits_{D} \bm{f}(u) \cdot \nabla v\, d\bm{x}\, 
-                                        +  \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} f^*(u,\hat{u})\, v\, d\bm{s},\\
-            B_c(\{u,\hat{u}\},\hat{v}) &= -\hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} f^*(u, \hat{u})\, \hat{v}\, d\bm{s},
+            B_c\Big(\{u,\hat{u}\},v\Big)       &= -\int\limits_{D} \bm{f}(u) \cdot \nabla v\, d\bm{x}\, 
+                                                +  \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} f^*(u,\hat{u})\, v\, d\bm{s},\\
+            B_c\Big(\{u,\hat{u}\},\hat{v}\Big) &= -\hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} f^*(u, \hat{u})\, \hat{v}\, d\bm{s},
 
         where the physical (inviscid) flux is :math:`\bm{f}(u) = \bm{b} u` and the numerical flux :math:`f^* = f^*(u,\hat{u})`, over an element boundary, is defined based on the local solution :math:`u` and its neighboring facet variable :math:`\hat{u}`. See :func:`~dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg` for details.
         """
@@ -240,12 +261,12 @@ class HDG(ScalarTransportFiniteElementMethod):
         
         .. math::
             \begin{aligned}
-                B_d\big(\{u,\hat{u}\},v\big)       &=
+                B_d\Big(\{u,\hat{u}\},v\Big)       &=
                                                 \int\limits_D \kappa \nabla u \cdot \nabla v \, d\bm{x}\,
                                                -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa (\nabla u \cdot \bm{n}) v\, d\bm{s}\\
                                        &\qquad\qquad -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa (u - \hat{u}) (\bm{n} \cdot \nabla v)\, d\bm{s}\,
                                                +\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa \tau (u - \hat{u}) v \, d\bm{s}, \\[1ex]
-                B_d\big(\{u,\hat{u}\},\hat{v}\big) &=
+                B_d\Big(\{u,\hat{u}\},\hat{v}\Big) &=
                                                 \hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa (\nabla u \cdot \bm{n}) \hat{v}\, d\bm{s}\,
                                                -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa \tau (u - \hat{u}) \hat{v}\, d\bm{s},
             \end{aligned}
@@ -366,6 +387,25 @@ class HDG(ScalarTransportFiniteElementMethod):
 
 class DG(ScalarTransportFiniteElementMethod):
     r""" Class containing the tools that define a standard discontinuous Galerkin (DG) finite element method for the scalar transport equation.
+
+    This may be compactly written as: Find :math:`u_h, v_h \in U_h`, such that
+    
+    .. math::
+        \bm{M} \partial_t u_h + B_c(u_h, v_h) + B_d(u_h, v_h) = l_c(v_h) + l_d(v_h),
+
+    where the first term, involving the mass matrix :math:`\bm{M} = (u_h, v_h)` is treated separately, depending on the chosen temporal scheme, see :mod:`~dream.scalar_transport.time`. The discrete space is defined as
+
+    .. math::
+        U_h := L^2\left(\mathbb{P}^k(\Omega, \mathbb{R}^{d}) \right).
+
+    The above bilinear and linear forms correspond to
+
+    - :math:`B_d`: bilinear form for the diffusion/elliptic terms, see :func:`~dream.scalar_transport.spatial.DG.add_diffusion_form`.
+    - :math:`B_c`: bilinear form for the convective terms, see :func:`~dream.scalar_transport.spatial.DG.add_convection_form`.
+    - :math:`l_d`: linear form for the diffusion/elliptic terms, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions`.
+    - :math:`l_c`: linear form for the convective terms, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions`.
+
+    :note: For readability, the :math:`(\cdot)_h` is dropped throughout the documentation.
     """
     name: str = "dg"
 

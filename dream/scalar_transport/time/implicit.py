@@ -1,4 +1,4 @@
-""" Definitions of implicit time marching schemes for a scalar transport equation """
+""" Definitions of implicit time marching schemes for a scalar transport equation. """
 from __future__ import annotations
 from dream.config import Integrals
 from dream.time import TimeSchemes

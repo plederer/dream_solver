@@ -1,4 +1,4 @@
-""" Definitions of riemann solvers for a scalar transport equation """
+""" Definitions of riemann solvers for a scalar transport equation. """
 from __future__ import annotations
 import typing
 import ngsolve as ngs

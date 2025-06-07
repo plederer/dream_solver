@@ -1,3 +1,5 @@
+""" Definitions of the implicit-explicit (IMEX) time schemes for the scalar transport equation. 
+"""
 from __future__ import annotations
 from dream.config import Integrals
 from dream.time import TimeSchemes
@@ -235,9 +237,9 @@ class IMEXRK_ARS443(IMEXRKSchemes):
     At the continuous level, the splitting is done as such
 
     .. math::
-        \partial_t u + g(u) = f(u),
+        \partial_t u + g(u, \nabla u) = -f(u),
 
-    where :math:`g` and :math:`f` are the viscous and inviscid fluxes, respectively. 
+    where :math:`g` and :math:`f` are the viscous and inviscid fluxes, respectively. Recall, both spatial fluxes, are discretized assuming they are on the left-hand side of the equality -- hence the -ve sign in front of :math:`f(u)`.
 
     Discretly, the formulation can be expressed as
 

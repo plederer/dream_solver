@@ -1,3 +1,4 @@
+""" Definitions of explicit time marching schemes for a scalar transport equation. """
 from __future__ import annotations
 from dream.config import Integrals
 from dream.time import TimeSchemes
@@ -7,7 +8,6 @@ import logging
 import typing
 
 logger = logging.getLogger(__name__)
-
 
 
 class ExplicitSchemes(TimeSchemes):
