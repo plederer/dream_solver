@@ -82,7 +82,13 @@ class ImplicitSchemes(TimeSchemes):
 
 
 class ImplicitEuler(ImplicitSchemes):
+    r""" Class responsible for implementing an implicit (backwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Namely,
 
+    .. math::
+        \widetilde{\bm{M}} \bm{u}^{n+1} + \bm{B} \bm{u}^{n+1} = \widetilde{\bm{M}} \bm{u}^{n},
+
+    where :math:`\widetilde{\bm{M}} = \frac{1}{\delta t} \int_{D} u v\, d\bm{x}` is the modified mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
+    """
     name: str = "implicit_euler"
     aliases = ("ie", )
     time_levels = ('n+1',)
@@ -110,7 +116,13 @@ class ImplicitEuler(ImplicitSchemes):
 
 
 class BDF2(ImplicitSchemes):
+    r""" Class responsible for implementing an implicit second-order backward differentiation formula that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), using also the previous solution (:math:`t = t^{n-1}`). Namely,
 
+    .. math::
+        \widetilde{\bm{M}} \bm{u}^{n+1} + \bm{B} \bm{u}^{n+1} = \widetilde{\bm{M}} \Big( \frac{4}{3} \bm{u}^{n} - \frac{1}{3} \bm{u}^{n-1}\Big),
+
+    where :math:`\widetilde{\bm{M}} = \frac{3}{2\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
+    """
     name: str = "bdf2"
     time_levels = ('n-1', 'n', 'n+1')
 
@@ -151,6 +163,21 @@ class BDF2(ImplicitSchemes):
 
 
 class DIRKSchemes(TimeSchemes):
+    r""" Interface class responsible for configuring a generic diagonally-implicit Runge-Kutta scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), using s-stages. Namely,
+
+    .. math::
+        \widetilde{\bm{M}} \bm{u}^{n+1}                        &= \widetilde{\bm{M}} \bm{u}^{n}     - \frac{1}{a_{ii}} \sum_{i=1}^{s}   b_i    \bm{B} \bm{y}_{i},\\
+        \widetilde{\bm{M}}_{i} \bm{y}_{i} + \bm{B} \bm{y}_{i}  &= \widetilde{\bm{M}}_{i} \bm{u}^{n} - \frac{1}{a_{ii}} \sum_{j=1}^{i-1} a_{ij} \bm{B} \bm{y}_{j},
+
+    where 
+
+    - :math:`\widetilde{\bm{M}}_{i} = \frac{1}{a_{ii}\delta t} \int_{D} u v\, d\bm{x}` is the *ith* stage-weighted mass matrix.
+    - :math:`\widetilde{\bm{M}}` is based on :math:`a_{ii}=1`.
+    - :math:`\bm{y}_{i}` is the solution at the *ith* stage.
+    - :math:`a_{ij}` and :math:`b_{i}` are taken from the Butcher of a specific scheme.
+    
+    Finally, :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
+    """
 
     def assemble_bilinear_form(self, blf) -> None:
         
@@ -247,7 +274,22 @@ class DIRKSchemes(TimeSchemes):
 
 
 class SDIRK22(DIRKSchemes):
+    r""" Updates the solution via a 2-stage 2nd-order (stiffly-accurate) 
+         singly diagonally-implicit Runge-Kutta (SDIRK).
+         Taken from Section 2.6 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is:
 
+    .. math::
+        \begin{array}{c|cc}
+	        \alpha & \alpha     & 0      \\
+	        1    &   1 - \alpha & \alpha \\
+            \hline
+	             & 1 - \alpha    & \alpha
+        \end{array}
+
+    where :math:`\alpha = (2 - \sqrt{2})/2`.
+    
+    :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{u}^{n+1} = \bm{y}_{2}`.
+    """
     name: str = "sdirk22"
     time_levels = ('n+1',)
 
@@ -309,7 +351,21 @@ class SDIRK22(DIRKSchemes):
 
 
 class SDIRK33(DIRKSchemes):
-    
+    r""" Updates the solution via a 3-stage 3rd-order (stiffly-accurate) 
+         singly diagonally-implicit Runge-Kutta (SDIRK).
+         Taken from Section 2.7 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is: 
+
+    .. math::
+        \begin{array}{c|ccc}
+	        0.4358665215 & 0.4358665215 &  0            & 0            \\
+	        0.7179332608 & 0.2820667392 &  \phantom{-}0.4358665215 & 0 \\
+            1            & 1.2084966490 & -0.6443631710 & 0.4358665215 \\
+            \hline
+	                     & 1.2084966490 & -0.6443631710 & 0.4358665215
+        \end{array}
+
+    :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{u}^{n+1} = \bm{y}_{3}`.
+    """
     name: str = "sdirk33"
     time_levels = ('n+1',)
 

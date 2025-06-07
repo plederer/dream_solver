@@ -51,7 +51,7 @@ class FarField(Condition):
 
 
 BCS = [Periodic, FarField]
-DCS = [Perturbation, Initial, GridDeformation]
+DCS = [Initial]
 
 
 

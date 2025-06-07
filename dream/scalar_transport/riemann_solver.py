@@ -14,6 +14,19 @@ class RiemannSolver(Configuration, is_interface=True):
 
     root: ScalarTransportSolver 
 
+    def get_convective_numerical_flux_hdg(self, U: transportfields, Uhat: transportfields, unit_vector: bla.VECTOR):
+        r""" Returns the numerical flux based on a standard HDG Riemann solver. 
+
+        .. math::
+            f^*(u,\hat{u}) := \bm{f}(\hat{u}) \cdot \bm{n} + |\tau_c| (u - \hat{u}),
+
+        where the stabilization value :math:`\tau_c` is responsible for imposing the type of Riemann solver, see :func:`~dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg`.
+        """
+        unit_vector = bla.as_vector(unit_vector)
+        wind = self.root.convection_velocity
+        tau = self.get_convective_stabilisation_hdg(wind, unit_vector)
+        return self.root.get_convective_flux(Uhat) * unit_vector + tau * (U.U - Uhat.U)
+
     def get_convective_stabilisation_hdg(self, wind: ngs.CF, unit_vector: bla.VECTOR) -> bla.SCALAR:
         r""" Interface for computing an HDG stabilization value. This method must be implemented by subclasses!
         
@@ -48,9 +61,9 @@ class LaxFriedrich(RiemannSolver):
         r""" Returns the convective numerical flux on a surface, which for this linear and scalar equation is identical to standard upwinding.
 
         .. math::
-            f^* := \frac{1}{2} \Big( \bm{f}(\phi_i) + \bm{f}(\phi_j) \Big) \cdot \bm{n} - |\lambda| ( \phi_j - \phi_i ),
+            f^*(u_i, u_j) := \frac{1}{2} \Big( \bm{f}(u_i) + \bm{f}(u_j) \Big) \cdot \bm{n} - |\lambda| ( u_j - u_i ),
 
-        where, :math:`\phi_i` and :math:`\phi_j` correspond to the local solution and its neighboring solution, respectively. Note, for this scalar and linear equation: :math:`\lambda = \bm{b} \cdot \bm{n}`
+        where, :math:`u_i` and :math:`u_j` correspond to the local solution and its neighboring solution, respectively. Note, for this scalar and linear equation: :math:`\lambda = \bm{b} \cdot \bm{n}` and the flux is :math:`\bm{f}(u) = \bm{b} u`.
         """
         n = bla.as_vector(unit_vector)
 

@@ -227,7 +227,57 @@ class IMEXRKSchemes(TimeSchemes):
 
 
 class IMEXRK_ARS443(IMEXRKSchemes):
+    r""" Interface class responsible for configuring an additive 4-stage implicit, 4-stage explicit, 3rd-order implicit-explicit Runge-Kutta scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.8 in :cite:`ascher1997implicit`. Note, currently, the splitting assumes that 
+    
+    - Inviscid/convection terms are handled *explicitly*.
+    - Viscous/diffusion terms are handled *implicitly*.
 
+    At the continuous level, the splitting is done as such
+
+    .. math::
+        \partial_t u + g(u) = f(u),
+
+    where :math:`g` and :math:`f` are the viscous and inviscid fluxes, respectively. 
+
+    Discretly, the formulation can be expressed as
+
+    .. math::
+        \widetilde{\bm{M}} \bm{y}_{i} + \bm{B}_d \bm{y}_{i} = \widetilde{\bm{M}} \bm{u}^{n} 
+                                                            -\frac{1}{a_{ii}} \sum_{j=1}^{i-1} a_{ij} \bm{B}_d \bm{y}_{j}
+                                                            -\frac{1}{a_{ii}} \sum_{j=1}^{i} \hat{a}_{i+1,j} \bm{B}_c \bm{y}_{j-1},
+
+    where 
+    
+    - :math:`\bm{y}_{0} = \bm{u}^{n}`. 
+    - :math:`\bm{y}_{i}` is the solution at the *ith* stage.
+    - :math:`\bm{u}^{n+1} = \bm{y}_{s}` since this is a stiffly-accurate method.
+    - :math:`\widetilde{\bm{M}} = \frac{1}{a_{ii}\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`a_{ii}` is constant (SDIRK).
+    - :math:`\bm{B}_{d}` and :math:`\bm{B}_{c}` are the matrices of the diffusion and convection bilinear forms, respectively. See :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms`.
+    - :math:`a_{ij}` and :math:`\hat{a}_{ij}` are the *implicit* and *explicit* coefficients, respectively, based on the below Butcher tableau.
+   
+    .. math::
+        \begin{array}{c|cccc}
+	        0              & 0 & \phantom{-}0           &  \phantom{-}0           & 0           & 0          \\
+            \frac{1}{2}    & 0 & \phantom{-}\frac{1}{2} &  \phantom{-}0           & 0           & 0          \\
+	        \frac{2}{3}    & 0 & \phantom{-}\frac{1}{6} &  \phantom{-}\frac{1}{2} & 0           & 0          \\
+            \frac{1}{2}    & 0 &           -\frac{1}{2} &  \phantom{-}\frac{1}{2} & \frac{1}{2} & 0          \\
+            1              & 0 & \phantom{-}\frac{3}{2} &            -\frac{3}{2} & \frac{1}{2} & \frac{1}{2}\\
+            \hline
+	        \mathbf{SDIRK} & 0 & \phantom{-}\frac{3}{2} &            -\frac{3}{2} & \frac{1}{2} & \frac{1}{2}
+        \end{array}
+        \qquad \qquad
+        \begin{array}{c|ccc}
+	        0            & 0             &  \phantom{-}0            & 0           & \phantom{-}0\\
+            \frac{1}{2}  & \frac{1}{2}   &  \phantom{-}0            & 0           & \phantom{-}0\\
+	        \frac{2}{3}  & \frac{11}{18} &  \phantom{-}\frac{1}{18} & 0           & \phantom{-}0\\
+            \frac{1}{2}  & \frac{5}{6}   &            -\frac{5}{6}  & \frac{1}{2} & \phantom{-}0\\
+            1            & \frac{1}{4}   &  \phantom{-}\frac{7}{4}  & \frac{3}{4} & -\frac{7}{4}\\
+            \hline
+	        \mathbf{ERK} & \frac{1}{4}   &  \phantom{-}\frac{7}{4}  & \frac{3}{4} & -\frac{7}{4}
+        \end{array}
+
+    :note: The SDIRK coefficients are padded (zero on first row/column). In reality their indices ignore the padding, e.g. :math:`a_{21} = 1/6`, :math:`a_{22} = 1/2`.
+    """
     name: str = "imex_rk_ars443"
     time_levels = ('n+1',)
 

@@ -25,7 +25,7 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
     root: ScalarTransportSolver
 
     def __init__(self, mesh, root=None, **default):
-        DEFAULT = {"interior_penalty_coefficient": 5.0}
+        DEFAULT = {"interior_penalty_coefficient": 1.0}
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
 
@@ -34,7 +34,7 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
         r""" Sets the interior penalty constant.
 
             :getter: Returns the interior penalty constant
-            :setter: Sets the interior penalty constant, defaults to 5.0
+            :setter: Sets the interior penalty constant, defaults to 1.0
         """
         return self._interior_penalty_coefficient
 
@@ -49,9 +49,6 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
         return {'U': self.root.fem.spaces['U']}
 
     def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]):
-        raise NotImplementedError()
-
-    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
         raise NotImplementedError()
 
     def initialize_time_scheme_gridfunctions(self):
@@ -106,6 +103,22 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
             U_.U = U
 
         return U_
+    
+    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
+        r""" Defines the bilinear forms and linear functionals associated with an spatial formulation. 
+
+        - See :func:`~dream.scalar_transport.spatial.HDG.add_convection_form` and :func:`~dream.scalar_transport.spatial.DG.add_convection_form` for the definition of the convection terms for the HDG and DG formulation, respectively. 
+        - See :func:`~dream.scalar_transport.spatial.HDG.add_diffusion_form` and :func:`~dream.scalar_transport.spatial.DG.add_diffusion_form` for the implementation of the diffusion terms for the HDG and DG formulation, respectively. Note, :func:`~dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid` must be False. 
+        - See :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions` for physical boundary condition imposition.
+        - See :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions` for imposing domain conditions (e.g. initial conditions).
+        """
+        self.add_convection_form(blf, lf)
+
+        if not self.root.is_inviscid:
+            self.add_diffusion_form(blf, lf)
+
+        self.add_boundary_conditions(blf, lf)
+        self.add_domain_conditions(blf, lf)
 
     def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
         r""" Adds specific boundary conditions to the blinear/linear forms.
@@ -188,33 +201,16 @@ class HDG(ScalarTransportFiniteElementMethod):
         fes['U'] = U
         fes['Uhat'] = Uhat
 
-    
-    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
-        r""" Defines the bilinear forms and linear functionals associated with an HDG formulation. 
-
-        - See :func:`add_convection_form <dream.scalar_transport.spatial.HDG.add_convection_form>` for the definition of the convection terms. 
-        - See :func:`dream.scalar_transport.spatial.HDG.add_diffusion_form` for the implementation of the diffusion terms, in case :func:`is_inviscid <dream.scalar_transport.solver.is_inviscid>` is False. 
-        - See :func:`add_boundary_conditions <dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions>` for physical boundary condition imposition.
-        - See :func:`add_domain_conditions <dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions>` for imposing domain conditions (e.g. initial conditions).
-        """
-        self.add_convection_form(blf, lf)
-
-        if not self.root.is_inviscid:
-            self.add_diffusion_form(blf, lf)
-
-        self.add_boundary_conditions(blf, lf)
-        self.add_domain_conditions(blf, lf)
-
 
     def add_convection_form(self, blf: Integrals, lf: Integrals):
         r""" Discretization (in the internal domain) of the convection terms using a standard Riemann solver. The `convective` bilinear form over an internal element is:
         
         .. math::
-            B_c(\{u,\hat{u}\},v) &= -\int\limits_{D} \bm{f}(u) \cdot \nabla v\, d\bm{x}\, 
-                                  + \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} f^*(u,\hat{u})\, v\, d\bm{s},\\
-            B_c(\{u,\hat{u}\},\hat{v}) &= \int\limits_{\partial D \backslash \partial \Omega} f^*(u, \hat{u})\, \hat{v}\, d\bm{s},
+            B_c(\{u,\hat{u}\},v)       &= -\int\limits_{D} \bm{f}(u) \cdot \nabla v\, d\bm{x}\, 
+                                        +  \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} f^*(u,\hat{u})\, v\, d\bm{s},\\
+            B_c(\{u,\hat{u}\},\hat{v}) &= -\hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} f^*(u, \hat{u})\, \hat{v}\, d\bm{s},
 
-        where the physical (inviscid) flux is :math:`\bm{f}(u) = \bm{b} u` and the numerical flux :math:`f^* = f^*(u,\hat{u})`, over an element boundary, is defined based on the local solution :math:`u` and its neighboring facet variable :math:`\hat{u}`. See :func:`get_convective_numerical_flux <dream.scalar_transport.spatial.HDG.get_convective_numerical_flux>` for details.
+        where the physical (inviscid) flux is :math:`\bm{f}(u) = \bm{b} u` and the numerical flux :math:`f^* = f^*(u,\hat{u})`, over an element boundary, is defined based on the local solution :math:`u` and its neighboring facet variable :math:`\hat{u}`. See :func:`~dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg` for details.
         """
         bonus = self.root.optimizations.bonus_int_order
         mask = self.get_domain_boundary_mask()
@@ -226,7 +222,7 @@ class HDG(ScalarTransportFiniteElementMethod):
         Uhat = self.get_transported_fields(Uhat)
 
         F = self.root.get_convective_flux(U)
-        Fn = self.get_convective_numerical_flux(U, Uhat, self.mesh.normal)
+        Fn = self.root.riemann_solver.get_convective_numerical_flux_hdg(U, Uhat, self.mesh.normal)
 
         # For context, the terms are defined on the LHS.
         blf['U']['convection']  = -bla.inner(F, ngs.grad(V)) \
@@ -239,32 +235,22 @@ class HDG(ScalarTransportFiniteElementMethod):
                                   *  ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
 
-    def get_convective_numerical_flux(self, U: transportfields, Uhat: transportfields, unit_vector: bla.VECTOR):
-        r""" Returns the numerical flux based on a standard HDG Riemann solver. 
-
-        .. math::
-            f^*(u,\hat{u}) := \bm{f}(\hat{u}) \cdot \bm{n} + |\tau_c| (u - \hat{u}),
-
-        where the stabilization value :math:`\tau_c` is responsible for imposing the type of Riemann solver, see :func:`get_convective_stabilisation_hdg <dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg>`.
-        """
-        unit_vector = bla.as_vector(unit_vector)
-        wind = self.root.convection_velocity
-        tau = self.root.riemann_solver.get_convective_stabilisation_hdg(wind, unit_vector)
-        return self.root.get_convective_flux(Uhat) * unit_vector + tau * (U.U - Uhat.U)
-
-
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
         r""" HDG discretization (in the internal domain) of the elliptic terms using a symmetric interior penalty method. The `diffusion` bilinear form over an internal element is:
         
         .. math::
-            B_d\Big(\{u,\hat{u}\},v\Big) &= \int\limits_{D} \kappa (\nabla u \cdot \nabla v)\, d\bm{x}\, 
-                                  - \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \kappa (\nabla u \cdot \bm{n}) v\, d\bm{s}\,
-                                  - \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \kappa (u - \hat{u}) (\bm{n} \cdot \nabla v)\, d\bm{s}\,
-                                  + \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \kappa \tau (u - \hat{u}) v\, d\bm{s},\\
-            B_d\Big(\{u,\hat{u}\},\hat{v}\Big) &= \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \kappa (\nabla u \cdot \bm{n}) \hat{v}\, d\bm{s}\,
-                                        - \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \kappa \tau (u - \hat{u}) \hat{v}\, d\bm{s}, 
+            \begin{aligned}
+                B_d\big(\{u,\hat{u}\},v\big)       &=
+                                                \int\limits_D \kappa \nabla u \cdot \nabla v \, d\bm{x}\,
+                                               -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa (\nabla u \cdot \bm{n}) v\, d\bm{s}\\
+                                       &\qquad\qquad -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa (u - \hat{u}) (\bm{n} \cdot \nabla v)\, d\bm{s}\,
+                                               +\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa \tau (u - \hat{u}) v \, d\bm{s}, \\[1ex]
+                B_d\big(\{u,\hat{u}\},\hat{v}\big) &=
+                                                \hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa (\nabla u \cdot \bm{n}) \hat{v}\, d\bm{s}\,
+                                               -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa \tau (u - \hat{u}) \hat{v}\, d\bm{s},
+            \end{aligned}
 
-        where :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`
+        where :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`.
         """
         bonus = self.root.optimizations.bonus_int_order
         mask = self.get_domain_boundary_mask()
@@ -332,8 +318,8 @@ class HDG(ScalarTransportFiniteElementMethod):
         - The convection forms are defined as
         
         .. math:: 
-            B_c^{\partial}\Big(\{u,\hat{u}\}, \hat{v}\Big) &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \Big(b_n \hat{u} + b_n^{+} u\Big)\, \hat{v}\, d\bm{s},\\
-            l_c^{\partial}(\hat{v})                        &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} b_n^{-} \bar{u}\, \hat{v}\, \bm{s},
+            B_c^{\partial}\Big(\{u,\hat{u}\}, \hat{v}\Big) &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \Big( (b_n^{+} + b_n^{-}) \hat{u} + b_n^{+} u\Big)\, \hat{v}\, d\bm{s},\\
+            l_c^{\partial}(\hat{v})                        &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} b_n^{-} \bar{u}\, \hat{v}\, d\bm{s},
         
         with :math:`b_n^{+} = \max(b_n, 0)`, :math:`b_n^{-} = \min(b_n, 0)` and :math:`b_n = \bm{b} \cdot \bm{n}`.
         
@@ -341,13 +327,14 @@ class HDG(ScalarTransportFiniteElementMethod):
         - The diffusion forms are defined as
         
         .. math::
-            B_d^{\partial}\Big(\{u,\hat{u}\}, \hat{v}\Big) &= \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa \hat{u}\, \hat{v}\, d\bm{s},\\
-            l_d^{\partial}(\hat{v})                        &= \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa \bar{u}\, \hat{v}\, d\bm{s},
+            B_d^{\partial}\Big(\{u,\hat{u}\}, \hat{v}\Big) &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa \hat{u}\, \hat{v}\, d\bm{s},\\
+            l_d^{\partial}(\hat{v})                        &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa \bar{u}\, \hat{v}\, d\bm{s},
 
         with :math:`\bar{u}` denoting the farfield boundary value we impose.
 
         """
-        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd))
+        bonus = self.root.optimizations.bonus_int_order
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
         
         U, _ = self.TnT['U']
         Uhat, Vhat = self.TnT['Uhat']
@@ -361,18 +348,19 @@ class HDG(ScalarTransportFiniteElementMethod):
         
         # Convection term.
         bn = ngs.InnerProduct( self.root.convection_velocity, self.mesh.normal)
-        
-        blf['Uhat']['convection'] += ngs.InnerProduct( -bn*(Uhat - ngs.IfPos(bn, U, 0)), Vhat ) * dS
-        lf['Uhat']['convection'] = -bn*ngs.IfPos(bn, 0, uin) * Vhat * dS 
+        bp = ngs.IfPos( bn, bn, 0.0 )
+        bm = ngs.IfPos( bn, 0.0, bn )
+
+        blf['Uhat']['convection'] += ngs.InnerProduct( -(bp+bm)*Uhat + bp*U, Vhat ) * dS
+        lf['Uhat']['convection'] = -bm*uin * Vhat * dS 
         
         # Diffusion term (if diffusion enabled).
         if not self.root.is_inviscid: 
             k = self.root.diffusion_coefficient
             tau = self.get_penalty_coefficient()
 
-            blf['Uhat']['diffusion'] += ngs.InnerProduct( tau*k*Uhat, Vhat ) * dS
-            lf['Uhat']['diffusion'] = tau*k*uin * Vhat * dS 
-
+            blf['Uhat']['diffusion'] -= ngs.InnerProduct( tau*k*Uhat, Vhat ) * dS
+            lf['Uhat']['diffusion'] = -tau*k*uin * Vhat * dS 
 
 
 
@@ -409,22 +397,6 @@ class DG(ScalarTransportFiniteElementMethod):
         if self.root.optimizations.static_condensation is True:
             raise ValueError("Cannot have static condensation with a standard DG implementation!")
     
-    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
-        r""" Defines the bilinear forms and linear functionals associated with a DG formulation. 
-
-        - See :func:`~dream.scalar_transport.spatial.DG.add_convection_form` for the definition of the convection terms. 
-        - See :func:`~dream.scalar_transport.spatial.DG.add_diffusion_form` for the implementation of the diffusion terms, in case :attr:`~dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid` is False. 
-        - See :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions` for physical boundary condition imposition.
-        - See :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions` for imposing domain conditions (e.g. initial conditions).
-        """
-        self.add_convection_form(blf, lf)
-
-        if not self.root.is_inviscid:
-            self.add_diffusion_form(blf, lf)
-
-        self.add_boundary_conditions(blf, lf)
-        self.add_domain_conditions(blf, lf)
-
     def add_convection_form(self, blf: Integrals, lf: Integrals):
         r""" Implementation of the spatial discretization, in the internal domain, of the convective terms using a standard Riemann solver.
         
@@ -458,12 +430,16 @@ class DG(ScalarTransportFiniteElementMethod):
         r""" DG discretization (in the internal domain) of the elliptic terms using a symmetric interior penalty method. The `diffusion` bilinear form over an internal element is:
         
         .. math::
-            B_d\big(u,v\big) &= \int\limits_{D} \kappa (\nabla u \cdot \nabla v)\, d\bm{x}\, 
-                              - \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \frac{\kappa}{2} (\nabla u_i + \nabla u_j) \cdot \bm{n} v\, d\bm{s}\,
-                              - \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \frac{\kappa}{2} (u_i - u_j) (\nabla v_i + \nabla v_j) \cdot \bm{n}\, d\bm{s}\,
-                              + \hspace{-4mm} \int\limits_{\partial D \backslash \partial \Omega} \kappa \tau (u_i - u_j) (v_i - v_j)\, d\bm{s},\\
+            \begin{aligned}
+                B_d\big(u,v\big) &= 
+                                     \int\limits_D \kappa \nabla u \cdot \nabla v\, d\bm{x}\,
+                                    -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \frac{\kappa}{2} (\nabla u_i + \nabla u_j) \cdot \bm{n}\, v\, d\bm{s}\\
+                                 &\qquad\qquad 
+                                    -\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \frac{\kappa}{2} (u_i - u_j) (\nabla v_i + \nabla v_j) \cdot \bm{n}\, d\bm{s}\,
+                                    +\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa \tau (u_i - u_j)(v_i - v_j)\, d\bm{s},
+            \end{aligned}
 
-        where the *ith* and *jth* subscripts correspond to the indices of the local solution and its neighobring solution, respectively. Additionally, :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`
+        where the *ith* and *jth* subscripts correspond to the indices of the local solution and its neighobring solution, respectively. Additionally, :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`.
         """
 
         bonus = self.root.optimizations.bonus_int_order
@@ -492,14 +468,11 @@ class DG(ScalarTransportFiniteElementMethod):
         blf['U']['diffusion']  = ngs.InnerProduct(k*dUi, dVi)      \
                                * ngs.dx(bonus_intorder=bonus.vol)
         blf['U']['diffusion'] -= mask*ngs.InnerProduct(symm, ujmp) \
-                               * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd) 
+                               * ngs.dx(skeleton=True, bonus_intorder=bonus.bnd) 
         blf['U']['diffusion'] -= mask*ngs.InnerProduct(surf, vjmp) \
-                               * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                               * ngs.dx(skeleton=True, bonus_intorder=bonus.bnd)
         blf['U']['diffusion'] += mask*ngs.InnerProduct(ipen, vjmp) \
-                               * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-
-    def set_initial_conditions(self, U: ngs.CF = None):
-        super().set_initial_conditions()
+                               * ngs.dx(skeleton=True, bonus_intorder=bonus.bnd)
 
     def add_farfield_formulation(self, blf: Integrals, lf: Integrals, bc: FarField, bnd: str):
         r""" Imposes a farfield boundary condition using both convective and diffusive (if turned on) fluxes in a DG formulation. The bilinear and linear forms associated with a farfield BC are:
@@ -512,22 +485,20 @@ class DG(ScalarTransportFiniteElementMethod):
         
         .. math:: 
             B_c^{\partial}\big(u, v\big) &=  \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \frac{1}{2} (b_n + |b_n|) u\, v\, d\bm{s},\\
-            l_c^{\partial}(v)            &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \frac{1}{2} (b_n - |b_n|) \hat{u}\, v\, \bm{s}.
+            l_c^{\partial}(v)            &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \frac{1}{2} (b_n - |b_n|) \hat{u}\, v\, d\bm{s}.
         
 
         - The diffusion forms are defined as
         
         .. math::
-            B_d^{\partial}\big(u, v\big) &= -\hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \frac{\kappa}{2} u (\nabla v \cdot \bm{n})\, d\bm{s}
-                                          +  \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa u\, v\, d\bm{s},\\
-            l_d^{\partial}(v)            &=  \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \frac{\kappa}{2} \bar{u} \nabla{v} \cdot \bm{n}\, d\bm{s}
-                                          +  \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa \bar{u}\, v\, d\bm{s},
+            B_d^{\partial}\big(u, v\big) &= \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa u\, v\, d\bm{s},\\
+            l_d^{\partial}(v)            &= \hspace{-4mm}\int\limits_{\partial D \cap \partial \Omega} \tau \kappa \bar{u}\, v\, d\bm{s},
 
         with :math:`\bar{u}` denoting the farfield boundary value we impose.
 
         """
-
-        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd))
+        bonus = self.root.optimizations.bonus_int_order
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
         U, V = self.TnT['U']
         n  = self.mesh.normal
         
@@ -540,20 +511,20 @@ class DG(ScalarTransportFiniteElementMethod):
         
         # Convection term.
         bn = ngs.InnerProduct( self.root.convection_velocity, self.mesh.normal) 
+        bp = 0.5*( bn + bla.abs(bn) )
+        bm = 0.5*( bn - bla.abs(bn) )
 
-        blf['U']['convection'] += ngs.InnerProduct( 0.5*(bn + bla.abs(bn))*U, V ) * dS
-        lf['U']['convection'] = -0.5*(bn - bla.abs(bn))*uin * V * dS
+        blf['U']['convection'] += ngs.InnerProduct( bp*U, V ) * dS
+        lf['U']['convection'] = -bm*uin * V * dS
 
         # Diffusion term (if diffusion enabled).
         if not self.root.is_inviscid:
             k = self.root.diffusion_coefficient
             tau = self.get_penalty_coefficient()
-                        
-            blf['U']['diffusion'] += -ngs.InnerProduct( 0.5*k*ngs.grad(V)*n, U ) * dS 
-            lf['U']['diffusion']  =  0.5*k*ngs.grad(V)*n*uin * dS
-
+                
             blf['U']['diffusion'] += ngs.InnerProduct( tau*k*U, V ) * dS
-            lf['U']['diffusion']  += tau*k*uin*V * dS
+            lf['U']['diffusion'] = tau*k*uin*V * dS
+
 
  
  
