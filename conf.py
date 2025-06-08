@@ -85,7 +85,12 @@ mathjax3_config = {
     }
 }
 
-myst_enable_extensions = ["amsmath", "dollarmath","fieldlist"]
+myst_enable_extensions = ["amsmath", "dollarmath", "fieldlist"]
+
+#, "colon_fence","html_admonition", "html_image", "attrs_inline"]
+#myst_allow_html = True 
+
+
 suppress_warnings = ["myst.header"]
 
 # -- Options for HTML output -------------------------------------------------
@@ -134,7 +139,7 @@ nbsphinx_allow_errors = False
 
 html_theme = 'sphinx_rtd_theme'
 html_theme_options = {
-    # 'logo_only': False,
+    'logo_only': True,
     # 'prev_next_buttons_location': 'bottom',
     # 'style_external_links': False,
     # 'vcs_pageview_mode': '',
@@ -149,6 +154,8 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False,
 }
+
+html_logo = 'graphics/dream_logo_small.png'
 
 def setup(app):
     app.add_css_file("custom.css")

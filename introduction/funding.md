@@ -1,7 +1,6 @@
 ## Funding
 
-This code is funded by the Austrian-Science fund `FWF
-<https://www.fwf.at>`_ via the stand alone project P35391N.
+This code is funded by the Austrian-Science fund `FWF <https://www.fwf.at>`_ via the stand alone project P35391N.
 
 Developed at:
 
