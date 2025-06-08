@@ -19,7 +19,7 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
-      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1]}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js"></script>
       <script src="../../_static/webgui_jupyter_widgets.js"></script>
@@ -322,7 +322,9 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.AdiabaticWall">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">AdiabaticWall</span></span><a class="headerlink" href="#dream.compressible.config.AdiabaticWall" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Adiabatic wall condition for compressible flow.</p>
+<p>The adiabatic wall condition sets zero heat flux <span class="math notranslate nohighlight">\(\vec{q} \cdot \vec{n}$\)</span> and no-slip conditions at the wall boundaries.</p>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.CBC">
@@ -406,17 +408,31 @@ the farfield condition in the HDG formulation.</p>
 <dt class="sig sig-object py" id="dream.compressible.config.GRCBC">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GRCBC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'farfield'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relaxation_factor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.28</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tangential_relaxation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_viscous_fluxes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.config.GRCBC" title="Link to this definition"></a></dt>
 <dd><p>Generalized Relaxation Condition Boundary Condition</p>
+<p>The GRCBC is a generalized relaxation condition for compressible flows. It is used to relax 
+the conservative variables at the boundary towards a given target state <span class="math notranslate nohighlight">\(\vec{U}^-\)</span>. 
+The relaxation is done by a CFL-like diagonal matrix. Additionally, tangential relaxation and 
+viscous fluxes can improve the non-reflecting behavior on planar boundaries <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Note<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Currently, only supported with implicit time schemes.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.InviscidWall">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">InviscidWall</span></span><a class="headerlink" href="#dream.compressible.config.InviscidWall" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Inviscid wall condition for compressible flow.</p>
+<p>The inviscid wall condition is used to set the no-penetration condition 
+i.e. <span class="math notranslate nohighlight">\(\vec{u} \cdot \vec{n} = 0\)</span> for compressible flows.</p>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.IsothermalWall">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">IsothermalWall</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.config.IsothermalWall" title="Link to this definition"></a></dt>
-<dd><dl class="py property">
+<dd><p>Isothermal wall condition for compressible flow.</p>
+<p>The isothermal wall condition sets the temperature <span class="math notranslate nohighlight">\(T_w\)</span> and no-slip conditions at the wall boundaries.</p>
+<dl class="py property">
 <dt class="sig sig-object py" id="dream.compressible.config.IsothermalWall.fields">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></em><a class="headerlink" href="#dream.compressible.config.IsothermalWall.fields" title="Link to this definition"></a></dt>
 <dd><p>Returns the set temperature</p>
@@ -438,7 +454,11 @@ the farfield condition in the HDG formulation.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.Outflow">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Outflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pressure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.config.Outflow" title="Link to this definition"></a></dt>
-<dd><dl class="py property">
+<dd><p>Outflow condition for subsonic compressible flow.</p>
+<p>The outflow condition is used to set the subsonic outflow conditions for compressible flows by setting
+the static pressure <span class="math notranslate nohighlight">\(p_\infty\)</span> at the outflow boundaries. By the hard imposition of the pressure,
+the outflow condition acts reflecting for acoustic waves.</p>
+<dl class="py property">
 <dt class="sig sig-object py" id="dream.compressible.config.Outflow.fields">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fields</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></em><a class="headerlink" href="#dream.compressible.config.Outflow.fields" title="Link to this definition"></a></dt>
 <dd><p>Returns the set pressure</p>
@@ -454,7 +474,9 @@ the farfield condition in the HDG formulation.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.Symmetry">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Symmetry</span></span><a class="headerlink" href="#dream.compressible.config.Symmetry" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Symmetry condition for compressible flow.</p>
+<p>The symmetry condition imposes <span class="math notranslate nohighlight">\(\vec{u} \cdot \vec{n} = 0\)</span> on a symmetry plane.</p>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.config.flowfields">

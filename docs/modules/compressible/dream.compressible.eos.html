@@ -19,7 +19,7 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
-      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1]}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js"></script>
       <script src="../../_static/webgui_jupyter_widgets.js"></script>
@@ -335,7 +335,8 @@ u^2_{ref} p &amp;= \rho \frac{\overline{c}_\infty^2}{\gamma \overline{T}_\infty}
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.eos.EquationOfState">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">EquationOfState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.eos.EquationOfState" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Base class for equations of state in compressible flow solvers.</p>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.eos.IdealGas">
@@ -453,7 +454,7 @@ u^2_{ref} p &amp;= \rho \frac{\overline{c}_\infty^2}{\gamma \overline{T}_\infty}
 \end{pmatrix}\end{split}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.10)\)</span> in <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.10)\)</span> in <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id57" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -471,7 +472,7 @@ u^2_{ref} p &amp;= \rho \frac{\overline{c}_\infty^2}{\gamma \overline{T}_\infty}
 \end{pmatrix}\end{split}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.11)\)</span> in <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.11)\)</span> in <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id57" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -543,7 +544,7 @@ c^{2} - \frac{\gamma - 1}{2}|\vec{u}|^2          &amp; - u (1 - \gamma)         
 \end{pmatrix}\end{split}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.5)\)</span> in <span id="id3">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.5)\)</span> in <span id="id3">[<a class="reference internal" href="../../introduction/literature.html#id57" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -563,7 +564,7 @@ c^{2} - \frac{\gamma - 1}{2}|\vec{u}|^2          &amp; - u (1 - \gamma)         
 \end{pmatrix}\end{split}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.6)\)</span> in <span id="id4">[<a class="reference internal" href="../../introduction/literature.html#id56" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((E16.2.6)\)</span> in <span id="id4">[<a class="reference internal" href="../../introduction/literature.html#id57" title="Charles Hirsch. Numerical Computation of Internal and External Flows. 2: Computational Methods for Inviscid and Viscous Flows. A Wiley Interscience Publication. Wiley, Chichester, repr edition, 2002. ISBN 978-0-471-92452-4 978-0-471-92351-0.">1</a>]</span>.</p>
 </dd>
 </dl>
 </dd></dl>

@@ -19,7 +19,7 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
-      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1]}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js"></script>
       <script src="../../_static/webgui_jupyter_widgets.js"></script>
@@ -318,7 +318,40 @@
              
   <section id="module-dream.compressible.riemann_solver">
 <span id="riemann-solver"></span><h1>riemann_solver<a class="headerlink" href="#module-dream.compressible.riemann_solver" title="Link to this heading"></a></h1>
-<p>Definitions of riemann solvers for compressible flow</p>
+<p>Definitions of Riemann solvers for compressible flow.</p>
+<p>This module provides a set of Riemann solver classes for use in the discretization of compressible flow equations,
+particularly in the context of hybridizable discontinuous Galerkin (HDG) and discontinuous Galerkin (DG) methods.
+Each solver implements different numerical flux and stabilization strategies for the convective terms, following
+various classical and modern approaches from the literature.</p>
+<div class="figure" id="id12" style="text-align: center"><p><img  src="../../_images/tikz-9e1c6c0bcf21ab7d0f381245e81682b482e07a53.png" alt="Figure made with TikZ" /></p>
+<p><span class="caption-text">Representation of the Riemann problem solution in the x-t plane for the one-dimensional, 
+transient Euler equations. <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id86" title="E. F. Toro. Riemann Solvers and Numerical Methods for Fluid Dynamics: A Practical Introduction. Springer, Dordrecht ; New York, 3rd ed edition, 2009. ISBN 978-3-540-25202-3 978-3-540-49834-6.">4</a>]</span></span></p>
+</div><p>For HDG methods, the approximate Riemann solver is incorporated into the numerical flux</p>
+<div class="math notranslate nohighlight">
+\[\hat{\vec{F}}_h \vec{n}^\pm := \vec{F}(\hat{\vec{U}}_h) \vec{n}^\pm + \mat{\tau}_c(\hat{\vec{U}}_h) (\vec{U}_h - \hat{\vec{U}}_h),\]</div>
+<p>by means of the convective stabilization matrix <span class="math notranslate nohighlight">\(\mat{\tau}^\pm_c\)</span>, where <span class="math notranslate nohighlight">\(\hat{\vec{U}}_h\)</span> are the conservative 
+facet variables and <span class="math notranslate nohighlight">\(\vec{U}^\pm_h\)</span> are the conservative element variables. The transmission condition</p>
+<div class="math notranslate nohighlight">
+\[\hat{\vec{F}}_h  \vec{n}^+ + \hat{\vec{F}}_h  \vec{n}^- = 0,\]</div>
+<p>then assures the continuity of the numerical flux across the facet.</p>
+<p>Whereas, for DG methods, the numerical flux is derived by applying the Rankine-Hugoniot conditions across
+each wave speeds.</p>
+<dl class="simple">
+<dt>Available Riemann solvers:</dt><dd><ul class="simple">
+<li><p>Upwind: Standard upwind flux for convective stabilization.</p></li>
+<li><p>LaxFriedrich: Lax-Friedrichs (Rusanov) flux, providing robust stabilization.</p></li>
+<li><p>Roe: Roe’s approximate Riemann solver, based on characteristic decomposition.</p></li>
+<li><p>HLL: Harten-Lax-van Leer (HLL) flux, using estimates of the fastest wave speeds.</p></li>
+<li><p>HLLEM: Harten-Lax-van Leer-Contact (HLLEM) flux, with improved contact wave resolution.</p></li>
+</ul>
+</dd>
+<dt>Each solver provides methods to compute:</dt><dd><ul class="simple">
+<li><p>The convective stabilization matrix for HDG methods.</p></li>
+<li><p>A simplified stabilization matrix for inviscid flows or special boundary conditions.</p></li>
+<li><p>The numerical flux for standard DG methods (where implemented).</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.riemann_solver.HLL">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">HLL</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.riemann_solver.HLL" title="Link to this definition"></a></dt>
@@ -331,7 +364,7 @@
 \[\bm{\tau}_c := \max(u_n + c, 0) \bm{I}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((38)\)</span> in <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((38)\)</span> in <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id82" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -341,7 +374,7 @@
 <span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
 <dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
 <p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
-variable, when the flow is parallel to the facet <span id="id2">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+variable, when the flow is parallel to the facet <span id="id3">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
 <div class="math notranslate nohighlight">
 \[\bm{\tau}_{cs} := (1 + \Ma_n) \bm{I}, \quad \Ma_n := -1 \leq \frac{u_n}{c} \leq 1\]</div>
 </dd></dl>
@@ -359,7 +392,7 @@ variable, when the flow is parallel to the facet <span id="id2">[<a class="refer
 This can occur if the flow is parallel to the element or domain boundary!</p>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See Remark <span class="math notranslate nohighlight">\(11\)</span> in <span id="id3">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See Remark <span class="math notranslate nohighlight">\(11\)</span> in <span id="id4">[<a class="reference internal" href="../../introduction/literature.html#id82" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -376,7 +409,7 @@ This can occur if the flow is parallel to the element or domain boundary!</p>
 \end{align*}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((40)\)</span> in <span id="id4">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((40)\)</span> in <span id="id5">[<a class="reference internal" href="../../introduction/literature.html#id82" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -386,7 +419,7 @@ This can occur if the flow is parallel to the element or domain boundary!</p>
 <span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
 <dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
 <p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
-variable, when the flow is parallel to the facet <span id="id5">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+variable, when the flow is parallel to the facet <span id="id6">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
 <div class="math notranslate nohighlight">
 \[\bm{\tau}_{cs} := (1 + \Ma_n) \bm{I}, \quad \Ma_n := -1 \leq \frac{u_n}{c} \leq 1\]</div>
 </dd></dl>
@@ -405,7 +438,7 @@ variable, when the flow is parallel to the facet <span id="id5">[<a class="refer
 \[\bm{\tau}_c := (|u_n| + c) \bm{I}\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((35)\)</span> in <span id="id6">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((35)\)</span> in <span id="id7">[<a class="reference internal" href="../../introduction/literature.html#id82" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -415,7 +448,7 @@ variable, when the flow is parallel to the facet <span id="id5">[<a class="refer
 <span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
 <dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
 <p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
-variable, when the flow is parallel to the facet <span id="id7">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+variable, when the flow is parallel to the facet <span id="id8">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
 <div class="math notranslate nohighlight">
 \[\bm{\tau}_{cs} := \bm{I}\]</div>
 </dd></dl>
@@ -425,7 +458,8 @@ variable, when the flow is parallel to the facet <span id="id7">[<a class="refer
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.riemann_solver.RiemannSolver">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RiemannSolver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.riemann_solver.RiemannSolver" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Base class for Riemann solvers in compressible flow.</p>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dream.compressible.riemann_solver.Roe">
@@ -439,7 +473,7 @@ variable, when the flow is parallel to the facet <span id="id7">[<a class="refer
 \[\bm{\tau}_c := |\mat{A}_n|\]</div>
 <dl class="field-list simple">
 <dt class="field-odd">Note<span class="colon">:</span></dt>
-<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((36)\)</span> in <span id="id8">[<a class="reference internal" href="../../introduction/literature.html#id81" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
+<dd class="field-odd"><p>See equation <span class="math notranslate nohighlight">\((36)\)</span> in <span id="id9">[<a class="reference internal" href="../../introduction/literature.html#id82" title="Jordi Vila-Pérez, Matteo Giacomini, Ruben Sevilla, and Antonio Huerta. Hybridisable Discontinuous Galerkin Formulation of Compressible Flows. Archives of Computational Methods in Engineering, 28(2):753–784, March 2021. doi:10.1007/s11831-020-09508-z.">2</a>]</span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -449,7 +483,7 @@ variable, when the flow is parallel to the facet <span id="id7">[<a class="refer
 <span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible.config.html#dream.compressible.config.flowfields" title="dream.compressible.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
 <dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
 <p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
-variable, when the flow is parallel to the facet <span id="id9">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+variable, when the flow is parallel to the facet <span id="id10">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
 <div class="math notranslate nohighlight">
 \[\bm{\tau}_{cs} := \bm{I}\]</div>
 </dd></dl>
@@ -473,7 +507,7 @@ variable, when the flow is parallel to the facet <span id="id9">[<a class="refer
 <span class="sig-name descname"><span class="pre">get_simplified_convective_stabilisation_matrix_hdg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg" title="Link to this definition"></a></dt>
 <dd><p>Returns the simplified convective stabilisation matrix <span class="math notranslate nohighlight">\(\mat{\tau}_{cs}\)</span> for HDG.</p>
 <p>This stabilisation matrix is used in an inviscid flow to overcome the issue of indefiniteness of the facet 
-variable, when the flow is parallel to the facet <span id="id10">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
+variable, when the flow is parallel to the facet <span id="id11">[<a class="reference internal" href="../../introduction/literature.html#id42" title="Jan Ellmenreich, Matteo Giacomini, Antonio Huerta, and Philip L. Lederer. Characteristic boundary conditions for Hybridizable Discontinuous Galerkin methods. March 2025. arXiv:2503.19684, doi:10.48550/arXiv.2503.19684.">P1</a>]</span>.</p>
 <div class="math notranslate nohighlight">
 \[\bm{\tau}_{cs} := \bm{Q}_n + \bm{I}\]</div>
 </dd></dl>
