@@ -1,4 +1,4 @@
-""" Definitions of conservative time discretizations """
+""" Definitions of conservative time discretizations. """
 from .implicit import (ImplicitEuler,
                        BDF2,
                        SDIRK22,

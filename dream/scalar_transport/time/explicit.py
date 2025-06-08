@@ -90,9 +90,9 @@ class SSPRK3(ExplicitSchemes):
     r""" Class responsible for implementing an explicit 3rd-order strong-stability-preserving Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 4.1, Equation 4.2 in :cite:`gottlieb2001strong`. This is implemented as
 
     .. math::
-        \bm{y}_{1}   &=             \bm{u}^{n} - \widetilde{\bm{M}}^{-1} \bm{B} \bm{u}^{n},\\
-        \bm{y}_{2}   &= \frac{3}{4} \bm{u}^{n} + \frac{1}{4} \bm{y}_{1} - \frac{1}{4} \widetilde{\bm{M}}^{-1} \bm{B} \bm{y}_{1},\\
-        \bm{u}^{n+1} &= \frac{1}{3} \bm{u}^{n} + \frac{2}{3} \bm{y}_{2} - \frac{2}{3} \widetilde{\bm{M}}^{-1 }\bm{B} \bm{y}_{2},
+        \bm{y}_{1}   &=             \bm{u}^{n} -                                      \widetilde{\bm{M}}^{-1} \bm{B} \bm{u}^{n},\\[2ex]
+        \bm{y}_{2}   &= \frac{3}{4} \bm{u}^{n} + \frac{1}{4} \bm{y}_{1} - \frac{1}{4} \widetilde{\bm{M}}^{-1} \bm{B} \bm{y}_{1},\\[2ex]
+        \bm{u}^{n+1} &= \frac{1}{3} \bm{u}^{n} + \frac{2}{3} \bm{y}_{2} - \frac{2}{3} \widetilde{\bm{M}}^{-1} \bm{B} \bm{y}_{2},
 
     where :math:`\widetilde{\bm{M}} = \frac{1}{\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """
@@ -154,11 +154,11 @@ class CRK4(ExplicitSchemes):
     r""" Class responsible for implementing an explicit 4th-order (classic) Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). This is implemented as
 
     .. math::
-        \bm{k}_{1}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \bm{u}^{n},\\
-        \bm{k}_{2}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \Big( \bm{u}^{n} + \frac{1}{2} \bm{k}_1 \Big),\\
-        \bm{k}_{3}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \Big( \bm{u}^{n} + \frac{1}{2} \bm{k}_2 \Big),\\
-        \bm{k}_{4}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \Big( \bm{u}^{n} +             \bm{k}_3 \Big),\\
-        \bm{u}^{n+1} &= \bm{u}^{n} + \frac{1}{6} \Big( \bm{k}_1 + 2\bm{k}_2 + 2\bm{k}_3 + \bm{k}_4 \Big),
+        \bm{k}_{1}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \bm{u}^{n},\\[2ex]
+        \bm{k}_{2}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \big( \bm{u}^{n} + \bm{k}_1 / 2 \big),\\[2ex] 
+        \bm{k}_{3}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \big( \bm{u}^{n} + \bm{k}_2 / 2 \big),\\[2ex]
+        \bm{k}_{4}   &= -\widetilde{\bm{M}}^{-1} \bm{B} \big( \bm{u}^{n} + \bm{k}_3     \big),\\[2ex]
+        \bm{u}^{n+1} &= \bm{u}^{n} + \big( \bm{k}_1 + 2\bm{k}_2 + 2\bm{k}_3 + \bm{k}_4 \big) / 6,
 
     where :math:`\widetilde{\bm{M}} = \frac{1}{\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """

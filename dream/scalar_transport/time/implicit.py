@@ -116,7 +116,7 @@ class ImplicitEuler(ImplicitSchemes):
 
 
 class BDF2(ImplicitSchemes):
-    r""" Class responsible for implementing an implicit second-order backward differentiation formula that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), using also the previous solution (:math:`t = t^{n-1}`). Namely,
+    r""" Class responsible for implementing an implicit 2nd-order backward differentiation formula that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), using also the previous solution (:math:`t = t^{n-1}`). Namely,
 
     .. math::
         \widetilde{\bm{M}} \bm{u}^{n+1} + \bm{B} \bm{u}^{n+1} = \widetilde{\bm{M}} \Big( \frac{4}{3} \bm{u}^{n} - \frac{1}{3} \bm{u}^{n-1}\Big),
@@ -274,9 +274,7 @@ class DIRKSchemes(TimeSchemes):
 
 
 class SDIRK22(DIRKSchemes):
-    r""" Updates the solution via a 2-stage 2nd-order (stiffly-accurate) 
-         singly diagonally-implicit Runge-Kutta (SDIRK).
-         Taken from Section 2.6 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is:
+    r""" Updates the solution via a 2-stage 2nd-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Section 2.6 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is:
 
     .. math::
         \begin{array}{c|cc}
@@ -351,9 +349,7 @@ class SDIRK22(DIRKSchemes):
 
 
 class SDIRK33(DIRKSchemes):
-    r""" Updates the solution via a 3-stage 3rd-order (stiffly-accurate) 
-         singly diagonally-implicit Runge-Kutta (SDIRK).
-         Taken from Section 2.7 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is: 
+    r""" Updates the solution via a 3-stage 3rd-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Section 2.7 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is: 
 
     .. math::
         \begin{array}{c|ccc}
