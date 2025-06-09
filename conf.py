@@ -35,7 +35,9 @@ extensions = ["sphinxcontrib.bibtex",
               ]
 
 templates_path = ['_templates']
-exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints"]
+exclude_patterns = ['build', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints", "examples"]
+
+tikz_proc_suite = 'pdf2svg'
 
 # autodoc settings
 add_module_names = False
@@ -156,7 +158,7 @@ html_theme_options = {
     'titles_only': False,
 }
 
-html_logo = 'graphics/dream_logo_small.png'
+html_logo = 'graphics/dream_logo.svg'
 
 def setup(app):
     app.add_css_file("custom.css")
