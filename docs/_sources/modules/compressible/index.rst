@@ -25,3 +25,4 @@ Examples
     :maxdepth: 1
 
     ../../examples/euler_around_naca.ipynb
+    ../../examples/isentropic_vortex.ipynb

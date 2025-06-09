@@ -33,8 +33,9 @@
 
           
           
-          <a href="index.html" class="icon icon-home">
-            dream
+          <a href="index.html">
+            
+              <img src="_static/dream_logo.svg" class="logo" alt="Logo"/>
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -46,7 +47,11 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="introduction/about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/about.html">About</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction/about.html#key-features-of-the-dream-solver">Key Features of the <strong>dream</strong> Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction/about.html#future-goals">Future Goals</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="introduction/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="introduction/funding.html">Funding</a></li>
 <li class="toctree-l1"><a class="reference internal" href="introduction/literature.html">References</a><ul>
@@ -280,6 +285,104 @@
 <li class="toctree-l2"><a class="reference internal" href="modules/compressible/index.html#quasi-linear-euler-equations">Quasi-linear Euler equations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/compressible/index.html#examples">Examples</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="examples/euler_around_naca.html">Flow around NACA 0012 airfoil</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/isentropic_vortex.html">Isentropic Vortex in 2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules/scalar_transport/index.html">scalar_transport</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html">solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.fem"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.fem</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.riemann_solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.convection_velocity"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.convection_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.diffusion_coefficient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.is_inviscid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.phi"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.phi()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html">spatial</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme"><code class="docutils literal notranslate"><span class="pre">DG.scheme</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">DG.add_finite_element_spaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">DG.add_convection_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">DG.add_diffusion_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">DG.add_farfield_formulation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">HDG.add_finite_element_spaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_convection_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_diffusion_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.set_initial_conditions"><code class="docutils literal notranslate"><span class="pre">HDG.set_initial_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">HDG.add_farfield_formulation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.interior_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.interior_penalty_coefficient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_penalty_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_boundary_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_domain_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.html">time</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.explicit.html">explicit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.CRK4"><code class="docutils literal notranslate"><span class="pre">CRK4</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitEuler"><code class="docutils literal notranslate"><span class="pre">ExplicitEuler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ExplicitSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3"><code class="docutils literal notranslate"><span class="pre">SSPRK3</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.imex.html">imex</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRKSchemes"><code class="docutils literal notranslate"><span class="pre">IMEXRKSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRK_ARS443"><code class="docutils literal notranslate"><span class="pre">IMEXRK_ARS443</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.implicit.html">implicit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.BDF2"><code class="docutils literal notranslate"><span class="pre">BDF2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes"><code class="docutils literal notranslate"><span class="pre">DIRKSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitEuler"><code class="docutils literal notranslate"><span class="pre">ImplicitEuler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ImplicitSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK22"><code class="docutils literal notranslate"><span class="pre">SDIRK22</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK33"><code class="docutils literal notranslate"><span class="pre">SDIRK33</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html">riemann_solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_numerical_flux_dg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_stabilisation_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_dg()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html">config</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields"><code class="docutils literal notranslate"><span class="pre">transportfields</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields.phi"><code class="docutils literal notranslate"><span class="pre">transportfields.phi</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/index.html#scalar-transport-equation">Scalar transport equation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples/wave1d.html">Scalar wave equation in 1D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/gaussian_hill_farfield.html">Rotation of a Gaussian hill</a></li>
 </ul>
 </li>
 </ul>
@@ -339,10 +442,38 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic">Acoustic (class in dream.compressible.scaling)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.add_farfield_formulation">add_farfield_formulation() (HDG method)</a>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions">add_boundary_conditions() (ScalarTransportFiniteElementMethod method)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_convection_form">add_convection_form() (DG method)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_convection_form">(HDG method)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_diffusion_form">add_diffusion_form() (DG method)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_diffusion_form">(HDG method)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions">add_domain_conditions() (ScalarTransportFiniteElementMethod method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation">add_farfield_formulation() (DG method)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.add_farfield_formulation">(HDG method)</a>, <a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_farfield_formulation">[1]</a>
+</li>
+      </ul></li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_finite_element_spaces">add_finite_element_spaces() (DG method)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_finite_element_spaces">(HDG method)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms">add_symbolic_spatial_forms() (ScalarTransportFiniteElementMethod method)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.AdiabaticWall">AdiabaticWall (class in dream.compressible.config)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic">Aeroacoustic (class in dream.compressible.scaling)</a>
@@ -356,7 +487,11 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.BDF2">BDF2 (class in dream.compressible.conservative.time.implicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.BDF2">(class in dream.scalar_transport.time.implicit)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -377,10 +512,10 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver">CompressibleFlowSolver (class in dream.compressible.solver)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_x">conservative_convective_jacobian_x() (IdealGas method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_y">conservative_convective_jacobian_y() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_from_characteristic">conservative_from_characteristic() (IdealGas method)</a>
@@ -393,8 +528,14 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant">Constant (class in dream.compressible.viscosity)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.CRK4">CRK4 (class in dream.compressible.conservative.time.explicit)</a>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.convection_velocity">convection_velocity (ScalarTransportSolver property)</a>
 </li>
+      <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.CRK4">CRK4 (class in dream.compressible.conservative.time.explicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.CRK4">(class in dream.scalar_transport.time.explicit)</a>
+</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -410,15 +551,25 @@
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor">deviatoric_stress_tensor() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG">DG (class in dream.compressible.conservative.spatial)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG">(class in dream.scalar_transport.spatial)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG">DG_HDG (class in dream.compressible.conservative.spatial)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient">diffusion_coefficient (ScalarTransportSolver property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK34_LDD">DIRK34_LDD (class in dream.compressible.conservative.time.implicit)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK43_WSO2">DIRK43_WSO2 (class in dream.compressible.conservative.time.implicit)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRKSchemes">DIRKSchemes (class in dream.compressible.conservative.time.implicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes">(class in dream.scalar_transport.time.implicit)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient">drag_coefficient() (CompressibleFlowSolver method)</a>
 </li>
       <li>
@@ -449,8 +600,6 @@
         <li><a href="modules/compressible/dream.compressible.conservative.time.html#module-dream.compressible.conservative.time">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     dream.compressible.conservative.time.explicit
 
@@ -472,6 +621,8 @@
         <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#module-dream.compressible.conservative.time.implicit">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     dream.compressible.eos
 
@@ -507,6 +658,62 @@
         <li><a href="modules/compressible/dream.compressible.viscosity.html#module-dream.compressible.viscosity">module</a>
 </li>
       </ul></li>
+      <li>
+    dream.scalar_transport.config
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#module-dream.scalar_transport.config">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.scalar_transport.riemann_solver
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#module-dream.scalar_transport.riemann_solver">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.scalar_transport.solver
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#module-dream.scalar_transport.solver">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.scalar_transport.spatial
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#module-dream.scalar_transport.spatial">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.scalar_transport.time
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.html#module-dream.scalar_transport.time">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.scalar_transport.time.explicit
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#module-dream.scalar_transport.time.explicit">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.scalar_transport.time.imex
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.imex.html#module-dream.scalar_transport.time.imex">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.scalar_transport.time.implicit
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#module-dream.scalar_transport.time.implicit">module</a>
+</li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.dynamic_viscosity">dynamic_viscosity (CompressibleFlowSolver property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity">DynamicViscosity (class in dream.compressible.viscosity)</a>
@@ -525,16 +732,24 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.eps">eps (flowfields attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.equation_of_state">equation_of_state (CompressibleFlowSolver property)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.EquationOfState">EquationOfState (class in dream.compressible.eos)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.ExplicitEuler">ExplicitEuler (class in dream.compressible.conservative.time.explicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitEuler">(class in dream.scalar_transport.time.explicit)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.ExplicitSchemes">ExplicitSchemes (class in dream.compressible.conservative.time.explicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes">(class in dream.scalar_transport.time.explicit)</a>
 </li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -542,11 +757,21 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField">FarField (class in dream.compressible.config)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.FarField">(class in dream.scalar_transport.config)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.farfield">farfield (Scaling property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.fem">fem (CompressibleFlowSolver property)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.fem">(ScalarTransportSolver property)</a>
 </li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.fields">fields (CBC property)</a>
 
       <ul>
@@ -557,8 +782,6 @@
         <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.Outflow.fields">(Outflow property)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields">flowfields (class in dream.compressible.config)</a>
 </li>
   </ul></td>
@@ -571,6 +794,20 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux">get_convective_numerical_flux() (HDG method)</a>
 </li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_numerical_flux_dg">get_convective_numerical_flux_dg() (LaxFriedrich method)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_dg">(RiemannSolver method)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg">get_convective_numerical_flux_hdg() (RiemannSolver method)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_stabilisation_hdg">get_convective_stabilisation_hdg() (LaxFriedrich method)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg">(RiemannSolver method)</a>
+</li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg">get_convective_stabilisation_matrix_hdg() (HLL method)</a>
 
       <ul>
@@ -592,15 +829,21 @@
 </li>
       </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod.get_domain_boundary_mask">get_domain_boundary_mask() (ConservativeMethod method)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask">(ScalarTransportFiniteElementMethod method)</a>
 </li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields">get_farfield_fields() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number">get_local_mach_number() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number">get_local_reynolds_number() (CompressibleFlowSolver method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient">get_penalty_coefficient() (ScalarTransportFiniteElementMethod method)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg">get_simplified_convective_stabilisation_matrix_hdg() (HLL method)</a>
 
       <ul>
@@ -640,7 +883,11 @@
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.H">H (flowfields attribute)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG">HDG (class in dream.compressible.conservative.spatial)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG">(class in dream.scalar_transport.spatial)</a>
 </li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL">HLL (class in dream.compressible.riemann_solver)</a>
@@ -656,22 +903,42 @@
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas">IdealGas (class in dream.compressible.eos)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.imex.html#dream.compressible.conservative.time.imex.IMEXRK_ARS443">IMEXRK_ARS443 (class in dream.compressible.conservative.time.imex)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRK_ARS443">(class in dream.scalar_transport.time.imex)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.imex.html#dream.compressible.conservative.time.imex.IMEXRKSchemes">IMEXRKSchemes (class in dream.compressible.conservative.time.imex)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRKSchemes">(class in dream.scalar_transport.time.imex)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.ImplicitEuler">ImplicitEuler (class in dream.compressible.conservative.time.implicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitEuler">(class in dream.scalar_transport.time.implicit)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.ImplicitSchemes">ImplicitSchemes (class in dream.compressible.conservative.time.implicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitSchemes">(class in dream.scalar_transport.time.implicit)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive">Inactive (class in dream.compressible.conservative.spatial)</a>
-</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive">Inactive (class in dream.compressible.conservative.spatial)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.inner_energy">inner_energy() (IdealGas method)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.interior_penalty_coefficient">interior_penalty_coefficient (ScalarTransportFiniteElementMethod property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid">Inviscid (class in dream.compressible.viscosity)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.InviscidWall">InviscidWall (class in dream.compressible.config)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid">is_inviscid (ScalarTransportSolver property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.is_viscous_fluxes">is_viscous_fluxes (CBC property)</a>
 </li>
@@ -686,7 +953,11 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich">LaxFriedrich (class in dream.compressible.riemann_solver)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich">(class in dream.scalar_transport.riemann_solver)</a>
 </li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.NSCBC.length">length (NSCBC property)</a>
@@ -735,6 +1006,22 @@
 </li>
         <li><a href="modules/compressible/dream.compressible.viscosity.html#module-dream.compressible.viscosity">dream.compressible.viscosity</a>
 </li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#module-dream.scalar_transport.config">dream.scalar_transport.config</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#module-dream.scalar_transport.riemann_solver">dream.scalar_transport.riemann_solver</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#module-dream.scalar_transport.solver">dream.scalar_transport.solver</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#module-dream.scalar_transport.spatial">dream.scalar_transport.spatial</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.html#module-dream.scalar_transport.time">dream.scalar_transport.time</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#module-dream.scalar_transport.time.explicit">dream.scalar_transport.time.explicit</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.imex.html#module-dream.scalar_transport.time.imex">dream.scalar_transport.time.imex</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#module-dream.scalar_transport.time.implicit">dream.scalar_transport.time.implicit</a>
+</li>
       </ul></li>
   </ul></td>
 </tr></table>
@@ -759,6 +1046,10 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.p">p (flowfields attribute)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields.phi">phi (transportfields attribute)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.phi">phi() (ScalarTransportSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.PML">PML (class in dream.compressible.config)</a>
 </li>
@@ -814,10 +1105,10 @@
         <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_velocity">(Aerodynamic property)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.relaxation_factor">relaxation_factor (CBC property)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.reynolds_number">reynolds_number (CompressibleFlowSolver property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho">rho (flowfields attribute)</a>
@@ -833,9 +1124,17 @@
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_u">rho_u (flowfields attribute)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver">riemann_solver (CompressibleFlowSolver property)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.riemann_solver">(ScalarTransportSolver property)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.RiemannSolver">RiemannSolver (class in dream.compressible.riemann_solver)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver">(class in dream.scalar_transport.riemann_solver)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe">Roe (class in dream.compressible.riemann_solver)</a>
 </li>
   </ul></td>
@@ -844,26 +1143,48 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod">ScalarTransportFiniteElementMethod (class in dream.scalar_transport.spatial)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver">ScalarTransportSolver (class in dream.scalar_transport.solver)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling">Scaling (class in dream.compressible.scaling)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.scaling">scaling (CompressibleFlowSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.scheme">scheme (HDG property)</a>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme">scheme (DG property)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.scheme">(HDG property)</a>, <a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme">[1]</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK22">SDIRK22 (class in dream.compressible.conservative.time.implicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK22">(class in dream.scalar_transport.time.implicit)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK33">SDIRK33 (class in dream.compressible.conservative.time.implicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK33">(class in dream.scalar_transport.time.implicit)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK54">SDIRK54 (class in dream.compressible.conservative.time.implicit)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.set_boundary_conditions">set_boundary_conditions() (CompressibleFiniteElementMethod method)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.set_boundary_conditions">(ScalarTransportFiniteElementMethod method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.set_initial_conditions">set_initial_conditions() (HDG method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_entropy">specific_entropy() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_inner_energy">specific_inner_energy() (IdealGas method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.speed_of_sound">speed_of_sound (Acoustic property)</a>
 
       <ul>
@@ -875,7 +1196,11 @@
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.speed_of_sound">speed_of_sound() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.SSPRK3">SSPRK3 (class in dream.compressible.conservative.time.explicit)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3">(class in dream.scalar_transport.time.explicit)</a>
 </li>
+      </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat">StrainHeat (class in dream.compressible.conservative.spatial)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland">Sutherland (class in dream.compressible.viscosity)</a>
@@ -911,6 +1236,8 @@
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature_gradient">temperature_gradient() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.theta_0">theta_0 (HLLEM property)</a>
+</li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields">transportfields (class in dream.scalar_transport.config)</a>
 </li>
   </ul></td>
 </tr></table>
