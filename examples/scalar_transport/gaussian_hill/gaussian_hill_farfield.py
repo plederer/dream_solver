@@ -277,9 +277,9 @@ def pi_formatter(x, pos):
     if frac.numerator == 0:
         return "0"
     elif frac.denominator == 1:
-        return f"{frac.numerator}π"
+        return rf"{frac.numerator}\pi"
     else:
-        return f"{frac.numerator}π/{frac.denominator}"
+        return rf"{frac.numerator}\pi/{frac.denominator}"
 
 # Helper function that specifies the plot style properties.
 def get_plot_style(label, method_colors):
