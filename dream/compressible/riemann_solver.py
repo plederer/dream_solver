@@ -151,7 +151,7 @@ class LaxFriedrich(RiemannSolver):
         # Extract the normal, taken w.r.t. the ith solution.
         n = bla.as_vector(unit_vector)
 
-        # For now, hardcode the local lax friedrich (Rusanov) version.
+        # Compute the actual fluxes on the surface (for averaging).
         Fi = self.root.get_convective_flux(Ui)
         Fj = self.root.get_convective_flux(Uj)
 

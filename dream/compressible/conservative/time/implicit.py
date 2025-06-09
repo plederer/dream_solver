@@ -1,4 +1,4 @@
-""" Definitions of implicit time integration schemes for conservative methods """
+""" Definitions of implicit time integration schemes for conservative methods. """
 from __future__ import annotations
 from dream.config import Integrals
 from dream.time import TimeSchemes
@@ -15,6 +15,7 @@ class ImplicitSchemes(TimeSchemes):
     def assemble(self) -> None:
 
         condense = self.root.optimizations.static_condensation
+        compile = self.root.optimizations.compile
 
         self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
         self.lf = ngs.LinearForm(self.root.fem.fes)
@@ -25,8 +26,8 @@ class ImplicitSchemes(TimeSchemes):
         self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, self.root.fem.gfu)
 
         # NOTE
-        # Pehaps its better to avoid lf, since it is empty, and specify the 2nd.
-        # argument in nonlinear_solver.initialize() as "None". That way, we
+        # Pehaps its better to avoid lf, since it is empty, and specify the 2nd. 
+        # argument in nonlinear_solver.initialize() as "None". That way, we 
         # guarantee avoiding additional unecessary memory. For example:
         # self.root.nonlinear_solver.initialize(self.blf, None, self.root.gfu)
 
@@ -53,8 +54,16 @@ class ImplicitSchemes(TimeSchemes):
 
 
 class ImplicitEuler(ImplicitSchemes):
+    r""" Class responsible for implementing an implicit (backwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Assuming an HDG formulation,
 
+    .. math::
+        \widetilde{\bm{M}} \bm{U}^{n+1} + \bm{f}(\bm{U}^{n+1}, \hat{\bm{U}}) &= \widetilde{\bm{M}} \bm{U}^{n},\\
+                                          \bm{g}(\bm{U}^{n+1}, \hat{\bm{U}}) &= \bm{0},
+
+    where :math:`\widetilde{\bm{M}} = \bm{M} / \delta t` is the weighted mass matrix, :math:`\bm{M}` is the mass matrix and :math:`\bm{f}` and :math:`\bm{g}` arise from the spatial discretization of the PDE on the physical elements and the AE on the facets, respectively.
+    """
     name: str = "implicit_euler"
+    aliases = ("ie", )
     time_levels = ('n', 'n+1')
 
     def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
@@ -69,6 +78,14 @@ class ImplicitEuler(ImplicitSchemes):
 
 
 class BDF2(ImplicitSchemes):
+    r""" Class responsible for implementing an implicit 2nd-order backward differentiation formula that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), using also the previous solution (:math:`t = t^{n-1}`). Assuming an HDG formulation,
+
+    .. math::
+        \widetilde{\bm{M}} \bm{U}^{n+1} + \bm{f}(\bm{U}^{n+1}, \hat{\bm{U}}) &= \widetilde{\bm{M}} \Big( \frac{4}{3} \bm{U}^{n} - \frac{1}{3} \bm{U}^{n-1}\Big),\\
+                                          \bm{g}(\bm{U}^{n+1}, \hat{\bm{U}}) &= \bm{0},
+
+    where :math:`\widetilde{\bm{M}} = 3 \bm{M} / (2\delta t)` is the weighted mass matrix and :math:`\bm{M}` is the mass matrix and :math:`\bm{f}` and :math:`\bm{g}` arise from the spatial discretization of the PDE on the physical elements and the AE on the facets, respectively.
+    """
 
     name: str = "bdf2"
     time_levels = ('n-1', 'n', 'n+1')
@@ -89,45 +106,62 @@ class BDF2(ImplicitSchemes):
 
 
 class DIRKSchemes(TimeSchemes):
-    r""" All DIRK-type schemes are solving the following HDG problem:
-          PDE: M * u_t + f(u,uhat) = 0,
-           AE:           g(u,uhat) = 0.
+    r"""Assuming an HDG formulation, we are solving
+    
+    .. math::
+        \bm{M} \partial_t \bm{U} + \bm{f}\big(\bm{U}, \hat{\bm{U}} \big) &= \bm{0},\\
+                                   \bm{g}\big(\bm{U}, \hat{\bm{U}} \big) &= \bm{0},
 
-         RK update is: 
-            u^{n+1} = u^{n} - dt * sum_{i=1}^{s} b_{i}  * M^{-1} * f(z_i).
-         where,
-          PDE:  y_i = u^{n} - dt * sum_{j=1}^{i} a_{ij} * M^{-1} * f(z_j),
-           AE:    0 = g(z_i).
-        Note, 
-           z = (y,yhat), are the stage values. Also, we do not explicitly need uhat^{n+1}.
+    where :math:`\bm{M}` is the mass matrix, and :math:`\bm{f}` and :math:`\bm{g}` arise from the spatial discretization of the PDE on the physical elements and the AE on the facets, respectively.
 
-        The residual is defined as R_i = (r_i, rhat_i), as such:
-           r_i = M_i * y_i - M_i * u^{n} + (1/a_{ii}) * sum_{j=1}^{i-1} * f(z_j) + f(z_i),
-        rhat_i = g(z_i).
+    To obtain the solution at :math:`t = t^{n+1}`, an *s-stage* DIRK update formula is
 
-        where, 
-          M_i = ( 1/(dt*a_{ii}) ) * M.
+    .. math::
+        \bm{U}^{n+1} = \bm{U}^{n} - \delta t \sum_{i=1}^{s} b_{i} \bm{M}^{-1} \bm{f}(\bm{z}_{i}),
 
-        Thus, the linearized SOE is based on: 
-          N_{i}^{k} * dz_{i}^{k} = -R_{i}( z_{i}^{k} ),
-          where the iteration matrix, 
-            N_{i}^{k} = dR/dz_i ( z_{i}^{k} ),
-                      = { M_i + df/dy_i, df/dyhat_i }
-                        {       dg/dy_i, dg/dyhat_i }.
+    where :math:`\bm{z}_i = \big( \bm{y}_i, \hat{\bm{y}}_i \big)^T` denotes the physical :math:`\bm{y}` and facet :math:`\hat{\bm{y}}` solution at the *ith* stage, obtained from
 
-        Implementation is based on the two bilinear forms:
+    .. math::
+        \bm{y}_{i}       &= \bm{U}^{n} - \delta t \sum_{j=1}^{s} a_{ij} \bm{M}^{-1} \bm{f}(\bm{z}_j),\\
+        \bm{g}(\bm{z}_i) &= \bm{0}.
+  
+    The above can be used to define a residual for solving the nonlinear system iteratively
 
-         blf:  { M_i * y_i + f(y_i,yhat_i) }
-               {             g(y_i,yhat_i) }  ... needed for iteration matrix + rhs.
+    .. math::
+        \bm{r}_i       &= \widetilde{\bm{M}}_i \bm{y}_i - \widetilde{\bm{M}}_i \bm{U}^{n} + \frac{1}{a_{ii}} \sum_{j=1}^{i-1} a_{ij} \bm{f}(\bm{z}_j) + \bm{f}(\bm{z}_i),\\ 
+        \hat{\bm{r}}_i &= \bm{g}(\bm{z}_i),
 
-         blfs: {             f(y_i,yhat_i) }
-               {                        0  }  ... needed for rhs only.
+    where :math:`\widetilde{\bm{M}}_i = \bm{M}/(a_{ii} \delta t)` is the weighted mass matrix associated with the *ith* stage.
 
-         ... and the (weighted) mass matrix: M_i. 
+    Therefore, a Newton-Rhapson update formula for the *kth* iteration can be written as
 
-         This way, 
-          1) the iteration matrix N_{i}^{k} is based on blf.
-          2) blfs, which depends on the known data from previous stages, is needed for the rhs only.
+    .. math::
+        \bm{N}_{i}^{k} \delta \bm{z}_{i}^{k} = - \bm{R}_{i}^{k},
+
+    where the overall residual is :math:`\bm{R}_{i}^{k} = \Big( \bm{r}(\bm{z}_{i}^{k}), \hat{\bm{r}}(\bm{z}_{i}^{k}) \Big)^T` and the iteration matrix is defined as
+
+    .. math::
+        \bm{N}_{i}^{k} &= \partial \bm{R} (\bm{z}_{i}^{k} ) / \partial \bm{z}_i, \\[2ex]
+        &= 
+        \begin{pmatrix}
+            \widetilde{\bm{M}}_{i} + \partial \bm{f}^{k} / \partial \bm{y}_i  &  \partial \bm{f}^{k} / \partial \hat{\bm{y}}_i\\
+                                     \partial \bm{g}^{k} / \partial \bm{y}_i  &  \partial \bm{g}^{k} / \partial \hat{\bm{y}}_i
+        \end{pmatrix}.
+
+    :note: In terms of implementation, this is based on two bilinear forms: **blf** and **blfs**
+
+    .. math:: 
+        \bf{blf} = 
+        \begin{pmatrix}
+            \widetilde{\bm{M}}_i \bm{y}_i + \bm{f}(\bm{z}_i)\\
+                                            \bm{g}(\bm{z}_i)
+        \end{pmatrix},
+        \qquad 
+        \bf{blfs} = 
+        \begin{pmatrix}
+                                            \bm{f}(\bm{z}_i)\\
+                                                      \bm{0}
+        \end{pmatrix}.
     """
 
     def assemble(self) -> None:
@@ -154,7 +188,7 @@ class DIRKSchemes(TimeSchemes):
 
         # Assemble the mass matrix once.
         self.mass.Assemble()
-
+        
         # Add both spatial and mass-matrix terms in blf.
         self.add_sum_of_integrals(self.blf, self.root.fem.blf)
         # Skip the mass matrix contribution in blfs and only use the space for "U".
@@ -180,43 +214,49 @@ class DIRKSchemes(TimeSchemes):
         for it in self.root.nonlinear_solver.solve(t, s):
             pass
 
-    def solve_current_time_level(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
+    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
         self.update_solution(t)
         yield None
 
 
 class SDIRK22(DIRKSchemes):
-    r""" Updates the solution via a 2-stage 2nd-order (L-stable) 
-         singly diagonal implicit Runge-Kutta (SDIRK).
-         Taken from Section 2.6 in [1]. 
+    r""" Updates the solution via a 2-stage 2nd-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Section 2.6 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is:
 
-    [1] Ascher, Uri M., Steven J. Ruuth, and Raymond J. Spiteri. 
-        "Implicit-explicit Runge-Kutta methods for time-dependent partial differential equations." 
-        Applied Numerical Mathematics 25.2-3 (1997): 151-167. 
+    .. math::
+        \begin{array}{c|cc}
+	        \alpha & \alpha     & 0      \\
+	        1    &   1 - \alpha & \alpha \\
+            \hline
+	             & 1 - \alpha    & \alpha
+        \end{array}
+
+    where :math:`\alpha = (2 - \sqrt{2})/2`.
+    
+    :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{2}`.
     """
     name: str = "sdirk22"
     time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
-
+        
         alpha = ngs.sqrt(2.0)/2.0
 
-        self.aii = 1.0 - alpha
-        self.a21 = alpha
-
+        self.aii = 1.0 - alpha 
+        self.a21 = alpha 
+       
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1 = 1.0 - alpha
-        self.c2 = 1.0
+        self.c1  = 1.0 - alpha
+        self.c2  = 1.0 
 
         # This is possible, because the method is L-stable.
-        self.b1 = self.a21
-        self.b2 = self.aii
+        self.b1  = self.a21
+        self.b2  = self.aii
 
     def assemble(self) -> None:
 
         # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
-
+ 
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
 
@@ -225,7 +265,7 @@ class SDIRK22(DIRKSchemes):
         u, v = self.root.fem.TnT['U']
         gfus = self.gfus['U'].copy()
         gfus['n+1'] = u
-
+       
         # This initializes the coefficients for this scheme.
         self.initialize_butcher_tableau()
 
@@ -236,13 +276,13 @@ class SDIRK22(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def update_solution(self, t: float):
-
+ 
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
         # Abbreviations.
         a21 = -self.a21 / self.aii
-
+        
         # Stage: 1.
         self.rhs.data = self.mu0
         self.solve_stage(t, 1)
@@ -253,44 +293,49 @@ class SDIRK22(DIRKSchemes):
         self.solve_stage(t, 2)
 
         # NOTE,
-        # No need to explicitly update the gfu, since the last stage
+        # No need to explicitly update the gfu, since the last stage 
         # corresponds to the value at time: t^{n+1}.
 
 
 class SDIRK33(DIRKSchemes):
-    r""" Updates the solution via a 3-stage 3rd-order (L-stable) 
-         singly diagonal implicit Runge-Kutta (SDIRK).
-         Taken from Section 2.7 in [1]. 
+    r""" Updates the solution via a 3-stage 3rd-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Section 2.7 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is: 
 
-    [1] Ascher, Uri M., Steven J. Ruuth, and Raymond J. Spiteri. 
-        "Implicit-explicit Runge-Kutta methods for time-dependent partial differential equations." 
-        Applied Numerical Mathematics 25.2-3 (1997): 151-167. 
+    .. math::
+        \begin{array}{c|ccc}
+	        0.4358665215 & 0.4358665215 &  0            & 0            \\
+	        0.7179332608 & 0.2820667392 &  \phantom{-}0.4358665215 & 0 \\
+            1            & 1.2084966490 & -0.6443631710 & 0.4358665215 \\
+            \hline
+	                     & 1.2084966490 & -0.6443631710 & 0.4358665215
+        \end{array}
+
+    :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{3}`.
     """
     name: str = "sdirk33"
     time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
-        self.aii = 0.4358665215
-        self.a21 = 0.2820667392
-        self.a31 = 1.2084966490
+        self.aii =  0.4358665215
+        self.a21 =  0.2820667392
+        self.a31 =  1.2084966490
         self.a32 = -0.6443631710
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1 = 0.4358665215
-        self.c2 = 0.7179332608
-        self.c3 = 1.0
+        self.c1  =  0.4358665215 
+        self.c2  =  0.7179332608
+        self.c3  =  1.0
 
         # This is possible, because the method is L-stable.
-        self.b1 = self.a31
-        self.b2 = self.a32
-        self.b3 = self.aii
+        self.b1  = self.a31
+        self.b2  = self.a32
+        self.b3  = self.aii
 
     def assemble(self) -> None:
 
         # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
-
+ 
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
         self.x2 = self.root.fem.gfu.vec.CreateVector()
@@ -300,10 +345,10 @@ class SDIRK33(DIRKSchemes):
         u, v = self.root.fem.TnT['U']
         gfus = self.gfus['U'].copy()
         gfus['n+1'] = u
-
-        # This initializes the coefficients for this scheme.
+ 
+        # This initializes the coefficients for this scheme.      
         self.initialize_butcher_tableau()
-
+       
         # Abbreviation.
         ovadt = 1.0/(self.aii*self.dt)
 
@@ -311,7 +356,7 @@ class SDIRK33(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def update_solution(self, t: float):
-
+ 
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
@@ -335,59 +380,66 @@ class SDIRK33(DIRKSchemes):
         self.solve_stage(t, 3)
 
         # NOTE,
-        # No need to explicitly update the gfu, since the last stage
+        # No need to explicitly update the gfu, since the last stage 
         # corresponds to the value at time: t^{n+1}.
 
 
 class SDIRK54(DIRKSchemes):
-    r""" Updates the solution via a 5-stage 4th-order (L-stable) 
-         singly diagonal implicit Runge-Kutta (SDIRK).
-         Taken from Table 6.5 in [1]. 
+    r""" Updates the solution via a 5-stage 4th-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Table 6.5 in :cite:`wanner1996solving`. Its corresponding Butcher tableau is: 
 
-    [1] Wanner, Gerhard, and Ernst Hairer. 
-        "Solving ordinary differential equations II."
-        Vol. 375. New York: Springer Berlin Heidelberg, 1996. 
+    .. math::
+        \begin{array}{c|ccccc}
+	        \frac{1}{4}   & \frac{1}{4}      &  \phantom{-}0           & 0              &  \phantom{-}0           & 0  \\
+	        \frac{3}{4}   & \frac{1}{2}      &  \phantom{-}\frac{1}{4} & 0              &  \phantom{-}0           & 0  \\
+            \frac{11}{20} & \frac{17}{50}    &  -\frac{1}{25}          & \frac{1}{4}    &  \phantom{-}0           & 0  \\
+            \frac{1}{2}   & \frac{371}{1360} &  -\frac{137}{2720}      & \frac{15}{544} &  \phantom{-}\frac{1}{4} & 0  \\
+            1             & \frac{25}{24}    &  -\frac{49}{48}         & \frac{125}{16} & -\frac{85}{12} & \frac{1}{4}\\
+            \hline
+	                      & \frac{25}{24}    &  -\frac{49}{48}         & \frac{125}{16} & -\frac{85}{12} & \frac{1}{4}
+        \end{array}
+
+    :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{5}`.
     """
     name: str = "sdirk54"
     time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
-        self.aii = 1.0/4.0
-
-        self.a21 = 1.0/2.0
-
-        self.a31 = 17.0/50.0
-        self.a32 = -1.0/25.0
-
-        self.a41 = 371.0/1360.0
+        self.aii =    1.0/4.0
+        
+        self.a21 =    1.0/2.0 
+        
+        self.a31 =   17.0/50.0 
+        self.a32 =   -1.0/25.0
+        
+        self.a41 =  371.0/1360.0
         self.a42 = -137.0/2720.0
-        self.a43 = 15.0/544.0
-
-        self.a51 = 25.0/24.0
-        self.a52 = -49.0/48.0
-        self.a53 = 125.0/16.0
-        self.a54 = -85.0/12.0
+        self.a43 =   15.0/544.0
+        
+        self.a51 =   25.0/24.0
+        self.a52 =  -49.0/48.0
+        self.a53 =  125.0/16.0
+        self.a54 =  -85.0/12.0
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1 = 1.0/4.0
-        self.c2 = 3.0/4.0
-        self.c3 = 11.0/20.0
-        self.c4 = 1.0/2.0
-        self.c5 = 1.0
+        self.c1  =  1.0/4.0
+        self.c2  =  3.0/4.0
+        self.c3  = 11.0/20.0
+        self.c4  =  1.0/2.0
+        self.c5  =  1.0
 
         # This is possible, because the method is L-stable.
-        self.b1 = self.a51
-        self.b2 = self.a52
-        self.b3 = self.a53
-        self.b4 = self.a54
-        self.b5 = self.aii
+        self.b1  = self.a51
+        self.b2  = self.a52
+        self.b3  = self.a53
+        self.b4  = self.a54
+        self.b5  = self.aii
 
     def assemble(self) -> None:
 
         # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
-
+ 
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
         self.x2 = self.root.fem.gfu.vec.CreateVector()
@@ -399,7 +451,7 @@ class SDIRK54(DIRKSchemes):
         u, v = self.root.fem.TnT['U']
         gfus = self.gfus['U'].copy()
         gfus['n+1'] = u
-
+        
         # This initializes the coefficients for this scheme.
         self.initialize_butcher_tableau()
 
@@ -410,13 +462,13 @@ class SDIRK54(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def update_solution(self, t: float):
-
+ 
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
         # Abbreviations.
         a21 = -self.a21 / self.aii
-
+        
         a31 = -self.a31 / self.aii
         a32 = -self.a32 / self.aii
 
@@ -464,55 +516,61 @@ class SDIRK54(DIRKSchemes):
         self.solve_stage(t, 5)
 
         # NOTE,
-        # No need to explicitly update the gfu, since the last stage
+        # No need to explicitly update the gfu, since the last stage 
         # corresponds to the value at time: t^{n+1}.
 
 
 class DIRK43_WSO2(DIRKSchemes):
-    r""" Updates the solution via a 4-stage 3rd-order (L-stable) 
-         diagonal implicit Runge-Kutta (DIRK) with a weak stage order (WSO) of 3.
-         Taken from Section 3 in [1]. 
+    r""" Updates the solution via a 4-stage 3rd-order (stiffly-accurate) diagonally-implicit Runge-Kutta (DIRK) with a weak stage order (WSO) of 3. Taken from Section 3 in :cite:`ketcheson2020dirk`. Its corresponding Butcher tableau is: 
 
-    [1] Ketcheson, David I., et al. 
-        "DIRK schemes with high weak stage order." 
-        Spectral and High Order Methods for Partial Differential Equations (2020): 453.
+    .. math::
+        \begin{array}{c|cccc}
+	        0.01900072890 & 0.01900072890 & \phantom{-}0             & 0             & 0            \\
+	        0.78870323114 & 0.40434605601 & \phantom{-}0.38435717512 & 0             & 0            \\
+            0.41643499339 & 0.06487908412 &           -0.16389640295 & 0.51545231222 & 0            \\
+            1             & 0.02343549374 &           -0.41207877888 & 0.96661161281 & 0.42203167233\\
+            \hline
+	                      & 0.02343549374 &           -0.41207877888 & 0.96661161281 & 0.42203167233
+        \end{array}
+
+    :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{4}`.
     """
     name: str = "dirk43_wso2"
     time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
-        self.a11 = 0.01900072890
-
-        self.a21 = 0.40434605601
-        self.a22 = 0.38435717512
-
-        self.a31 = 0.06487908412
+        self.a11 =  0.01900072890
+        
+        self.a21 =  0.40434605601
+        self.a22 =  0.38435717512
+        
+        self.a31 =  0.06487908412
         self.a32 = -0.16389640295
-        self.a33 = 0.51545231222
+        self.a33 =  0.51545231222
 
-        self.a41 = 0.02343549374
+        self.a41 =  0.02343549374
         self.a42 = -0.41207877888
-        self.a43 = 0.96661161281
-        self.a44 = 0.42203167233
+        self.a43 =  0.96661161281
+        self.a44 =  0.42203167233
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1 = self.a11
-        self.c2 = self.a21 + self.a22
-        self.c3 = self.a31 + self.a32 + self.a33
-        self.c4 = 1.0
+        self.c1  = self.a11 
+        self.c2  = self.a21 + self.a22 
+        self.c3  = self.a31 + self.a32 + self.a33 
+        self.c4  = 1.0
 
         # This is possible, because the method is L-stable.
-        self.b1 = self.a41
-        self.b2 = self.a42
-        self.b3 = self.a43
-        self.b4 = self.a44
+        self.b1  = self.a41
+        self.b2  = self.a42
+        self.b3  = self.a43
+        self.b4  = self.a44
 
     def assemble(self) -> None:
 
         # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
-
+ 
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
         self.x2 = self.root.fem.gfu.vec.CreateVector()
@@ -523,7 +581,7 @@ class DIRK43_WSO2(DIRKSchemes):
         u, v = self.root.fem.TnT['U']
         gfus = self.gfus['U'].copy()
         gfus['n+1'] = u
-
+       
         # This initializes the coefficients for this scheme.
         self.initialize_butcher_tableau()
 
@@ -537,20 +595,20 @@ class DIRK43_WSO2(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def update_solution(self, t: float):
-
+ 
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
         # Stage: 1.
-        self.aii.Set(self.a11)
+        self.aii.Set( self.a11 )
         ovaii = 1.0 / self.aii.Get()
-
+        
         self.rhs.data = ovaii * self.mu0
         self.solve_stage(t, 1)
 
         # Stage: 2.
-        self.aii.Set(self.a22)
-        ovaii = 1.0 / self.aii.Get()
+        self.aii.Set( self.a22 )
+        ovaii =  1.0 / self.aii.Get()
         a21 = -ovaii * self.a21
 
         self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
@@ -559,8 +617,8 @@ class DIRK43_WSO2(DIRKSchemes):
         self.solve_stage(t, 2)
 
         # Stage: 3.
-        self.aii.Set(self.a33)
-        ovaii = 1.0 / self.aii.Get()
+        self.aii.Set( self.a33 )
+        ovaii =  1.0 / self.aii.Get()
         a31 = -self.a31 * ovaii
         a32 = -self.a32 * ovaii
 
@@ -585,48 +643,52 @@ class DIRK43_WSO2(DIRKSchemes):
         self.solve_stage(t, 4)
 
         # NOTE,
-        # No need to explicitly update the gfu, since the last stage
+        # No need to explicitly update the gfu, since the last stage 
         # corresponds to the value at time: t^{n+1}.
 
 
 class DIRK34_LDD(DIRKSchemes):
-    r""" Updates the solution via a 3-stage 4th-order (A-stable) 
-         diagonal implicit Runge-Kutta (DIRK) with low-dispersion and dissipation.
-         Taken from Table A.1 in [1]. 
+    r""" Updates the solution via a 3-stage 4th-order diagonally-implicit Runge-Kutta (DIRK) with a low-dispersion and dissipation. Taken from Table A.1 in :cite:`najafi2013low`. Its corresponding Butcher tableau is: 
 
-    [1] Najafi-Yazdi, Alireza, and Luc Mongeau. 
-        "A low-dispersion and low-dissipation implicit Runge–Kutta scheme." 
-        Journal of computational physics 233 (2013): 315-323.
+    .. math::
+        \begin{array}{c|ccc}
+	        0.257820901066211 & 0.377847764031163 &  \phantom{-}0                 & 0                 \\
+	        0.434296446908075 & 0.385232756462588 &  \phantom{-}0.461548399939329 & 0                 \\
+            0.758519768667167 & 0.675724855841358 & -0.061710969841169            & 0.241480233100410 \\
+            \hline
+	                          & 0.750869573741408 & -0.362218781852651            & 0.611349208111243  
+        \end{array}
     """
+
     name: str = "dirk34_ldd"
     time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
-        self.a11 = 0.377847764031163
-
-        self.a21 = 0.385232756462588
-        self.a22 = 0.461548399939329
-
-        self.a31 = 0.675724855841358
+        self.a11 =  0.377847764031163
+        
+        self.a21 =  0.385232756462588
+        self.a22 =  0.461548399939329
+        
+        self.a31 =  0.675724855841358
         self.a32 = -0.061710969841169
-        self.a33 = 0.241480233100410
+        self.a33 =  0.241480233100410
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1 = 0.257820901066211
-        self.c2 = 0.434296446908075
-        self.c3 = 0.758519768667167
+        self.c1  =  0.257820901066211 
+        self.c2  =  0.434296446908075  
+        self.c3  =  0.758519768667167
 
         # NOTE, this is not L-stable.
-        self.b1 = 0.750869573741408
-        self.b2 = -0.362218781852651
-        self.b3 = 0.611349208111243
+        self.b1  =  0.750869573741408
+        self.b2  = -0.362218781852651
+        self.b3  =  0.611349208111243
 
     def assemble(self) -> None:
 
         # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
-
+ 
         # Reserve space for additional vectors.
         self.u0 = self.root.fem.gfu.vec.CreateVector()
         self.x1 = self.root.fem.gfu.vec.CreateVector()
@@ -634,11 +696,11 @@ class DIRK34_LDD(DIRKSchemes):
         self.x3 = self.root.fem.gfu.vec.CreateVector()
 
         # Precompute the mass matrix of the volume elements.
-        self.minv = self.root.linear_solver.inverse(self.mass, self.root.fes)
+        self.minv = self.root.linear_solver.inverse(self.mass, self.cfg.fes)
 
         # Compute the inverse mass matrix for the facets only. Needed to update uhat^{n+1}.
         # NOTE, this assumes uhat^{n+1} = 0.5*( U_L^{n+1} + U_R^{n+1} ).
-
+        
         # Step 1: extract the relevant space for the facets.
         gfu = self.root.fem.gfus['Uhat']
         fes = self.root.fem.gfus['Uhat'].space
@@ -661,7 +723,7 @@ class DIRK34_LDD(DIRKSchemes):
         u, v = self.root.fem.TnT['U']
         gfus = self.gfus['U'].copy()
         gfus['n+1'] = u
-
+       
         # This initializes the coefficients for this scheme.
         self.initialize_butcher_tableau()
 
@@ -675,7 +737,7 @@ class DIRK34_LDD(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def update_solution(self, t: float):
-
+ 
         # Book-keep the initial solution at U^n.
         self.u0.data = self.root.fem.gfu.vec
 
@@ -683,25 +745,25 @@ class DIRK34_LDD(DIRKSchemes):
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
         # Stage: 1.
-        self.aii.Set(self.a11)
+        self.aii.Set( self.a11 )
         ovaii = 1.0 / self.aii.Get()
-
+        
         self.rhs.data = ovaii * self.mu0
         self.solve_stage(t, 1)
 
         # Stage: 2.
-        self.aii.Set(self.a22)
-        ovaii = 1.0 / self.aii.Get()
+        self.aii.Set( self.a22 )
+        ovaii =  1.0 / self.aii.Get()
         a21 = -ovaii * self.a21
 
         self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
         self.rhs.data = ovaii * self.mu0 \
-            + a21 * self.x1
+                      + a21 * self.x1
         self.solve_stage(t, 2)
 
         # Stage: 3.
-        self.aii.Set(self.a33)
-        ovaii = 1.0 / self.aii.Get()
+        self.aii.Set( self.a33 )
+        ovaii =  1.0 / self.aii.Get()
         a31 = -self.a31 * ovaii
         a32 = -self.a32 * ovaii
 

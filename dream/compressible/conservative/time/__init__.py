@@ -1,4 +1,4 @@
-""" Definitions of conservative time discretizations """
+""" Definitions of conservative time discretizations. """
 from .implicit import (ImplicitEuler,
                        BDF2,
                        SDIRK22,
@@ -8,12 +8,10 @@ from .implicit import (ImplicitEuler,
                        DIRK34_LDD)
 from .explicit import (ExplicitEuler,
                        SSPRK3,
-                       CRK4,
-                       TimeSchemes)
+                       CRK4)
 from .imex import (IMEXRK_ARS443)
 
-__all__ = ['TimeSchemes',
-           'ImplicitEuler',
+__all__ = ['ImplicitEuler',
            'BDF2',
            'SDIRK22',
            'SDIRK33',

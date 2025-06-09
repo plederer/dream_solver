@@ -1,11 +1,11 @@
-""" Definitions of conservative spatial discretizations """
+""" Definitions of conservative spatial discretizations. """
 from __future__ import annotations
 import logging
 import ngsolve as ngs
 import typing
 import dream.bla as bla
 
-from dream.time import TransientRoutine, PseudoTimeSteppingRoutine
+from dream.time import TimeSchemes, TransientRoutine, PseudoTimeSteppingRoutine
 from dream.config import Configuration, dream_configuration, Integrals
 from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
 from dream.compressible.config import (flowfields,
@@ -18,7 +18,7 @@ from dream.compressible.config import (flowfields,
                                        AdiabaticWall,
                                        CBC)
 
-from .time import TimeSchemes, ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2, ExplicitEuler, SSPRK3, CRK4, IMEXRK_ARS443
+from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2, ExplicitEuler, SSPRK3, CRK4, IMEXRK_ARS443
 
 logger = logging.getLogger(__name__)
 
@@ -992,8 +992,8 @@ class DG_HDG(ConservativeMethod):
         bonus = self.root.optimizations.bonus_int_order
 
         # Obtain the relevant test and trial functions. Notice, the solution "U"
-        # is assumed to be an unknown in the bilinear form, despite being explicit
-        # in time. This works, because we invoke the "Apply" function when solving.
+        # is assumed to be an unknown in the bilinear form, despite being explicit 
+        # in time. This works, because we invoke the "Apply" function when solving. 
         U, V = self.TnT['U']
 
         # Get a mask that is nonzero (unity) for only the internal faces.
@@ -1016,7 +1016,6 @@ class DG_HDG(ConservativeMethod):
         blf['U']['convection'] += mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
     # In this (IMEX-)specialized class, the elliptic terms are handled via an HDG.
-
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
 
         bonus = self.root.optimizations.bonus_int_order
@@ -1069,6 +1068,7 @@ class DG_HDG(ConservativeMethod):
 
         return self.root.get_diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U.U - Uhat.U)
 
+
     def get_time_scheme_spaces(self) -> dict[str, ngs.FESpace]:
         U = super().get_time_scheme_spaces()
         if self.root.bcs.has_condition(CBC):
@@ -1076,7 +1076,6 @@ class DG_HDG(ConservativeMethod):
         return U
 
     # NOTE, for now we restrict ourselves to periodic BCs.
-
     def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
 
         bnds = self.root.bcs.to_pattern()
@@ -1089,6 +1088,7 @@ class DG_HDG(ConservativeMethod):
                 continue
             else:
                 raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
+
 
     def add_domain_conditions(self,
                               blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -1105,6 +1105,7 @@ class DG_HDG(ConservativeMethod):
 
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
+
 
     def set_initial_conditions(self, U: ngs.CF = None):
 

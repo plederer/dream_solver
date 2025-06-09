@@ -487,7 +487,6 @@ class SolverConfiguration(Configuration, is_interface=True):
         mesh.is_periodic = is_mesh_periodic(mesh)
 
         DEFAULT = {
-            "time": StationaryRoutine(mesh, self),
             "linear_solver": UmfpackLinearSolver(mesh, self),
             "nonlinear_solver": UmfpackNonlinearSolver(mesh, self),
             "optimizations": Optimizations(mesh, self),
