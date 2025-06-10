@@ -180,6 +180,11 @@ class DirectLinearSolver(LinearSolver):
         return blf.mat.Inverse(freedofs, inverse=self.name)
 
 
+class DefaultLinearSolver(DirectLinearSolver):
+
+    name = ""
+
+
 class UmfpackLinearSolver(DirectLinearSolver):
 
     name = "umfpack"
@@ -363,6 +368,11 @@ class DirectNonlinearSolver(NonlinearSolver):
         self.set_iteration_error(self.temporary, self.residual)
 
 
+class DefaultNonlinearSolver(DirectNonlinearSolver):
+
+    name = ""
+
+
 class UmfpackNonlinearSolver(DirectNonlinearSolver):
 
     name = "umfpack"
@@ -487,8 +497,8 @@ class SolverConfiguration(Configuration, is_interface=True):
         mesh.is_periodic = is_mesh_periodic(mesh)
 
         DEFAULT = {
-            "linear_solver": UmfpackLinearSolver(mesh, self),
-            "nonlinear_solver": UmfpackNonlinearSolver(mesh, self),
+            "linear_solver": DefaultLinearSolver(mesh, self),
+            "nonlinear_solver": DefaultNonlinearSolver(mesh, self),
             "optimizations": Optimizations(mesh, self),
             "io": IOConfiguration(mesh, self),
             "info": {},
@@ -519,7 +529,7 @@ class SolverConfiguration(Configuration, is_interface=True):
 
     @linear_solver.setter
     def linear_solver(self, solver: str | LinearSolver):
-        OPTIONS = [UmfpackLinearSolver, PardisoLinearSolver]
+        OPTIONS = [DefaultLinearSolver, UmfpackLinearSolver, PardisoLinearSolver]
         self._linear_solver = self._get_configuration_option(solver, OPTIONS, LinearSolver)
 
     @dream_configuration
@@ -528,7 +538,7 @@ class SolverConfiguration(Configuration, is_interface=True):
 
     @nonlinear_solver.setter
     def nonlinear_solver(self, solver: str | NonlinearSolver):
-        OPTIONS = [UmfpackNonlinearSolver, PardisoNonlinearSolver]
+        OPTIONS = [DefaultNonlinearSolver, UmfpackNonlinearSolver, PardisoNonlinearSolver]
         self._nonlinear_solver = self._get_configuration_option(solver, OPTIONS, NonlinearSolver)
 
     @dream_configuration

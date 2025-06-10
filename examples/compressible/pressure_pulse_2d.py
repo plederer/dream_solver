@@ -58,7 +58,7 @@ cfg.fem.method.scheme = "bdf2"
 cfg.fem.order = 4
 cfg.fem.mixed_method = "inactive"
 
-cfg.nonlinear_solver = "pardiso"
+# cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
 cfg.nonlinear_solver.method.damping_factor = 1
 cfg.nonlinear_solver.max_iterations = 10

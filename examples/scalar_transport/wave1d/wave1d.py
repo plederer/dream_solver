@@ -70,7 +70,7 @@ cfg.fem.scheme = "implicit_euler"
 cfg.time.timer.interval = (0.0, 12.0)
 cfg.time.timer.step = 0.01
 
-cfg.linear_solver = "pardiso"
+# cfg.linear_solver = "pardiso"
 cfg.optimizations.static_condensation = False  # NOTE, by default, condensation is turned off.
 cfg.optimizations.compile.realcompile = False
 

@@ -94,7 +94,7 @@ cfg.fem.scheme = "implicit_euler"
 cfg.time.timer.interval = (ngs.pi/2, 5*ngs.pi/2)
 cfg.time.timer.step = 0.005
 
-cfg.linear_solver = "pardiso"
+# cfg.linear_solver = "pardiso"
 cfg.optimizations.static_condensation = False  # NOTE, by default, condensation is turned off.
 cfg.optimizations.compile.realcompile = False
 
