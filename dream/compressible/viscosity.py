@@ -50,7 +50,7 @@ Sutherland viscosity
     .. math::
         k(T) = \left( \frac{T}{T_\infty} \right)^{3/2} \frac{T_\infty + S}{T + S}.
 
-See :class:`dream.compressible.scaling` for the definition of the reference Reynolds number :math:`\Re_{ref}`.
+See :class:`~dream.compressible.scaling` for the definition of the reference Reynolds number :math:`\Re_{ref}`.
 """
 from __future__ import annotations
 import typing
