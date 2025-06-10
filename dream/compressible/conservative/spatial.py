@@ -681,7 +681,7 @@ class HDG(ConservativeMethod):
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
     def add_farfield_formulation(self, blf: Integrals, lf: Integrals, bc: FarField, bnd: str):
-        r""" Implementation of the farfield boundary condition :class:`dream.compressible.config.FarField`.
+        r""" Implementation of the farfield boundary condition :class:`~dream.compressible.config.FarField`.
 
         On the boundary :math:`\Gamma` we solve :cite:`peraireHybridizableDiscontinuousGalerkin2010, vila-perezHybridisableDiscontinuousGalerkin2021`
 
@@ -890,7 +890,7 @@ class HDG(ConservativeMethod):
             \hat{\vec{F}}_h  \vec{n}^\pm  := \vec{F}(\hat{\vec{U}}_h) \vec{n}^\pm + \mat{\tau}_c(\hat{\vec{U}}_h) (\vec{U}_h - \hat{\vec{U}}_h)
 
         :note: See equation :math:`(E22a)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
-        :note: See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`.
+        :note: See :class:`~dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`.
         """
         unit_vector = bla.as_vector(unit_vector)
 
