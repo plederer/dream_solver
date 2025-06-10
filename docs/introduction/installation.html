@@ -15,7 +15,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
@@ -52,7 +52,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="about.html#key-features-of-the-dream-solver">Key Features of the <strong>dream</strong> Solver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="about.html#future-goals">Future Goals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="about.html#work-in-progress">Work in progress</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
@@ -418,13 +418,19 @@
              
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>We strongly advice the use of a virtual environment for the installation of the <em>dream</em> package
-and its dependencies.</p>
+<p>To install the <em>dream</em> package clone the repository to your local machine.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$ </span>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:plederer/dream_solver.git<span class="w"> </span>~/target-path
+</pre></div>
 </div>
+<p>Run the following command in the directory of the git repository:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$ </span>python3<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>~/target-path/.
+</pre></div>
+</div>
+<p>This will install the <em>dream</em> package and all its dependencies from pip including <a class="reference external" href="https://ngsolve.org/"><code class="docutils literal notranslate"><span class="pre">ngsolve</span></code></a>.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
+<p>We advice the use of a virtual environment for the installation of the <em>dream</em> package
+and its dependencies.</p>
 <p>To setup and activate a virtual environment run the following commands:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">user:~$ </span>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>~/env-path/dream
 <span class="gp">user:~$ </span><span class="nb">source</span><span class="w"> </span>~/env-path/dream/bin/activate
@@ -438,18 +444,9 @@ and its dependencies.</p>
 </pre></div>
 </div>
 </div>
-<p>To install the <em>dream</em> package clone the repository to your local machine.</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$ </span>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:plederer/dream_solver.git<span class="w"> </span>~/target-path
-</pre></div>
-</div>
-<p>Run <code class="docutils literal notranslate"><span class="pre">setuptools</span></code> in the directory by executing the commands:</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp gp-VirtualEnv">(dream)</span> <span class="gp">user:~$ </span>python3<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>~/target-path/.
-</pre></div>
-</div>
-<p>This will install the <em>dream</em> package and all its dependencies from pip including <a class="reference external" href="https://ngsolve.org/"><code class="docutils literal notranslate"><span class="pre">ngsolve</span></code></a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If <code class="docutils literal notranslate"><span class="pre">setuptools</span></code> finds an underlying installation of <code class="docutils literal notranslate"><span class="pre">ngsolve</span></code> it will not install the package from pip, but use the existing installation.</p>
+<p>If the installation finds an underlying installation of <code class="docutils literal notranslate"><span class="pre">ngsolve</span></code> it will not install the package from pip, but use the existing installation.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
