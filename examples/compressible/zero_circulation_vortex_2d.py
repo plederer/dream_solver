@@ -38,7 +38,7 @@ cfg.fem.mixed_method = "inactive"
 # cfg.fem.mixed_method = "strain_heat"
 
 
-cfg.nonlinear_solver = "pardiso"
+# cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
 cfg.nonlinear_solver.method.damping_factor = 1
 cfg.nonlinear_solver.max_iterations = 10
@@ -57,7 +57,7 @@ gamma = cfg.equation_of_state.heat_capacity_ratio
 Mt = 0.01
 R = 0.1
 r = sqrt((x-0.2)**2 + y**2)
-vt = Mt/M * cfg.scaling.velocity_magnitude(M)
+vt = Mt/M * cfg.scaling.velocity
 
 psi = vt * R * exp((R**2 - r**2)/(2*R**2))
 u_0 = Uinf.u + CF((psi.Diff(y), -psi.Diff(x)))
