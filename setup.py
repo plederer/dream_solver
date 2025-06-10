@@ -6,8 +6,12 @@ if it is available in the path.
 from setuptools import setup
 
 install_requires = [
-    "numpy>=1.26.4"
+    "numpy>=1.26.4",
+    "matplotlib>=3.9.1",
+    "webgui_jupyter_widgets>=0.2.31",
+    "jupyter>=1.1.1"
 ]
+
 try:
     import ngsolve
 except ImportError:

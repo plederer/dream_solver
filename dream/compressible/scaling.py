@@ -79,14 +79,6 @@ Energy equation
         \frac{\partial \overline{\rho E}}{\partial \overline{t}} + \overline{\div}((\overline{\rho E}  + \overline{p}) \overline{\vec{u}}  - \overline{\mat{\tau}}\overline{\vec{u}} + \overline{\vec{q}}) &= 0, \\
         \frac{\rho E_{ref}}{t_{ref}}\frac{\partial \rho E}{\partial t} + \frac{\rho_{ref} u^3_{ref}}{L_{ref}} \div((\rho E  + p) \vec{u}  - \mat{\tau}\vec{u} + \vec{q}) &= 0, \\
         \frac{\partial \rho E}{\partial t} + \div((\rho E  + p) \vec{u}  - \mat{\tau}\vec{u} + \vec{q}) &= 0.
-
-Equations of state
-    Ideal gas law
-        .. math::
-
-            \overline{p} &= \overline{\rho} \overline{R} \overline{T}, \\
-            p_{ref} p &= \rho_{ref} T_{ref} \overline{R} \rho T, \\
-            \gamma p &= (\gamma - 1) \rho T. 
 """
 from __future__ import annotations
 import typing

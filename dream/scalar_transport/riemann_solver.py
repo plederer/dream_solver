@@ -61,7 +61,7 @@ class LaxFriedrich(RiemannSolver):
         r""" Returns the convective numerical flux on a surface, which for this linear and scalar equation is identical to standard upwinding.
 
         .. math::
-            f^*(u_i, u_j) := \frac{1}{2} \Big( \bm{f}(u_i) + \bm{f}(u_j) \Big) \cdot \bm{n} - |\lambda| ( u_j - u_i ),
+            f^*(u_i, u_j) := \frac{1}{2} \Big( \bm{f}(u_i) + \bm{f}(u_j) \Big) \cdot \bm{n} - \frac{|\lambda|}{2} ( u_j - u_i ),
 
         where, :math:`u_i` and :math:`u_j` correspond to the local solution and its neighboring solution, respectively. Note, for this scalar and linear equation: :math:`\lambda = \bm{b} \cdot \bm{n}` and the flux is :math:`\bm{f}(u) = \bm{b} u`.
         """
