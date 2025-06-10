@@ -9,10 +9,10 @@ various classical and modern approaches from the literature.
     transient Euler equations. :cite:`toroRiemannSolversNumerical2009`
     :libs: arrows.meta
     
-    \begin{scope}[scale=2]
+    \begin{scope}[scale=3]
     % Coordinates
     \draw[-Latex] (-2,0) -- (2,0) node[right] {{$x$}};
-    \draw[-Latex] (0, 0) -- (0,2) node[above] {\footnotesize{$t$}};
+    \draw[-Latex] (0, 0) -- (0,2) node[above] {$t$};
 
     % Wave speeds
     \draw (0,0) -- (-2, 1.95) node[left] {{$u - c$}};
@@ -40,7 +40,7 @@ facet variables and :math:`\vec{U}^\pm_h` are the conservative element variables
 .. math::
     \widehat{\vec{F}}_h  \vec{n}^+ + \widehat{\vec{F}}_h  \vec{n}^- = 0,
 
-    then assures the continuity of the numerical flux across the facet.
+then assures the continuity of the numerical flux across the facet.
 
 - For DG methods, an example for a numerical flux is given by
 
