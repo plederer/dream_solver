@@ -14,11 +14,12 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
    introduction/about.md
    introduction/installation.md
    introduction/funding.md
+   introduction/contribute.md
    introduction/literature.md
 
 .. toctree::
    :maxdepth: 1
    :caption: Solvers
 
-   modules/compressible/index.rst
    modules/scalar_transport/index.rst
+   modules/compressible/index.rst
