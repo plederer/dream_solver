@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
@@ -54,7 +54,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../introduction/about.html">About</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../introduction/about.html#key-features-of-the-dream-solver">Key Features of the <strong>dream</strong> Solver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../introduction/about.html#future-goals">Future Goals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/about.html#work-in-progress">Work in progress</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../introduction/installation.html">Installation</a></li>
@@ -445,11 +445,12 @@
 <span class="kn">from</span> <span class="nn">dream</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">dream.scalar_transport</span> <span class="kn">import</span> <span class="n">Initial</span><span class="p">,</span> <span class="n">transportfields</span><span class="p">,</span> <span class="n">ScalarTransportSolver</span><span class="p">,</span> <span class="n">FarField</span>
 <span class="kn">import</span> <span class="nn">ngsolve</span> <span class="k">as</span> <span class="nn">ngs</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="kn">from</span> <span class="nn">netgen.occ</span> <span class="kn">import</span> <span class="n">OCCGeometry</span><span class="p">,</span> <span class="n">WorkPlane</span>
 <span class="kn">from</span> <span class="nn">netgen.meshing</span> <span class="kn">import</span> <span class="n">IdentificationType</span>
 <span class="kn">from</span> <span class="nn">ngsolve.meshes</span> <span class="kn">import</span> <span class="n">MakeStructured2DMesh</span>
-</pre></div>
+<br/><br/></pre></div>
 </div>
 </div>
 <div class="nbinput nblast docutils container">
@@ -550,16 +551,15 @@
 
 <span class="n">cfg</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s2">&quot;lax_friedrich&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;dg&quot;</span> <span class="c1"># NOTE, by default, DG is used.</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">interior_penalty_coefficient</span> <span class="o">=</span> <span class="mf">2.0</span>
-
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">interior_penalty_coefficient</span> <span class="o">=</span> <span class="mf">10.0</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">4</span>
 
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;transient&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;implicit_euler&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="o">*</span><span class="n">ngs</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="mf">0.01</span>
 
-<span class="n">cfg</span><span class="o">.</span><span class="n">linear_solver</span> <span class="o">=</span> <span class="s2">&quot;pardiso&quot;</span>
+<span class="c1"># cfg.linear_solver = &quot;pardiso&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># NOTE, by default, condensation is turned off.</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">compile</span><span class="o">.</span><span class="n">realcompile</span> <span class="o">=</span> <span class="kc">False</span>
 
@@ -574,12 +574,39 @@
 </pre></div>
 </div>
 </div>
-<div class="nbinput nblast docutils container">
+<div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">ngs</span><span class="o">.</span><span class="n">TaskManager</span><span class="p">():</span>
+    <span class="c1"># Solve the transport equation.</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+
+<span class="n">cfg</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">get_fields</span><span class="p">())</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+dream.scalar_transport.time.implicit (INFO) | time: 7.850000e+00
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "008dca1d79904933aedc54a4f9359da3"}</script></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Decorator for the actual simulation.</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 <span class="c1"># Extract time configuration.</span>
 <span class="n">t0</span><span class="p">,</span> <span class="n">tf</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">interval</span>
@@ -621,28 +648,29 @@
             <span class="c1"># Data for book-keeping information.</span>
             <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nt</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 
-            <span class="c1"># Time integration loop  (actual simulation).</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">start_solution_routine</span><span class="p">(</span><span class="kc">True</span><span class="p">)):</span>
+            <span class="k">with</span> <span class="n">ngs</span><span class="o">.</span><span class="n">TaskManager</span><span class="p">():</span>
+                <span class="c1"># Time integration loop  (actual simulation).</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">start_solution_routine</span><span class="p">(</span><span class="kc">True</span><span class="p">)):</span>
 
-                <span class="c1"># Get the variance, based on the analytic solution.</span>
-                <span class="n">s2e</span> <span class="o">=</span> <span class="n">get_variance_pulse</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">Get</span><span class="p">(),</span> <span class="n">cfg</span><span class="o">.</span><span class="n">diffusion_coefficient</span><span class="o">.</span><span class="n">Get</span><span class="p">())</span>
+                    <span class="c1"># Get the variance, based on the analytic solution.</span>
+                    <span class="n">s2e</span> <span class="o">=</span> <span class="n">get_variance_pulse</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">Get</span><span class="p">(),</span> <span class="n">cfg</span><span class="o">.</span><span class="n">diffusion_coefficient</span><span class="o">.</span><span class="n">Get</span><span class="p">())</span>
 
-                <span class="c1"># Compute centroid</span>
-                <span class="n">xh</span> <span class="o">=</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">x</span> <span class="o">*</span> <span class="n">uh</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">qorder</span><span class="p">)</span>
-                <span class="n">yh</span> <span class="o">=</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">uh</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">qorder</span><span class="p">)</span>
+                    <span class="c1"># Compute centroid</span>
+                    <span class="n">xh</span> <span class="o">=</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">x</span> <span class="o">*</span> <span class="n">uh</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">qorder</span><span class="p">)</span>
+                    <span class="n">yh</span> <span class="o">=</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">y</span> <span class="o">*</span> <span class="n">uh</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">qorder</span><span class="p">)</span>
 
-                <span class="c1"># Compute variance.</span>
-                <span class="n">r2h</span> <span class="o">=</span> <span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">xh</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">yh</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
-                <span class="n">s2h</span> <span class="o">=</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span><span class="n">r2h</span> <span class="o">*</span> <span class="n">uh</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="p">(</span><span class="n">qorder</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span> <span class="p">)</span>
+                    <span class="c1"># Compute variance.</span>
+                    <span class="n">r2h</span> <span class="o">=</span> <span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">xh</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">ngs</span><span class="o">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">yh</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+                    <span class="n">s2h</span> <span class="o">=</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span><span class="n">r2h</span> <span class="o">*</span> <span class="n">uh</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="p">(</span><span class="n">qorder</span><span class="o">+</span><span class="mi">2</span><span class="p">)</span> <span class="p">)</span>
 
-                <span class="c1"># Compute the normalized variance error.</span>
-                <span class="n">var_dif</span> <span class="o">=</span> <span class="n">s2h</span><span class="o">/</span><span class="n">s2e</span> <span class="o">-</span> <span class="mf">1.0</span>
+                    <span class="c1"># Compute the normalized variance error.</span>
+                    <span class="n">var_dif</span> <span class="o">=</span> <span class="n">s2h</span><span class="o">/</span><span class="n">s2e</span> <span class="o">-</span> <span class="mf">1.0</span>
 
-                <span class="c1"># Compute the L2-norm of the error.</span>
-                <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span> <span class="p">(</span><span class="n">ue</span><span class="o">-</span><span class="n">uh</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">qorder</span><span class="p">)</span> <span class="p">)</span>
+                    <span class="c1"># Compute the L2-norm of the error.</span>
+                    <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">ngs</span><span class="o">.</span><span class="n">Integrate</span><span class="p">(</span> <span class="p">(</span><span class="n">ue</span><span class="o">-</span><span class="n">uh</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">qorder</span><span class="p">)</span> <span class="p">)</span>
 
-                <span class="c1"># Store data: time and error metrics.</span>
-                <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">Get</span><span class="p">(),</span> <span class="n">var_dif</span><span class="p">,</span> <span class="n">err</span><span class="p">]</span>
+                    <span class="c1"># Store data: time and error metrics.</span>
+                    <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">Get</span><span class="p">(),</span> <span class="n">var_dif</span><span class="p">,</span> <span class="n">err</span><span class="p">]</span>
             <span class="k">return</span> <span class="n">data</span>
         <span class="n">wrapper</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
         <span class="k">return</span> <span class="n">wrapper</span>
@@ -651,7 +679,7 @@
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Specialized routines.</span>
@@ -716,7 +744,7 @@
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Figure style and properties.</span>
@@ -785,7 +813,7 @@
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run simulation(s).</span>
@@ -802,7 +830,7 @@
 <span class="c1"># Run each simulation.</span>
 <span class="k">for</span> <span class="n">routine</span> <span class="ow">in</span> <span class="n">routines</span><span class="p">:</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running </span><span class="si">{</span><span class="n">routine</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">routine</span><span class="p">(</span><span class="n">draw_solution</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">routine</span><span class="p">()</span>
     <span class="n">style</span> <span class="o">=</span> <span class="n">get_plot_style</span><span class="p">(</span><span class="n">routine</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">method_colors</span><span class="p">)</span>
 
     <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="o">**</span><span class="n">style</span><span class="p">)</span>
@@ -825,6 +853,14 @@
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+dream.scalar_transport.time.implicit (INFO) | time: 2.350000e+00
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 Running implicit_euler(hdg)...
@@ -833,15 +869,9 @@ Running implicit_euler(hdg)...
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "61c064714dec457aa432fb2384b79e00"}</script></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 7.850000e+00
+dream.scalar_transport.time.implicit (INFO) | time: 2.380000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -855,15 +885,9 @@ Running bdf2(hdg)...
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "3f23a4d62af942eea51ba8f4432b1641"}</script></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 7.850000e+00
+dream.scalar_transport.time.implicit (INFO) | time: 1.980000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -877,15 +901,9 @@ Running sdirk22(hdg)...
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "0aac6d2bb6994837ab44353a68ad8971"}</script></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 7.850000e+00
+dream.scalar_transport.time.implicit (INFO) | time: 1.840000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -899,12 +917,6 @@ Running sdirk33(hdg)...
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
-<div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "4aff0d20b27b418dadd4abbad6b8354d"}</script></div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
 dream.scalar_transport.time.imex (INFO) | time: 7.850000e+00
@@ -914,26 +926,18 @@ dream.scalar_transport.time.imex (INFO) | time: 7.850000e+00
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_gaussian_hill_farfield_9_12.png" src="../_images/examples_gaussian_hill_farfield_9_12.png" />
+<img alt="../_images/examples_gaussian_hill_farfield_10_9.png" src="../_images/examples_gaussian_hill_farfield_10_9.png" />
 </div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_gaussian_hill_farfield_9_13.png" src="../_images/examples_gaussian_hill_farfield_9_13.png" />
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
-</pre></div>
+<img alt="../_images/examples_gaussian_hill_farfield_10_10.png" src="../_images/examples_gaussian_hill_farfield_10_10.png" />
 </div>
 </div>
 <script type="application/vnd.jupyter.widget-state+json">
-{"state": {"7c44b4e7c73f482ab4b271cef29a4bfa": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "61c064714dec457aa432fb2384b79e00": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_7c44b4e7c73f482ab4b271cef29a4bfa", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_2.json", "preview": "preview_2.png"}}}, "22c68812feb24c519ec562e4e2ae01aa": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "3f23a4d62af942eea51ba8f4432b1641": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_22c68812feb24c519ec562e4e2ae01aa", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_3.json", "preview": "preview_3.png"}}}, "29ffa2ffaf7546e597ba68d7ee5a19d4": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "0aac6d2bb6994837ab44353a68ad8971": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_29ffa2ffaf7546e597ba68d7ee5a19d4", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_4.json", "preview": "preview_4.png"}}}, "c5b34ac2102548cb950972b7956d2b93": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "4aff0d20b27b418dadd4abbad6b8354d": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_c5b34ac2102548cb950972b7956d2b93", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_5.json", "preview": "preview_5.png"}}}}, "version_major": 2, "version_minor": 0}
+{"state": {"1cf45a5c635546869c130ff8569e4d4e": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "008dca1d79904933aedc54a4f9359da3": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_1cf45a5c635546869c130ff8569e4d4e", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_2.json", "preview": "preview_2.png"}}}}, "version_major": 2, "version_minor": 0}
 </script></section>
 
 
