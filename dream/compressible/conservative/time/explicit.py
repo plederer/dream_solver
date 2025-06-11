@@ -1,4 +1,4 @@
-""" Definitions of explicit time integration schemes for conservative methods """
+""" Definitions of explicit time integration schemes for conservative methods. """
 from __future__ import annotations
 
 import ngsolve as ngs
@@ -69,7 +69,13 @@ class ExplicitSchemes(TimeSchemes):
 
 
 class ExplicitEuler(ExplicitSchemes):
+    r""" Class responsible for implementing an explicit (forwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Assuming a standard DG formulation,
 
+    .. math::
+        \widetilde{\bm{M}} \bm{U}^{n+1} = \widetilde{\bm{M}} \bm{U}^{n} - \bm{f} \big( \bm{U}^{n} \big),
+
+    where :math:`\widetilde{\bm{M}} = \bm{M} / \delta t` is the weighted mass matrix, :math:`\bm{M}` is the mass matrix and :math:`\bm{f}` arises from the spatial discretization of the PDE.
+    """
     name: str = "explicit_euler"
 
     def update_solution(self, t: float):
@@ -82,12 +88,14 @@ class ExplicitEuler(ExplicitSchemes):
 
 
 class SSPRK3(ExplicitSchemes):
-    r"""Strong-Stability-Preserving 3rd-order Runge-Kutta.
-        This is taken from Section 4.1, Equation 4.2 in [1]. 
+    r""" Class responsible for implementing an explicit 3rd-order strong-stability-preserving Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 4.1, Equation 4.2 in :cite:`gottlieb2001strong`. Assuming a standard DG formulation,
 
-    [1] Gottlieb, Sigal, Chi-Wang Shu, and Eitan Tadmor. 
-        "Strong stability-preserving high-order time discretization methods." 
-        SIAM review 43.1 (2001): 89-112.
+    .. math::
+        \bm{y}_{1}   &=             \bm{U}^{n} -                                      \widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} \big),\\[2ex]
+        \bm{y}_{2}   &= \frac{3}{4} \bm{U}^{n} + \frac{1}{4} \bm{y}_{1} - \frac{1}{4} \widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{y}_{1} \big),\\[2ex]
+        \bm{U}^{n+1} &= \frac{1}{3} \bm{U}^{n} + \frac{2}{3} \bm{y}_{2} - \frac{2}{3} \widetilde{\bm{M}}^{-1 }\bm{f} \big( \bm{y}_{2} \big),
+
+    where :math:`\widetilde{\bm{M}} = \bm{M} / \delta t` is the weighted mass matrix, :math:`\bm{M}` is the mass matrix and :math:`\bm{f}` arises from the spatial discretization of the PDE.
     """
     name: str = "ssprk3"
 
@@ -125,23 +133,34 @@ class SSPRK3(ExplicitSchemes):
 
         # First stage.
         self.blf.Apply(Un.vec, self.rhs)
-        Un.data = self.U0 + self.minv * self.rhs
+        Un.vec.data = self.U0 + self.minv * self.rhs
 
         # Second stage.
         self.blf.Apply(Un.vec, self.rhs)
 
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
-        Un.data *= self.alpha21
-        Un.data += self.alpha20 * self.U0 + self.beta21 * self.minv * self.rhs
+        Un.vec.data *= self.alpha21
+        Un.vec.data += self.alpha20 * self.U0 + self.beta21 * self.minv * self.rhs
 
         # Third stage.
         self.blf.Apply(Un.vec, self.rhs)
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
-        Un.data *= self.alpha32
-        Un.data += self.alpha30 * self.U0 + self.beta32 * self.minv * self.rhs
+        Un.vec.data *= self.alpha32
+        Un.vec.data += self.alpha30 * self.U0 + self.beta32 * self.minv * self.rhs
 
 
 class CRK4(ExplicitSchemes):
+    r""" Class responsible for implementing an explicit 4th-order (classic) Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Assuming a standard DG formulation,
+
+    .. math::
+        \bm{k}_{1}   &= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n}                \big),\\[2ex]
+        \bm{k}_{2}   &= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} + \bm{k}_1 / 2 \big),\\[2ex] 
+        \bm{k}_{3}   &= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} + \bm{k}_2 / 2 \big),\\[2ex]
+        \bm{k}_{4}   &= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} + \bm{k}_3     \big),\\[2ex]
+        \bm{U}^{n+1} &= \bm{U}^{n} + \big( \bm{k}_1 + 2\bm{k}_2 + 2\bm{k}_3 + \bm{k}_4  \big) / 6,
+
+    where :math:`\widetilde{\bm{M}} = \bm{M} / \delta t` is the weighted mass matrix, :math:`\bm{M}` is the mass matrix and :math:`\bm{f}` arises from the spatial discretization of the PDE.
+    """
 
     name: str = "crk4"
 

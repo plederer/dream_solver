@@ -58,7 +58,7 @@ cfg.fem.method.scheme = "bdf2"
 cfg.fem.order = 4
 cfg.fem.mixed_method = "inactive"
 
-cfg.nonlinear_solver = "pardiso"
+# cfg.nonlinear_solver = "pardiso"
 cfg.nonlinear_solver.method = "newton"
 cfg.nonlinear_solver.method.damping_factor = 1
 cfg.nonlinear_solver.max_iterations = 10
@@ -99,6 +99,8 @@ cfg.initialize()
 drawing = cfg.get_solution_fields()
 drawing["p'"] = drawing.p - Uinf.p
 cfg.io.draw(drawing, autoscale=False, min=-1e-4, max=1e-4)
+
+cfg.io.vtk.enable = True
 cfg.io.vtk.fields = drawing
 
 # ------- Solve System ------- #

@@ -31,7 +31,7 @@ class Stream(Configuration, is_interface=True):
 
     def __init__(self, mesh, root=None, **default):
 
-        DEFAULT = {"filename": None, "path": Path.cwd()}
+        DEFAULT = {"filename": None, "enable": False, "path": Path.cwd()}
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
 
@@ -44,6 +44,14 @@ class Stream(Configuration, is_interface=True):
         if filename is None:
             filename = self.name
         self._filename = filename
+
+    @dream_configuration
+    def enable(self) -> bool:
+        return self._enable
+
+    @enable.setter
+    def enable(self, enable: bool):
+        self._enable = bool(enable)
 
     @dream_configuration
     def path(self) -> Path:
@@ -64,7 +72,7 @@ class Stream(Configuration, is_interface=True):
 
         return self
 
-    def save_pre_time_routine(self) -> None:
+    def save_pre_time_routine(self, t: float | None = None) -> None:
         raise NotImplementedError("Method 'save_pre_routine' is not implemented!")
 
     def save_in_time_routine(self, t: float, it: int) -> None:
@@ -73,7 +81,7 @@ class Stream(Configuration, is_interface=True):
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
         raise NotImplementedError("Method 'save_post_routine' is not implemented!")
 
-    def close(self):
+    def close(self) -> None:
         return None
 
 
@@ -81,7 +89,7 @@ class MeshStream(Stream):
 
     name: str = "mesh"
 
-    def save_pre_time_routine(self) -> None:
+    def save_pre_time_routine(self, t: float | None = None) -> None:
 
         path = self.path.joinpath(self.filename + ".pickle")
 
@@ -101,45 +109,45 @@ class SettingsStream(Stream):
     def __init__(self, mesh, root=None, **default):
 
         DEFAULT = {
-            "pickle": True,
-            "txt": True,
-            "yaml": False,
+            "to_pickle": True,
+            "to_txt": True,
+            "to_yaml": False,
         }
         DEFAULT.update(default)
 
         super().__init__(mesh, root, **DEFAULT)
 
     @dream_configuration
-    def pickle(self) -> bool:
-        return self._pickle
+    def to_pickle(self) -> bool:
+        return self._to_pickle
 
-    @pickle.setter
-    def pickle(self, pickle: bool):
-        self._pickle = bool(pickle)
-
-    @dream_configuration
-    def txt(self) -> bool:
-        return self._txt
-
-    @txt.setter
-    def txt(self, txt: bool):
-        self._txt = bool(txt)
+    @to_pickle.setter
+    def to_pickle(self, pickle: bool):
+        self._to_pickle = bool(pickle)
 
     @dream_configuration
-    def yaml(self) -> bool:
-        return self._yaml
+    def to_txt(self) -> bool:
+        return self._to_txt
 
-    @yaml.setter
-    def yaml(self, yaml: bool):
-        self._yaml = bool(yaml)
+    @to_txt.setter
+    def to_txt(self, txt: bool):
+        self._to_txt = bool(txt)
 
-    def save_pre_time_routine(self):
+    @dream_configuration
+    def to_yaml(self) -> bool:
+        return self._to_yaml
 
-        if self.pickle:
+    @to_yaml.setter
+    def to_yaml(self, yaml: bool):
+        self._to_yaml = bool(yaml)
+
+    def save_pre_time_routine(self, t: float | None = None):
+
+        if self.to_pickle:
             self.save_to_pickle()
-        if self.txt:
+        if self.to_txt:
             self.save_to_txt()
-        if self.yaml:
+        if self.to_yaml:
             self.save_to_yaml()
 
     def save_to_pickle(self, filename: str | None = None) -> None:
@@ -252,6 +260,8 @@ class VTKStream(Stream):
             logger.warning("No fields to save! VTK stream is deactivated!")
             return None
 
+        super().open()
+
         self.drawelems = None
         if self.region is not None:
             self.drawelems = ngs.BitArray(self.mesh.ne)
@@ -263,7 +273,7 @@ class VTKStream(Stream):
         self.writer = ngs.VTKOutput(ma=self.root.mesh, coefs=list(self.fields.values()), names=list(
             self.fields.keys()), filename=str(path), subdivision=self.subdivision)
 
-        return super().open()
+        return self
 
     def save_pre_time_routine(self, t: float | None = None) -> None:
         if t is None:
@@ -291,7 +301,7 @@ class GridfunctionStream(Stream):
     def __init__(self, mesh, root=None, **default):
         DEFAULT = {
             "rate": 1,
-            "time_level_rate": 100,
+            "time_level_rate": 0,
         }
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
@@ -303,8 +313,8 @@ class GridfunctionStream(Stream):
     @rate.setter
     def rate(self, rate: int):
         rate = int(rate)
-        if rate <= 0:
-            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the gfu writer!")
+        if rate < 0:
+            raise ValueError("Saving rate must be greater equal than 0!")
         self._rate = rate
 
     @dream_configuration
@@ -314,8 +324,8 @@ class GridfunctionStream(Stream):
     @time_level_rate.setter
     def time_level_rate(self, time_level_rate: int):
         time_level_rate = int(time_level_rate)
-        if time_level_rate <= 0:
-            raise ValueError("Saving rate must be greater than 0, otherwise consider deactivating the gfu writer!")
+        if time_level_rate < 0:
+            raise ValueError("Saving rate must be greater equal than 0!")
         self._time_level_rate = time_level_rate
 
     def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
@@ -343,15 +353,19 @@ class GridfunctionStream(Stream):
         import time
 
         logger.info(f"Loading gridfunction from '{self.filename}'")
-        for t in self.root.time.timer.start(stride=self.rate):
-            self.load_routine(t)
 
-            self.root.io.redraw()
-            logger.info(f"file: {self.filename} | t: {t}")
+        with self.root.io as io:
 
-            yield t
+            for it, t in enumerate(self.root.time.timer.start(stride=self.rate)):
+                logger.info(f"file: {self.filename} | t: {t}")
+                
+                self.load_routine(t)
+                io.redraw()
+                io.save_in_time_routine(t, it)
 
-            time.sleep(sleep)
+                yield t
+
+                time.sleep(sleep)
 
     def load_time_levels(self, t: float) -> None:
 
@@ -364,21 +378,6 @@ class GridfunctionStream(Stream):
 
                 self.load_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
 
-    def save_in_time_routine(self, t: float | None = None, it: int = 0):
-
-        filename = self.filename
-        if t is not None:
-            filename = f"{filename}_{t}"
-
-            if it % self.time_level_rate == 0:
-
-                for fes, gfus in self.root.fem.scheme.gfus.items():
-                    for level, gfu in gfus.items():
-                        self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
-
-        if it % self.rate == 0:
-            self.save_gridfunction(self.root.fem.gfu, filename)
-
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
         if filename is None:
@@ -388,12 +387,50 @@ class GridfunctionStream(Stream):
 
         gfu.Save(str(file))
 
+    def save_in_time_routine(self, t: float, it: int = 0):
+
+        filename = f"{self.filename}_{t}"
+
+        if self.rate:
+            self._save_routine_gridfunction(filename, it % self.rate == 0)
+
+        if self.time_level_rate:
+            self._save_routine_gridfunction_level(filename, it % self.time_level_rate == 0)
+
     def save_pre_time_routine(self, t: float | None = None) -> None:
-        self.save_in_time_routine(t, it=0)
+
+        filename = self.filename
+        if t is None:
+            # Stationary case
+            self._save_routine_gridfunction(filename, True)
+        else:
+            # Transient case
+            filename = f"{filename}_{t}"
+            self._save_routine_gridfunction(filename, True)
+            self._save_routine_gridfunction_level(filename, True)
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
-        if t is None or not it % self.rate == 0:
-            self.save_in_time_routine(t, it=0)
+
+        filename = self.filename
+        if t is None:
+            # Stationary case
+            self._save_routine_gridfunction(filename, True)
+        else:
+            # Transient case
+            filename = f"{filename}_{t}"
+
+            self._save_routine_gridfunction(filename, True)
+            self._save_routine_gridfunction_level(filename, True)
+
+    def _save_routine_gridfunction(self, filename: str, predicate: bool):
+        if predicate:
+            self.save_gridfunction(self.root.fem.gfu, filename)
+
+    def _save_routine_gridfunction_level(self, filename: str, predicate: bool):
+        if predicate:
+            for fes, gfus in self.root.fem.scheme.gfus.items():
+                for level, gfu in gfus.items():
+                    self.save_gridfunction(gfu, f"{filename}_{fes}_{level}")
 
 
 class LogStream(Stream):
@@ -405,27 +442,11 @@ class LogStream(Stream):
         self.logger = logging.getLogger('dream')
 
         DEFAULT = {
-            "level": logging.INFO,
-            "to_terminal": True,
-            "to_file": False,
+            "level": logging.INFO
         }
         DEFAULT.update(default)
 
         super().__init__(mesh, root, **DEFAULT)
-
-    def _get_handler(self, name: str) -> logging.Handler:
-        for handler in self.logger.handlers:
-            if handler.get_name() == name:
-                return handler
-        return False
-
-    def _get_formatter(self) -> logging.Formatter:
-
-        if self.level == logging.DEBUG:
-            return logging.Formatter(
-                "%(name)-15s (%(levelname)8s) | %(message)s (%(filename)s:%(lineno)s)", "%Y-%m-%d %H:%M:%S")
-        else:
-            return logging.Formatter("%(name)-15s (%(levelname)s) | %(message)s")
 
     @dream_configuration
     def level(self) -> int:
@@ -434,6 +455,19 @@ class LogStream(Stream):
     @level.setter
     def level(self, level: int | str):
         self.logger.setLevel(level)
+
+    @Stream.enable.setter
+    def enable(self, enable: bool):
+        enable = bool(enable)
+
+        if enable:
+            self.to_terminal = True
+            self.to_file = False
+        else:
+            self.to_terminal = False
+            self.to_file = False
+
+        self._enable = bool(enable)
 
     @dream_configuration
     def to_terminal(self) -> bool:
@@ -490,6 +524,36 @@ class LogStream(Stream):
 
         self._to_file = to_file
 
+    def open(self):
+
+        # Set logger to carriage return
+        stream_handler = self._get_handler("terminal")
+        if stream_handler:
+            stream_handler.terminator = "\r"
+
+        return self
+
+    def close(self):
+
+        # Unset logger to carriage return
+        stream_handler = self._get_handler("terminal")
+        if stream_handler:
+            stream_handler.terminator = "\n"
+
+    def _get_handler(self, name: str) -> logging.Handler:
+        for handler in self.logger.handlers:
+            if handler.get_name() == name:
+                return handler
+        return False
+
+    def _get_formatter(self) -> logging.Formatter:
+
+        if self.level == logging.DEBUG:
+            return logging.Formatter(
+                "%(name)-15s (%(levelname)8s) | %(message)s (%(filename)s:%(lineno)s)", "%Y-%m-%d %H:%M:%S")
+        else:
+            return logging.Formatter("%(name)-15s (%(levelname)s) | %(message)s")
+
 
 class SensorStream(Stream):
 
@@ -497,7 +561,7 @@ class SensorStream(Stream):
 
     def __init__(self, mesh, root=None, **default):
 
-        self._sensors: list[Sensor] = []
+        self.list: list[Sensor] = []
 
         DEFAULT = {
             "mode": "w",
@@ -524,17 +588,25 @@ class SensorStream(Stream):
     def to_csv(self, to_csv: bool):
         self._to_csv = bool(to_csv)
 
+    @Stream.enable.setter
+    def enable(self, enable: bool):
+
+        if not enable:
+            self.list = []
+
+        self._enable = bool(enable)
+
     def add(self, sensor: Sensor) -> None:
         if not isinstance(sensor, Sensor):
             raise ValueError("Sensor must be of type 'Sensor'!")
 
         sensor.mesh = self.mesh
 
-        self._sensors.append(sensor)
+        self.list.append(sensor)
 
     def open(self) -> SensorStream:
 
-        if not self._sensors:
+        if not self.list:
             logger.warning("No sensors to save! Sensor stream is deactivated!")
             return None
 
@@ -549,7 +621,7 @@ class SensorStream(Stream):
         import csv
 
         self.csv = {}
-        for sensor in self._sensors:
+        for sensor in self.list:
             file = self.path.joinpath(sensor.name + ".csv").open(self.mode)
             writer = csv.writer(file)
 
@@ -566,36 +638,73 @@ class SensorStream(Stream):
 
         if not self.root.time.is_stationary:
             names.append('t')
-            header = [(*header_, ' ') for header_ in header]
+            header = [(*header_, '') for header_ in header]
 
         return names, header
 
     def save_pre_time_routine(self, t: float | None = None) -> None:
 
+        if t is None:
+            t = ''
+
         for sensor, data in self.measure():
 
-            if t is not None:
-                data = [t, *data]
-
             if self.to_csv:
-                self.csv[sensor.name][1].writerow(data)
+                self.csv[sensor.name][1].writerow([t, *data])
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
+
         for sensor, data in self.measure():
             if it % sensor.rate == 0:
                 if self.to_csv:
                     self.csv[sensor.name][1].writerow([t, *data])
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
+
+        if t is None:
+            t = ''
+
         for sensor, data in self.measure():
-            if t is None:
-                if self.to_csv:
-                    self.csv[sensor.name][1].writerow(data)
-            elif not it % sensor.rate == 0:
-                if self.to_csv:
+            if self.to_csv:
+                if t == '' or not it % sensor.rate == 0:
                     self.csv[sensor.name][1].writerow([t, *data])
 
-    def load_as_dataframe(self, sensor: Sensor | str, header: tuple = [0, 1, 2, 3], index_col: int = [0], **pd_kwargs):
+    def load_csv_as_dict(self, sensor: Sensor | str) -> tuple[np.ndarray, dict[tuple[str, str, str], np.ndarray]]:
+        import csv
+
+        if isinstance(sensor, Sensor):
+            sensor = sensor.name
+
+        names = []
+        data = []
+        with self.path.joinpath(sensor + ".csv").open('r') as file:
+            reader = csv.reader(file)
+
+            for row in reader:
+                names.append(row[0])
+                data.append(row[1:])
+
+        header = {(loc, field, component): None for
+                  loc, field, component
+                  in zip(data.pop(0), data.pop(0), data.pop(0))}
+        names = names[3:]
+
+        if names[0] == "t":
+            data.pop(0)
+            names.pop(0)
+
+        data = np.array(data, dtype=float)
+        index = np.array(names)
+
+        for idx, key in enumerate(header):
+            header[key] = data[:, idx]
+
+        return index, header
+
+    def load_csv_as_dataframe(
+            self, sensor: Sensor | str, header: tuple = [0, 1, 2, 3],
+            index_col: int = [0],
+            **pd_kwargs):
         import pandas as pd
 
         if isinstance(sensor, Sensor):
@@ -604,8 +713,8 @@ class SensorStream(Stream):
         return pd.read_csv(self.path.joinpath(sensor + ".csv"), header=header, index_col=index_col, **pd_kwargs)
 
     def measure(self) -> typing.Generator[tuple[Sensor, np.ndarray], None, None]:
-        for sensor in self._sensors:
-            yield sensor, np.concatenate([measurement for measurement in sensor.measure()])
+        for sensor in self.list:
+            yield sensor, np.concatenate([data for data in sensor.measure()])
 
     def close(self):
         if hasattr(self, 'csv'):
@@ -638,7 +747,7 @@ class Sensor:
                   for component in self.get_field_components(cf)]
         return names, header
 
-    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: ngs.CF):
         if bla.is_scalar(cf):
             return bla.SCALAR_COMPONENT
         elif bla.is_vector(cf) and cf.dim <= 3:
@@ -671,7 +780,7 @@ class RegionSensor(Sensor):
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for region in self.regions.values():
-            yield np.array(ngs.Integrate(self._field, self.mesh, order=self.integration_order, definedon=region))
+            yield np.array(ngs.Integrate(self._field, self.mesh, order=self.integration_order, definedon=region), ndmin=1)
 
     def measure_as_dict(self) -> dict[tuple[float, float, float], np.ndarray]:
         return {region: value for region, value in zip(self.regions, self.measure())}
@@ -696,7 +805,7 @@ class RegionSensor(Sensor):
             regions = get_regions_from_pattern(expected, region)
 
             for miss in set(region.split('|')).difference(regions):
-                logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted in sensor {self.name}!")
+                logger.warning(f"Region '{miss}' does not exist! Region {miss} omitted!")
 
             regions = get_pattern_from_sequence(regions)
             return {regions: REGION(regions)}
@@ -705,7 +814,7 @@ class RegionSensor(Sensor):
             regions = tuple(region_ for region_ in region if region_ in expected)
 
             for miss in set(region).difference(regions):
-                logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted in sensor {self.name}!")
+                logger.warning(f"Domain '{miss}' does not exist! Domain {miss} omitted!")
 
             return {region_: REGION(region_) for region_ in regions}
 
@@ -736,7 +845,7 @@ class DomainL2Sensor(DomainSensor):
         for array in super().measure():
             yield np.sqrt(array)
 
-    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: ngs.CF):
         return ('L2',)
 
 
@@ -760,7 +869,7 @@ class BoundaryL2Sensor(BoundarySensor):
         for array in super().measure():
             yield np.sqrt(array)
 
-    def get_field_components(self, cf: bla.SCALAR | bla.VECTOR | bla.MATRIX):
+    def get_field_components(self, cf: ngs.CF):
         return ('L2',)
 
 
@@ -779,7 +888,7 @@ class PointSensor(Sensor):
 
     def measure(self) -> typing.Generator[np.ndarray, None, None]:
         for point in self.points:
-            yield np.atleast_1d(self._field(self.mesh(*point)))
+            yield np.array(self._field(self.mesh(*point)), ndmin=1)
 
     def measure_as_dict(self) -> dict[tuple[float, float, float], np.ndarray]:
         return {point: value for point, value in zip(self.points, self.measure())}
@@ -814,12 +923,12 @@ class IOConfiguration(Configuration):
         path = Path.cwd().joinpath("output")
         DEFAULT = {
             "path": path,
-            "log": LogStream(mesh, root=root, path=path),
-            "ngsmesh": False,
-            "gfu": False,
-            "settings": False,
-            "vtk": False,
-            "sensor": False,
+            "log": LogStream(mesh, root=root, path=path, enable=True),
+            "ngsmesh": MeshStream(mesh, root=root, path=path),
+            "gfu": GridfunctionStream(mesh, root=root, path=path.joinpath("states")),
+            "settings": SettingsStream(mesh, root=root, path=path.joinpath("settings")),
+            "vtk": VTKStream(mesh, root=root, path=path.joinpath("vtk")),
+            "sensor": SensorStream(mesh, root=root, path=path.joinpath("sensors")),
         }
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
@@ -836,97 +945,68 @@ class IOConfiguration(Configuration):
         if not path.is_absolute():
             path = Path.cwd().joinpath(path)
 
+        # Change paths of all streams if they are relative to the current path
+        streams = [stream for stream in vars(self).values() if isinstance(stream, Stream)]
+        for stream in streams:
+            if stream.path.is_relative_to(self._path):
+                stream.path = path.joinpath(stream.path.relative_to(self._path))
+
         self._path = path
 
     @dream_configuration
     def log(self) -> LogStream:
-        if not hasattr(self, '_log'):
-            self.log = LogStream(self.mesh, root=self.root, path=self.path)
         return self._log
 
     @log.setter
     def log(self, log: LogStream | bool):
-        if isinstance(log, LogStream):
-            self._log = log
-            self._log.mesh = self.mesh
-            self._log.root = self.root
-        elif hasattr(self, '_log'):
-            delattr(self, '_log')
+        self._log = self._parse_stream(log, LogStream)
 
     @dream_configuration
     def ngsmesh(self) -> MeshStream:
-        if not hasattr(self, '_ngsmesh'):
-            self.ngsmesh = MeshStream(self.mesh, root=self.root, path=self.path)
         return self._ngsmesh
 
     @ngsmesh.setter
     def ngsmesh(self, ngsmesh: MeshStream | bool):
-        if isinstance(ngsmesh, MeshStream):
-            self._ngsmesh = ngsmesh
-            self._ngsmesh.mesh = self.mesh
-            self._ngsmesh.root = self.root
-        elif hasattr(self, '_ngsmesh'):
-            delattr(self, '_ngsmesh')
+        self._ngsmesh = self._parse_stream(ngsmesh, MeshStream)
 
     @dream_configuration
     def gfu(self) -> GridfunctionStream:
-        if not hasattr(self, '_gfu'):
-            self.gfu = GridfunctionStream(self.mesh, root=self.root, path=self.path.joinpath("states"))
         return self._gfu
 
     @gfu.setter
     def gfu(self, gfu: GridfunctionStream | bool):
-        if isinstance(gfu, GridfunctionStream):
-            self._gfu = gfu
-            self._gfu.mesh = self.mesh
-            self._gfu.root = self.root
-        elif hasattr(self, '_gfu'):
-            delattr(self, '_gfu')
+        self._gfu = self._parse_stream(gfu, GridfunctionStream)
 
     @dream_configuration
     def settings(self) -> SettingsStream:
-        if not hasattr(self, '_settings'):
-            self.settings = SettingsStream(self.mesh, root=self.root, path=self.path.joinpath("settings"))
         return self._settings
 
     @settings.setter
     def settings(self, settings: SettingsStream | bool):
-        if isinstance(settings, SettingsStream):
-            self._settings = settings
-            self._settings.mesh = self.mesh
-            self._settings.root = self.root
-        elif hasattr(self, '_settings'):
-            delattr(self, '_settings')
+        self._settings = self._parse_stream(settings, SettingsStream)
 
     @dream_configuration
     def vtk(self) -> VTKStream:
-        if not hasattr(self, '_vtk'):
-            self.vtk = VTKStream(self.mesh, root=self.root, path=self.path.joinpath("vtk"))
         return self._vtk
 
     @vtk.setter
     def vtk(self, vtk: VTKStream | bool):
-        if isinstance(vtk, VTKStream):
-            self._vtk = vtk
-            self._vtk.mesh = self.mesh
-            self._vtk.root = self.root
-        elif hasattr(self, '_vtk'):
-            delattr(self, '_vtk')
+        self._vtk = self._parse_stream(vtk, VTKStream)
 
     @dream_configuration
     def sensor(self) -> SensorStream:
-        if not hasattr(self, '_sensor'):
-            self.sensor = SensorStream(self.mesh, root=self.root, path=self.path.joinpath("sensors"))
         return self._sensor
 
     @sensor.setter
     def sensor(self, sensor: SensorStream | bool):
-        if isinstance(sensor, SensorStream):
-            self._sensor = sensor
-            self._sensor.mesh = self.mesh
-            self._sensor.root = self.root
-        elif hasattr(self, '_sensor'):
-            delattr(self, '_sensor')
+        self._sensor = self._parse_stream(sensor, SensorStream)
+
+    def disable(self):
+        """Disable all streams except for LogStream."""
+        for stream in vars(self).values():
+            if isinstance(stream, Stream) and not isinstance(stream, LogStream):
+                stream.enable = False
+        self.undraw()
 
     def draw(self, fields: ngsdict, **kwargs):
         if is_notebook():
@@ -945,20 +1025,20 @@ class IOConfiguration(Configuration):
                     scene.Redraw()
             ngs.Redraw(blocking)
 
+    def undraw(self):
+
+        if hasattr(self, "scenes"):
+            del self.scenes
+
     def open(self):
 
-        streams = [stream for stream in vars(self).values() if isinstance(stream, Stream)]
+        SINGLE = (MeshStream, SettingsStream)
+        FILE = (VTKStream, GridfunctionStream, SensorStream)
 
-        self.single_streams = []
-        self.file_streams = []
+        streams = [stream.open() for stream in vars(self).values() if isinstance(stream, Stream) and stream.enable]
 
-        for stream in streams:
-            stream_ = stream.open()
-            if stream_ is not None:
-                if isinstance(stream_, (MeshStream, SettingsStream)):
-                    self.single_streams.append(stream_)
-                elif isinstance(stream_, (VTKStream, GridfunctionStream, SensorStream)):
-                    self.file_streams.append(stream_)
+        self.single_streams = [stream for stream in streams if isinstance(stream, SINGLE)]
+        self.file_streams = [stream for stream in streams if isinstance(stream, FILE)]
 
     def save_pre_time_routine(self, t: float | None = None):
         for stream in self.single_streams:
@@ -976,8 +1056,18 @@ class IOConfiguration(Configuration):
             stream.save_post_time_routine(t, it)
 
     def close(self):
+
+        self.log.close()
+
         for stream in self.file_streams:
             stream.close()
+
+    def _parse_stream(self, stream: Stream, type: Stream):
+        if not isinstance(stream, type):
+            raise ValueError(f"Stream must be of type '{type}'!")
+        stream.mesh = self.mesh
+        stream.root = self.root
+        return stream
 
     def __enter__(self):
         self.open()

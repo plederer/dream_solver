@@ -65,17 +65,29 @@ class Timer(Configuration):
 
     def start(self, include_start: bool = False, stride: int = 1):
 
-        start, end = self.interval
+        start, _ = self.interval
         step = self.step.Get()
+        size = self.num_steps(include_start, stride)
 
-        N = round((end - start)/(stride*step)) + 1
-
-        for i in range(1 - include_start, N):
+        for i in range(1 - include_start, size + 1):
             self.t = start + stride*i*step
             yield round(self.t.Get(), self.digit)
 
     def to_array(self, include_start: bool = False, stride: int = 1) -> np.ndarray:
         return np.array(list(self.start(include_start, stride)))
+
+    def reset(self):
+        self.t = self.interval[0]
+
+    def num_steps(self, include_start: bool = False, stride: int = 1) -> int:
+        start, end = self.interval
+        step = self.step.Get()
+
+        size = round((end - start)/(stride * step))
+        if include_start:
+            size += 1
+
+        return size
 
     def __call__(self, **kwargs):
         self.update(**kwargs)
@@ -227,6 +239,8 @@ class TransientRoutine(TimeRoutine):
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
+        self.timer.reset()
+
         scheme = self.root.fem.scheme
 
         if reassemble:
@@ -306,13 +320,15 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
+        self.timer.reset()
+
         scheme = self.root.fem.scheme
 
         if reassemble:
             scheme.assemble()
 
         with self.root.io as io:
-            io.save_pre_time_routine(self.timer.t.Get())
+            io.save_pre_time_routine()
 
             # Solution routine starts here
             for it in scheme.solve_current_time_level():
@@ -323,11 +339,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
             yield None
 
             # Solution routine ends here
-            io.save_in_time_routine(self.timer.t.Get(), it=0)
-
-            io.redraw()
-
-            io.save_post_time_routine(self.timer.t.Get())
+            io.save_post_time_routine()
 
     def solver_iteration_update(self, it: int):
         old_time_step = self.timer.step.Get()

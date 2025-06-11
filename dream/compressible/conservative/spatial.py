@@ -1,11 +1,11 @@
-""" Definitions of conservative spatial discretizations """
+""" Definitions of conservative spatial discretizations. """
 from __future__ import annotations
 import logging
 import ngsolve as ngs
 import typing
 import dream.bla as bla
 
-from dream.time import TransientRoutine, PseudoTimeSteppingRoutine
+from dream.time import TimeSchemes, TransientRoutine, PseudoTimeSteppingRoutine
 from dream.config import Configuration, dream_configuration, Integrals
 from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
 from dream.compressible.config import (flowfields,
@@ -18,7 +18,7 @@ from dream.compressible.config import (flowfields,
                                        AdiabaticWall,
                                        CBC)
 
-from .time import TimeSchemes, ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2, ExplicitEuler, SSPRK3, CRK4, IMEXRK_ARS443
+from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2, ExplicitEuler, SSPRK3, CRK4, IMEXRK_ARS443
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class MixedMethod(Configuration, is_interface=True):
     def get_cbc_viscous_terms(self, bc: CBC) -> ngs.CF:
         return ngs.CF(tuple(0 for _ in range(self.mesh.dim + 2)))
 
-    def get_diffusive_stabilisation_matrix(self, U: flowfields) -> bla.MATRIX:
+    def get_diffusive_stabilisation_matrix(self, U: flowfields) -> ngs.CF:
         Re = self.root.scaling.reference_reynolds_number
         Pr = self.root.prandtl_number
         mu = self.root.viscosity(U)
@@ -73,6 +73,37 @@ class Inactive(MixedMethod):
 
 
 class StrainHeat(MixedMethod):
+    r""" Strain-tensor and temperature gradient mixed method for compressible flow.
+
+    This mixed method is based on the strain-rate tensor 
+
+    .. math::
+        \mat{\varepsilon} = \frac{1}{2} \left( \grad{\vec{u}} + \grad{\vec{u}}^\T \right) - \frac{1}{3} \div{(\vec{u})} \mat{I}
+    
+    and the temperature gradient :math:`\phi = \grad{T}` as additional variables to the conservative variables. 
+    It is used to solve the compressible Navier-Stokes equations with viscous effects.
+
+    Find :math:`\left(\vec{U}_h,\hat{\vec{U}}_h, (\mat{\varepsilon}_h, \vec{\phi}_h) \right) \in U_h \times \hat{U}_h \times Q_h` such that
+
+    .. math::
+
+        \sum_{T  \in \mesh} \int_{T} \mat{\varepsilon}_h : \mat{\zeta}_h \, d\bm{x} + \int_{T} \vec{u}_h \cdot \div(\mat{\zeta}_h - \frac{1}{3}\tr(\mat{\zeta}_h)\I) \, d\bm{x}  - \int_{\partial T} \hat{\vec{u}}_h \cdot \left[\mat{\zeta}_h - \frac{1}{3}\tr(\mat{\zeta}_h)\mat{I} \right] \vec{n} \, d\bm{s} & = 0, \\
+        \sum_{T  \in \mesh} \int_{T} \vec{\phi}_h \cdot \vec{\varphi}_h \, d\bm{x} + \int_{T} T_h \div(\vec{\varphi}_h) \, d\bm{x} - \int_{\partial T} \hat{T}_h \vec{\varphi}_h \cdot \vec{n}    \, d\bm{s}                                    & = 0,
+
+    for all :math:`(\mat{\zeta}_h, \vec{\varphi}_h ) \in Q_h`. With the discrete space choosen as
+
+    .. math::
+        Q_h       & := \Xi_h \times \Theta_h, \\
+        \Xi_h     & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\mesh, \mathbb{R}^{d \times d}_{\mathrm{sym}}) \right), \\
+        \Theta_h  & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\mesh, \mathbb{R}^{d})                 \right).
+
+    The discrete velocities :math:`\vec{u}_h := \vec{u}(\vec{U}_h)`, :math:`\hat{\vec{u}}_h := \vec{u}(\hat{\vec{U}}_h)`, 
+    and the discrete temperatures :math:`\theta_h := \theta(\vec{U}_h)`, :math:`\hat{\theta}_h := \theta(\hat{\vec{U}}_h)` are functions
+    of the conservative fields :math:`\vec{U}_h` and :math:`\hat{\vec{U}}_h`, respectively.
+
+    :note: See :class:`HDG` for the definition of the conservative spaces :math:`U_h` and :math:`\hat{U}_h`.
+
+    """
 
     name: str = "strain_heat"
 
@@ -334,7 +365,9 @@ class ConservativeMethod(Configuration, is_interface=True):
 
     def get_conservative_fields(self, U: ngs.CoefficientFunction, with_gradients: bool = False) -> flowfields:
 
+        dU = None
         if isinstance(U, ngs.GridFunction):
+            dU = ngs.grad(U)
             U = U.components
 
         U_ = flowfields()
@@ -352,9 +385,7 @@ class ConservativeMethod(Configuration, is_interface=True):
         if isinstance(U, ngs.comp.ProxyFunction):
             U_.U = U
 
-        if isinstance(U, ngs.GridFunction) and with_gradients:
-            dU = ngs.grad(U)
-
+        if dU is not None and with_gradients:
             U_.grad_rho = dU[0, :]
             U_.grad_rho_u = dU[slice(1, self.mesh.dim + 1), :]
             U_.grad_rho_E = dU[self.mesh.dim + 1, :]
@@ -483,13 +514,38 @@ class DG(ConservativeMethod):
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
 
-
 class HDG(ConservativeMethod):
+    r""" Conservative hybridizable Discontinuous Galerkin method for compressible flow.
+
+    Find :math:`\left(\vec{U}_h,\hat{\vec{U}}_h, \vec{Q}_h \right) \in U_h \times \hat{U}_h \times Q_h` such that
+
+    .. math::
+
+        \sum_{T \in \mesh} \int_{T} \frac{\partial \vec{U}_h}{\partial t} \cdot \vec{V}_h \, d\bm{x} - \int_{T} \left(\vec{F}(\vec{U}_h) - \vec{G}(\vec{U}_h, \vec{Q}_h)\right)  : \grad{\vec{V}_h} \, d\bm{x}+ \int_{\partial T} (\hat{\vec{F}}_h - \hat{\vec{G}}_h) \vec{n} \cdot \vec{V}_h   \, d\bm{s}   & = 0, \\
+        - \sum_{F \in \facets^{\text{int}}} \int_{F} \jump{(\hat{\vec{F}}_h - \hat{\vec{G}}_h) \vec{n}} \cdot \hat{\vec{V}}_h \, d\bm{s} + \sum_{F \in \facets^{\text{ext}}} \int_{F} \hat{\vec{\Gamma}}_h \cdot \hat{\vec{V}}_h  \, d\bm{s} & = 0, 
+
+    for all :math:`\left(\vec{V}_h,\hat{\vec{V}}_h \right) \in U_h \times \hat{U}_h`. With the discrete spaces choosen as
+
+    .. math::
+
+        U_h       & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\mesh, \mathbb{R}^{d+2}) \right),   \\
+        \hat{U}_h & := L^2\left( (0, t_{end}] ; \mathbb{P}^k(\facets, \mathbb{R}^{d+2}) \right). 
+
+    In the formulation, :math:`\hat{\vec{\Gamma}}_h` represents the boundary operator. 
+
+    :note: See :class:`MixedMethod` for the definition of :math:`\vec{Q}_h` and :math:`Q_h`.
+
+    """
 
     name: str = "hdg"
 
     @dream_configuration
     def scheme(self) -> ImplicitEuler | BDF2 | IMEXRK_ARS443 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK34_LDD | DIRK43_WSO2:
+        """ Time scheme for the HDG method depending on the choosen time routine.
+
+            :getter: Returns the time scheme
+            :setter: Sets the time scheme
+        """
         return self._scheme
 
     @scheme.setter
@@ -528,6 +584,7 @@ class HDG(ConservativeMethod):
     def add_convection_form(self, blf: Integrals, lf: Integrals):
 
         bonus = self.root.optimizations.bonus_int_order
+        dX = ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
         mask = self.get_domain_boundary_mask()
 
@@ -541,13 +598,18 @@ class HDG(ConservativeMethod):
         Fn = self.get_convective_numerical_flux(U, Uhat, self.mesh.normal)
 
         blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['U']['convection'] += bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-        blf['Uhat']['convection'] = -mask * bla.inner(Fn,
-                                                      Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        blf['U']['convection'] += bla.inner(Fn, V) * dX
+
+        if self.root.dynamic_viscosity.is_inviscid:
+            tau_cs = self.root.riemann_solver.get_simplified_convective_stabilisation_matrix_hdg(Uhat, self.mesh.normal)
+            blf['Uhat']['convection'] = -mask * (tau_cs*U.U - Uhat.U) * Vhat * dX
+        else:
+            blf['Uhat']['convection'] = -mask * bla.inner(Fn, Vhat) * dX
 
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
 
         bonus = self.root.optimizations.bonus_int_order
+        dX = ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
         mask = self.get_domain_boundary_mask()
 
@@ -563,9 +625,8 @@ class HDG(ConservativeMethod):
         Gn = self.get_diffusive_numerical_flux(U, Uhat, Q, self.mesh.normal)
 
         blf['U']['diffusion'] = ngs.InnerProduct(G, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['U']['diffusion'] -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn,
-                                                           Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        blf['U']['diffusion'] -= ngs.InnerProduct(Gn, V) * dX
+        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn, Vhat) * dX
 
     def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
 
@@ -620,6 +681,21 @@ class HDG(ConservativeMethod):
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
     def add_farfield_formulation(self, blf: Integrals, lf: Integrals, bc: FarField, bnd: str):
+        r""" Implementation of the farfield boundary condition :class:`~dream.compressible.config.FarField`.
+
+        On the boundary :math:`\Gamma` we solve :cite:`peraireHybridizableDiscontinuousGalerkin2010, vila-perezHybridisableDiscontinuousGalerkin2021`
+
+        .. math::
+            \int_{\Gamma} \left[ \widehat{\mat{A}}^+_n (\widehat{\vec{U}}_h - \vec{U}_h) - \widehat{\mat{A}}^-_n(\widehat{\vec{U}}_h - \vec{U}_\infty) \right] \cdot \widehat{\vec{V}}_h = \vec{0},
+
+        where :math:`\widehat{\mat{A}}^\pm_n` are  the convective Jacobians in normal direction :math:`\vec{n}`.
+
+        To increse the stability of the farfield condition on boundaries which are aligned with the flow,
+        the identity Jacobian can be used instead of the convective Jacobian :cite:`PellmenreichCharacteristicBoundaryConditions2025`
+
+        .. math::
+            \int_{\Gamma} \left[\widehat{\vec{U}}_h - \frac{\vec{U}_h + \vec{U}_\infty}{2} - \widehat{\mat{Q}}_n \frac{\vec{U}_h - \vec{U}_\infty}{2} \right] \cdot \widehat{\vec{V}}_h  = \vec{0}.
+        """
 
         bonus = self.root.optimizations.bonus_int_order
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
@@ -634,9 +710,8 @@ class HDG(ConservativeMethod):
              self.root.energy(bc.fields)))
 
         if bc.use_identity_jacobian:
-            Q_in = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, 'incoming')
-            Q_out = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, 'outgoing')
-            Gamma_infty = ngs.InnerProduct(Uhat.U - Q_out * U - Q_in * U_infty, Vhat)
+            Qn = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, None)
+            Gamma_infty = ngs.InnerProduct(Uhat.U - 0.5 * Qn * (U - U_infty) - 0.5 * (U + U_infty), Vhat)
         else:
             An_in = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'incoming')
             An_out = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'outgoing')
@@ -683,7 +758,7 @@ class HDG(ConservativeMethod):
             U_bc = ngs.CF((self.root.density(U_bc), self.root.momentum(U_bc), self.root.energy(U_bc)))
 
         elif bc.target == "mass_inflow":
-            U_bc = flowfields(rho=bc.fields.rho, rho_u=bc.fields.rho_u, rho_Ek=bc.fields.rho_Ek, p=U.p)
+            U_bc = flowfields(rho=bc.fields.rho, u=bc.fields.u, rho_Ek=bc.fields.rho_Ek, p=U.p)
             U_bc = ngs.CF((self.root.density(U_bc), self.root.momentum(U_bc), self.root.energy(U_bc)))
 
         elif bc.target == "temperature_inflow":
@@ -698,14 +773,14 @@ class HDG(ConservativeMethod):
         D = self.root.transform_characteristic_to_conservative(D, Uhat, self.mesh.normal)
 
         beta = bc.tangential_relaxation
+        Qn = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, None)
         Qin = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, "incoming")
-        Qout = self.root.get_conservative_convective_identity(Uhat, self.mesh.normal, "outgoing")
         B = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.tangential)
 
         dt = scheme.get_time_step(True)
         Uhat_n = scheme.get_current_level('Uhat', True)
 
-        blf['Uhat'][label] = (Uhat.U - Qout * U.U - Qin * Uhat_n) * Vhat * dS
+        blf['Uhat'][label] = (Uhat.U - 0.5 * Qn * (U.U - Uhat_n) - 0.5 * (U.U + Uhat_n)) * Vhat * dS
         blf['Uhat'][label] -= dt * Qin * D * (U_bc - Uhat.U) * Vhat * dS
         blf['Uhat'][label] += dt * beta * Qin * B * (ngs.grad(Uhat.U) * self.mesh.tangential) * Vhat * dS
 
@@ -763,12 +838,12 @@ class HDG(ConservativeMethod):
         Uhat = self.get_conservative_fields(Uhat)
         Q = self.mixed_method.get_mixed_fields(Q)
 
-        tau = self.mixed_method.get_diffusive_stabilisation_matrix(U)
-        T_grad = self.root.temperature_gradient(U, Q)
+        tau = self.mixed_method.get_diffusive_stabilisation_matrix(Uhat)[self.mesh.dim+1, self.mesh.dim+1]
+        q = self.root.heat_flux(Uhat, Q)
 
-        U_bc = ngs.CF((Uhat.rho - U.rho, Uhat.rho_u, tau * (Uhat.rho_E - U.rho_E + T_grad * n)))
+        U_bc = ngs.CF((Uhat.rho - U.rho, Uhat.rho_u, tau * (Uhat.rho_E - U.rho_E) - q * n))
 
-        Gamma_ad = ngs.InnerProduct(Uhat.U - U_bc, Vhat)
+        Gamma_ad = ngs.InnerProduct(U_bc, Vhat)
         blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_ad * dS
 
     def add_sponge_layer_formulation(self, blf: Integrals, lf: Integrals, dc: SpongeLayer, dom: str):
@@ -806,19 +881,16 @@ class HDG(ConservativeMethod):
 
         blf['Uhat'][f"{dc.name}_{dom}"] = dc.function * Delta_U * V * dX
 
-    def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: bla.VECTOR):
+    def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: ngs.CF):
         r"""
         Convective numerical flux
 
         .. math::
 
-            \widehat{\vec{F}\vec{n}}  := \vec{F}(\hat{\vec{U}}) \vec{n} + \mat{\tau}_c(\hat{\vec{U}}) (\vec{U} - \hat{\vec{U}}) \qquad [E22a]
+            \hat{\vec{F}}_h  \vec{n}^\pm  := \vec{F}(\hat{\vec{U}}_h) \vec{n}^\pm + \mat{\tau}_c(\hat{\vec{U}}_h) (\vec{U}_h - \hat{\vec{U}}_h)
 
-        See :class:`dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`
-
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See equation :math:`(E22a)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
+        :note: See :class:`~dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`.
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -827,19 +899,16 @@ class HDG(ConservativeMethod):
         return self.root.get_convective_flux(Uhat) * unit_vector + tau_c * (U.U - Uhat.U)
 
     def get_diffusive_numerical_flux(
-            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
+            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: ngs.CF):
         r"""
         Diffusive numerical flux
 
         .. math::
 
-            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
+            \hat{\vec{G}}_h \vec{n}^\pm  := \vec{G}(\hat{\vec{U}_h}, \vec{Q}_h) \vec{n}^\pm + \mat{\tau}_d (\vec{U}_h - \hat{\vec{U}}_h).
 
-        See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
-
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
+        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`.
         """
         unit_vector = bla.as_vector(unit_vector)
 
@@ -923,8 +992,8 @@ class DG_HDG(ConservativeMethod):
         bonus = self.root.optimizations.bonus_int_order
 
         # Obtain the relevant test and trial functions. Notice, the solution "U"
-        # is assumed to be an unknown in the bilinear form, despite being explicit
-        # in time. This works, because we invoke the "Apply" function when solving.
+        # is assumed to be an unknown in the bilinear form, despite being explicit 
+        # in time. This works, because we invoke the "Apply" function when solving. 
         U, V = self.TnT['U']
 
         # Get a mask that is nonzero (unity) for only the internal faces.
@@ -947,7 +1016,6 @@ class DG_HDG(ConservativeMethod):
         blf['U']['convection'] += mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
     # In this (IMEX-)specialized class, the elliptic terms are handled via an HDG.
-
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
 
         bonus = self.root.optimizations.bonus_int_order
@@ -967,7 +1035,8 @@ class DG_HDG(ConservativeMethod):
 
         blf['U']['diffusion'] = ngs.InnerProduct(G, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus.vol)
         blf['U']['diffusion'] -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
-        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn, Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn,
+                                                           Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
         # NOTE, to obtain a well-posed formulation, we require a value for rho_hat, since we need it on the facets.
         # To this end, we estimate its value as the average of the density on the surface (w.r.t. neighboring elements).
@@ -982,25 +1051,23 @@ class DG_HDG(ConservativeMethod):
                                                       Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
 
     def get_diffusive_numerical_flux(
-            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: bla.VECTOR):
+            self, U: flowfields, Uhat: flowfields, Q: flowfields, unit_vector: ngs.CF):
         r"""
         Diffusive numerical flux
 
         .. math::
 
-            \widehat{\vec{G}\vec{n}}  := \vec{G}(\hat{\vec{U}}, \vec{Q}) \vec{n} + \mat{\tau}_d (\vec{U} - \hat{\vec{U}}) \qquad [E22b]
+            \hat{\vec{G}}_h \vec{n}^\pm  := \vec{G}(\hat{\vec{U}_h}, \vec{Q}_h) \vec{n}^\pm + \mat{\tau}_d (\vec{U}_h - \hat{\vec{U}}_h).
 
-        See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`
-
-        .. [1] J. Vila-Pérez, M. Giacomini, R. Sevilla, and A. Huerta. “Hybridisable Discontinuous Galerkin
-                Formulation of Compressible Flows”. In: Archives of Computational Methods in Engineering
-                28.2 (Mar. 2021), pp. 753–784. doi: 10.1007/s11831-020-09508-z. arXiv: 2009.06396 [physics].
+        :note: See equation :math:`(E22b)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
+        :note: See :class:`MixedMethod` for more details on the definition of :math:`\mat{\tau}_d`.
         """
         unit_vector = bla.as_vector(unit_vector)
 
         tau_d = self.root.fem.mixed_method.get_diffusive_stabilisation_matrix(Uhat)
 
         return self.root.get_diffusive_flux(Uhat, Q)*unit_vector - tau_d * (U.U - Uhat.U)
+
 
     def get_time_scheme_spaces(self) -> dict[str, ngs.FESpace]:
         U = super().get_time_scheme_spaces()
@@ -1009,7 +1076,6 @@ class DG_HDG(ConservativeMethod):
         return U
 
     # NOTE, for now we restrict ourselves to periodic BCs.
-
     def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
 
         bnds = self.root.bcs.to_pattern()
@@ -1022,6 +1088,7 @@ class DG_HDG(ConservativeMethod):
                 continue
             else:
                 raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
+
 
     def add_domain_conditions(self,
                               blf: dict[str, ngs.comp.SumOfIntegrals],
@@ -1038,6 +1105,7 @@ class DG_HDG(ConservativeMethod):
 
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
+
 
     def set_initial_conditions(self, U: ngs.CF = None):
 
