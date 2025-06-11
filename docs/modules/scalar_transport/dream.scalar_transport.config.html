@@ -59,6 +59,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/contribute.html">Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/contribute.html#structure">Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../introduction/literature.html">References</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../introduction/literature.html#publications">Publications</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../introduction/literature.html#literature">Literature</a></li>
@@ -67,6 +69,103 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
 <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">scalar_transport</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.solver.html">solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.fem"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.fem</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.riemann_solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.convection_velocity"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.convection_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.diffusion_coefficient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.is_inviscid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.phi"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.phi()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.spatial.html">spatial</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme"><code class="docutils literal notranslate"><span class="pre">DG.scheme</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">DG.add_finite_element_spaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">DG.add_convection_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">DG.add_diffusion_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">DG.add_farfield_formulation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">HDG.add_finite_element_spaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_convection_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_diffusion_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.set_initial_conditions"><code class="docutils literal notranslate"><span class="pre">HDG.set_initial_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">HDG.add_farfield_formulation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.interior_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.interior_penalty_coefficient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_penalty_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_boundary_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_domain_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.time.html">time</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.time.explicit.html">explicit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.CRK4"><code class="docutils literal notranslate"><span class="pre">CRK4</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitEuler"><code class="docutils literal notranslate"><span class="pre">ExplicitEuler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ExplicitSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3"><code class="docutils literal notranslate"><span class="pre">SSPRK3</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.time.imex.html">imex</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRKSchemes"><code class="docutils literal notranslate"><span class="pre">IMEXRKSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRK_ARS443"><code class="docutils literal notranslate"><span class="pre">IMEXRK_ARS443</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.time.implicit.html">implicit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.BDF2"><code class="docutils literal notranslate"><span class="pre">BDF2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes"><code class="docutils literal notranslate"><span class="pre">DIRKSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitEuler"><code class="docutils literal notranslate"><span class="pre">ImplicitEuler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ImplicitSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK22"><code class="docutils literal notranslate"><span class="pre">SDIRK22</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK33"><code class="docutils literal notranslate"><span class="pre">SDIRK33</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html">riemann_solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_numerical_flux_dg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_stabilisation_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_dg()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">config</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.scalar_transport.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.scalar_transport.config.transportfields"><code class="docutils literal notranslate"><span class="pre">transportfields</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dream.scalar_transport.config.transportfields.phi"><code class="docutils literal notranslate"><span class="pre">transportfields.phi</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#scalar-transport-equation">Scalar transport equation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/wave1d.html">Scalar wave equation in 1D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/gaussian_hill_farfield.html">Rotation of a Gaussian hill</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../compressible/index.html">compressible</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible.solver.html">solver</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a><ul>
@@ -291,103 +390,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../compressible/index.html#examples">Examples</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../examples/euler_around_naca.html">Flow around NACA 0012 airfoil</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../examples/isentropic_vortex.html">Isentropic Vortex in 2D</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1 current"><a class="reference internal" href="index.html">scalar_transport</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.solver.html">solver</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.fem"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.fem</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.riemann_solver</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.convection_velocity"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.convection_velocity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.diffusion_coefficient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.is_inviscid</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.phi"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.phi()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.spatial.html">spatial</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme"><code class="docutils literal notranslate"><span class="pre">DG.scheme</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">DG.add_finite_element_spaces()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">DG.add_convection_form()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">DG.add_diffusion_form()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">DG.add_farfield_formulation()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">HDG.add_finite_element_spaces()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_convection_form()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_diffusion_form()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.set_initial_conditions"><code class="docutils literal notranslate"><span class="pre">HDG.set_initial_conditions()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">HDG.add_farfield_formulation()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.interior_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.interior_penalty_coefficient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_penalty_coefficient()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_boundary_conditions()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_domain_conditions()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.time.html">time</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.time.explicit.html">explicit</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.CRK4"><code class="docutils literal notranslate"><span class="pre">CRK4</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitEuler"><code class="docutils literal notranslate"><span class="pre">ExplicitEuler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ExplicitSchemes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3"><code class="docutils literal notranslate"><span class="pre">SSPRK3</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.time.imex.html">imex</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRKSchemes"><code class="docutils literal notranslate"><span class="pre">IMEXRKSchemes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRK_ARS443"><code class="docutils literal notranslate"><span class="pre">IMEXRK_ARS443</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.time.implicit.html">implicit</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.BDF2"><code class="docutils literal notranslate"><span class="pre">BDF2</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes"><code class="docutils literal notranslate"><span class="pre">DIRKSchemes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitEuler"><code class="docutils literal notranslate"><span class="pre">ImplicitEuler</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ImplicitSchemes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK22"><code class="docutils literal notranslate"><span class="pre">SDIRK22</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK33"><code class="docutils literal notranslate"><span class="pre">SDIRK33</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html">riemann_solver</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_numerical_flux_dg()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_stabilisation_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_dg()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">config</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#dream.scalar_transport.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#dream.scalar_transport.config.transportfields"><code class="docutils literal notranslate"><span class="pre">transportfields</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#dream.scalar_transport.config.transportfields.phi"><code class="docutils literal notranslate"><span class="pre">transportfields.phi</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="index.html#scalar-transport-equation">Scalar transport equation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="index.html#examples">Examples</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../examples/wave1d.html">Scalar wave equation in 1D</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../examples/gaussian_hill_farfield.html">Rotation of a Gaussian hill</a></li>
 </ul>
 </li>
 </ul>
