@@ -13,12 +13,13 @@ mesh = ngs.Mesh(occ.OCCGeometry(shape, dim=2).GenerateMesh(maxh=0.07))
 
 # Set up the solver configuration
 cfg = IncompressibleSolver(mesh)
-cfg.fem = "taylor-hood"
+# cfg.fem = "taylor-hood"
+cfg.fem = "hdivhdg"
 cfg.time = "stationary"
 
 # cfg.io.log.level = 10
 
-cfg.fem.order = 4
+cfg.fem.order = 2
 cfg.fem.scheme = "stationary"
 cfg.convection = False
 
