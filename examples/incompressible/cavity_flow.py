@@ -1,22 +1,23 @@
-#%%
+# %%
 from ngsolve import *
 from ngsolve.webgui import Draw
 from dream.incompressible import IncompressibleSolver, Inflow, flowfields
-mesh = Mesh(unit_square.GenerateMesh(maxh=0.05))
+mesh = Mesh(unit_square.GenerateMesh(maxh=0.1))
+mesh.Refine()
 
 # Set up the solver configuration
 cfg = IncompressibleSolver(mesh)
 cfg.time = "stationary"
 cfg.fem = "taylor-hood"
 cfg.fem.order = 4
-cfg.fem.scheme = "stationary_linear"
+cfg.fem.scheme = "stationary"
 
 cfg.reynolds_number = 1
 cfg.dynamic_viscosity = "constant"
 
 # Set up the boundary conditions
 a = flowfields()
-cfg.bcs['top'] = Inflow(velocity=(1,0))#flowfields(velocity=(1, 0)))
+cfg.bcs['top'] = Inflow(velocity=(1, 0))  # flowfields(velocity=(1, 0)))
 cfg.bcs['right|left|bottom'] = "wall"
 
 # Initialize the finite element spaces, trial and test functions, gridfunctions, and boundary conditions
@@ -24,12 +25,15 @@ cfg.initialize()
 
 fields = cfg.get_solution_fields()
 cfg.io.draw(fields)
+
 cfg.solve()
 
-# cfg.dynamic_viscosity = "powerlaw"
-
-# cfg.fem.initialize_symbolic_forms()
-# cfg.solve()
+cfg.dynamic_viscosity = "powerlaw"
+cfg.dynamic_viscosity.powerlaw_exponent = 1.5
+cfg.nonlinear_solver.max_iterations = 100
+cfg.nonlinear_solver.damping_factor = 0.5
+cfg.fem.initialize_symbolic_forms()
+cfg.solve()
 
 
 # cfg.initialize_finite_element_spaces()

@@ -1,3 +1,11 @@
+r""" Dimensionless incompressible Navier-Stokes equations
+
+We consider the dimensionless incompressible Navier-Stokes equations
+
+.. math::
+    \frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u} - \frac{1}{Re} \div{(\mat{\tau})} + \nabla p = 0
+
+"""
 from __future__ import annotations
 
 import logging
@@ -17,8 +25,7 @@ from dream.mesh import (BoundaryConditions,
                         DomainConditions,
                         Condition,
                         Periodic,
-                        Initial,
-                        Force)
+                        Initial)
 
 # Instantiate the logger with the name of the current module
 logger = logging.getLogger(__name__)
@@ -35,8 +42,6 @@ class flowfields(ngsdict):
     tau = quantity('deviatoric_stress_tensor', r"$\tau$")
     eps = quantity('strain_rate_tensor', r"\varepsilon")
     grad_u = quantity('velocity_gradient', r"\nabla u")
-    g = quantity('gravity', r"g")
-    f = quantity('force', r"f")
 
 # Define a boundary conditions
 
@@ -45,21 +50,21 @@ class Inflow(Condition):
 
     name: str = "inflow"
 
-    def __init__(self, velocity: flowfields | ngs.CF = None):
+    def __init__(self, velocity: flowfields | ngs.CF):
         self.velocity = velocity
         super().__init__()
 
     @dream_configuration
     def velocity(self) -> flowfields:
-        """ Returns the fields of the farfield condition """
-        if self._velocity is None:
-            raise ValueError("Velocity is not set!")
+        """ Returns the inflow velocity """
         return self._velocity
 
     @velocity.setter
     def velocity(self, velocity: ngsdict) -> None:
-        if velocity is None:
-            self._velocity = None
+        if isinstance(velocity, flowfields):
+            self._velocity = velocity.u
+        elif isinstance(velocity, ngs.CF):
+            self._velocity = velocity
         else:
             self._velocity = ngs.CF(tuple(velocity))
 
@@ -74,8 +79,31 @@ class Wall(Condition):
     name: str = "wall"
 
 
+class Force(Condition):
+
+    name: str = "force"
+
+    def __init__(self, force: flowfields | ngs.CF):
+        self.force = force
+        super().__init__()
+
+    @dream_configuration
+    def force(self) -> flowfields:
+        """ Returns the force vector """
+        return self._force
+
+    @force.setter
+    def force(self, force: ngsdict) -> None:
+        if isinstance(force, flowfields):
+            self._force = force.u
+        elif isinstance(force, ngs.CF):
+            self._force = force
+        else:
+            self._force = ngs.CF(tuple(force))
+
+
 BCS = [Inflow, Outflow, Wall, Periodic]
-DCS = [Force, Initial]
+DCS = [Initial]
 
 
 class DynamicViscosity(Configuration, is_interface=True):
@@ -88,17 +116,17 @@ class DynamicViscosity(Configuration, is_interface=True):
 
     def shear_rate(self, u: flowfields):
         eps = self.root.strain_rate_tensor(u)
-        return 2*ngs.sqrt(ngs.InnerProduct(eps, eps))
+        return 2*ngs.sqrt(0.5 * ngs.InnerProduct(eps, eps))
 
-    def viscosity(self, u: flowfields):
-        raise NotImplementedError()
+    def kinematic_viscosity(self, u: flowfields):
+        raise NotImplementedError("Overload this method in derived class!")
 
 
 class Constant(DynamicViscosity):
 
     name: str = "constant"
 
-    def viscosity(self, u: flowfields):
+    def kinematic_viscosity(self, u: flowfields):
         return 1.0
 
 
@@ -151,14 +179,16 @@ class Powerlaw(DynamicViscosity):
 
         self._viscosity_ratio.Set(viscosity_ratio)
 
-    def viscosity(self, u: flowfields):
-        return self.viscosity_ratio * self.shear_rate(u)**(self.powerlaw_exponent - 1)
+    def kinematic_viscosity(self, u: flowfields):
+        return self.viscosity_ratio * self.shear_rate(u)**(self.powerlaw_exponent - 2)
 
 
 # Define solving schemes
-class LinearScheme(StationaryScheme):
+class IncompressibleStationaryScheme(StationaryScheme):
 
-    name: str = "stationary_linear"
+    root: IncompressibleSolver
+
+    name: str = "stationary"
 
     def assemble(self):
 
@@ -170,16 +200,25 @@ class LinearScheme(StationaryScheme):
         self.lf = ngs.LinearForm(self.fem.fes)
         self.add_sum_of_integrals(self.lf, self.root.fem.lf)
 
-        self.blf.Assemble()
         self.lf.Assemble()
 
-        # Add dirichlet boundary conditions
-        self.lf.vec.data -= self.blf.mat * self.fem.gfu.vec
-        self.inv = self.root.linear_solver.inverse(self.blf, self.fem.fes)
+        if not self.root.dynamic_viscosity.is_linear or self.root.convection:
+            # self.blf.Apply(self.fem.gfu.vec, self.lf.vec)
+            self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, self.fem.gfu)
+
+        else:
+            # Add dirichlet boundary conditions
+            self.blf.Assemble()
+            self.lf.vec.data -= self.blf.mat * self.fem.gfu.vec
 
     def solve(self):
-        self.fem.gfu.vec.data += self.inv * self.lf.vec
 
+        if not self.root.dynamic_viscosity.is_linear or self.root.convection:
+            for it in self.root.nonlinear_solver.solve():
+                ...
+        else:
+            self.inv = self.root.linear_solver.inverse(self.blf, self.fem.fes)
+            self.fem.gfu.vec.data += self.inv * self.lf.vec
 
 
 # Define Finite Elements
@@ -188,21 +227,27 @@ class IncompressibleFiniteElement(FiniteElementMethod):
 
     root: IncompressibleSolver
 
-    @dream_configuration    
-    def scheme (self) -> LinearScheme:
+    @dream_configuration
+    def scheme(self) -> IncompressibleStationaryScheme:
         """ Returns the scheme for the incompressible flow solver """
         return self._scheme
-    
+
     @scheme.setter
-    def scheme (self, scheme: LinearScheme) -> None:
+    def scheme(self, scheme) -> None:
         if isinstance(self.root.time, StationaryRoutine):
-            OPTIONS = [LinearScheme]
+            OPTIONS = [IncompressibleStationaryScheme]
         else:
             raise ValueError("Invalid scheme for incompressible flow solver. Only stationary schemes are supported!")
         self._scheme = self._get_configuration_option(scheme, OPTIONS, Scheme)
 
     def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
+
         self.add_symbolic_stokes_form(blf, lf)
+
+        if self.root.convection:
+            self.add_symbolic_convection_form(blf, lf)
+
+        self.add_domain_conditions(blf, lf)
 
     def get_solution_fields(self) -> flowfields:
         return self.get_incompressible_state(self.gfu)
@@ -210,8 +255,15 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     def add_symbolic_stokes_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
+    def add_domain_conditions(self, blf, lf):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def add_symbolic_convection_form(self, blf, lf):
+        raise NotImplementedError("Overload this method in derived class!")
+
     def get_incompressible_state(self, u: ngs.CF) -> flowfields:
         raise NotImplementedError("Overload this method in derived class!")
+
 
 class TaylorHood(IncompressibleFiniteElement):
 
@@ -245,6 +297,22 @@ class TaylorHood(IncompressibleFiniteElement):
         if not self.root.bcs.has_condition(Outflow):
             blf['p']['stokes'] += -1e-8 * U.p * V.p * ngs.dx
 
+    def add_domain_conditions(self, blf, lf):
+
+        _, v = self.TnT['u']
+
+        doms = self.root.dcs.to_pattern()
+
+        for dom, dc in doms.items():
+
+            logger.debug(f"Adding domain condition {dc} on domain {dom}.")
+
+            dom = self.mesh.Materials(dom)
+
+            if isinstance(dc, Force):
+
+                lf['u']['force'] = dc.force * v * ngs.dx(definedon=dom)
+
     def get_incompressible_state(self, u: ngs.CF) -> flowfields:
 
         if isinstance(u, ngs.GridFunction):
@@ -260,13 +328,18 @@ class TaylorHood(IncompressibleFiniteElement):
         return state
 
     def set_boundary_conditions(self) -> None:
-        u = self.mesh.BoundaryCF({dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()})
-        self.gfus['u'].Set(u, ngs.BND)
+
+        inflows = {dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()}
+
+        if inflows:
+            u = self.mesh.BoundaryCF(inflows)
+            self.gfus['u'].Set(u, ngs.BND)
 
 
 class IncompressibleSolver(SolverConfiguration):
 
     def __init__(self, mesh=None, **default):
+
         bcs = BoundaryConditions(mesh, BCS)
         dcs = DomainConditions(mesh, DCS)
 
@@ -298,11 +371,12 @@ class IncompressibleSolver(SolverConfiguration):
 
     @reynolds_number.setter
     def reynolds_number(self, reynolds_number: ngs.Parameter) -> None:
+
         if isinstance(reynolds_number, ngs.Parameter):
             reynolds_number = reynolds_number.Get()
 
         if reynolds_number <= 0:
-            raise ValueError("Invalid Reynold number. Value has to be > 0!")
+            raise ValueError("Invalid Reynolds number. Value has to be > 0!")
 
         self._reynolds_number.Set(reynolds_number)
 
@@ -327,12 +401,10 @@ class IncompressibleSolver(SolverConfiguration):
 
     @convection.setter
     def convection(self, convection: bool) -> None:
-        if not isinstance(convection, bool):
-            raise TypeError("Convection must be of type 'bool'!")
 
-        self._convection = convection
+        self._convection = bool(convection)
 
-    def get_solution_fields(self, *fields, default_fields=True):
+    def get_solution_fields(self, *fields, default_fields=True) -> flowfields:
 
         if default_fields:
             fields = ('velocity', 'pressure') + fields
@@ -350,18 +422,21 @@ class IncompressibleSolver(SolverConfiguration):
             return u.p
 
     @equation
-    def viscosity(self, u: flowfields):
-        return self.dynamic_viscosity.viscosity(u)
+    def kinematic_viscosity(self, u: flowfields):
+        return self.dynamic_viscosity.kinematic_viscosity(u)
 
     @equation
     def deviatoric_stress_tensor(self, u: flowfields):
 
-        Re = self.reynolds_number
+        if u.tau is not None:
+            return u.tau
+        else:
+            Re = self.reynolds_number
 
-        mu = self.viscosity(u)
-        strain = self.strain_rate_tensor(u)
+            nu = self.kinematic_viscosity(u)
+            strain = self.strain_rate_tensor(u)
 
-        return 2 * mu/Re * strain
+            return 2 * nu/Re * strain
 
     @equation
     def strain_rate_tensor(self, u: flowfields):
