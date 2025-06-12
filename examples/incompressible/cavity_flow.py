@@ -11,6 +11,7 @@ cfg.time = "stationary"
 # cfg.fem = "taylor-hood"
 cfg.fem = "hdivhdg"
 cfg.fem.scheme = "stationary"
+cfg.convection = True
 
 cfg.reynolds_number = 1000
 cfg.fem.order = 4
