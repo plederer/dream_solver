@@ -3,7 +3,7 @@ r""" Dimensionless incompressible Navier-Stokes equations
 We consider the dimensionless incompressible Navier-Stokes equations
 
 .. math::
-    \frac{\partial \mathbf{u}}{\partial t} + \mathbf{u} \cdot \nabla \mathbf{u} - \frac{1}{Re} \div{(\mat{\tau})} + \nabla p = 0
+    \frac{\partial \vec{u}}{\partial t} + \vec{u} \cdot \nabla \vec{u} - \frac{1}{Re} \div{(\mat{\tau})} + \nabla p = 0
 
 """
 from __future__ import annotations
@@ -347,7 +347,7 @@ class IncompressibleFiniteElement(FiniteElementMethod):
             if isinstance(dc, Force):
 
                 lf['u']['force'] = dc.force * v * ngs.dx(definedon=dom)
-                
+
     def add_symbolic_convection_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
@@ -358,6 +358,7 @@ class IncompressibleFiniteElement(FiniteElementMethod):
         """ Returns the tangential component of a vector field """
         n = self.mesh.normal
         return u - (u * n) * n
+
 
 class TaylorHood(IncompressibleFiniteElement):
 
@@ -437,20 +438,17 @@ class TaylorHood(IncompressibleFiniteElement):
             self.gfus['u'].Set(u, ngs.BND)
 
 
-
 class HDivHDG(IncompressibleFiniteElement):
 
     name: str = "HDivHDG"
-    aliases = ('hdivhdg',)
 
     def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
 
         bnds = self.root.bcs.get_region(Wall, Inflow, as_pattern=True)
 
-        # print(self.order)
         U = ngs.HDiv(self.mesh, order=self.order, dirichlet=bnds)
-        Uhat = ngs.TangentialFacetFESpace(self.mesh, order = self.order, dirichlet = bnds)
-        P = ngs.L2(self.mesh, order=self.order-1, lowest_order_wb = True)
+        Uhat = ngs.TangentialFacetFESpace(self.mesh, order=self.order, dirichlet=bnds)
+        P = ngs.L2(self.mesh, order=self.order-1, lowest_order_wb=True)
 
         if self.root.bcs.has_condition(Periodic):
             U = ngs.Periodic(U)
@@ -459,10 +457,6 @@ class HDivHDG(IncompressibleFiniteElement):
         spaces['u'] = U
         spaces['p'] = P
         spaces['uhat'] = Uhat
-        
-
-    # def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
-    #     gfus['u'] = self.root.time.scheme.get_transient_gridfunctions(self.u_gfu)
 
     def add_symbolic_stokes_form(self, blf: Integrals, lf: Integrals):
         bonus = self.root.optimizations.bonus_int_order
@@ -480,17 +474,19 @@ class HDivHDG(IncompressibleFiniteElement):
 
         Re = self.root.reynolds_number
         nu = self.root.kinematic_viscosity(U)
-        
+
         mu = 2 * nu/Re
-        
 
         blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['u']['stokes'] += -ngs.InnerProduct(U.tau * n , self.tang(V.u - vhat)) * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
-        blf['u']['stokes'] += -ngs.InnerProduct(V.tau * n , self.tang(U.u - uhat)) * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
-        blf['u']['stokes'] += mu *  alpha * (self.order+1)**2 / h * ngs.InnerProduct(self.tang(V.u - vhat), self.tang(U.u - uhat)) * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
-        
+        blf['u']['stokes'] += -ngs.InnerProduct(U.tau * n, self.tang(V.u - vhat)
+                                                ) * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+        blf['u']['stokes'] += -ngs.InnerProduct(V.tau * n, self.tang(U.u - uhat)
+                                                ) * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+        blf['u']['stokes'] += mu * alpha * (self.order+1)**2 / h * ngs.InnerProduct(self.tang(V.u - vhat),
+                                                                                    self.tang(U.u - uhat)) * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+
         blf['u']['stokes'] += -ngs.div(V.u) * U.p * ngs.dx
-        blf['p']['stokes'] =  -ngs.div(U.u) * V.p * ngs.dx
+        blf['p']['stokes'] = -ngs.div(U.u) * V.p * ngs.dx
 
         if not self.root.bcs.has_condition(Outflow):
             blf['p']['stokes'] += -mu * 1e-10 * U.p * V.p * ngs.dx
@@ -511,10 +507,10 @@ class HDivHDG(IncompressibleFiniteElement):
         # Uup = ngs.IfPos(U.u * n, U.u, (U.u*n) * n + self.tang(uhat))
 
         blf['u']['convection'] = -ngs.InnerProduct(V.grad_u.trans * U.u, U.u) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['u']['convection'] += U.u*n * Uup * V.u * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
-        blf['uhat']['convection'] = self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
+        blf['u']['convection'] += U.u*n * Uup * V.u * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+        blf['uhat']['convection'] = self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
         # blf['uhat']['convection'] = ngs.IfPos(U.u * n, 1,0) * self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
-        
+
     def get_incompressible_state(self, u: ngs.CF) -> flowfields:
 
         if isinstance(u, ngs.GridFunction):
@@ -537,7 +533,6 @@ class HDivHDG(IncompressibleFiniteElement):
             self.gfus['u'].Set(u, ngs.BND)
             # u = self.mesh.BoundaryCF(inflows)
             self.gfus['uhat'].Set(self.tang(u), ngs.BND)
-
 
 
 class IncompressibleSolver(SolverConfiguration):
