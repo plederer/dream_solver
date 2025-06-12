@@ -206,6 +206,10 @@ class PardisoLinearSolver(DirectLinearSolver):
 
     name = "pardiso"
 
+class SparseCholeskyLinearSolver(DirectLinearSolver):
+
+    name = "sparsecholesky"
+
 
 # ------- Nonlinear Solvers ------- #
 
@@ -541,7 +545,7 @@ class SolverConfiguration(Configuration, is_interface=True):
 
     @linear_solver.setter
     def linear_solver(self, solver: str | LinearSolver):
-        OPTIONS = [DefaultLinearSolver, UmfpackLinearSolver, PardisoLinearSolver]
+        OPTIONS = [DefaultLinearSolver, UmfpackLinearSolver, PardisoLinearSolver, SparseCholeskyLinearSolver]
         self._linear_solver = self._get_configuration_option(solver, OPTIONS, LinearSolver)
 
     @dream_configuration
