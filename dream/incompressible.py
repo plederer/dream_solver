@@ -255,8 +255,24 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     def add_symbolic_stokes_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
+    # def add_domain_conditions(self, blf, lf):
+    #     raise NotImplementedError("Overload this method in derived class!")
+
     def add_domain_conditions(self, blf, lf):
-        raise NotImplementedError("Overload this method in derived class!")
+
+        _, v = self.TnT['u']
+
+        doms = self.root.dcs.to_pattern()
+
+        for dom, dc in doms.items():
+
+            logger.debug(f"Adding domain condition {dc} on domain {dom}.")
+
+            dom = self.mesh.Materials(dom)
+
+            if isinstance(dc, Force):
+
+                lf['u']['force'] = dc.force * v * ngs.dx(definedon=dom)
 
     def add_symbolic_convection_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
@@ -264,6 +280,10 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     def get_incompressible_state(self, u: ngs.CF) -> flowfields:
         raise NotImplementedError("Overload this method in derived class!")
 
+    def tang(self, u: ngs.CF) -> ngs.CF:
+        """ Returns the tangential component of a vector field """
+        n = self.mesh.normal
+        return u - (u * n) * n
 
 class TaylorHood(IncompressibleFiniteElement):
 
@@ -297,21 +317,6 @@ class TaylorHood(IncompressibleFiniteElement):
         if not self.root.bcs.has_condition(Outflow):
             blf['p']['stokes'] += -1e-8 * U.p * V.p * ngs.dx
 
-    def add_domain_conditions(self, blf, lf):
-
-        _, v = self.TnT['u']
-
-        doms = self.root.dcs.to_pattern()
-
-        for dom, dc in doms.items():
-
-            logger.debug(f"Adding domain condition {dc} on domain {dom}.")
-
-            dom = self.mesh.Materials(dom)
-
-            if isinstance(dc, Force):
-
-                lf['u']['force'] = dc.force * v * ngs.dx(definedon=dom)
 
     def get_incompressible_state(self, u: ngs.CF) -> flowfields:
 
@@ -334,6 +339,108 @@ class TaylorHood(IncompressibleFiniteElement):
         if inflows:
             u = self.mesh.BoundaryCF(inflows)
             self.gfus['u'].Set(u, ngs.BND)
+
+
+
+class HDivHDG(IncompressibleFiniteElement):
+
+    name: str = "HDivHDG"
+    aliases = ('hdivhdg',)
+
+    def add_finite_element_spaces(self, spaces: dict[str, ngs.FESpace]):
+
+        bnds = self.root.bcs.get_region(Wall, Inflow, as_pattern=True)
+
+        # print(self.order)
+        U = ngs.HDiv(self.mesh, order=self.order, dirichlet=bnds)
+        Uhat = ngs.TangentialFacetFESpace(self.mesh, order = self.order, dirichlet = bnds)
+        P = ngs.L2(self.mesh, order=self.order-1, lowest_order_wb = True)
+
+        if self.root.bcs.has_condition(Periodic):
+            U = ngs.Periodic(U)
+            Uhat = ngs.Periodic(Uhat)
+
+        spaces['u'] = U
+        spaces['p'] = P
+        spaces['uhat'] = Uhat
+        
+
+    # def add_transient_gridfunctions(self, gfus: dict[str, dict[str, ngs.GridFunction]]):
+    #     gfus['u'] = self.root.time.scheme.get_transient_gridfunctions(self.u_gfu)
+
+    def add_symbolic_stokes_form(self, blf: Integrals, lf: Integrals):
+        bonus = self.root.optimizations.bonus_int_order
+
+        u, v = self.TnT['u']
+        uhat, vhat = self.TnT['uhat']
+        p, q = self.TnT['p']
+
+        U = self.get_incompressible_state([u, p])
+        V = self.get_incompressible_state([v, q])
+
+        n = self.mesh.normal
+        h = self.mesh.meshsize
+        alpha = 10
+
+        Re = self.root.reynolds_number
+        nu = self.root.kinematic_viscosity(U)
+        
+        mu = 2 * nu/Re
+        
+
+        blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['u']['stokes'] += -ngs.InnerProduct(U.tau * n , self.tang(V.u - vhat)) * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
+        blf['u']['stokes'] += -ngs.InnerProduct(V.tau * n , self.tang(U.u - uhat)) * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
+        blf['u']['stokes'] += mu *  alpha * (self.order+1)**2 / h * ngs.InnerProduct(self.tang(V.u - vhat), self.tang(U.u - uhat)) * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
+        
+        blf['u']['stokes'] += -ngs.div(V.u) * U.p * ngs.dx
+        blf['p']['stokes'] =  -ngs.div(U.u) * V.p * ngs.dx
+
+        if not self.root.bcs.has_condition(Outflow):
+            blf['p']['stokes'] += -mu * 1e-8 * U.p * V.p * ngs.dx
+
+    def add_symbolic_convection_form(self, blf: Integrals, lf: Integrals):
+        bonus = self.root.optimizations.bonus_int_order
+
+        u, v = self.TnT['u']
+        p, q = self.TnT['p']
+        uhat, vhat = self.TnT['uhat']
+
+        U = self.get_incompressible_state([u, p])
+        V = self.get_incompressible_state([v, q])
+
+        n = self.mesh.normal
+
+        # Uup = ngs.IfPos(U.u * n, U.u, (U.u*n) * n + 2 * self.tang(uhat-U.u))
+        Uup = ngs.IfPos(U.u * n, U.u, (U.u*n) * n + self.tang(uhat))
+
+        blf['u']['convection'] = -ngs.InnerProduct(V.grad_u.trans * U.u, U.u) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['u']['convection'] += U.u*n * Uup * V.u * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
+        blf['uhat']['convection'] = ngs.IfPos(U.u * n, 1,0) * self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
+        
+    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
+
+        if isinstance(u, ngs.GridFunction):
+            u = u.components
+
+        state = flowfields()
+        state.u = u[0]
+        state.p = u[1]
+        state.grad_u = ngs.Grad(state.u)
+        state.eps = self.root.strain_rate_tensor(state)
+        state.tau = self.root.deviatoric_stress_tensor(state)
+
+        return state
+
+    def set_boundary_conditions(self) -> None:
+        inflows = {dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()}
+
+        if inflows:
+            u = self.mesh.BoundaryCF(inflows)
+            self.gfus['u'].Set(u, ngs.BND)
+            # u = self.mesh.BoundaryCF(inflows)
+            self.gfus['uhat'].Set(self.tang(u), ngs.BND)
+
 
 
 class IncompressibleSolver(SolverConfiguration):
@@ -361,7 +468,7 @@ class IncompressibleSolver(SolverConfiguration):
 
     @fem.setter
     def fem(self, fem: IncompressibleFiniteElement) -> None:
-        OPTIONS = [TaylorHood]
+        OPTIONS = [TaylorHood, HDivHDG]
         self._fem = self._get_configuration_option(fem, OPTIONS, IncompressibleFiniteElement)
 
     @dream_configuration
