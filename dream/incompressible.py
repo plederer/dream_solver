@@ -19,7 +19,7 @@ from dream.config import (Configuration,
                           equation,
                           Integrals)
 
-from dream.time import StationaryScheme, Scheme, StationaryRoutine
+from dream.time import StationaryScheme, TimeSchemes, Scheme, StationaryRoutine, TransientRoutine
 from dream.solver import FiniteElementMethod, SolverConfiguration
 from dream.mesh import (BoundaryConditions,
                         DomainConditions,
@@ -192,33 +192,103 @@ class IncompressibleStationaryScheme(StationaryScheme):
 
     def assemble(self):
 
-        self.fem = self.root.fem
+        fem = self.root.fem
 
-        self.blf = ngs.BilinearForm(self.fem.fes)
-        self.add_sum_of_integrals(self.blf, self.root.fem.blf)
+        self.blf = ngs.BilinearForm(fem.fes)
+        self.add_sum_of_integrals(self.blf, fem.blf)
 
-        self.lf = ngs.LinearForm(self.fem.fes)
-        self.add_sum_of_integrals(self.lf, self.root.fem.lf)
+        self.lf = ngs.LinearForm(fem.fes)
+        self.add_sum_of_integrals(self.lf, fem.lf)
 
         self.lf.Assemble()
 
         if not self.root.dynamic_viscosity.is_linear or self.root.convection:
-            # self.blf.Apply(self.fem.gfu.vec, self.lf.vec)
-            self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, self.fem.gfu)
+            # self.blf.Apply(fem.gfu.vec, self.lf.vec)
+            self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, fem.gfu)
 
         else:
             # Add dirichlet boundary conditions
             self.blf.Assemble()
-            self.lf.vec.data -= self.blf.mat * self.fem.gfu.vec
+            self.lf.vec.data -= self.blf.mat * fem.gfu.vec
 
     def solve(self):
+
+        fem = self.root.fem
 
         if not self.root.dynamic_viscosity.is_linear or self.root.convection:
             for it in self.root.nonlinear_solver.solve():
                 ...
         else:
-            self.inv = self.root.linear_solver.inverse(self.blf, self.fem.fes)
-            self.fem.gfu.vec.data += self.inv * self.lf.vec
+            self.inv = self.root.linear_solver.inverse(self.blf, fem.fes)
+            fem.gfu.vec.data += self.inv * self.lf.vec
+
+
+class IMEX(TimeSchemes):
+
+    root: IncompressibleSolver
+    name: str = "imex"
+
+    time_levels = ("n+1",)
+
+    def assemble(self) -> None:
+
+        if not self.root.convection:
+            raise ValueError("The IMEX scheme only support convection terms!")
+
+        fem = self.root.fem
+
+        self.blf = ngs.BilinearForm(fem.fes)
+        self.add_sum_of_integrals(self.blf, fem.blf, 'convection')
+
+        self.stokes = ngs.BilinearForm(fem.fes)
+        self.add_sum_of_integrals(self.stokes, fem.blf, 'mass', 'convection')
+
+        self.convection = ngs.BilinearForm(fem.fes, nonassemble=True)
+        for forms in fem.blf.values():
+            for key, form in forms.items():
+                if key == "convection":
+                    self.convection += form
+
+        self.lf = ngs.LinearForm(fem.fes)
+        self.add_sum_of_integrals(self.lf, fem.lf)
+        self.lf.Assemble()
+
+        self.tmp = fem.gfu.vec.CreateVector()
+        self.tmp[:] = 0.0
+
+        if not self.root.dynamic_viscosity.is_linear:
+            # self.blf.Apply(fem.gfu.vec, self.lf.vec)
+            self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, fem.gfu)
+
+        else:
+            # Add dirichlet boundary conditions
+            self.blf.Assemble()
+            self.stokes.Assemble()
+            self.inv = self.root.linear_solver.inverse(self.blf, fem.fes)
+
+    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
+        u, v = self.root.fem.TnT['u']
+
+        blf['u']['mass'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
+
+    def solve_current_time_level(self, t: float | None = None):
+
+        fem = self.root.fem
+
+        if not self.root.dynamic_viscosity.is_linear:
+            for it in self.root.nonlinear_solver.solve():
+                ...
+        else:
+
+            self.convection.Apply(fem.gfu.vec, self.tmp)
+            self.tmp.data += self.stokes.mat * fem.gfu.vec
+            fem.gfu.vec.data -= self.inv * self.tmp
+
+            logger.info(f"IMEX | t: {t}")
+
+        yield None
+
+    
 
 
 # Define Finite Elements
@@ -236,6 +306,8 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     def scheme(self, scheme) -> None:
         if isinstance(self.root.time, StationaryRoutine):
             OPTIONS = [IncompressibleStationaryScheme]
+        elif isinstance(self.root.time, TransientRoutine):
+            OPTIONS = [IMEX]
         else:
             raise ValueError("Invalid scheme for incompressible flow solver. Only stationary schemes are supported!")
         self._scheme = self._get_configuration_option(scheme, OPTIONS, Scheme)
@@ -249,16 +321,19 @@ class IncompressibleFiniteElement(FiniteElementMethod):
 
         self.add_domain_conditions(blf, lf)
 
+    def initialize_time_scheme_gridfunctions(self):
+        super().initialize_time_scheme_gridfunctions('u')
+
     def get_solution_fields(self) -> flowfields:
         return self.get_incompressible_state(self.gfu)
 
     def add_symbolic_stokes_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def add_domain_conditions(self, blf, lf):
+    def add_symbolic_convection_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def add_symbolic_convection_form(self, blf, lf):
+    def add_domain_conditions(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
     def get_incompressible_state(self, u: ngs.CF) -> flowfields:
@@ -296,6 +371,13 @@ class TaylorHood(IncompressibleFiniteElement):
 
         if not self.root.bcs.has_condition(Outflow):
             blf['p']['stokes'] += -1e-8 * U.p * V.p * ngs.dx
+
+    def add_symbolic_convection_form(self, blf: Integrals, lf: Integrals):
+        bonus = self.root.optimizations.bonus_int_order
+
+        u, v = self.TnT['u']
+
+        blf['u']['convection'] = ngs.InnerProduct(ngs.Grad(u) * u, v) * ngs.dx(bonus_intorder=bonus.vol)
 
     def add_domain_conditions(self, blf, lf):
 
