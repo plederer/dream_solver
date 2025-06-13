@@ -423,9 +423,9 @@ class HDivHDG(IncompressibleFiniteElement):
 
         bnds = self.root.bcs.get_region(Wall, Inflow, as_pattern=True)
 
-        # U = 
-        # Uhat = 
-        # P = 
+        # U =    [TODO]
+        # Uhat = [TODO]
+        # P =    [TODO]
 
         if self.root.bcs.has_condition(Periodic):
             U = ngs.Periodic(U)
@@ -453,8 +453,8 @@ class HDivHDG(IncompressibleFiniteElement):
         nu = self.root.kinematic_viscosity(U)
         mu = 2 * nu/Re
 
-        # blf['u']['stokes'] = 
-        # blf['p']['stokes'] = 
+        # blf['u']['stokes'] = [TODO]
+        # blf['p']['stokes'] = [TODO]
 
         if not self.root.bcs.has_condition(Outflow):
             blf['p']['stokes'] += -mu * 1e-10 * U.p * V.p * ngs.dx
@@ -473,8 +473,8 @@ class HDivHDG(IncompressibleFiniteElement):
 
         Uup = ngs.IfPos(U.u * n, U.u, (U.u*n) * n + self.tang(2*uhat-U.u))
 
-        # blf['u']['convection'] = 
-        # blf['uhat']['convection'] = 
+        # blf['u']['convection'] =    [TODO]
+        # blf['uhat']['convection'] = [TODO]
         
     def set_boundary_conditions(self) -> None:
         inflows = {dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()}
