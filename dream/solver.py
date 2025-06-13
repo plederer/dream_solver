@@ -157,7 +157,7 @@ class Solver(Configuration, is_interface=True):
     def inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
         raise NotImplementedError()
 
-    def initialize(self, blf: ngs.BilinearForm, lf: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
+    def initialize(self, blf: ngs.BilinearForm, rhs: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
         ...
 
     def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
@@ -170,6 +170,18 @@ class Solver(Configuration, is_interface=True):
 class LinearSolver(Solver, is_interface=True):
 
     root: SolverConfiguration
+
+    def initialize(self, blf: ngs.BilinearForm, rhs: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
+        self.blf = blf
+        self.rhs = rhs
+        self.gfu = gfu
+
+        self.blf.Assemble()
+        rhs.vec.data -= blf.mat * gfu.vec
+
+    def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
+        yield None
+        self.gfu.vec.data += self.inverse(self.blf, self.gfu.space) * self.rhs.vec
 
 
 class DirectLinearSolver(LinearSolver):
@@ -193,6 +205,10 @@ class UmfpackLinearSolver(DirectLinearSolver):
 class PardisoLinearSolver(DirectLinearSolver):
 
     name = "pardiso"
+
+class SparseCholeskyLinearSolver(DirectLinearSolver):
+
+    name = "sparsecholesky"
 
 
 # ------- Nonlinear Solvers ------- #
@@ -529,7 +545,7 @@ class SolverConfiguration(Configuration, is_interface=True):
 
     @linear_solver.setter
     def linear_solver(self, solver: str | LinearSolver):
-        OPTIONS = [DefaultLinearSolver, UmfpackLinearSolver, PardisoLinearSolver]
+        OPTIONS = [DefaultLinearSolver, UmfpackLinearSolver, PardisoLinearSolver, SparseCholeskyLinearSolver]
         self._linear_solver = self._get_configuration_option(solver, OPTIONS, LinearSolver)
 
     @dream_configuration
