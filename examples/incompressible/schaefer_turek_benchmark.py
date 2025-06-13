@@ -20,7 +20,7 @@ cfg.time = "stationary"
 # cfg.io.log.level = 10
 
 cfg.fem.order = 3
-cfg.fem.scheme = "stationary"
+cfg.fem.scheme = "direct"
 cfg.convection = False
 
 cfg.reynolds_number = 100
