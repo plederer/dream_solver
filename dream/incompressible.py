@@ -361,9 +361,6 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     def add_symbolic_convection_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
-        raise NotImplementedError("Overload this method in derived class!")
-
     def tang(self, u: ngs.CF) -> ngs.CF:
         """ Returns the tangential component of a vector field """
         n = self.mesh.normal
@@ -487,7 +484,7 @@ class HDivHDG(IncompressibleFiniteElement):
         blf['u']['convection'] = -ngs.InnerProduct(V.grad_u.trans * U.u, U.u) * ngs.dx(bonus_intorder=bonus.vol)
         blf['u']['convection'] += U.u*n * Uup * V.u * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
         blf['uhat']['convection'] = self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
-        
+
     def set_boundary_conditions(self) -> None:
         inflows = {dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()}
 
