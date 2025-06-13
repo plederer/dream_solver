@@ -10,7 +10,7 @@ cfg = IncompressibleSolver(mesh)
 cfg.time = "stationary"
 cfg.fem = "taylor-hood"
 # cfg.fem = "hdivhdg"
-cfg.fem.scheme = "stationary"
+cfg.fem.scheme = "direct"
 cfg.convection = True
 
 cfg.reynolds_number = 1
