@@ -185,11 +185,11 @@ class Powerlaw(DynamicViscosity):
 
 
 # Define solving schemes
-class IncompressibleStationaryScheme(StationaryScheme):
+class DirectScheme(StationaryScheme):
 
     root: IncompressibleSolver
 
-    name: str = "stationary"
+    name: str = "direct"
 
     def assemble(self):
 
@@ -297,14 +297,14 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     root: IncompressibleSolver
 
     @dream_configuration
-    def scheme(self) -> IncompressibleStationaryScheme:
+    def scheme(self) -> DirectScheme:
         """ Returns the scheme for the incompressible flow solver """
         return self._scheme
 
     @scheme.setter
     def scheme(self, scheme) -> None:
         if isinstance(self.root.time, StationaryRoutine):
-            OPTIONS = [IncompressibleStationaryScheme]
+            OPTIONS = [DirectScheme]
         elif isinstance(self.root.time, TransientRoutine):
             OPTIONS = [IMEX]
         else:
