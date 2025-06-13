@@ -329,8 +329,18 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     def add_symbolic_stokes_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
-    # def add_domain_conditions(self, blf, lf):
-    #     raise NotImplementedError("Overload this method in derived class!")
+    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
+        if isinstance(u, ngs.GridFunction):
+            u = u.components
+
+        state = flowfields()
+        state.u = u[0]
+        state.p = u[1]
+        state.grad_u = ngs.Grad(state.u)
+        state.eps = self.root.strain_rate_tensor(state)
+        state.tau = self.root.deviatoric_stress_tensor(state)
+
+        return state
 
     def add_domain_conditions(self, blf, lf):
 
@@ -399,36 +409,6 @@ class TaylorHood(IncompressibleFiniteElement):
 
         blf['u']['convection'] = ngs.InnerProduct(ngs.Grad(u) * u, v) * ngs.dx(bonus_intorder=bonus.vol)
 
-    # def add_domain_conditions(self, blf, lf):
-
-    #     _, v = self.TnT['u']
-
-    #     doms = self.root.dcs.to_pattern()
-
-    #     for dom, dc in doms.items():
-
-    #         logger.debug(f"Adding domain condition {dc} on domain {dom}.")
-
-    #         dom = self.mesh.Materials(dom)
-
-    #         if isinstance(dc, Force):
-
-    #             lf['u']['force'] = dc.force * v * ngs.dx(definedon=dom)
-
-    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
-
-        if isinstance(u, ngs.GridFunction):
-            u = u.components
-
-        state = flowfields()
-        state.u = u[0]
-        state.p = u[1]
-        state.grad_u = ngs.Grad(state.u)
-        state.eps = self.root.strain_rate_tensor(state)
-        state.tau = self.root.deviatoric_stress_tensor(state)
-
-        return state
-
     def set_boundary_conditions(self) -> None:
 
         inflows = {dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()}
@@ -474,7 +454,6 @@ class HDivHDG(IncompressibleFiniteElement):
 
         Re = self.root.reynolds_number
         nu = self.root.kinematic_viscosity(U)
-
         mu = 2 * nu/Re
 
         blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus.vol)
@@ -504,34 +483,17 @@ class HDivHDG(IncompressibleFiniteElement):
         n = self.mesh.normal
 
         Uup = ngs.IfPos(U.u * n, U.u, (U.u*n) * n + self.tang(2*uhat-U.u))
-        # Uup = ngs.IfPos(U.u * n, U.u, (U.u*n) * n + self.tang(uhat))
 
         blf['u']['convection'] = -ngs.InnerProduct(V.grad_u.trans * U.u, U.u) * ngs.dx(bonus_intorder=bonus.vol)
         blf['u']['convection'] += U.u*n * Uup * V.u * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
         blf['uhat']['convection'] = self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
-        # blf['uhat']['convection'] = ngs.IfPos(U.u * n, 1,0) * self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary = True, bonus_intorder=bonus.vol)
-
-    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
-
-        if isinstance(u, ngs.GridFunction):
-            u = u.components
-
-        state = flowfields()
-        state.u = u[0]
-        state.p = u[1]
-        state.grad_u = ngs.Grad(state.u)
-        state.eps = self.root.strain_rate_tensor(state)
-        state.tau = self.root.deviatoric_stress_tensor(state)
-
-        return state
-
+        
     def set_boundary_conditions(self) -> None:
         inflows = {dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()}
 
         if inflows:
             u = self.mesh.BoundaryCF(inflows)
             self.gfus['u'].Set(u, ngs.BND)
-            # u = self.mesh.BoundaryCF(inflows)
             self.gfus['uhat'].Set(self.tang(u), ngs.BND)
 
 
