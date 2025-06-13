@@ -361,9 +361,6 @@ class IncompressibleFiniteElement(FiniteElementMethod):
     def add_symbolic_convection_form(self, blf, lf):
         raise NotImplementedError("Overload this method in derived class!")
 
-    def get_incompressible_state(self, u: ngs.CF) -> flowfields:
-        raise NotImplementedError("Overload this method in derived class!")
-
     def tang(self, u: ngs.CF) -> ngs.CF:
         """ Returns the tangential component of a vector field """
         n = self.mesh.normal
