@@ -104,7 +104,7 @@ class Force(Condition):
 
 
 BCS = [Inflow, Outflow, Wall, Periodic]
-DCS = [Initial]
+DCS = [Initial, Force]
 
 
 class DynamicViscosity(Configuration, is_interface=True):
