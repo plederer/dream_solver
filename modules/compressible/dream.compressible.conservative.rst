@@ -15,5 +15,6 @@
       :toctree:
       :recursive:
    
-      spatial
+      dg
+      hdg
       time

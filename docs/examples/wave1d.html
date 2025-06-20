@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
@@ -192,16 +192,17 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.html">conservative</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html">spatial</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG"><code class="docutils literal notranslate"><span class="pre">DG_HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.dg.html">dg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html">hdg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG_HDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG"><code class="docutils literal notranslate"><span class="pre">ConservativeHDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.time.html">time</a><ul>
@@ -336,9 +337,11 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.fields"><code class="docutils literal notranslate"><span class="pre">FarField.fields</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.use_identity_jacobian"><code class="docutils literal notranslate"><span class="pre">FarField.use_identity_jacobian</span></code></a></li>
@@ -499,22 +502,17 @@
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Solver configuration: pure convection equation.</span>
 <span class="n">cfg</span> <span class="o">=</span> <span class="n">ScalarTransportSolver</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-
-<span class="n">cfg</span><span class="o">.</span><span class="n">convection_velocity</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,)</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">is_inviscid</span> <span class="o">=</span> <span class="kc">True</span>
-
-<span class="n">cfg</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s2">&quot;lax_friedrich&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;dg&quot;</span> <span class="c1"># NOTE, by default, DG is used.</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">4</span>
-
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;transient&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;implicit_euler&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">)</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="mf">0.01</span>
 
-<span class="c1"># cfg.linear_solver = &quot;pardiso&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># NOTE, by default, condensation is turned off.</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">compile</span><span class="o">.</span><span class="n">realcompile</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">convection_velocity</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,)</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">is_inviscid</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s2">&quot;lax_friedrich&quot;</span>
+
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;dg&quot;</span> <span class="c1"># NOTE, by default, DG is used.</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;implicit_euler&quot;</span>
 
 <span class="n">U0</span> <span class="o">=</span> <span class="n">transportfields</span><span class="p">()</span>
 <span class="n">U0</span><span class="o">.</span><span class="n">phi</span> <span class="o">=</span> <span class="n">get_analytic_solution</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">interval</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">cfg</span><span class="o">.</span><span class="n">convection_velocity</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -542,7 +540,7 @@
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 1.200000e+01
+dream.time      (INFO) | dg implicit_euler | t: 12.00
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -565,7 +563,7 @@ dream.scalar_transport.time.implicit (INFO) | time: 1.200000e+01
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-[&lt;matplotlib.lines.Line2D at 0x10f949d10&gt;]
+[&lt;matplotlib.lines.Line2D at 0x795bd73d8ef0&gt;]
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -591,16 +589,9 @@ dream.scalar_transport.time.implicit (INFO) | time: 1.200000e+01
     <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
         <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
-            <span class="c1"># By default, assume this is a DG formulation.</span>
-            <span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">False</span>
-
             <span class="c1"># Insert options here.</span>
             <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">5</span>
-
-            <span class="c1"># In case an HDG formulation is specified, use static condensation.</span>
-            <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;hdg&quot;</span><span class="p">:</span>
-                <span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">True</span>
 
             <span class="c1"># Allocate the necessary data.</span>
             <span class="n">cfg</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
@@ -802,7 +793,7 @@ dream.scalar_transport.time.implicit (INFO) | time: 1.200000e+01
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 7.500000e+00
+dream.time      (INFO) | hdg implicit_euler | t: 2.84
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -818,7 +809,7 @@ Running implicit_euler(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 6.000000e+00
+dream.time      (INFO) | dg implicit_euler | t: 2.70
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -834,7 +825,7 @@ Running implicit_euler(dg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 6.830000e+00
+dream.time      (INFO) | hdg bdf2 | t: 2.64
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -850,7 +841,7 @@ Running bdf2(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 5.670000e+00
+dream.time      (INFO) | dg bdf2 | t: 2.68
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -866,7 +857,7 @@ Running bdf2(dg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 5.520000e+00
+dream.time      (INFO) | hdg sdirk22 | t: 2.32
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -882,7 +873,7 @@ Running sdirk22(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 5.380000e+00
+dream.time      (INFO) | dg sdirk22 | t: 2.59
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -898,7 +889,7 @@ Running sdirk22(dg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 4.900000e+00
+dream.time      (INFO) | hdg sdirk33 | t: 3.11
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -914,7 +905,7 @@ Running sdirk33(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 4.670000e+00
+dream.time      (INFO) | dg sdirk33 | t: 2.54
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -930,7 +921,7 @@ Running sdirk33(dg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.scalar_transport.time.implicit (INFO) | time: 1.200000e+01
+dream.time      (INFO) | dg sdirk33 | t: 12.00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">

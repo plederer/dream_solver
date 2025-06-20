@@ -14,7 +14,7 @@
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
@@ -186,16 +186,17 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.html">conservative</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html">spatial</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG"><code class="docutils literal notranslate"><span class="pre">DG_HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.dg.html">dg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html">hdg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG_HDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG"><code class="docutils literal notranslate"><span class="pre">ConservativeHDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.time.html">time</a><ul>
@@ -330,9 +331,11 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.fields"><code class="docutils literal notranslate"><span class="pre">FarField.fields</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.use_identity_jacobian"><code class="docutils literal notranslate"><span class="pre">FarField.use_identity_jacobian</span></code></a></li>
@@ -460,14 +463,16 @@
       </ul></li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions">add_domain_conditions() (ScalarTransportFiniteElementMethod method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation">add_farfield_formulation() (DG method)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.add_farfield_formulation">add_farfield_formulation() (ConservativeHDG method)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.add_farfield_formulation">(HDG method)</a>, <a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_farfield_formulation">[1]</a>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation">(DG method)</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_farfield_formulation">(HDG method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_finite_element_spaces">add_finite_element_spaces() (DG method)</a>
 
       <ul>
@@ -516,17 +521,21 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_x">conservative_convective_jacobian_x() (IdealGas method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_y">conservative_convective_jacobian_y() (IdealGas method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_from_characteristic">conservative_from_characteristic() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_from_primitive">conservative_from_primitive() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod">ConservativeFiniteElementMethod (class in dream.compressible.conservative.spatial)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG">ConservativeDG (class in dream.compressible.conservative.dg)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod">ConservativeMethod (class in dream.compressible.conservative.spatial)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG">ConservativeDG_HDG (class in dream.compressible.conservative.hdg)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.ConservativeFiniteElementMethod">ConservativeFiniteElementMethod (class in dream.compressible.config)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG">ConservativeHDG (class in dream.compressible.conservative.hdg)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant">Constant (class in dream.compressible.viscosity)</a>
 </li>
@@ -552,13 +561,7 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor">deviatoric_stress_tensor() (CompressibleFlowSolver method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG">DG (class in dream.compressible.conservative.spatial)</a>
-
-      <ul>
-        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG">(class in dream.scalar_transport.spatial)</a>
-</li>
-      </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG">DG_HDG (class in dream.compressible.conservative.spatial)</a>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG">DG (class in dream.scalar_transport.spatial)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient">diffusion_coefficient (ScalarTransportSolver property)</a>
 </li>
@@ -589,10 +592,17 @@
 </li>
       </ul></li>
       <li>
-    dream.compressible.conservative.spatial
+    dream.compressible.conservative.dg
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#module-dream.compressible.conservative.spatial">module</a>
+        <li><a href="modules/compressible/dream.compressible.conservative.dg.html#module-dream.compressible.conservative.dg">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.compressible.conservative.hdg
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#module-dream.compressible.conservative.hdg">module</a>
 </li>
       </ul></li>
       <li>
@@ -794,7 +804,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux">get_convective_flux() (CompressibleFlowSolver method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_convective_numerical_flux">get_convective_numerical_flux() (HDG method)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.get_convective_numerical_flux">get_convective_numerical_flux() (ConservativeHDG method)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_numerical_flux_dg">get_convective_numerical_flux_dg() (LaxFriedrich method)</a>
 
@@ -824,22 +834,18 @@
       </ul></li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux">get_diffusive_flux() (CompressibleFlowSolver method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG.get_diffusive_numerical_flux">get_diffusive_numerical_flux() (DG_HDG method)</a>
-
-      <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.get_diffusive_numerical_flux">(HDG method)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.get_diffusive_numerical_flux">get_diffusive_numerical_flux() (ConservativeHDG method)</a>
 </li>
-      </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod.get_domain_boundary_mask">get_domain_boundary_mask() (ConservativeMethod method)</a>
+      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.get_domain_boundary_mask">get_domain_boundary_mask() (CompressibleFiniteElementMethod method)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask">(ScalarTransportFiniteElementMethod method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields">get_farfield_fields() (CompressibleFlowSolver method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number">get_local_mach_number() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number">get_local_reynolds_number() (CompressibleFlowSolver method)</a>
@@ -872,7 +878,7 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_u">grad_u (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient">Gradient (class in dream.compressible.conservative.spatial)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Gradient">Gradient (class in dream.compressible.conservative.hdg)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.GRCBC">GRCBC (class in dream.compressible.config)</a>
 </li>
@@ -884,12 +890,8 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.H">H (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG">HDG (class in dream.compressible.conservative.spatial)</a>
-
-      <ul>
-        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG">(class in dream.scalar_transport.spatial)</a>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG">HDG (class in dream.scalar_transport.spatial)</a>
 </li>
-      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL">HLL (class in dream.compressible.riemann_solver)</a>
@@ -930,7 +932,7 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive">Inactive (class in dream.compressible.conservative.spatial)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Inactive">Inactive (class in dream.compressible.conservative.hdg)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.inner_energy">inner_energy() (IdealGas method)</a>
 </li>
@@ -974,11 +976,9 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.mach_number">mach_number (CompressibleFlowSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod.method">method (ConservativeFiniteElementMethod property)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.mixed_method">mixed_method (ConservativeHDG property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod.mixed_method">mixed_method (ConservativeFiniteElementMethod property)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.MixedMethod">MixedMethod (class in dream.compressible.conservative.spatial)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.MixedMethod">MixedMethod (class in dream.compressible.conservative.hdg)</a>
 </li>
       <li>
     module
@@ -988,7 +988,9 @@
 </li>
         <li><a href="modules/compressible/dream.compressible.conservative.html#module-dream.compressible.conservative">dream.compressible.conservative</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#module-dream.compressible.conservative.spatial">dream.compressible.conservative.spatial</a>
+        <li><a href="modules/compressible/dream.compressible.conservative.dg.html#module-dream.compressible.conservative.dg">dream.compressible.conservative.dg</a>
+</li>
+        <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#module-dream.compressible.conservative.hdg">dream.compressible.conservative.hdg</a>
 </li>
         <li><a href="modules/compressible/dream.compressible.conservative.time.html#module-dream.compressible.conservative.time">dream.compressible.conservative.time</a>
 </li>
@@ -1153,10 +1155,14 @@
 </li>
       <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.scaling">scaling (CompressibleFlowSolver property)</a>
 </li>
-      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme">scheme (DG property)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG.scheme">scheme (ConservativeDG_HDG property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG.scheme">(HDG property)</a>, <a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme">[1]</a>
+        <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.scheme">(ConservativeHDG property)</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme">(DG property)</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme">(HDG property)</a>
 </li>
       </ul></li>
       <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK22">SDIRK22 (class in dream.compressible.conservative.time.implicit)</a>
@@ -1203,7 +1209,7 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3">(class in dream.scalar_transport.time.explicit)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat">StrainHeat (class in dream.compressible.conservative.spatial)</a>
+      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat">StrainHeat (class in dream.compressible.conservative.hdg)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland">Sutherland (class in dream.compressible.viscosity)</a>
 </li>

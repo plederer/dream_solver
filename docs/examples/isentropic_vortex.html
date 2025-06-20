@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
@@ -191,16 +191,17 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.html">conservative</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html">spatial</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG"><code class="docutils literal notranslate"><span class="pre">DG_HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.dg.html">dg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html">hdg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG_HDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG"><code class="docutils literal notranslate"><span class="pre">ConservativeHDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.time.html">time</a><ul>
@@ -335,9 +336,11 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.fields"><code class="docutils literal notranslate"><span class="pre">FarField.fields</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.use_identity_jacobian"><code class="docutils literal notranslate"><span class="pre">FarField.use_identity_jacobian</span></code></a></li>
@@ -666,6 +669,10 @@ by definition.</p>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Solver configuration: Compressible (inviscid) flow.</span>
 <span class="n">cfg</span> <span class="o">=</span> <span class="n">CompressibleFlowSolver</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
 
+<span class="n">cfg</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;transient&quot;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="mf">0.25</span>
+
 <span class="n">cfg</span><span class="o">.</span><span class="n">dynamic_viscosity</span> <span class="o">=</span> <span class="s2">&quot;inviscid&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">equation_of_state</span> <span class="o">=</span> <span class="s2">&quot;ideal&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">equation_of_state</span><span class="o">.</span><span class="n">heat_capacity_ratio</span> <span class="o">=</span> <span class="mf">1.4</span>
@@ -673,24 +680,15 @@ by definition.</p>
 <span class="n">cfg</span><span class="o">.</span><span class="n">mach_number</span> <span class="o">=</span> <span class="mf">0.0</span>
 
 <span class="n">cfg</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s2">&quot;lax_friedrich&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative&quot;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_hdg&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;hdg&quot;</span> <span class="c1"># NOTE, by default, HDG is used.</span>
-
-<span class="n">cfg</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;transient&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;implicit_euler&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="mf">0.25</span>
 
-<span class="c1"># cfg.linear_solver = &quot;pardiso&quot;</span>
-<span class="c1"># cfg.nonlinear_solver = &quot;pardiso&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">nonlinear_solver</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;newton&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">nonlinear_solver</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">damping_factor</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">nonlinear_solver</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">10</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">nonlinear_solver</span><span class="o">.</span><span class="n">convergence_criterion</span> <span class="o">=</span> <span class="mf">1e-10</span>
-
-<span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># NOTE, by default, condensation is turned on.</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">compile</span><span class="o">.</span><span class="n">realcompile</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="s2">&quot;direct&quot;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;newton&quot;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">damping_factor</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">convergence_criterion</span> <span class="o">=</span> <span class="mf">1e-10</span>
 
 <span class="n">Uic</span> <span class="o">=</span> <span class="n">InitialCondition</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
 
@@ -720,16 +718,9 @@ by definition.</p>
     <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
         <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">draw_solution</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
-            <span class="c1"># By default, assume this is a DG formulation.</span>
-            <span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">False</span>
-
             <span class="c1"># Insert options here.</span>
             <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">4</span>
-
-            <span class="c1"># In case an HDG formulation is specified, use static condensation.</span>
-            <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;hdg&quot;</span><span class="p">:</span>
-               <span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">True</span>
 
             <span class="c1"># Allocate the necessary data.</span>
             <span class="n">cfg</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
@@ -780,42 +771,42 @@ by definition.</p>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;implicit_euler(hdg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">implicit_euler_hdg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;hdg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_hdg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;implicit_euler&quot;</span>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;bdf2(hdg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">bdf2_hdg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;hdg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_hdg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;bdf2&quot;</span>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;sdirk22(hdg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">sdirk22_hdg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;hdg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_hdg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;sdirk22&quot;</span>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;sdirk33(hdg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">sdirk33_hdg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;hdg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_hdg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;sdirk33&quot;</span>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;imex_rk_ars443(dg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">imex_rk_ars443_dg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;dg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_dg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;imex_rk_ars443&quot;</span>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;ssprk3(dg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">ssprk3_dg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;dg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_dg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;ssprk3&quot;</span>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;crk4(dg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">crk4_dg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;dg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_dg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;crk4&quot;</span>
 
 <span class="nd">@isentropic_vortex_routine</span><span class="p">(</span><span class="s2">&quot;explicit_euler(dg)&quot;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">explicit_euler_dg</span><span class="p">():</span>
-    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;dg&quot;</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_dg&quot;</span>
     <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;explicit_euler&quot;</span>
 </pre></div>
 </div>
@@ -924,14 +915,14 @@ Running implicit_euler(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.solver    (INFO) | residual: 2.587653e-15 | iteration: 2 | t: 5.0
+dream.time      (INFO) | conservative_hdg implicit_euler | it: 2 | error: 4.068907e-15 | t: 5.00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "ee5dce5c528845ce8f4f7dad73f450c0"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "b74127a9523842ce94abac4115268e69"}</script></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
@@ -946,14 +937,14 @@ Running bdf2(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.solver    (INFO) | residual: 6.615734e-15 | iteration: 2 | t: 5.0
+dream.time      (INFO) | conservative_hdg bdf2 | it: 2 | error: 9.312217e-15 | t: 5.00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "536c48170e2a42e8bffdfe158f9a3582"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "2274659ed99e40b789113b7550d9f718"}</script></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
@@ -968,14 +959,14 @@ Running sdirk33(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.solver    (INFO) | residual: 7.330148e-20 | stage: 3 | iteration: 2 | t: 5.0
+dream.time      (INFO) | conservative_hdg sdirk33 | it: 1 | error: 8.601520e-09 | stage: 3 | t: 5.00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "158cfb51eb9442d78b933bfddd4931d7"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "eb4109b5fdad42d48b5f08236c2d033a"}</script></div>
 </div>
 <div class="nboutput docutils container">
 <div class="prompt empty docutils container">
@@ -992,7 +983,7 @@ dream.solver    (INFO) | residual: 7.330148e-20 | stage: 3 | iteration: 2 | t: 5
 </div>
 </div>
 <script type="application/vnd.jupyter.widget-state+json">
-{"state": {"ed30cb7d89b24e29bc8e8cc193a8f02a": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "ee5dce5c528845ce8f4f7dad73f450c0": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_ed30cb7d89b24e29bc8e8cc193a8f02a", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_3.json", "preview": "preview_3.png"}}}, "d8765834e65347ffbaf93f0ddbf01fc2": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "536c48170e2a42e8bffdfe158f9a3582": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_d8765834e65347ffbaf93f0ddbf01fc2", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_4.json", "preview": "preview_4.png"}}}, "19d6559c8ebc4ed1bd50f6b610e697b9": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "158cfb51eb9442d78b933bfddd4931d7": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_19d6559c8ebc4ed1bd50f6b610e697b9", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_5.json", "preview": "preview_5.png"}}}}, "version_major": 2, "version_minor": 0}
+{"state": {"3e93d86665ea4edeb9a5081690e3e70a": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "b74127a9523842ce94abac4115268e69": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_3e93d86665ea4edeb9a5081690e3e70a", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_4.json", "preview": "preview_4.png"}}}, "118ae7cf149f4441ad74bcf5ca1fede9": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "2274659ed99e40b789113b7550d9f718": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_118ae7cf149f4441ad74bcf5ca1fede9", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_5.json", "preview": "preview_5.png"}}}, "0aa365481d7b4836a0d43567a20702ec": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "eb4109b5fdad42d48b5f08236c2d033a": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_0aa365481d7b4836a0d43567a20702ec", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_6.json", "preview": "preview_6.png"}}}}, "version_major": 2, "version_minor": 0}
 </script></section>
 
 

@@ -15,6 +15,9 @@
       .. autoclass:: CompressibleFiniteElementMethod
          :members:
          :member-order: bysource
+      .. autoclass:: ConservativeFiniteElementMethod
+         :members:
+         :member-order: bysource
       .. autoclass:: FarField
          :members:
          :member-order: bysource

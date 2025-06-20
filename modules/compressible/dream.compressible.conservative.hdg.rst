@@ -1,27 +1,18 @@
-spatial
-=======
+hdg
+===
 
 .. currentmodule:: dream.compressible.conservative
-.. automodule:: dream.compressible.conservative.spatial
+.. automodule:: dream.compressible.conservative.hdg
 
    
       
-      .. autoclass:: ConservativeFiniteElementMethod
+      .. autoclass:: ConservativeDG_HDG
          :members:
          :member-order: bysource
-      .. autoclass:: ConservativeMethod
-         :members:
-         :member-order: bysource
-      .. autoclass:: DG
-         :members:
-         :member-order: bysource
-      .. autoclass:: DG_HDG
+      .. autoclass:: ConservativeHDG
          :members:
          :member-order: bysource
       .. autoclass:: Gradient
-         :members:
-         :member-order: bysource
-      .. autoclass:: HDG
          :members:
          :member-order: bysource
       .. autoclass:: Inactive

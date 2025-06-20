@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>explicit &mdash; dream 0.1 documentation</title>
+  <title>dg &mdash; dream 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=b6f29fd6" />
@@ -19,15 +19,13 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
-      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js"></script>
       <script src="../../_static/webgui_jupyter_widgets.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="imex" href="dream.compressible.conservative.time.imex.html" />
-    <link rel="prev" title="time" href="dream.compressible.conservative.time.html" /> 
+    <link rel="next" title="hdg" href="dream.compressible.conservative.hdg.html" />
+    <link rel="prev" title="conservative" href="dream.compressible.conservative.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -191,8 +189,8 @@
 </ul>
 </li>
 <li class="toctree-l2 current"><a class="reference internal" href="dream.compressible.conservative.html">conservative</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.dg.html">dg</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">dg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dream.compressible.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.hdg.html">hdg</a><ul>
@@ -204,8 +202,8 @@
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3 current"><a class="reference internal" href="dream.compressible.conservative.time.html">time</a><ul class="current">
-<li class="toctree-l4 current"><a class="current reference internal" href="#">explicit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="dream.compressible.conservative.time.html">time</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.explicit.html">explicit</a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.imex.html">imex</a></li>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible.conservative.time.implicit.html">implicit</a></li>
 </ul>
@@ -415,10 +413,9 @@
       <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="index.html">compressible</a></li>
           <li class="breadcrumb-item"><a href="dream.compressible.conservative.html">conservative</a></li>
-          <li class="breadcrumb-item"><a href="dream.compressible.conservative.time.html">time</a></li>
-      <li class="breadcrumb-item active">explicit</li>
+      <li class="breadcrumb-item active">dg</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../../_sources/modules/compressible/dream.compressible.conservative.time.explicit.rst" rel="nofollow"> View page source</a>
+            <a href="../../_sources/modules/compressible/dream.compressible.conservative.dg.rst" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -426,46 +423,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="module-dream.compressible.conservative.time.explicit">
-<span id="explicit"></span><h1>explicit<a class="headerlink" href="#module-dream.compressible.conservative.time.explicit" title="Link to this heading"></a></h1>
-<p>Definitions of explicit time integration schemes for conservative methods.</p>
+  <section id="module-dream.compressible.conservative.dg">
+<span id="dg"></span><h1>dg<a class="headerlink" href="#module-dream.compressible.conservative.dg" title="Link to this heading"></a></h1>
+<p>Definitions of conservative dg discretizations.</p>
 <dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.conservative.time.explicit.CRK4">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CRK4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.time.explicit.CRK4" title="Link to this definition"></a></dt>
-<dd><p>Class responsible for implementing an explicit 4th-order (classic) Runge-Kutta time-marching scheme that updates the current solution (<span class="math notranslate nohighlight">\(t = t^{n}\)</span>) to the next time step (<span class="math notranslate nohighlight">\(t = t^{n+1}\)</span>). Assuming a standard DG formulation,</p>
-<div class="math notranslate nohighlight">
-\[\begin{split}\bm{k}_{1}   &amp;= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n}                \big),\\[2ex]
-\bm{k}_{2}   &amp;= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} + \bm{k}_1 / 2 \big),\\[2ex] 
-\bm{k}_{3}   &amp;= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} + \bm{k}_2 / 2 \big),\\[2ex]
-\bm{k}_{4}   &amp;= -\widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} + \bm{k}_3     \big),\\[2ex]
-\bm{U}^{n+1} &amp;= \bm{U}^{n} + \big( \bm{k}_1 + 2\bm{k}_2 + 2\bm{k}_3 + \bm{k}_4  \big) / 6,\end{split}\]</div>
-<p>where <span class="math notranslate nohighlight">\(\widetilde{\bm{M}} = \bm{M} / \delta t\)</span> is the weighted mass matrix, <span class="math notranslate nohighlight">\(\bm{M}\)</span> is the mass matrix and <span class="math notranslate nohighlight">\(\bm{f}\)</span> arises from the spatial discretization of the PDE.</p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.conservative.time.explicit.ExplicitEuler">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ExplicitEuler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.time.explicit.ExplicitEuler" title="Link to this definition"></a></dt>
-<dd><p>Class responsible for implementing an explicit (forwards-)Euler time-marching scheme that updates the current solution (<span class="math notranslate nohighlight">\(t = t^{n}\)</span>) to the next time step (<span class="math notranslate nohighlight">\(t = t^{n+1}\)</span>). Assuming a standard DG formulation,</p>
-<div class="math notranslate nohighlight">
-\[\widetilde{\bm{M}} \bm{U}^{n+1} = \widetilde{\bm{M}} \bm{U}^{n} - \bm{f} \big( \bm{U}^{n} \big),\]</div>
-<p>where <span class="math notranslate nohighlight">\(\widetilde{\bm{M}} = \bm{M} / \delta t\)</span> is the weighted mass matrix, <span class="math notranslate nohighlight">\(\bm{M}\)</span> is the mass matrix and <span class="math notranslate nohighlight">\(\bm{f}\)</span> arises from the spatial discretization of the PDE.</p>
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.conservative.time.explicit.ExplicitSchemes">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ExplicitSchemes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.time.explicit.ExplicitSchemes" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="dream.compressible.conservative.dg.ConservativeDG">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ConservativeDG</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.dg.ConservativeDG" title="Link to this definition"></a></dt>
 <dd></dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="dream.compressible.conservative.time.explicit.SSPRK3">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SSPRK3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.compressible.conservative.time.explicit.SSPRK3" title="Link to this definition"></a></dt>
-<dd><p>Class responsible for implementing an explicit 3rd-order strong-stability-preserving Runge-Kutta time-marching scheme that updates the current solution (<span class="math notranslate nohighlight">\(t = t^{n}\)</span>) to the next time step (<span class="math notranslate nohighlight">\(t = t^{n+1}\)</span>), see Section 4.1, Equation 4.2 in <span id="id1">[<a class="reference internal" href="../../introduction/literature.html#id93" title="Sigal Gottlieb, Chi-Wang Shu, and Eitan Tadmor. Strong stability-preserving high-order time discretization methods. SIAM review, 43(1):89–112, 2001. doi:10.1137/S003614450036757X.">1</a>]</span>. Assuming a standard DG formulation,</p>
-<div class="math notranslate nohighlight">
-\[\begin{split}\bm{y}_{1}   &amp;=             \bm{U}^{n} -                                      \widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{U}^{n} \big),\\[2ex]
-\bm{y}_{2}   &amp;= \frac{3}{4} \bm{U}^{n} + \frac{1}{4} \bm{y}_{1} - \frac{1}{4} \widetilde{\bm{M}}^{-1} \bm{f} \big( \bm{y}_{1} \big),\\[2ex]
-\bm{U}^{n+1} &amp;= \frac{1}{3} \bm{U}^{n} + \frac{2}{3} \bm{y}_{2} - \frac{2}{3} \widetilde{\bm{M}}^{-1 }\bm{f} \big( \bm{y}_{2} \big),\end{split}\]</div>
-<p>where <span class="math notranslate nohighlight">\(\widetilde{\bm{M}} = \bm{M} / \delta t\)</span> is the weighted mass matrix, <span class="math notranslate nohighlight">\(\bm{M}\)</span> is the mass matrix and <span class="math notranslate nohighlight">\(\bm{f}\)</span> arises from the spatial discretization of the PDE.</p>
-</dd></dl>
 
 </section>
 
@@ -473,8 +437,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="dream.compressible.conservative.time.html" class="btn btn-neutral float-left" title="time" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="dream.compressible.conservative.time.imex.html" class="btn btn-neutral float-right" title="imex" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="dream.compressible.conservative.html" class="btn btn-neutral float-left" title="conservative" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dream.compressible.conservative.hdg.html" class="btn btn-neutral float-right" title="hdg" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

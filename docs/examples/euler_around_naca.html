@@ -16,7 +16,7 @@
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
@@ -192,16 +192,17 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.html">conservative</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html">spatial</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.ConservativeMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.DG_HDG"><code class="docutils literal notranslate"><span class="pre">DG_HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.spatial.html#dream.compressible.conservative.spatial.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.dg.html">dg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html">hdg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG_HDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG"><code class="docutils literal notranslate"><span class="pre">ConservativeHDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.conservative.time.html">time</a><ul>
@@ -336,9 +337,11 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.fields"><code class="docutils literal notranslate"><span class="pre">FarField.fields</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.use_identity_jacobian"><code class="docutils literal notranslate"><span class="pre">FarField.use_identity_jacobian</span></code></a></li>
@@ -472,7 +475,7 @@
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "8aae8d071fd045da806bb41e3df7ae47"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "6f7ce895d8074beab84759405b765c69"}</script></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
@@ -499,9 +502,6 @@
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 [&#39;time&#39;,
- &#39;linear_solver&#39;,
- &#39;nonlinear_solver&#39;,
- &#39;optimizations&#39;,
  &#39;io&#39;,
  &#39;info&#39;,
  &#39;fem&#39;,
@@ -524,13 +524,11 @@
 <span class="n">cfg</span><span class="o">.</span><span class="n">dynamic_viscosity</span> <span class="o">=</span> <span class="s2">&quot;inviscid&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">scaling</span> <span class="o">=</span> <span class="s2">&quot;aerodynamic&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s2">&quot;lax_friedrich&quot;</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">optimizations</span><span class="o">.</span><span class="n">static_condensation</span> <span class="o">=</span> <span class="kc">True</span>
 
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="s2">&quot;pseudo_time_stepping&quot;</span>
 
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative&quot;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span> <span class="o">=</span> <span class="s2">&quot;conservative_hdg&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="mi">3</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;hdg&quot;</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span> <span class="o">=</span> <span class="s2">&quot;implicit_euler&quot;</span>
 
 <span class="c1"># Curve mesh</span>
@@ -557,8 +555,10 @@
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">increment_at</span> <span class="o">=</span> <span class="mi">10</span>
 <span class="n">cfg</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">increment_factor</span> <span class="o">=</span> <span class="mi">10</span>
 
-<span class="n">cfg</span><span class="o">.</span><span class="n">nonlinear_solver</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">300</span>
-<span class="n">cfg</span><span class="o">.</span><span class="n">nonlinear_solver</span><span class="o">.</span><span class="n">convergence_criterion</span> <span class="o">=</span> <span class="mf">1e-12</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span> <span class="o">=</span> <span class="s2">&quot;direct&quot;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">method</span> <span class="o">=</span> <span class="s2">&quot;newton&quot;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">300</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">solver</span><span class="o">.</span><span class="n">method</span><span class="o">.</span><span class="n">convergence_criterion</span> <span class="o">=</span> <span class="mf">1e-12</span>
 
 <span class="n">cfg</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
 <span class="k">with</span> <span class="n">ngs</span><span class="o">.</span><span class="n">TaskManager</span><span class="p">():</span>
@@ -574,14 +574,14 @@
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.solver    (INFO) | residual: 3.496850e-13 | iteration: 42
+dream.time      (INFO) | conservative_hdg implicit_euler | it: 43 | error: 3.800587e-13
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "6bb84d748c0f4e41985a2e3cda729e9c"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "988523364b944d7a8f176b43288a8915"}</script></div>
 </div>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -603,7 +603,7 @@ dream.solver    (INFO) | residual: 3.496850e-13 | iteration: 42
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-{&#39;airfoil&#39;: array([-0.02551023, -0.00028041])}
+{&#39;airfoil&#39;: array([ 0.02579041, -0.0001848 ])}
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
@@ -640,7 +640,7 @@ Text(0.5, 1.0, &#39;Pressure coefficient over chord length&#39;)
 </div>
 </div>
 <script type="application/vnd.jupyter.widget-state+json">
-{"state": {"5e0b417688da41389b2830c27354fc44": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "8aae8d071fd045da806bb41e3df7ae47": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_5e0b417688da41389b2830c27354fc44", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_0.json", "preview": "preview_0.png"}}}, "1c123e25308f43559c9ed2612bd715a9": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "6bb84d748c0f4e41985a2e3cda729e9c": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_1c123e25308f43559c9ed2612bd715a9", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_1.json", "preview": "preview_1.png"}}}}, "version_major": 2, "version_minor": 0}
+{"state": {"3fcc90e42ebf4e3c9ecbb79e4e107f02": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "6f7ce895d8074beab84759405b765c69": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_3fcc90e42ebf4e3c9ecbb79e4e107f02", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_0.json", "preview": "preview_0.png"}}}, "f9cd27b9829142bca8bb769c0559cd97": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "988523364b944d7a8f176b43288a8915": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.31", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.31", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.31", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_f9cd27b9829142bca8bb769c0559cd97", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_1.json", "preview": "preview_1.png"}}}}, "version_major": 2, "version_minor": 0}
 </script></section>
 
 
