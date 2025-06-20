@@ -32,8 +32,7 @@ def cfg():
     cfg = CompressibleFlowSolver(mesh)
     cfg.time = "transient"
 
-    cfg.fem = "conservative"
-    cfg.fem.method = "hdg"
+    cfg.fem = "conservative_hdg"
     cfg.fem.mixed_method = "inactive"
 
     cfg.mach_number = 0.3
@@ -43,8 +42,6 @@ def cfg():
     cfg.equation_of_state.heat_capacity_ratio = 1.4
     cfg.dynamic_viscosity = "inviscid"
     cfg.scaling = "aerodynamic"
-    cfg.scaling.dimensionful_values = {'length': 1.0, 'density': 1.293, 'velocity': 1.0,
-                                       'speed_of_sound': 343.0, 'temperature': 293.15, 'pressure': 101325.0}
     cfg.riemann_solver = "lax_friedrich"
 
     yield cfg

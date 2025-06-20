@@ -7,14 +7,14 @@ import ngsolve as ngs
 from dream import bla
 from dream.config import dream_configuration, equation
 from dream.mesh import (BoundaryConditions, DomainConditions)
-from dream.solver import SolverConfiguration
+from dream.solver import SolverConfiguration, FiniteElementMethod
 
 from .eos import IdealGas, EquationOfState
 from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
 from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
-from .config import flowfields, BCS, DCS, CompressibleFiniteElementMethod
-from .conservative import ConservativeFiniteElementMethod
+from .config import flowfields, BCS, DCS
+from .conservative import ConservativeHDG, ConservativeDG, ConservativeDG_HDG
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
 
     @dream_configuration
-    def fem(self) -> ConservativeFiniteElementMethod:
+    def fem(self) -> ConservativeHDG | ConservativeDG | ConservativeDG_HDG:
         r""" Sets the finite element for the compressible flow solver. 
 
             :getter: Returns the finite element
@@ -55,8 +55,8 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @fem.setter
     def fem(self, fem):
-        OPTIONS = [ConservativeFiniteElementMethod]
-        self._fem = self._get_configuration_option(fem, OPTIONS, CompressibleFiniteElementMethod)
+        OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
+        self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
 
     @dream_configuration
     def mach_number(self) -> ngs.Parameter:

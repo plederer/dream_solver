@@ -5,7 +5,7 @@ import typing
 
 from math import isnan
 
-from .mesh import is_mesh_periodic, Periodic, Initial, BoundaryConditions, DomainConditions
+from .mesh import is_mesh_periodic, Periodic, BoundaryConditions, DomainConditions
 from .config import Configuration, dream_configuration, ngsdict, Integrals
 from .time import StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine, TimeRoutine, Scheme, TimeSchemes
 from .io import IOConfiguration
@@ -13,217 +13,43 @@ from .io import IOConfiguration
 logger = logging.getLogger(__name__)
 
 
-class BonusIntegrationOrder(Configuration):
-
-    def __init__(self, mesh, root=None, **default):
-
-        DEFAULT = {
-            "vol": 0,
-            "bnd": 0,
-            "bbnd": 0,
-            "bbbnd": 0
-        }
-
-        DEFAULT.update(default)
-
-        super().__init__(mesh, root, **DEFAULT)
-
-    @dream_configuration
-    def vol(self) -> int:
-        return self._vol
-
-    @vol.setter
-    def vol(self, vol: int):
-        if vol < 0:
-            raise ValueError("Integration order must be non-negative!")
-        self._vol = int(vol)
-
-    @dream_configuration
-    def bnd(self) -> int:
-        return self._bnd
-
-    @bnd.setter
-    def bnd(self, bnd: int):
-        if bnd < 0:
-            raise ValueError("Integration order must be non-negative!")
-        self._bnd = int(bnd)
-
-    @dream_configuration
-    def bbnd(self) -> int:
-        return self._bbnd
-
-    @bbnd.setter
-    def bbnd(self, bbnd: int):
-        if bbnd < 0:
-            raise ValueError("Integration order must be non-negative!")
-        self._bbnd = int(bbnd)
-
-    @dream_configuration
-    def bbbnd(self) -> int:
-        return self._bbbnd
-
-    @bbbnd.setter
-    def bbbnd(self, bbbnd: int):
-        if bbbnd < 0:
-            raise ValueError("Integration order must be non-negative!")
-        self._bbbnd = int(bbbnd)
-
-
-class Compile(Configuration):
-
-    def __init__(self, mesh, root=None, **default):
-
-        DEFAULT = {
-            "realcompile": False,
-            "wait": False,
-            "keep_files": False
-        }
-
-        DEFAULT.update(default)
-        super().__init__(mesh, root, **DEFAULT)
-
-    @dream_configuration
-    def realcompile(self) -> bool:
-        return self._realcompile
-
-    @realcompile.setter
-    def realcompile(self, flag: bool):
-        self._realcompile = bool(flag)
-
-    @dream_configuration
-    def wait(self) -> bool:
-        return self._wait
-
-    @wait.setter
-    def wait(self, flag: bool):
-        self._wait = bool(flag)
-
-    @dream_configuration
-    def keep_files(self) -> bool:
-        return self._keep_files
-
-    @keep_files.setter
-    def keep_files(self, flag: bool):
-        self._keep_files = bool(flag)
-
-
-class Optimizations(Configuration):
-
-    def __init__(self, mesh, root=None, **default):
-
-        DEFAULT = {
-            "compile": Compile(mesh, root),
-            "static_condensation": False,
-            "bonus_int_order": BonusIntegrationOrder(mesh, root)
-
-        }
-        DEFAULT.update(default)
-
-        super().__init__(mesh, root, **DEFAULT)
-
-    @dream_configuration
-    def compile(self) -> Compile:
-        return self._compile
-
-    @compile.setter
-    def compile(self, compile: Compile):
-        if not isinstance(compile, Compile):
-            raise TypeError("Compile must be of type Compile!")
-        self._compile = compile
-
-    @dream_configuration
-    def static_condensation(self) -> bool:
-        return self._static_condensation
-
-    @static_condensation.setter
-    def static_condensation(self, static_condensation: bool):
-        self._static_condensation = bool(static_condensation)
-
-    @dream_configuration
-    def bonus_int_order(self) -> BonusIntegrationOrder:
-        return self._bonus_int_order
-
-    @bonus_int_order.setter
-    def bonus_int_order(self, bonus_int_order: BonusIntegrationOrder):
-        if not isinstance(bonus_int_order, BonusIntegrationOrder):
-            raise TypeError("BonusIntegrationOrder must be of type BonusIntegrationOrder!")
-        self._bonus_int_order = bonus_int_order
-
-
-class Solver(Configuration, is_interface=True):
-
-    root: SolverConfiguration
-
-    def inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
-        raise NotImplementedError()
-
-    def initialize(self, blf: ngs.BilinearForm, rhs: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
-        ...
-
-    def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
-        raise NotImplementedError()
-
-
-# ------- Linear Solvers ------- #
-
-
-class LinearSolver(Solver, is_interface=True):
-
-    root: SolverConfiguration
-
-    def initialize(self, blf: ngs.BilinearForm, rhs: ngs.LinearForm, gfu: ngs.GridFunction, **kwargs):
-        self.blf = blf
-        self.rhs = rhs
-        self.gfu = gfu
-
-        self.blf.Assemble()
-        rhs.vec.data -= blf.mat * gfu.vec
-
-    def solve(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
-        yield None
-        self.gfu.vec.data += self.inverse(self.blf, self.gfu.space) * self.rhs.vec
-
-
-class DirectLinearSolver(LinearSolver):
-
-    def inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
-        if freedofs is None:
-            freedofs = fes.FreeDofs(blf.condense)
-        return blf.mat.Inverse(freedofs, inverse=self.name)
-
-
-class DefaultLinearSolver(DirectLinearSolver):
-
-    name = ""
-
-
-class UmfpackLinearSolver(DirectLinearSolver):
-
-    name = "umfpack"
-
-
-class PardisoLinearSolver(DirectLinearSolver):
-
-    name = "pardiso"
-
-class SparseCholeskyLinearSolver(DirectLinearSolver):
-
-    name = "sparsecholesky"
-
-
-# ------- Nonlinear Solvers ------- #
-
-
+# ------- Nonlinear Methods ------- #
 class NonlinearMethod(Configuration, is_interface=True):
 
     root: SolverConfiguration
 
-    def initialize(self, gfu: ngs.GridFunction, du):
-        self.gfu = gfu
-        self.du = du
+    def __init__(self, mesh, root=None, **default):
 
-    def update_solution(self):
-        raise NotImplementedError()
+        DEFAULT = {
+            "max_iterations": 10,
+            "convergence_criterion": 1e-8
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def max_iterations(self) -> int:
+        return self._max_iterations
+
+    @max_iterations.setter
+    def max_iterations(self, max_iterations: int):
+        if max_iterations <= 0:
+            raise ValueError("Max iterations must be greater than zero!")
+        self._max_iterations = int(max_iterations)
+
+    @dream_configuration
+    def convergence_criterion(self) -> float:
+        return self._convergence_criterion
+
+    @convergence_criterion.setter
+    def convergence_criterion(self, convergence_criterion: float):
+        if convergence_criterion <= 0:
+            raise ValueError("Convergence Criterion must be greater than zero!")
+        self._convergence_criterion = float(convergence_criterion)
+
+    def update_solution(self, gfu: ngs.GridFunction, update: ngs.BaseVector):
+        raise NotImplementedError("Overload this configuration in derived class!")
 
 
 class NewtonsMethod(NonlinearMethod):
@@ -249,20 +75,20 @@ class NewtonsMethod(NonlinearMethod):
             raise ValueError("Damping factor must be greater than zero!")
         self._damping_factor = float(damping_factor)
 
-    def update_solution(self):
-        self.gfu.vec.data -= self.damping_factor * self.du
+    def update_solution(self, gfu: ngs.GridFunction, update: ngs.BaseVector):
+        gfu.vec.data -= self.damping_factor * update
+
+# ------- Solvers ------- #
 
 
-class NonlinearSolver(Solver, is_interface=True):
+class Solver(Configuration, is_interface=True):
 
     root: SolverConfiguration
 
     def __init__(self, mesh, root=None, **default):
 
         DEFAULT = {
-            "method": NewtonsMethod(mesh, root),
-            "max_iterations": 10,
-            "convergence_criterion": 1e-8
+            'method': NewtonsMethod(mesh, root=root),
         }
         DEFAULT.update(default)
 
@@ -277,126 +103,144 @@ class NonlinearSolver(Solver, is_interface=True):
         OPTIONS = [NewtonsMethod]
         self._method = self._get_configuration_option(method, OPTIONS, NonlinearMethod)
 
-    @dream_configuration
-    def max_iterations(self) -> int:
-        return self._max_iterations
+    def initialize_nonlinear_routine(self,
+                                     blf: ngs.BilinearForm,
+                                     gfu: ngs.GridFunction,
+                                     rhs: ngs.BaseVector = None,
+                                     **kwargs):
 
-    @max_iterations.setter
-    def max_iterations(self, max_iterations: int):
-        if max_iterations <= 0:
-            raise ValueError("Max iterations must be greater than zero!")
-        self._max_iterations = int(max_iterations)
+        if rhs is not None:
+            if isinstance(rhs, ngs.GridFunction):
+                rhs = rhs.vec
+            elif isinstance(rhs, ngs.BaseVector):
+                ...
+            else:
+                raise TypeError("Input rhs must be of type ngs.GridFunction or ngs.BaseVector, or None.")
 
-    @dream_configuration
-    def convergence_criterion(self) -> float:
-        return self._convergence_criterion
-
-    @convergence_criterion.setter
-    def convergence_criterion(self, convergence_criterion: float):
-        if convergence_criterion <= 0:
-            raise ValueError("Convergence Criterion must be greater than zero!")
-        self._convergence_criterion = float(convergence_criterion)
-
-    def log_iteration_error(self, it: int | None = None, t: float | None = None, s: int | None = None):
-        msg = f"residual: {self.error:8e}"
-        if s is not None:
-            msg += f" | stage: {s}"
-        if it is not None:
-            msg += f" | iteration: {it}"
-        if t is not None:
-            msg += f" | t: {t}"
-        logger.info(msg)
-
-    def reset_status(self):
-        self.is_converged = False
-        self.is_nan = False
-
-    def set_iteration_error(self, du: ngs.BaseVector, residual: ngs.BaseVector):
-        error = ngs.sqrt(ngs.InnerProduct(du, residual)**2)
-
-        self.is_converged = error < self.convergence_criterion
-        self.error = error
-
-        if isnan(error):
-            self.is_nan = True
-            logger.error("Solution process diverged!")
-
-    def solve(self, t: float | None = None, s: int | None = None) -> typing.Generator[int | None, None, None]:
-
-        self.reset_status()
-
-        for it in range(self.max_iterations):
-            yield it
-
-            self.solve_update_step()
-            self.log_iteration_error(it, t, s)
-
-            if self.is_nan:
-                break
-
-            self.method.update_solution()
-
-            if self.is_converged:
-                break
-
-    def solve_update_step(self):
-        raise NotImplementedError()
-
-
-class DirectNonlinearSolver(NonlinearSolver):
-
-    def inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
-        if freedofs is None:
-            freedofs = fes.FreeDofs(blf.condense)
-        return blf.mat.Inverse(freedofs=freedofs, inverse=self.name)
-
-    def initialize(self, blf: ngs.BilinearForm, rhs: ngs.BaseVector, gfu: ngs.GridFunction, **kwargs):
-
-        if not isinstance(rhs, ngs.BaseVector) and rhs is not None:
-            raise TypeError("Input rhs must be of type either ngs.BaseVector or None.")
-
+        self.blf = blf
         self.gfu = gfu
         self.fes = gfu.space
-        self.blf = blf
         self.rhs = rhs
 
-        self.residual = gfu.vec.CreateVector()
-        self.temporary = gfu.vec.CreateVector()
+        self.res = gfu.vec.CreateVector()
+        self.res[:] = 0.0
+        self.du = gfu.vec.CreateVector()
+        self.du[:] = 0.0
 
-        self.method.initialize(self.gfu, self.temporary)
+    def solve_nonlinear_system(self) -> typing.Generator[dict[str, float | int], None, None]:
+        """ Solves a nonlinear system using the specified method.
+
+        Yields a dictionary containing the current iteration number and the error of the update step.
+        """
+
+        for it in range(self.method.max_iterations):
+
+            self.solve_update_step()
+            error = self.get_iteration_error(self.du, self.res)
+
+            if isnan(error):
+                logger.error("Solution process diverged!")
+                break
+
+            self.method.update_solution(self.gfu, self.du)
+
+            yield {'it': it, 'error': error}
+
+            if error < self.method.convergence_criterion:
+                logger.debug(f"Solution process converged!")
+                break
+
+        if it + 1 == self.method.max_iterations:
+            logger.warning(f"Solution process did not converge after {self.method.max_iterations} iterations!")
+
+    def get_iteration_error(self, update: ngs.BaseVector, residual: ngs.BaseVector) -> float:
+        return ngs.sqrt(ngs.InnerProduct(update, residual)**2)
+
+    def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
+        raise NotImplementedError("Overload this configuration in derived class!")
+
+    def solve_linear_system(self, blf: ngs.BilinearForm, gfu: ngs.GridFunction, rhs: ngs.BaseVector, **kwargs):
+        raise NotImplementedError("Overload this configuration in derived class!")
+
+    def solve_update_step(self) -> None:
+        raise NotImplementedError("Overload this configuration in derived class!")
+
+
+class DirectSolver(Solver):
+
+    name: str = "direct"
+
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            "inverse": "",
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def inverse(self) -> str:
+        return self._inverse
+
+    @inverse.setter
+    def inverse(self, inverse: str):
+        OPTIONS = ["", "umfpack", "pardiso", "mumps", "sparsecholesky"]
+
+        if inverse not in OPTIONS:
+            raise ValueError(f"Inverse must be one of {OPTIONS}!")
+
+        self._inverse = inverse
+
+    def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
+
+        inverse = self.inverse
+        if inverse in kwargs:
+            inverse = kwargs[inverse]
+
+        if freedofs is None:
+            freedofs = fes.FreeDofs(blf.condense)
+
+        return blf.mat.Inverse(freedofs, inverse=inverse)
+
+    def solve_linear_system(self, blf: ngs.BilinearForm,
+                            gfu: ngs.GridFunction,
+                            rhs: ngs.BaseVector,
+                            operator: str = "=",
+                            **kwargs):
+
+        inv = self.get_inverse(blf, gfu.space, **kwargs)
+        if blf.condense:
+            ext = ngs.IdentityMatrix() + blf.harmonic_extension
+            extT = ngs.IdentityMatrix() + blf.harmonic_extension_trans
+            inv = ext @ inv @ extT + blf.inner_solve
+
+        match operator:
+            case '=':
+                gfu.vec.data = inv * rhs
+            case '+=':
+                gfu.vec.data += inv * rhs
+            case '-=':
+                gfu.vec.data -= inv * rhs
+            case _:
+                raise ValueError(f"Operator {operator} not supported!")
 
     def solve_update_step(self):
 
-        self.blf.Apply(self.gfu.vec, self.residual)
+        self.blf.Apply(self.gfu.vec, self.res)
         if self.rhs is not None:
-            self.residual.data -= self.rhs
+            self.res.data -= self.rhs
         self.blf.AssembleLinearization(self.gfu.vec)
 
-        inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.name)
+        inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
         if self.blf.condense:
-            self.residual.data += self.blf.harmonic_extension_trans * self.residual
-            self.temporary.data = inv * self.residual
-            self.temporary.data += self.blf.harmonic_extension * self.temporary
-            self.temporary.data += self.blf.inner_solve * self.residual
+            self.res.data += self.blf.harmonic_extension_trans * self.res
+            self.du.data = inv * self.res
+            self.du.data += self.blf.harmonic_extension * self.du
+            self.du.data += self.blf.inner_solve * self.res
         else:
-            self.temporary.data = inv * self.residual
+            self.du.data = inv * self.res
 
-        self.set_iteration_error(self.temporary, self.residual)
-
-
-class DefaultNonlinearSolver(DirectNonlinearSolver):
-
-    name = ""
-
-
-class UmfpackNonlinearSolver(DirectNonlinearSolver):
-
-    name = "umfpack"
-
-
-class PardisoNonlinearSolver(DirectNonlinearSolver):
-
-    name = "pardiso"
 
 # ------- Finite Element Method ------- #
 
@@ -405,9 +249,17 @@ class FiniteElementMethod(Configuration, is_interface=True):
 
     root: SolverConfiguration
 
+    SOLVERS = (DirectSolver,)
+
     def __init__(self, mesh, root=None, **default):
+
+        self._bonus_int_order = {}
+
         DEFAULT = {
-            "order": 2,
+            'order': 2,
+            'solver': DirectSolver(mesh, root=root, method='newton'),
+            'static_condensation': False,
+            'bonus_int_order': 0,
         }
 
         DEFAULT.update(default)
@@ -421,6 +273,41 @@ class FiniteElementMethod(Configuration, is_interface=True):
     @order.setter
     def order(self, order: int):
         self._order = int(order)
+
+    @dream_configuration
+    def solver(self) -> Solver:
+        return self._solver
+
+    @solver.setter
+    def solver(self, solver: int):
+        self._solver = self._get_configuration_option(solver, self.SOLVERS, Solver)
+
+    @dream_configuration
+    def static_condensation(self) -> bool:
+        return self._static_condensation
+
+    @static_condensation.setter
+    def static_condensation(self, static_condensation: bool):
+        self._static_condensation = bool(static_condensation)
+
+    @dream_configuration
+    def bonus_int_order(self) -> dict[str, dict[str, int]]:
+        return self._bonus_int_order
+
+    @bonus_int_order.setter
+    def bonus_int_order(self, order: int) -> None:
+
+        vorb = ('vol', 'bnd')
+
+        if isinstance(order, int):
+            for term in self._bonus_int_order:
+                self._bonus_int_order[term].update(dict.fromkeys(vorb, order))
+
+        elif isinstance(order, dict):
+            self._bonus_int_order.update(order)
+
+        elif isinstance(order, (tuple, list)):
+            self._bonus_int_order = {term: dict.fromkeys(vorb, 0) for term in order}
 
     @property
     def scheme(self) -> Scheme | TimeSchemes:
@@ -502,7 +389,6 @@ class FiniteElementMethod(Configuration, is_interface=True):
 
 # ------- Solver Configuration ------- #
 
-
 class SolverConfiguration(Configuration, is_interface=True):
 
     def __init__(self, mesh, bcs: BoundaryConditions, dcs: DomainConditions, **default):
@@ -513,9 +399,6 @@ class SolverConfiguration(Configuration, is_interface=True):
         mesh.is_periodic = is_mesh_periodic(mesh)
 
         DEFAULT = {
-            "linear_solver": DefaultLinearSolver(mesh, self),
-            "nonlinear_solver": DefaultNonlinearSolver(mesh, self),
-            "optimizations": Optimizations(mesh, self),
             "io": IOConfiguration(mesh, self),
             "info": {},
         }
@@ -538,34 +421,6 @@ class SolverConfiguration(Configuration, is_interface=True):
     def time(self, time: str | TimeRoutine):
         OPTIONS = [StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine]
         self._time = self._get_configuration_option(time, OPTIONS, TimeRoutine)
-
-    @dream_configuration
-    def linear_solver(self) -> UmfpackLinearSolver | PardisoLinearSolver:
-        return self._linear_solver
-
-    @linear_solver.setter
-    def linear_solver(self, solver: str | LinearSolver):
-        OPTIONS = [DefaultLinearSolver, UmfpackLinearSolver, PardisoLinearSolver, SparseCholeskyLinearSolver]
-        self._linear_solver = self._get_configuration_option(solver, OPTIONS, LinearSolver)
-
-    @dream_configuration
-    def nonlinear_solver(self) -> UmfpackNonlinearSolver | PardisoNonlinearSolver:
-        return self._nonlinear_solver
-
-    @nonlinear_solver.setter
-    def nonlinear_solver(self, solver: str | NonlinearSolver):
-        OPTIONS = [DefaultNonlinearSolver, UmfpackNonlinearSolver, PardisoNonlinearSolver]
-        self._nonlinear_solver = self._get_configuration_option(solver, OPTIONS, NonlinearSolver)
-
-    @dream_configuration
-    def optimizations(self) -> Optimizations:
-        return self._optimizations
-
-    @optimizations.setter
-    def optimizations(self, optimizations: Optimizations):
-        if not isinstance(optimizations, Optimizations):
-            raise TypeError("Optimizations must be of type Optimizations!")
-        self._optimizations = optimizations
 
     @dream_configuration
     def io(self) -> IOConfiguration:

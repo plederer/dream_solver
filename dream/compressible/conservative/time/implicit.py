@@ -1,35 +1,31 @@
 """ Definitions of implicit time integration schemes for conservative methods. """
 from __future__ import annotations
-from dream.config import Integrals
+from dream.config import Integrals, Log
 from dream.time import TimeSchemes
 
 import ngsolve as ngs
-import logging
 import typing
-
-logger = logging.getLogger(__name__)
 
 
 class ImplicitSchemes(TimeSchemes):
 
     def assemble(self) -> None:
 
-        condense = self.root.optimizations.static_condensation
-        compile = self.root.optimizations.compile
+        condense = self.root.fem.static_condensation
 
         self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
         self.lf = ngs.LinearForm(self.root.fem.fes)
 
-        self.add_sum_of_integrals(self.blf, self.root.fem.blf)
-        self.add_sum_of_integrals(self.lf, self.root.fem.lf)
+        self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'implicit bilinear form')
+        self.add_sum_of_integrals(self.lf, self.root.fem.lf, 'linear form')
 
-        self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, self.root.fem.gfu)
+        self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, self.lf.vec)
 
         # NOTE
-        # Pehaps its better to avoid lf, since it is empty, and specify the 2nd. 
-        # argument in nonlinear_solver.initialize() as "None". That way, we 
+        # Pehaps its better to avoid lf, since it is empty, and specify the 3nd. 
+        # argument in fem.solver.initialize_nonlinear_routine as "None". That way, we 
         # guarantee avoiding additional unecessary memory. For example:
-        # self.root.nonlinear_solver.initialize(self.blf, None, self.root.gfu)
+        # self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.gfu, None)
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -48,9 +44,10 @@ class ImplicitSchemes(TimeSchemes):
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         raise NotImplementedError()
 
-    def solve_current_time_level(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
-        for it in self.root.nonlinear_solver.solve(t):
-            yield it
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield log
 
 
 class ImplicitEuler(ImplicitSchemes):
@@ -166,8 +163,7 @@ class DIRKSchemes(TimeSchemes):
 
     def assemble(self) -> None:
 
-        condense = self.root.optimizations.static_condensation
-        compile = self.root.optimizations.compile
+        condense = self.root.fem.static_condensation
 
         # NOTE, we assume that self.lf is not needed here (for efficiency).
         self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
@@ -181,42 +177,20 @@ class DIRKSchemes(TimeSchemes):
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
         # Precompute the weighted mass matrix, with weights: 1/(dt*aii).
-        if compile.realcompile:
-            self.mass += self.root.fem.blf['U']['mass'].Compile(**compile)
-        else:
-            self.mass += self.root.fem.blf['U']['mass']
+        self.mass += self.root.fem.blf['U']['mass']
 
         # Assemble the mass matrix once.
         self.mass.Assemble()
         
         # Add both spatial and mass-matrix terms in blf.
-        self.add_sum_of_integrals(self.blf, self.root.fem.blf)
+        self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'implicit bilinear form')
+
         # Skip the mass matrix contribution in blfs and only use the space for "U".
-        self.add_sum_of_integrals(self.blfs, self.root.fem.blf, 'mass', fespace='U')
+        integrals = self.parse_sum_of_integrals(self.root.fem.blf, include_spaces=['U'], exclude_terms=('mass',))
+        self.add_sum_of_integrals(self.blfs, integrals, "implicit bilinear form for splitting")
 
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
-        self.root.nonlinear_solver.initialize(self.blf, self.rhs, self.root.fem.gfu)
-
-    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        raise NotImplementedError()
-
-    def update_solution(self, t: float):
-        raise NotImplementedError()
-
-    def get_current_level(self, space: str, normalized: bool = False) -> ngs.CF:
-        gfus = self.gfus[space]
-        return gfus['n']
-
-    def get_time_step(self, normalized: bool = False) -> ngs.CF:
-        return self.dt
-
-    def solve_stage(self, t, s):
-        for it in self.root.nonlinear_solver.solve(t, s):
-            pass
-
-    def solve_current_time_level(self, t: float | None = None)-> typing.Generator[int | None, None, None]:
-        self.update_solution(t)
-        yield None
+        self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, self.rhs)
 
 
 class SDIRK22(DIRKSchemes):
@@ -275,7 +249,7 @@ class SDIRK22(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
  
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
@@ -285,12 +259,14 @@ class SDIRK22(DIRKSchemes):
         
         # Stage: 1.
         self.rhs.data = self.mu0
-        self.solve_stage(t, 1)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 1, **log}
 
         # Stage: 2.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
         self.rhs.data = self.mu0 + a21 * self.x1
-        self.solve_stage(t, 2)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 2, **log}
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -355,7 +331,7 @@ class SDIRK33(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
  
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
@@ -367,17 +343,20 @@ class SDIRK33(DIRKSchemes):
 
         # Stage: 1.
         self.rhs.data = self.mu0
-        self.solve_stage(t, 1)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 1, **log}
 
         # Stage: 2.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
         self.rhs.data = self.mu0 + a21 * self.x1
-        self.solve_stage(t, 2)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 2, **log}
 
         # Stage: 3.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x2)
         self.rhs.data = self.mu0 + a31 * self.x1 + a32 * self.x2
-        self.solve_stage(t, 3)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 3, **log}
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -461,7 +440,7 @@ class SDIRK54(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
  
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
@@ -483,20 +462,23 @@ class SDIRK54(DIRKSchemes):
 
         # Stage: 1.
         self.rhs.data = self.mu0
-        self.solve_stage(t, 1)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 1, **log}
 
         # Stage: 2.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
         self.rhs.data = self.mu0      \
             + a21 * self.x1
-        self.solve_stage(t, 2)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 2, **log}
 
         # Stage: 3.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x2)
         self.rhs.data = self.mu0      \
             + a31 * self.x1 \
             + a32 * self.x2
-        self.solve_stage(t, 3)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 3, **log}
 
         # Stage: 4.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x3)
@@ -504,7 +486,8 @@ class SDIRK54(DIRKSchemes):
             + a41 * self.x1 \
             + a42 * self.x2 \
             + a43 * self.x3
-        self.solve_stage(t, 4)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 4, **log}
 
         # Stage: 5.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x4)
@@ -513,7 +496,8 @@ class SDIRK54(DIRKSchemes):
             + a52 * self.x2 \
             + a53 * self.x3 \
             + a54 * self.x4
-        self.solve_stage(t, 5)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 5, **log}
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -594,7 +578,7 @@ class DIRK43_WSO2(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
  
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
@@ -604,7 +588,8 @@ class DIRK43_WSO2(DIRKSchemes):
         ovaii = 1.0 / self.aii.Get()
         
         self.rhs.data = ovaii * self.mu0
-        self.solve_stage(t, 1)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 1, **log}
 
         # Stage: 2.
         self.aii.Set( self.a22 )
@@ -614,7 +599,8 @@ class DIRK43_WSO2(DIRKSchemes):
         self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
         self.rhs.data = ovaii * self.mu0 \
             + a21 * self.x1
-        self.solve_stage(t, 2)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 2, **log}
 
         # Stage: 3.
         self.aii.Set( self.a33 )
@@ -626,7 +612,8 @@ class DIRK43_WSO2(DIRKSchemes):
         self.rhs.data = ovaii * self.mu0 \
             + a31 * self.x1  \
             + a32 * self.x2
-        self.solve_stage(t, 3)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 3, **log}
 
         # Stage: 4.
         self.aii.Set(self.a44)
@@ -640,7 +627,8 @@ class DIRK43_WSO2(DIRKSchemes):
             + a41 * self.x1  \
             + a42 * self.x2  \
             + a43 * self.x3
-        self.solve_stage(t, 4)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 4, **log}
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage 
@@ -696,7 +684,7 @@ class DIRK34_LDD(DIRKSchemes):
         self.x3 = self.root.fem.gfu.vec.CreateVector()
 
         # Precompute the mass matrix of the volume elements.
-        self.minv = self.root.linear_solver.inverse(self.mass, self.cfg.fes)
+        self.minv = self.root.fem.solver.get_inverse(self.mass, self.root.fem.fes)
 
         # Compute the inverse mass matrix for the facets only. Needed to update uhat^{n+1}.
         # NOTE, this assumes uhat^{n+1} = 0.5*( U_L^{n+1} + U_R^{n+1} ).
@@ -736,7 +724,7 @@ class DIRK34_LDD(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
  
         # Book-keep the initial solution at U^n.
         self.u0.data = self.root.fem.gfu.vec
@@ -749,7 +737,8 @@ class DIRK34_LDD(DIRKSchemes):
         ovaii = 1.0 / self.aii.Get()
         
         self.rhs.data = ovaii * self.mu0
-        self.solve_stage(t, 1)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 1, **log}
 
         # Stage: 2.
         self.aii.Set( self.a22 )
@@ -759,7 +748,8 @@ class DIRK34_LDD(DIRKSchemes):
         self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
         self.rhs.data = ovaii * self.mu0 \
                       + a21 * self.x1
-        self.solve_stage(t, 2)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 2, **log}
 
         # Stage: 3.
         self.aii.Set( self.a33 )
@@ -771,7 +761,8 @@ class DIRK34_LDD(DIRKSchemes):
         self.rhs.data = ovaii * self.mu0 \
             + a31 * self.x1  \
             + a32 * self.x2
-        self.solve_stage(t, 3)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 3, **log}
 
         # Spatial term evaluated at stage 3.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x3)

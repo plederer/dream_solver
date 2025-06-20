@@ -1,9 +1,10 @@
 """ Definitions of boundary/domain conditions for compressible flow """
 from __future__ import annotations
 import ngsolve as ngs
+import typing
 
 from dream import bla
-from dream.config import quantity, dream_configuration, ngsdict
+from dream.config import quantity, dream_configuration, ngsdict, Integrals
 from dream.solver import FiniteElementMethod
 from dream.mesh import (Condition,
                         Periodic,
@@ -15,12 +16,122 @@ from dream.mesh import (Condition,
                         GridDeformation
                         )
 
+if typing.TYPE_CHECKING:
+    from .solver import CompressibleFlowSolver
+
 
 class CompressibleFiniteElementMethod(FiniteElementMethod):
+
+    root: CompressibleFlowSolver
+    
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            'bonus_int_order': ('convection', 'diffusion'),
+        }
+
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    def add_symbolic_spatial_forms(self, blf: Integrals, lf: Integrals):
+
+        self.add_convection_form(blf, lf)
+
+        if not self.root.dynamic_viscosity.is_inviscid:
+            self.add_diffusion_form(blf, lf)
+
+        self.add_boundary_conditions(blf, lf)
+        self.add_domain_conditions(blf, lf)
+
+    def add_convection_form(self, blf: Integrals, lf: Integrals):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def add_diffusion_form(self, blf: Integrals, lf: Integrals):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def add_domain_conditions(self, blf: Integrals, lf: Integrals):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def get_domain_boundary_mask(self) -> ngs.GridFunction:
+        """ 
+        Returns a Gridfunction that is 0 on the domain boundaries and 1 on the domain interior.
+        """
+
+        fes = ngs.FacetFESpace(self.mesh, order=0)
+        mask = ngs.GridFunction(fes, name="mask")
+        mask.vec[:] = 0
+
+        bnd_dofs = fes.GetDofs(self.mesh.Boundaries(self.root.bcs.get_domain_boundaries(True)))
+        mask.vec[~bnd_dofs] = 1
+
+        return mask
 
     def set_boundary_conditions(self) -> None:
         """ Boundary conditions for compressible flows are set weakly. Therefore we do nothing here."""
         pass
+
+
+class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
+
+    def get_conservative_fields(self, U: ngs.CoefficientFunction, with_gradients: bool = False) -> flowfields:
+
+        dU = None
+        if isinstance(U, ngs.GridFunction):
+            dU = ngs.grad(U)
+            U = U.components
+
+        U_ = flowfields()
+        U_.rho = U[0]
+        U_.rho_u = U[slice(1, self.mesh.dim + 1)]
+        U_.rho_E = U[self.mesh.dim + 1]
+
+        U_.u = self.root.velocity(U_)
+        U_.rho_Ek = self.root.kinetic_energy(U_)
+        U_.rho_Ei = self.root.inner_energy(U_)
+        U_.p = self.root.pressure(U_)
+        U_.T = self.root.temperature(U_)
+        U_.c = self.root.speed_of_sound(U_)
+
+        if isinstance(U, ngs.comp.ProxyFunction):
+            U_.U = U
+
+        if dU is not None and with_gradients:
+            U_.grad_rho = dU[0, :]
+            U_.grad_rho_u = dU[slice(1, self.mesh.dim + 1), :]
+            U_.grad_rho_E = dU[self.mesh.dim + 1, :]
+
+            U_.grad_u = self.root.velocity_gradient(U_, U_)
+            U_.grad_rho_Ek = self.root.kinetic_energy_gradient(U_, U_)
+            U_.grad_rho_Ei = self.root.inner_energy_gradient(U_, U_)
+            U_.grad_p = self.root.pressure_gradient(U_, U_)
+            U_.grad_T = self.root.temperature_gradient(U_, U_)
+
+        return U_
+
+    def get_solution_fields(self) -> flowfields:
+        return self.get_conservative_fields(self.gfus['U'], with_gradients=True)
+
+    def initialize_time_scheme_gridfunctions(self, *spaces):
+
+        SPACES = ['U']
+        SPACES.extend(spaces)
+
+        super().initialize_time_scheme_gridfunctions(*SPACES)
+
+    def set_initial_conditions(self):
+
+        U = self.mesh.MaterialCF({dom: ngs.CF(
+            (self.root.density(dc.fields),
+                self.root.momentum(dc.fields),
+                self.root.energy(dc.fields))) for dom, dc in self.root.dcs.to_pattern(Initial).items()})
+
+        self.gfus['U'].Set(U)
+
+        super().set_initial_conditions()
 
 
 class flowfields(ngsdict):
@@ -77,8 +188,8 @@ class FarField(Condition):
     :param use_identity_jacobian: Flag to use the identity jacobian for the farfield condition.
     :type use_identity_jacobian: bool
 
-    :note: See :func:`~dream.compressible.conservative.spatial.HDG.add_farfield_formulation` for the implementation of 
-              the farfield condition in the :class:`~dream.compressible.conservative.spatial.HDG` formulation.
+    :note: See :func:`~dream.compressible.conservative.hdg.HDG.add_farfield_formulation` for the implementation of 
+              the farfield condition in the :class:`~dream.compressible.conservative.hdg.HDG` formulation.
 
     """
 
@@ -330,7 +441,7 @@ class Symmetry(Condition):
 
 class IsothermalWall(Condition):
     """ Isothermal wall condition for compressible flow.
-    
+
     The isothermal wall condition sets the temperature :math:`T_w` and no-slip conditions at the wall boundaries.
     """
 
@@ -363,7 +474,7 @@ class IsothermalWall(Condition):
 
 class AdiabaticWall(Condition):
     r""" Adiabatic wall condition for compressible flow.
-    
+
     The adiabatic wall condition sets zero heat flux :math:`\vec{q} \cdot \vec{n}$` and no-slip conditions at the wall boundaries.
     """
 

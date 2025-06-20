@@ -466,8 +466,9 @@ def test_sensorstream_save_transient_point_sensor(sensor_handler):
     with cfg.io as io:
         io.save_pre_time_routine(0.0)
         for it, t in enumerate(cfg.time.timer()):
-            io.save_in_time_routine(t, it)
-        io.save_post_time_routine(t, it)
+            t_ = round(t, 1)  # Ensure t is rounded to avoid floating point issues
+            io.save_in_time_routine(t_, it)
+        io.save_post_time_routine(t_, it)
     path = cfg.io.sensor.path.joinpath("point.csv")
     assert path.exists()
     expected = [

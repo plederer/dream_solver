@@ -30,24 +30,19 @@ cfg.reynolds_number = 150
 cfg.prandtl_number = 0.72
 cfg.riemann_solver = "upwind"
 
-cfg.fem = "conservative"
-cfg.fem.method = "hdg"
+cfg.fem = "conservative_hdg"
 cfg.fem.scheme = "bdf2"
 cfg.fem.order = 4
 cfg.fem.mixed_method = "inactive"
+cfg.fem.bonus_int_order = 4
 # cfg.fem.mixed_method = "strain_heat"
 
 
-# cfg.nonlinear_solver = "pardiso"
-cfg.nonlinear_solver.method = "newton"
-cfg.nonlinear_solver.method.damping_factor = 1
-cfg.nonlinear_solver.max_iterations = 10
-cfg.nonlinear_solver.convergence_criterion = 1e-10
-
-cfg.optimizations.static_condensation = True
-cfg.optimizations.compile.realcompile = False
-cfg.optimizations.bonus_int_order.vol = 4
-cfg.optimizations.bonus_int_order.bnd = 4
+cfg.fem.solver = "direct"
+cfg.fem.solver.method = "newton"
+cfg.fem.solver.method.damping_factor = 1
+cfg.fem.solver.method.max_iterations = 10
+cfg.fem.solver.method.convergence_criterion = 1e-10
 
 # ------- Setup Boundary Conditions and Domain Conditions ------- #
 Uinf = cfg.get_farfield_fields((1, 0))

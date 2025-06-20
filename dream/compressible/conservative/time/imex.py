@@ -2,20 +2,16 @@
 from __future__ import annotations
 
 import ngsolve as ngs
-import logging
 import typing
 from dream.time import TimeSchemes
-from dream.config import Integrals
-
-logger = logging.getLogger(__name__)
+from dream.config import Integrals, Log
 
 
 class IMEXRKSchemes(TimeSchemes):
 
     def assemble(self) -> None:
 
-        condense = self.root.optimizations.static_condensation
-        compile = self.root.optimizations.compile
+        condense = self.root.fem.static_condensation
 
         # NOTE, we assume that self.lf is not needed here (for efficiency).
         self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
@@ -30,10 +26,7 @@ class IMEXRKSchemes(TimeSchemes):
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
         # Precompute the weighted mass matrix, with weights: 1/(dt*aii).
-        if compile.realcompile:
-            self.mass += self.root.fem.blf['U']['mass'].Compile(**compile)
-        else:
-            self.mass += self.root.fem.blf['U']['mass']
+        self.mass += self.root.fem.blf['U']['mass']
 
         # Assemble the mass matrix once.
         self.mass.Assemble()
@@ -47,7 +40,8 @@ class IMEXRKSchemes(TimeSchemes):
 
             # For the hybrid DG-HDG scheme, we only need to skip the 'convection' term in blf,
             # since everything else is handled within the DG_HDG class.
-            self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'convection')
+            integrals = self.parse_sum_of_integrals(self.root.fem.blf, exclude_terms=('convection',))
+            self.add_sum_of_integrals(self.blf, integrals, "imex bilinear form")
         
         elif self.root.fem.method.name == "hdg":
 
@@ -59,61 +53,25 @@ class IMEXRKSchemes(TimeSchemes):
             # facets (Uhat-space), but treat the 'convection' term explicitly on the volume (U-space).
 
             # Determine which spaces to iterate over.
-            integrals = self.root.fem.blf
-            form = self.blf
-            pass_terms = 'convection'
-            spaces = integrals.keys()
 
-            for space in spaces:
-                if space not in integrals:
-                    logger.warning(f"Space '{space}' not found in integrals. Skipping.")
-                    continue
-
-                for term, cf in integrals[space].items():
-                    if term in pass_terms and space == "U":
-                        logger.debug(f"Skipping {term} for space {space}!")
-                        continue
-
-                    logger.debug(f"Adding {term} term for space {space}!")
-
-                    if compile.realcompile:
-                        form += cf.Compile(**compile)
-                    else:
-                        form += cf
+            integrals = self.parse_sum_of_integrals(self.root.fem.blf, include_spaces=['U'], exclude_terms=('convection',))
+            integrals.update(self.parse_sum_of_integrals(self.root.fem.blf, exclude_spaces=['U']))
+            self.add_sum_of_integrals(self.blf, integrals, "imex bilinear form")
 
         else:
             # As of now, only HDG and DG-HDG discretizations are possible with IMEXRK schemes.
             raise ValueError("IMEXRK currently can be used either with HDG or DG-HDG discretizations.")
 
         # Skip the mass matrix and convection contribution in blfs and only use the space for "U".
-        self.add_sum_of_integrals(self.blfs, self.root.fem.blf, 'mass', 'convection', fespace='U')
+        integrals = self.parse_sum_of_integrals(self.root.fem.blf, include_spaces=['U'], exclude_terms=('mass', 'convection'))
+        self.add_sum_of_integrals(self.blfs, integrals, "imex bilinear form for splitting")
 
         # Add only the convection part in blfe, as this is handled explicitly in time.
-        self.add_sum_of_integrals(self.blfe, self.root.fem.blf, 'mass', 'diffusion', fespace='U')
+        integrals = self.parse_sum_of_integrals(self.root.fem.blf, include_spaces=['U'], exclude_terms=('mass', 'diffusion'))
+        self.add_sum_of_integrals(self.blfe, integrals, "imex bilinear form for explicit convection")
 
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
-        self.root.nonlinear_solver.initialize(self.blf, self.rhs, self.root.fem.gfu)
-
-    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
-        raise NotImplementedError()
-
-    def update_solution(self, t: float):
-        raise NotImplementedError()
-
-    def get_current_level(self, space: str, normalized: bool = False) -> ngs.CF:
-        gfus = self.gfus[space]
-        return gfus['n']
-
-    def get_time_step(self, normalized: bool = False) -> ngs.CF:
-        return self.dt
-
-    def solve_stage(self, t, s):
-        for it in self.root.nonlinear_solver.solve(t, s):
-            pass
-
-    def solve_current_time_level(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
-        self.update_solution(t)
-        yield None
+        self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, self.rhs)
 
 
 class IMEXRK_ARS443(IMEXRKSchemes):
@@ -194,7 +152,7 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
@@ -209,7 +167,8 @@ class IMEXRK_ARS443(IMEXRKSchemes):
 
         self.rhs.data = self.mu0       \
             - ae21 * self.f1
-        self.solve_stage(t, 1)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 1, **log}
 
         # Stage: 2.
         self.blfe.Apply(self.root.fem.gfu.vec, self.f2)
@@ -223,7 +182,8 @@ class IMEXRK_ARS443(IMEXRKSchemes):
             - ae31 * self.f1 \
             - ae32 * self.f2 \
             - a21 * self.x1
-        self.solve_stage(t, 2)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 2, **log}
 
         # Stage: 3.
         self.blfe.Apply(self.root.fem.gfu.vec, self.f3)
@@ -241,7 +201,8 @@ class IMEXRK_ARS443(IMEXRKSchemes):
             - ae43 * self.f3 \
             - a31 * self.x1 \
             - a32 * self.x2
-        self.solve_stage(t, 3)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 3, **log}
 
         # Stage: 4.
         self.blfe.Apply(self.root.fem.gfu.vec, self.f4)
@@ -263,7 +224,8 @@ class IMEXRK_ARS443(IMEXRKSchemes):
             - a41 * self.x1 \
             - a42 * self.x2 \
             - a43 * self.x3
-        self.solve_stage(t, 4)
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {'stage': 4, **log}
 
         # NOTE,
         # No need to explicitly update the gfu, since the last stage

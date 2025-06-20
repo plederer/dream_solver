@@ -1,21 +1,16 @@
 """ Definitions of explicit time marching schemes for a scalar transport equation. """
 from __future__ import annotations
-from dream.config import Integrals
+from dream.config import Integrals, Log
 from dream.time import TimeSchemes
 
 import ngsolve as ngs
-import logging
 import typing
-
-logger = logging.getLogger(__name__)
 
 
 class ExplicitSchemes(TimeSchemes):
     time_levels = ('n+1',)
 
     def assemble(self) -> None:
-
-        compile = self.root.optimizations.compile
 
         # Check that a mass matrix is indeed defined in the bilinear form dictionary.
         if "mass" not in self.root.fem.blf['U']:
@@ -27,15 +22,12 @@ class ExplicitSchemes(TimeSchemes):
         
         # Step 1: precompute the mass matrix. Note, this is scaled by dt.
         mass = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
-        if compile.realcompile:
-            mass += self.root.fem.blf['U']['mass'].Compile(**compile)
-        else:
-            mass += self.root.fem.blf['U']['mass']
+        mass += self.root.fem.blf['U']['mass']
 
         # Assemble the mass matrix.
         mass.Assemble()
         # Invert and store the mass matrix.
-        self.minv = self.root.linear_solver.inverse(mass, self.root.fem.fes)
+        self.minv = self.root.fem.solver.get_inverse(mass, self.root.fem.fes)
 
         # Remove the mass matrix item from the bilinear form dictionary, before proceeding.
         self.root.fem.blf['U'].pop('mass')
@@ -58,15 +50,6 @@ class ExplicitSchemes(TimeSchemes):
         
         blf['U']['mass'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
 
-    def update_solution(self, t: float):
-        raise NotImplementedError()
-
-    def solve_current_time_level(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
-        logger.info(f"time: {t:6e}")
-        self.update_solution(t)
-        yield None
-
-
 
 class ExplicitEuler(ExplicitSchemes):
     r""" Class responsible for implementing an explicit (forwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Namely,
@@ -78,12 +61,14 @@ class ExplicitEuler(ExplicitSchemes):
     """
     name: str = "explicit_euler"
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
         if self.lf.integrators:
             self.rhs -= self.lf.vec
         
         self.root.fem.gfu.vec.data -= self.minv * self.rhs
+
+        yield {}
 
 
 class SSPRK3(ExplicitSchemes):
@@ -120,7 +105,7 @@ class SSPRK3(ExplicitSchemes):
         self.alpha32 = 2.0/3.0
         self.beta32 = 2.0/3.0
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Extract the current solution.
         self.U0.data = self.root.fem.gfu.vec
@@ -148,6 +133,7 @@ class SSPRK3(ExplicitSchemes):
         self.root.fem.gfu.vec.data *= self.alpha32
         self.root.fem.gfu.vec.data += self.alpha30 * self.U0 - self.beta32 * self.minv * self.rhs
 
+        yield {}
 
 
 class CRK4(ExplicitSchemes):
@@ -189,7 +175,7 @@ class CRK4(ExplicitSchemes):
         self.K4 = self.root.fem.gfu.vec.CreateVector()
         self.Us = self.root.fem.gfu.vec.CreateVector()
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Stage: 1.
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
@@ -227,6 +213,8 @@ class CRK4(ExplicitSchemes):
                                     + self.b2 * self.K2 \
                                     + self.b3 * self.K3 \
                                     + self.b4 * self.K4
+        
+        yield {}
 
 
 

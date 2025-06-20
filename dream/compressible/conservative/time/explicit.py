@@ -2,12 +2,9 @@
 from __future__ import annotations
 
 import ngsolve as ngs
-import logging
 import typing
 from dream.time import TimeSchemes
-from dream.config import Integrals
-
-logger = logging.getLogger(__name__)
+from dream.config import Integrals, Log
 
 
 class ExplicitSchemes(TimeSchemes):
@@ -20,28 +17,23 @@ class ExplicitSchemes(TimeSchemes):
         if "mass" not in self.root.fem.blf['U']:
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
-        compile = self.root.optimizations.compile
-
         # NOTE, we assume that self.lf is not needed here (for efficiency).
         self.blf = ngs.BilinearForm(self.root.fem.fes)
         self.rhs = self.root.fem.gfu.vec.CreateVector()
         self.minv = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
 
         # Step 1: precompute and store the inverse mass matrix. Note, this is scaled by dt.
-        if compile.realcompile:
-            self.minv += self.root.fem.blf['U']['mass'].Compile(**compile)
-        else:
-            self.minv += self.root.fem.blf['U']['mass']
+        self.minv += self.root.fem.blf['U']['mass']
 
         # Invert the mass matrix.
         self.minv.Assemble()
-        self.minv = self.root.linear_solver.inverse(self.minv, self.root.fem.fes)
+        self.minv = self.root.fem.solver.get_inverse(self.minv, self.root.fem.fes)
 
         # Remove the mass matrix item from the bilinear form dictionary, before proceeding.
         self.root.fem.blf['U'].pop('mass')
 
         # Process all items in the relevant bilinear and linear forms.
-        self.add_sum_of_integrals(self.blf, self.root.fem.blf)
+        self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'explicit bilinear form')
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -51,21 +43,6 @@ class ExplicitSchemes(TimeSchemes):
 
         # Add the mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
-
-    def get_current_level(self, space: str, normalized: bool = False) -> ngs.CF:
-        gfus = self.gfus[space]
-        return gfus['n']
-
-    def get_time_step(self, normalized: bool = False) -> ngs.CF:
-        return self.dt
-
-    def update_solution(self, t: float):
-        raise NotImplementedError()
-
-    def solve_current_time_level(self, t: float | None = None) -> typing.Generator[int | None, None, None]:
-        logger.info(f"time: {t:6e}")
-        self.update_solution(t)
-        yield None
 
 
 class ExplicitEuler(ExplicitSchemes):
@@ -78,13 +55,15 @@ class ExplicitEuler(ExplicitSchemes):
     """
     name: str = "explicit_euler"
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Extract the current solution.
         Un = self.root.fem.gfu
 
         self.blf.Apply(Un.vec, self.rhs)
         Un.vec.data += self.minv * self.rhs
+
+        yield {}
 
 
 class SSPRK3(ExplicitSchemes):
@@ -125,7 +104,7 @@ class SSPRK3(ExplicitSchemes):
         self.alpha32 = 2.0/3.0
         self.beta32 = 2.0/3.0
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Extract the current solution.
         Un = self.root.fem.gfu
@@ -147,6 +126,8 @@ class SSPRK3(ExplicitSchemes):
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
         Un.vec.data *= self.alpha32
         Un.vec.data += self.alpha30 * self.U0 + self.beta32 * self.minv * self.rhs
+        
+        yield {}
 
 
 class CRK4(ExplicitSchemes):
@@ -194,7 +175,7 @@ class CRK4(ExplicitSchemes):
         self.K4 = self.root.fem.gfu.vec.CreateVector()
         self.Us = self.root.fem.gfu.vec.CreateVector()
 
-    def update_solution(self, t: float):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # First stage.
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
@@ -220,3 +201,5 @@ class CRK4(ExplicitSchemes):
             + self.b2 * self.K2 \
             + self.b3 * self.K3 \
             + self.b4 * self.K4
+
+        yield {}

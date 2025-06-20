@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 # ------ Aliases ------ #
 Integrals: typing.TypeAlias = dict[str, dict[str, ngs.comp.SumOfIntegrals]]
+Log: typing.TypeAlias = dict[str, typing.Any]
 
 # ------ Helper Functions ------ #
 

@@ -1,10 +1,11 @@
 import pytest
 import ngsolve as ngs
 from dream.config import dream_configuration
-from dream.solver import SolverConfiguration, FiniteElementMethod
+from dream.solver import SolverConfiguration, FiniteElementMethod, DirectSolver
 from dream.mesh import BoundaryConditions, DomainConditions
 from dream.time import StationaryRoutine, TransientRoutine, TimeRoutine, TimeSchemes
-
+import numpy as np
+import numpy.testing as npt
 mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
 
 
@@ -103,6 +104,177 @@ class DummySolverConfiguration(SolverConfiguration):
 @pytest.fixture
 def cfg():
     return DummySolverConfiguration(mesh=mesh)
+
+
+def test_fem_bonus_int_order_default_setter():
+
+    fem = FiniteElementMethod(None)
+
+    assert fem.bonus_int_order == {}
+
+
+def test_fem_bonus_int_order_sequence_setter():
+
+    fem = FiniteElementMethod(None, bonus_int_order=('convection', 'diffusion'))
+
+    assert fem.bonus_int_order == {'convection': {'vol': 0, 'bnd': 0}, 'diffusion': {'vol': 0, 'bnd': 0}, }
+
+
+def test_fem_bonus_int_order_set_all():
+
+    fem = FiniteElementMethod(None, bonus_int_order=('convection', 'diffusion'))
+    fem.bonus_int_order = 1
+
+    assert fem.bonus_int_order == {'convection': {'vol': 1, 'bnd': 1}, 'diffusion': {'vol': 1, 'bnd': 1}, }
+
+
+def test_fem_bonus_int_order_set_single():
+
+    fem = FiniteElementMethod(None, bonus_int_order=('convection', 'diffusion'))
+    fem.bonus_int_order['convection']['vol'] = 1
+
+    assert fem.bonus_int_order == {'convection': {'vol': 1, 'bnd': 0}, 'diffusion': {'vol': 0, 'bnd': 0}, }
+
+
+def test_direct_solver_inverse():
+    mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+
+    solver = DirectSolver(mesh)
+
+    fes = ngs.H1(mesh, order=1)
+    u, v = fes.TnT()
+
+    blf = ngs.BilinearForm(fes)
+    blf += u * v * ngs.dx
+
+    blf.Assemble()
+
+    inv = np.linalg.inv(np.array(blf.mat.ToDense()))
+
+    npt.assert_array_almost_equal(inv, np.array(solver.get_inverse(blf, fes).ToDense()))
+    npt.assert_array_almost_equal(inv, np.array(solver.get_inverse(blf, fes, inverse="sparsecholesky").ToDense()))
+
+    inv[:, :] = 0.0
+    inv[:2, :2] = np.linalg.inv(np.array(blf.mat.ToDense())[:2, :2])
+    dofs = ngs.BitArray(fes.ndof)
+    dofs.Clear()
+    dofs[:2] = True
+
+    npt.assert_array_almost_equal(inv, np.array(solver.get_inverse(blf, fes, freedofs=dofs).ToDense()))
+
+
+def test_direct_solver_solve_linear_system():
+
+    ue = ngs.sin(ngs.x * ngs.pi) * ngs.sin(ngs.y * ngs.pi) + 1
+    f = 2*ngs.pi**2 * ngs.sin(ngs.x * ngs.pi) * ngs.sin(ngs.y * ngs.pi)
+
+    mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=0.2))
+
+    solver = DirectSolver(mesh)
+
+    fes = ngs.H1(mesh, order=4, dirichlet='bottom|right|top|left')
+    u, v = fes.TnT()
+
+    lf = ngs.LinearForm(fes)
+    lf += f * v * ngs.dx
+    lf.Assemble()
+
+    gfu = ngs.GridFunction(fes)
+    gfu.Set(1)
+
+    blf = ngs.BilinearForm(fes)
+    blf += ngs.grad(u) * ngs.grad(v) * ngs.dx
+    blf.Assemble()
+
+    # Solve the system with the gridfunction set to 1. With the operator set to '+='.
+    solver.solve_linear_system(blf, gfu, lf.vec, operator='+=')
+    npt.assert_almost_equal(ngs.Integrate(gfu - ue, mesh), 0)
+
+    # Solve the system with the gridfunction set to 1. With the operator set to '='.
+    # This should raise an AssertionError, since the gridfunction is going to be reset to zero on the boundary.
+    solver.solve_linear_system(blf, gfu, lf.vec, operator='=')
+    with pytest.raises(AssertionError):
+        npt.assert_almost_equal(ngs.Integrate(gfu - ue, mesh), 0)
+
+
+def test_direct_solver_solve_linear_system_static_condensation():
+
+    ue = ngs.sin(ngs.x * ngs.pi) * ngs.sin(ngs.y * ngs.pi) + 1
+    f = 2*ngs.pi**2 * ngs.sin(ngs.x * ngs.pi) * ngs.sin(ngs.y * ngs.pi)
+
+    mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=0.2))
+
+    solver = DirectSolver(mesh)
+
+    fes = ngs.H1(mesh, order=4, dirichlet='bottom|right|top|left')
+    u, v = fes.TnT()
+
+    lf = ngs.LinearForm(fes)
+    lf += f * v * ngs.dx
+    lf.Assemble()
+
+    gfu = ngs.GridFunction(fes)
+    gfu.Set(1)
+
+    blf = ngs.BilinearForm(fes, condense=True)
+    blf += ngs.grad(u) * ngs.grad(v) * ngs.dx
+    blf.Assemble()
+
+    # Solve the system with the gridfunction set to 1. With the operator set to '+='.
+    solver.solve_linear_system(blf, gfu, lf.vec, operator='+=')
+    npt.assert_almost_equal(ngs.Integrate(gfu - ue, mesh), 0)
+
+    # Solve the system with the gridfunction set to 1. With the operator set to '='.
+    # This should raise an AssertionError, since the gridfunction is going to be reset to zero on the boundary.
+    solver.solve_linear_system(blf, gfu, lf.vec, operator='=')
+    with pytest.raises(AssertionError):
+        npt.assert_almost_equal(ngs.Integrate(gfu - ue, mesh), 0)
+
+def test_direct_solver_solve_nonlinear_system():
+
+    mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+
+    solver = DirectSolver(mesh)
+
+    fes = ngs.L2(mesh, order=0)
+    u, v = fes.TnT()
+
+    blf = ngs.BilinearForm(fes)
+    blf += (u**3 - 8) * v * ngs.dx
+
+    gfu = ngs.GridFunction(fes)
+    gfu.Set(1)
+
+    solver.initialize_nonlinear_routine(blf, gfu)
+    for log in solver.solve_nonlinear_system():
+        ...
+
+    npt.assert_almost_equal(ngs.Integrate(gfu - 2, mesh), 0)
+
+def test_direct_solver_solve_nonlinear_system_with_rhs():
+
+    mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
+
+    solver = DirectSolver(mesh)
+
+    fes = ngs.L2(mesh, order=0)
+    u, v = fes.TnT()
+
+    blf = ngs.BilinearForm(fes)
+    blf += u**3 * v * ngs.dx
+
+    lf = ngs.LinearForm(fes)
+    lf += 8 * v * ngs.dx
+    lf.Assemble()
+
+    gfu = ngs.GridFunction(fes)
+    gfu.Set(1)
+
+    solver.initialize_nonlinear_routine(blf, gfu, lf.vec)
+    for log in solver.solve_nonlinear_system():
+        ...
+
+    npt.assert_almost_equal(ngs.Integrate(gfu - 2, mesh), 0)
 
 
 def test_initialize_finite_element_spaces_dictionary(cfg: DummySolverConfiguration):

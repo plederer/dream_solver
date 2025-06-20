@@ -82,22 +82,17 @@ cfg.riemann_solver = 'upwind'
 cfg.dynamic_viscosity = 'constant'
 cfg.scaling = 'aerodynamic'
 
-cfg.fem = 'conservative'
+cfg.fem = 'conservative_hdg'
 cfg.fem.order = 4
-cfg.fem.method = 'hdg'
 cfg.fem.mixed_method = 'strain_heat'
 cfg.fem.scheme = 'bdf2'
+cfg.fem.bonus_int_order = cfg.fem.order
 
-cfg.nonlinear_solver = 'pardiso'
-cfg.nonlinear_solver.method = 'newton'
-cfg.nonlinear_solver.method.damping_factor = 1
-cfg.nonlinear_solver.max_iterations = 5
-cfg.nonlinear_solver.convergence_criterion = 1e-8
-
-cfg.optimizations.bonus_int_order.bnd = cfg.fem.order
-cfg.optimizations.bonus_int_order.vol = cfg.fem.order
-cfg.optimizations.static_condensation = True
-cfg.optimizations.compile.realcompile = False
+cfg.fem.solver = 'direct'
+cfg.fem.solver.method = 'newton'
+cfg.fem.solver.method.damping_factor = 1
+cfg.fem.solver.method.max_iterations = 5
+cfg.fem.solver.method.convergence_criterion = 1e-8
 
 mesh.Curve(cfg.fem.order)
 

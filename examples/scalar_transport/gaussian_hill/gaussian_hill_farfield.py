@@ -87,16 +87,13 @@ cfg.riemann_solver = "lax_friedrich"
 cfg.fem = "dg"                             # NOTE, will get overriden.
 cfg.fem.order = 2                          # NOTE, will get overriden.
 cfg.fem.interior_penalty_coefficient = 1.0 # NOTE, will get overriden.
+cfg.fem.static_condensation = False  # NOTE, by default, condensation is turned off.
 
 
 cfg.time = "transient"
 cfg.fem.scheme = "implicit_euler"
 cfg.time.timer.interval = (ngs.pi/2, 5*ngs.pi/2)
 cfg.time.timer.step = 0.005
-
-# cfg.linear_solver = "pardiso"
-cfg.optimizations.static_condensation = False  # NOTE, by default, condensation is turned off.
-cfg.optimizations.compile.realcompile = False
 
 U0 = transportfields()
 U0.phi = get_analytic_solution(cfg.time.timer.interval[0], cfg.diffusion_coefficient)
@@ -121,7 +118,7 @@ def gaussian_hill_routine(label):
         def wrapper(*args, **kwargs):
 
             # By default, assume this is a DG formulation.
-            cfg.optimizations.static_condensation = False
+            cfg.fem.static_condensation = False
             
             # Insert options here.
             func(*args, **kwargs)
@@ -130,7 +127,7 @@ def gaussian_hill_routine(label):
 
             # In case an HDG formulation is specified, use static condensation.
             if cfg.fem.name == "hdg":
-               cfg.optimizations.static_condensation = True
+               cfg.fem.static_condensation = True
                 
             cfg.initialize()
             uh = cfg.fem.get_fields("phi").phi

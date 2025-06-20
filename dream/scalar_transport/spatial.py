@@ -25,7 +25,10 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
     root: ScalarTransportSolver
 
     def __init__(self, mesh, root=None, **default):
-        DEFAULT = {"interior_penalty_coefficient": 1.0}
+
+        DEFAULT = {"interior_penalty_coefficient": 1.0,
+                   "bonus_int_order": ('convection', 'diffusion'),}
+        
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
 
@@ -233,7 +236,7 @@ class HDG(ScalarTransportFiniteElementMethod):
 
         where the physical (inviscid) flux is :math:`\bm{f}(u) = \bm{b} u` and the numerical flux :math:`f^* = f^*(u,\hat{u})`, over an element boundary, is defined based on the local solution :math:`u` and its neighboring facet variable :math:`\hat{u}`. See :func:`~dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg` for details.
         """
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['convection']
         mask = self.get_domain_boundary_mask()
 
         U, V = self.TnT['U']
@@ -247,13 +250,13 @@ class HDG(ScalarTransportFiniteElementMethod):
 
         # For context, the terms are defined on the LHS.
         blf['U']['convection']  = -bla.inner(F, ngs.grad(V)) \
-                                *  ngs.dx(bonus_intorder=bonus.vol)
+                                *  ngs.dx(bonus_intorder=bonus['vol'])
         blf['U']['convection'] +=  bla.inner(Fn, V)          \
-                                *  ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                                *  ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
         
         # For context, the transmissibility equation is multiplied by a minus sign.
         blf['Uhat']['convection'] = -mask * bla.inner(Fn,Vhat) \
-                                  *  ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                                  *  ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
 
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
@@ -273,7 +276,7 @@ class HDG(ScalarTransportFiniteElementMethod):
 
         where :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`.
         """
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['diffusion']
         mask = self.get_domain_boundary_mask()
 
         U, V = self.TnT['U']
@@ -292,19 +295,19 @@ class HDG(ScalarTransportFiniteElementMethod):
 
         # For context, the terms are defined on the LHS.
         blf['U']['diffusion']  = ngs.InnerProduct(k*dU, dV)          \
-                               * ngs.dx(bonus_intorder=bonus.vol)
+                               * ngs.dx(bonus_intorder=bonus['vol'])
         blf['U']['diffusion'] -= ngs.InnerProduct(k*(U-Uhat), dVn)   \
-                               * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd) 
+                               * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd']) 
         blf['U']['diffusion'] -= ngs.InnerProduct(k*dUn, V)          \
-                               * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                               * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
         blf['U']['diffusion'] += ngs.InnerProduct(tau*k*(U-Uhat), V) \
-                               * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                               * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
         # For context, the transmissibility equation is multiplied by a minus sign.
         blf['Uhat']['diffusion']  = mask * ngs.InnerProduct(k*dUn, Vhat)          \
-                                  * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                                  * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
         blf['Uhat']['diffusion'] -= mask * ngs.InnerProduct(tau*k*(U-Uhat), Vhat) \
-                                  * ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                                  * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
     def set_initial_conditions(self, U: ngs.CF = None):
         r""" Initializes the solution by projecting the initial condition on both the volume elements and their facets.
@@ -354,8 +357,8 @@ class HDG(ScalarTransportFiniteElementMethod):
         with :math:`\bar{u}` denoting the farfield boundary value we impose.
 
         """
-        bonus = self.root.optimizations.bonus_int_order
-        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
+        bonus = self.bonus_int_order['convection']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
         
         U, _ = self.TnT['U']
         Uhat, Vhat = self.TnT['Uhat']
@@ -434,7 +437,7 @@ class DG(ScalarTransportFiniteElementMethod):
         fes['U'] = U
         
         # Issue an error, if static condensation is turned on.
-        if self.root.optimizations.static_condensation is True:
+        if self.root.fem.static_condensation is True:
             raise ValueError("Cannot have static condensation with a standard DG implementation!")
     
     def add_convection_form(self, blf: Integrals, lf: Integrals):
@@ -447,7 +450,7 @@ class DG(ScalarTransportFiniteElementMethod):
         where the numerical flux :math:`f^*` is defined based on a Riemann solver, see :func:`~dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_dg`.
 
         """
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['convection']
         mask = self.get_domain_boundary_mask()
                 
         U, V = self.TnT['U']
@@ -462,9 +465,9 @@ class DG(ScalarTransportFiniteElementMethod):
 
         # For context, the terms are defined on the LHS.
         blf['U']['convection']  = -bla.inner(F, ngs.grad(V)) \
-                                *  ngs.dx(bonus_intorder=bonus.vol)
+                                *  ngs.dx(bonus_intorder=bonus['vol'])
         blf['U']['convection'] +=  mask*bla.inner(Fn, V)     \
-                                *  ngs.dx(element_boundary=True, bonus_intorder=bonus.bnd)
+                                *  ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
         r""" DG discretization (in the internal domain) of the elliptic terms using a symmetric interior penalty method. The `diffusion` bilinear form over an internal element is:
@@ -482,7 +485,7 @@ class DG(ScalarTransportFiniteElementMethod):
         where the *ith* and *jth* subscripts correspond to the indices of the local solution and its neighobring solution, respectively. Additionally, :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`.
         """
 
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['diffusion']
         mask = self.get_domain_boundary_mask()
 
         U, V = self.TnT['U']
@@ -506,13 +509,13 @@ class DG(ScalarTransportFiniteElementMethod):
 
         # For context, the terms are defined on the LHS.
         blf['U']['diffusion']  = ngs.InnerProduct(k*dUi, dVi)      \
-                               * ngs.dx(bonus_intorder=bonus.vol)
+                               * ngs.dx(bonus_intorder=bonus['vol'])
         blf['U']['diffusion'] -= mask*ngs.InnerProduct(symm, ujmp) \
-                               * ngs.dx(skeleton=True, bonus_intorder=bonus.bnd) 
+                               * ngs.dx(skeleton=True, bonus_intorder=bonus['bnd']) 
         blf['U']['diffusion'] -= mask*ngs.InnerProduct(surf, vjmp) \
-                               * ngs.dx(skeleton=True, bonus_intorder=bonus.bnd)
+                               * ngs.dx(skeleton=True, bonus_intorder=bonus['bnd'])
         blf['U']['diffusion'] += mask*ngs.InnerProduct(ipen, vjmp) \
-                               * ngs.dx(skeleton=True, bonus_intorder=bonus.bnd)
+                               * ngs.dx(skeleton=True, bonus_intorder=bonus['bnd'])
 
     def add_farfield_formulation(self, blf: Integrals, lf: Integrals, bc: FarField, bnd: str):
         r""" Imposes a farfield boundary condition using both convective and diffusive (if turned on) fluxes in a DG formulation. The bilinear and linear forms associated with a farfield BC are:
@@ -537,8 +540,8 @@ class DG(ScalarTransportFiniteElementMethod):
         with :math:`\bar{u}` denoting the farfield boundary value we impose.
 
         """
-        bonus = self.root.optimizations.bonus_int_order
-        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus.bnd)
+        bonus = self.bonus_int_order['convection']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
         U, V = self.TnT['U']
         n  = self.mesh.normal
         
