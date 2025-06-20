@@ -159,7 +159,7 @@ class Scheme(Configuration, is_interface=True):
         """ Parse the sum of integrals dictionary to include or exclude specific spaces and terms.
 
             By default, it includes all spaces and terms in the integrals. You can specify which spaces to include 
-            or exclude, and which terms to include or exclude. If a space or term in the include container 
+            or exclude, and which terms to include or exclude. If a space in the include container 
             is not found in the integrals dictionary, it will raise an error.
         """
 
@@ -188,21 +188,21 @@ class Scheme(Configuration, is_interface=True):
 
         # Parse include terms. Throws an error if a term is not found
         if include_terms is not None:
-            integrals = {space: {term: integral[term] for term in include_terms}
+            integrals = {space: {term: integral[term] for term in include_terms if term in integral}
                          for space, integral in integrals.items()}
 
         # Omit empty integrals
-        integrals = {space: {term: cf for term, cf in integral.items() if cf} for space, integral in integrals.items()}
+        integrals = {space: {term: cf for term, cf in integral.items() if cf} for space, integral in integrals.items() if integral}
+
+        if not integrals:
+            raise ValueError("No integrals found after parsing! Check your include/exclude terms/spaces.")
 
         return integrals
 
     def assemble(self) -> None:
         raise NotImplementedError("Overload this method in derived class!")
 
-
-class StationaryScheme(Scheme):
-
-    def solve(self) -> None:
+    def solve_stationary(self) -> typing.Generator[Log, None, None]:
         raise NotImplementedError("Overload this method in derived class!")
 
 
@@ -256,7 +256,7 @@ class TimeRoutine(Configuration, is_interface=True):
 
         fem = self.root.fem
 
-        msg = f"{fem.name} {fem.scheme.name}"
+        msg = f"{self.name} | {fem.name} {fem.scheme.name}"
         if it is not None:
             msg += f" | it: {it}"
         if error is not None:
@@ -280,7 +280,9 @@ class StationaryRoutine(TimeRoutine):
             io.save_pre_time_routine()
 
             # Solution routine starts here
-            scheme.solve()
+            for log in scheme.solve_stationary():
+                logger.info(self.parse_routine_log(**log))
+
             yield None
             # Solution routine ends here
 
@@ -352,7 +354,7 @@ class TransientRoutine(TimeRoutine):
                 yield t
 
                 io.save_in_time_routine(t, rate)
-                io.redraw()
+                io.redraw(rate)
             # Solution routine ends here
 
             io.save_post_time_routine(t, rate)

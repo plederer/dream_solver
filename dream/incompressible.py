@@ -8,6 +8,7 @@ We consider the dimensionless incompressible Navier-Stokes equations
 """
 from __future__ import annotations
 
+import typing
 import logging
 import ngsolve as ngs
 
@@ -18,9 +19,10 @@ from dream.config import (Configuration,
                           ngsdict,
                           quantity,
                           equation,
-                          Integrals)
+                          Integrals,
+                          Log)
 
-from dream.time import StationaryScheme, TimeSchemes, Scheme, StationaryRoutine, TransientRoutine
+from dream.time import Scheme, TimeSchemes, Scheme, StationaryRoutine, TransientRoutine
 from dream.solver import FiniteElementMethod, SolverConfiguration
 from dream.mesh import (BoundaryConditions,
                         DomainConditions,
@@ -185,7 +187,7 @@ class Powerlaw(DynamicViscosity):
 
 
 # Define solving schemes
-class DirectScheme(StationaryScheme):
+class StationaryScheme(Scheme):
 
     root: IncompressibleSolver
 
@@ -205,23 +207,26 @@ class DirectScheme(StationaryScheme):
 
         if not self.root.dynamic_viscosity.is_linear or self.root.convection:
             # self.blf.Apply(fem.gfu.vec, self.lf.vec)
-            self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, fem.gfu)
+            fem.solver.initialize_nonlinear_routine(self.blf, fem.gfu, self.lf.vec)
 
         else:
             # Add dirichlet boundary conditions
             self.blf.Assemble()
             self.lf.vec.data -= self.blf.mat * fem.gfu.vec
 
-    def solve(self):
+    def solve_stationary(self) -> typing.Generator[Log, None, None]:
 
         fem = self.root.fem
 
         if not self.root.dynamic_viscosity.is_linear or self.root.convection:
-            for it in self.root.nonlinear_solver.solve():
-                ...
+
+            for log in fem.solver.solve_nonlinear_system():
+                yield log
         else:
-            self.inv = self.root.linear_solver.inverse(self.blf, fem.fes)
+            self.inv = fem.solver.get_inverse(self.blf, fem.fes)
             fem.gfu.vec.data += self.inv * self.lf.vec
+
+            yield {}
 
 
 class IMEX(TimeSchemes):
@@ -239,16 +244,16 @@ class IMEX(TimeSchemes):
         fem = self.root.fem
 
         self.blf = ngs.BilinearForm(fem.fes)
-        self.add_sum_of_integrals(self.blf, fem.blf, 'convection')
+        implicit = self.parse_sum_of_integrals(fem.blf, exclude_terms=['convection'])
+        self.add_sum_of_integrals(self.blf, implicit, 'implicit')
 
         self.stokes = ngs.BilinearForm(fem.fes)
-        self.add_sum_of_integrals(self.stokes, fem.blf, 'mass', 'convection')
+        stokes = self.parse_sum_of_integrals(fem.blf, exclude_terms=['convection', 'mass'])
+        self.add_sum_of_integrals(self.stokes, stokes, 'stokes')
 
         self.convection = ngs.BilinearForm(fem.fes, nonassemble=True)
-        for forms in fem.blf.values():
-            for key, form in forms.items():
-                if key == "convection":
-                    self.convection += form
+        convection = self.parse_sum_of_integrals(fem.blf, include_terms=['convection'])
+        self.add_sum_of_integrals(self.convection, convection, 'convection')
 
         self.lf = ngs.LinearForm(fem.fes)
         self.add_sum_of_integrals(self.lf, fem.lf)
@@ -259,35 +264,33 @@ class IMEX(TimeSchemes):
 
         if not self.root.dynamic_viscosity.is_linear:
             # self.blf.Apply(fem.gfu.vec, self.lf.vec)
-            self.root.nonlinear_solver.initialize(self.blf, self.lf.vec, fem.gfu)
+            fem.solver.initialize_nonlinear_routine(self.blf, fem.gfu, self.lf.vec)
 
         else:
             # Add dirichlet boundary conditions
             self.blf.Assemble()
             self.stokes.Assemble()
-            self.inv = self.root.linear_solver.inverse(self.blf, fem.fes)
+            self.inv = fem.solver.get_inverse(self.blf, fem.fes)
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
         u, v = self.root.fem.TnT['u']
 
         blf['u']['mass'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
 
-    def solve_current_time_level(self, t: float | None = None):
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         fem = self.root.fem
 
         if not self.root.dynamic_viscosity.is_linear:
-            for it in self.root.nonlinear_solver.solve():
-                ...
+            for log in fem.solver.solve_nonlinear_system():
+                yield log
         else:
 
             self.convection.Apply(fem.gfu.vec, self.tmp)
             self.tmp.data += self.stokes.mat * fem.gfu.vec
             fem.gfu.vec.data -= self.inv * self.tmp
 
-            logger.info(f"IMEX | t: {t}")
-
-        yield None
+            yield {}
 
 
 # Define Finite Elements
@@ -296,15 +299,25 @@ class IncompressibleFiniteElement(FiniteElementMethod):
 
     root: IncompressibleSolver
 
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            'bonus_int_order': ('convection', 'diffusion'),
+        }
+
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
     @dream_configuration
-    def scheme(self) -> DirectScheme:
+    def scheme(self) -> StationaryScheme | IMEX:
         """ Returns the scheme for the incompressible flow solver """
         return self._scheme
 
     @scheme.setter
     def scheme(self, scheme) -> None:
         if isinstance(self.root.time, StationaryRoutine):
-            OPTIONS = [DirectScheme]
+            OPTIONS = [StationaryScheme]
         elif isinstance(self.root.time, TransientRoutine):
             OPTIONS = [IMEX]
         else:
@@ -384,7 +397,7 @@ class TaylorHood(IncompressibleFiniteElement):
         spaces['p'] = P
 
     def add_symbolic_stokes_form(self, blf: Integrals, lf: Integrals):
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['diffusion']
 
         u, v = self.TnT['u']
         p, q = self.TnT['p']
@@ -392,7 +405,7 @@ class TaylorHood(IncompressibleFiniteElement):
         U = self.get_incompressible_state([u, p])
         V = self.get_incompressible_state([v, q])
 
-        blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus['vol'])
         blf['u']['stokes'] += -ngs.div(V.u) * U.p * ngs.dx
         blf['p']['stokes'] = -ngs.div(U.u) * V.p * ngs.dx
 
@@ -400,11 +413,11 @@ class TaylorHood(IncompressibleFiniteElement):
             blf['p']['stokes'] += -1e-8 * U.p * V.p * ngs.dx
 
     def add_symbolic_convection_form(self, blf: Integrals, lf: Integrals):
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['convection']
 
         u, v = self.TnT['u']
 
-        blf['u']['convection'] = ngs.InnerProduct(ngs.Grad(u) * u, v) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['u']['convection'] = ngs.InnerProduct(ngs.Grad(u) * u, v) * ngs.dx(bonus_intorder=bonus['vol'])
 
     def set_boundary_conditions(self) -> None:
 
@@ -436,7 +449,7 @@ class HDivHDG(IncompressibleFiniteElement):
         spaces['uhat'] = Uhat
 
     def add_symbolic_stokes_form(self, blf: Integrals, lf: Integrals):
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['diffusion']
 
         u, v = self.TnT['u']
         uhat, vhat = self.TnT['uhat']
@@ -453,13 +466,13 @@ class HDivHDG(IncompressibleFiniteElement):
         nu = self.root.kinematic_viscosity(U)
         mu = 2 * nu/Re
 
-        blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus.vol)
+        blf['u']['stokes'] = ngs.InnerProduct(U.tau, V.eps) * ngs.dx(bonus_intorder=bonus['vol'])
         blf['u']['stokes'] += -ngs.InnerProduct(U.tau * n, self.tang(V.u - vhat)
-                                                ) * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+                                                ) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
         blf['u']['stokes'] += -ngs.InnerProduct(V.tau * n, self.tang(U.u - uhat)
-                                                ) * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+                                                ) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
         blf['u']['stokes'] += mu * alpha * (self.order+1)**2 / h * ngs.InnerProduct(self.tang(V.u - vhat),
-                                                                                    self.tang(U.u - uhat)) * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+                                                                                    self.tang(U.u - uhat)) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
         blf['u']['stokes'] += -ngs.div(V.u) * U.p * ngs.dx
         blf['p']['stokes'] = -ngs.div(U.u) * V.p * ngs.dx
@@ -468,7 +481,7 @@ class HDivHDG(IncompressibleFiniteElement):
             blf['p']['stokes'] += -mu * 1e-10 * U.p * V.p * ngs.dx
 
     def add_symbolic_convection_form(self, blf: Integrals, lf: Integrals):
-        bonus = self.root.optimizations.bonus_int_order
+        bonus = self.bonus_int_order['convection']
 
         u, v = self.TnT['u']
         p, q = self.TnT['p']
@@ -481,9 +494,10 @@ class HDivHDG(IncompressibleFiniteElement):
 
         Uup = ngs.IfPos(U.u * n, U.u, (U.u*n) * n + self.tang(2*uhat-U.u))
 
-        blf['u']['convection'] = -ngs.InnerProduct(V.grad_u.trans * U.u, U.u) * ngs.dx(bonus_intorder=bonus.vol)
-        blf['u']['convection'] += U.u*n * Uup * V.u * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
-        blf['uhat']['convection'] = self.tang(uhat-U.u) * vhat * ngs.dx(element_boundary=True, bonus_intorder=bonus.vol)
+        blf['u']['convection'] = -ngs.InnerProduct(V.grad_u.trans * U.u, U.u) * ngs.dx(bonus_intorder=bonus['vol'])
+        blf['u']['convection'] += U.u*n * Uup * V.u * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
+        blf['uhat']['convection'] = self.tang(
+            uhat-U.u) * vhat * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
     def set_boundary_conditions(self) -> None:
         inflows = {dom: bc.velocity for dom, bc in self.root.bcs.to_pattern(Inflow).items()}

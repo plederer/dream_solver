@@ -1008,22 +1008,25 @@ class IOConfiguration(Configuration):
                 stream.enable = False
         self.undraw()
 
-    def draw(self, fields: ngsdict, **kwargs):
+    def draw(self, fields: ngsdict, rate: int = 1, **kwargs):
         if is_notebook():
             from ngsolve.webgui import Draw
         else:
             from ngsolve import Draw
 
         self.scenes = [Draw(draw, self.mesh, name, **kwargs) for name, draw in fields.items()]
+        self.rate = rate
 
-    def redraw(self, blocking: bool = False):
+    def redraw(self, rate: int = 1, blocking: bool = False):
 
         if hasattr(self, "scenes"):
 
-            for scene in self.scenes:
-                if scene is not None:
-                    scene.Redraw()
-            ngs.Redraw(blocking)
+            if rate % self.rate == 0:
+
+                for scene in self.scenes:
+                    if scene is not None:
+                        scene.Redraw()
+                ngs.Redraw(blocking)
 
     def undraw(self):
 

@@ -13,18 +13,17 @@ mesh = ngs.Mesh(occ.OCCGeometry(shape, dim=2).GenerateMesh(maxh=0.7))
 
 # Set up the solver configuration
 cfg = IncompressibleSolver(mesh)
-cfg.fem = "taylor-hood"
-# cfg.fem = "hdivhdg"
 cfg.time = "stationary"
 
-# cfg.io.log.level = 10
+cfg.reynolds_number = 100
+cfg.dynamic_viscosity = "constant"
+
+cfg.fem = "taylor-hood"
+# cfg.fem = "hdivhdg"
 
 cfg.fem.order = 3
 cfg.fem.scheme = "direct"
 cfg.convection = False
-
-cfg.reynolds_number = 100
-cfg.dynamic_viscosity = "constant"
 
 mesh.Curve(cfg.fem.order)
 
@@ -37,9 +36,9 @@ cfg.bcs['outlet'] = "outflow"
 cfg.initialize()
 
 fields = cfg.get_solution_fields('velocity', default_fields=False)
-cfg.io.draw(fields)
+cfg.io.draw(fields, rate=10)
 
-with TaskManager():
+with ngs.TaskManager():
     cfg.solve()
 
 cfg.time = "transient"
@@ -52,5 +51,5 @@ cfg.fem.initialize_time_scheme_gridfunctions()
 cfg.fem.initialize_symbolic_forms()
 
 # SetNumThreads(12)
-with TaskManager():
+with ngs.TaskManager():
     cfg.solve()
