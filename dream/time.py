@@ -450,3 +450,134 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
                 self.timer.step = new_time_step
                 logger.info(f"Successfully updated time step at iteration {it}")
                 logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
+
+
+
+class MultizoneIMEXTimeRoutine(TimeRoutine):
+
+    name: str = "multizone_imex_transient"
+
+    def __init__(self, cfg_implicit=None, cfg_explicit=None, root=None, **default):
+
+        DEFAULT = {
+            "timer": Timer(root)
+        }
+        DEFAULT.update(default)
+
+        super().__init__(root, **DEFAULT)
+
+        # Keep references for the configurations.
+        self.cfg_implicit = cfg_implicit
+        self.cfg_explicit = cfg_explicit
+
+       
+    # Function that checks whether the specified schemes form a viable IMEX pair.
+    def isvalid_imex_schemes(self) -> bool:
+
+        n_imp = self.cfg_implicit.fem.scheme.get_num_stages()
+        n_exp = self.cfg_explicit.fem.scheme.get_num_stages()
+        
+        if n_imp != n_exp:
+            return False
+
+        cdt_imp = self.cfg_implicit.fem.scheme.get_stage_dt()
+        cdt_exp = self.cfg_explicit.fem.scheme.get_stage_dt()
+
+        # NOTE, if AIMEX schemes are used, this condition probably will fail.
+        if not np.allclose(cdt_imp, cdt_exp, rtol=1e-10, atol=1e-10):
+            return False
+
+        # NOTE, all first stages are padded, since they start explicitly, i.e. cdt[0] = 0.
+        if (n_imp != len(cdt_imp)-1) or (n_exp != len(cdt_exp)-1):
+            return False
+        
+        # Book-keep number of stages, including first (padded) stage.
+        self.nStage = len(cdt_imp)
+
+        # All good.
+        return True
+
+    @dream_configuration
+    def timer(self) -> Timer:
+        return self._timer
+
+    @timer.setter
+    def timer(self, timer: Timer):
+
+        if not isinstance(timer, Timer):
+            raise TypeError(f"Timer must be of type {Timer}!")
+
+        self._timer = timer
+
+    def parse_routine_log(self,
+                          stage: int = None,
+                          t: float = None,
+                          **kwargs):
+        """ Parse the routine log and return a formatted string. """
+
+        msg = super().parse_routine_log(**kwargs)
+
+        if stage is not None:
+            msg += f" | stage: {stage}"
+        if t is not None:
+            msg += f" | t: {t:.{self.timer.digit}f}"
+
+        return msg
+
+    
+    def solve(self, reassemble: bool=True):
+
+        timer = self.timer
+        timer.reset()
+        
+        if reassemble:
+            self.cfg_implicit.fem.scheme.assemble()
+            self.cfg_explicit.fem.scheme.assemble()
+
+        if not self.isvalid_imex_schemes():
+            raise TypeError(f"Specified time schemes do not form an IMEX pair.")
+
+        with self.cfg_implicit.io as io_imp, self.cfg_explicit.io as io_exp:
+
+            io_imp.save_pre_time_routine(self.timer.t.Get())
+            io_exp.save_pre_time_routine(self.timer.t.Get())
+
+            for rate, t in enumerate(self.timer()):
+                
+                # We loop over each stage and solve explicit regions first, then implicit ones.
+                for iStage in range(1, self.nStage):
+                    for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage):
+                        logger.info(self.parse_routine_log(t=t, **log_explicit))
+                    for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage):
+                        logger.info(self.parse_routine_log(t=t, **log_implicit))
+
+                # These are needed in case the schemes aren't stiffly accurate.
+                self.cfg_explicit.fem.scheme.update_solution()
+                self.cfg_implicit.fem.scheme.update_solution()
+                
+                print() # One empty line to rule them all and ruin Jan's day..
+                
+                self.cfg_explicit.fem.scheme.update_gridfunctions()
+                self.cfg_implicit.fem.scheme.update_gridfunctions()
+
+                io_exp.save_in_time_routine(t, rate)
+                io_imp.save_in_time_routine(t, rate)
+                
+                io_exp.redraw(rate)
+                io_imp.redraw(rate)
+                
+            io_exp.save_post_time_routine(t, rate)
+            io_imp.save_post_time_routine(t, rate)
+
+
+
+
+
+
+
+
+
+
+
+
+

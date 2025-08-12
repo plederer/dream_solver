@@ -481,7 +481,36 @@ class AdiabaticWall(Condition):
     name = "adiabatic_wall"
 
 
-BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, Periodic]
+class InterfaceBC(Condition):
+
+    name = "interface"
+
+    def __init__(self,
+                 fields: flowfields | None = None):
+
+        self.fields = fields
+
+        super().__init__()
+
+    @dream_configuration
+    def fields(self) -> flowfields:
+        if self._fields is None:
+            raise ValueError("InterfaceBC fields not set!")
+        return self._fields
+
+    @fields.setter
+    def fields(self, fields: ngsdict) -> None:
+        if isinstance(fields, (dict, ngsdict)):
+            self._fields = flowfields(**fields)
+        elif fields is None:
+            self._fields = None
+        else:
+            raise TypeError(f"InterfaceBC fields must be of type '{flowfields}' or '{dict}'")
+
+
+
+
+BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, InterfaceBC, Periodic]
 
 
 # ------- Domain Conditions ------- #
