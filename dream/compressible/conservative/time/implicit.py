@@ -866,7 +866,7 @@ class DIRK34_LDD(DIRKSchemes):
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Book-keep the solution at u^{n}.
-        self.u0.data = self.root.fem.gfu.vec
+        self.u0.data = self.root.fem.gfu.vec # NOTE, this needs changes to work as an IMEX-pair.
 
         yield from self.solve_stage(1)
         yield from self.solve_stage(2)
