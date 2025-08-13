@@ -80,7 +80,8 @@ class ExplicitEuler(ExplicitSchemes):
         yield {'stage': 1}
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-        solve_stage(1)
+        
+        yield from self.solve_stage(1)
 
 
 class RK_ARS22(ExplicitSchemes):
