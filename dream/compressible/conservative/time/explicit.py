@@ -9,7 +9,7 @@ from dream.config import Integrals, Log
 
 class ExplicitSchemes(TimeSchemes):
 
-    time_levels = ('n', 'n+1')
+    time_levels = ('n+1',)
 
     def assemble(self) -> None:
 
@@ -18,8 +18,7 @@ class ExplicitSchemes(TimeSchemes):
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
         # NOTE, we assume that self.lf is not needed here (for efficiency).
-        self.blf = ngs.BilinearForm(self.root.fem.fes)
-        self.rhs = self.root.fem.gfu.vec.CreateVector()
+        self.blf = ngs.BilinearForm(self.root.fem.fes, nonassemble=True) 
         self.minv = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
 
         # Step 1: precompute and store the inverse mass matrix. Note, this is scaled by dt.
@@ -44,6 +43,13 @@ class ExplicitSchemes(TimeSchemes):
         # Add the mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
 
+    def get_num_stages(self) -> int:
+        raise NotImplementedError()
+    def get_stage_dt(self) -> list[float]:
+        raise NotImplementedError()
+    def update_solution(self) -> None:
+        pass
+
 
 class ExplicitEuler(ExplicitSchemes):
     r""" Class responsible for implementing an explicit (forwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Assuming a standard DG formulation,
@@ -54,16 +60,257 @@ class ExplicitEuler(ExplicitSchemes):
     where :math:`\widetilde{\bm{M}} = \bm{M} / \delta t` is the weighted mass matrix, :math:`\bm{M}` is the mass matrix and :math:`\bm{f}` arises from the spatial discretization of the PDE.
     """
     name: str = "explicit_euler"
+    
+    def assemble(self) -> None:
+        super().assemble()
+        self.rhs = self.root.fem.gfu.vec.CreateVector()
+
+    def get_num_stages(self) -> int:
+        return 1
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in [0.0, 1.0]] 
+
+    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+        
+        if iStage > 1:
+            raise TypeError(f"Stage {iStage} does not exist.")
+
+        self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
+        self.root.fem.gfu.vec.data -= self.minv * self.rhs
+        yield {'stage': 1}
+
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+        
+        yield from self.solve_stage(1)
+
+
+class RK_ARS22(ExplicitSchemes):
+    r""" Class responsible for implementing an explicit 2-stage, 2nd-order Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.6, Equation in :cite:`ascher1997implicit`. Assuming a standard DG formulation,
+
+    """
+    name: str = "rk_ars22"
+
+    def assemble(self) -> None:
+
+        super().assemble()
+
+        # Reserve space for the solution at the old time step (at t^n).
+        self.U0 = self.root.fem.gfu.vec.CreateVector()
+        self.K1 = self.root.fem.gfu.vec.CreateVector()
+        self.K2 = self.root.fem.gfu.vec.CreateVector()
+
+        # Butcher tableau coefficients.
+        alpha = ngs.sqrt(2.0)/2.0
+        gamma = 1.0 - alpha
+        delta = 1.0 - 1.0/(2.0*gamma)
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c1 = 0.0
+        self.c2 = gamma 
+        self.c3 = 1.0
+
+        # Define A-coefficients in the Butcher tableau.
+        self.a21 = gamma 
+        self.a31 = delta 
+        self.a32 = 1.0 - delta
+
+        # Define the b-coefficients in the Butcher tableau.
+        self.b1 = self.a31
+        self.b2 = self.a32
+
+    def get_num_stages(self) -> int:
+        return 2
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in [self.c1, self.c2, self.c3]] 
+
+    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+
+        if iStage == 1:
+            
+            self.U0.data = self.root.fem.gfu.vec
+            self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
+            self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
+            yield {'stage': 1}
+
+        elif iStage == 2:
+            
+            self.blf.Apply(self.root.fem.gfu.vec, self.K2)
+            self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
+            yield {'stage': 2}
+   
+        else:
+            raise TypeError(f"Stage {iStage} does not exist.")
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
-        # Extract the current solution.
-        Un = self.root.fem.gfu
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
 
-        self.blf.Apply(Un.vec, self.rhs)
-        Un.vec.data += self.minv * self.rhs
 
-        yield {}
+# # 
+class RK_ARS33(ExplicitSchemes):
+    r""" Class responsible for implementing an explicit 3-stage, 3rd-order Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.7, Equation in :cite:`ascher1997implicit`. Assuming a standard DG formulation,
+
+    """
+    name: str = "rk_ars33"
+
+    def assemble(self) -> None:
+
+        super().assemble()
+
+        # Reserve space for the solution at the old time step (at t^n).
+        self.U0 = self.root.fem.gfu.vec.CreateVector()
+        self.K1 = self.root.fem.gfu.vec.CreateVector()
+        self.K2 = self.root.fem.gfu.vec.CreateVector()
+        self.K3 = self.root.fem.gfu.vec.CreateVector()
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c = [0.0, 0.4358665215, 0.7179332608, 1.0]
+
+        # Define A-coefficients in the Butcher tableau.
+        self.a21 =  0.4358665215
+        self.a31 =  0.3212788860
+        self.a32 =  0.3966543747
+        self.a41 = -0.1058582960
+        self.a42 =  0.5529291479 
+        self.a43 =  0.5529291479 
+
+        # Define the b-coefficients in the Butcher tableau.
+        self.b1 =  0.0
+        self.b2 =  1.2084966490
+        self.b3 = -0.6443631710
+        self.b4 =  0.4358665215
+
+    def get_num_stages(self) -> int:
+        return 3
+    def get_stage_dt(self) -> list[float]:
+        return [ci * self.dt.Get() for ci in self.c] 
+
+    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+
+        if iStage == 1:
+            
+            self.U0.data = self.root.fem.gfu.vec
+            self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
+            self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
+            yield {'stage': 1}
+
+        elif iStage == 2:
+            
+            self.blf.Apply(self.root.fem.gfu.vec, self.K2)
+            self.root.fem.gfu.vec.data = self.U0 \
+                    - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
+            yield {'stage': 2}
+
+        elif iStage == 3:
+
+            self.blf.Apply(self.root.fem.gfu.vec, self.K3)
+            self.root.fem.gfu.vec.data = self.U0 \
+                    - self.minv * ( self.a41 * self.K1 + self.a42 * self.K2 + self.a43 * self.K3 )
+            yield {'stage': 3}
+
+        else:
+            raise TypeError(f"Stage {iStage} does not exist.")
+
+    def update_solution(self) -> None:
+
+        self.blf.Apply(self.root.fem.gfu.vec, self.K1) # K1 is used to store K4, since b1 = 0
+        self.root.fem.gfu.vec.data = self.U0 \
+                - self.minv * ( self.b2 * self.K2 + self.b3 * self.K3 + self.b4 * self.K1 )
+
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
+        yield from self.solve_stage(3)
+
+        # NOTE, must explicitly reconstruct the solution at u^{n+1}.
+        self.update_solution()
+
+class RK_ARS43(ExplicitSchemes):
+    r""" Class responsible for implementing an explicit 4-stage, 3rd-order Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.8, Equation in :cite:`ascher1997implicit`. Assuming a standard DG formulation,
+
+    """
+    name: str = "rk_ars43"
+
+    def assemble(self) -> None:
+
+        super().assemble()
+
+        # Reserve space for the solution at the old time step (at t^n).
+        self.U0 = self.root.fem.gfu.vec.CreateVector()
+        self.K1 = self.root.fem.gfu.vec.CreateVector()
+        self.K2 = self.root.fem.gfu.vec.CreateVector()
+        self.K3 = self.root.fem.gfu.vec.CreateVector()
+        self.K4 = self.root.fem.gfu.vec.CreateVector()
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c = [0.0, 1.0/2.0, 2.0/3.0, 1.0/2.0, 1.0]
+
+        # Define A-coefficients in the Butcher tableau.
+        self.a21 = 1.0/2.0
+        self.a31 = 11.0/18.0
+        self.a32 = 1.0/18.0
+        self.a41 = 5.0/6.0
+        self.a42 = -5.0/6.0
+        self.a43 = 1.0/2.0
+        self.a51 = 1.0/4.0
+        self.a52 = 7.0/4.0
+        self.a53 = 3.0/4.0
+        self.a54 = -7.0/4.0
+
+        # Define the b-coefficients in the Butcher tableau.
+        self.b1 = self.a51
+        self.b2 = self.a52
+        self.b3 = self.a53
+        self.b4 = self.a54
+
+
+    def get_num_stages(self) -> int:
+        return 4
+    def get_stage_dt(self) -> list[float]:
+        return [ci * self.dt.Get() for ci in self.c] 
+
+    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+
+        if iStage == 1:
+            
+            self.U0.data = self.root.fem.gfu.vec
+            self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
+            self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
+            yield {'stage': 1}
+
+        elif iStage == 2:
+            
+            self.blf.Apply(self.root.fem.gfu.vec, self.K2)
+            self.root.fem.gfu.vec.data = self.U0 \
+                    - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
+            yield {'stage': 2}
+
+        elif iStage == 3:
+
+            self.blf.Apply(self.root.fem.gfu.vec, self.K3)
+            self.root.fem.gfu.vec.data = self.U0 \
+                    - self.minv * ( self.a41 * self.K1 + self.a42 * self.K2 + self.a43 * self.K3 )
+            yield {'stage': 3}
+
+        elif iStage == 4:
+
+            self.blf.Apply(self.root.fem.gfu.vec, self.K4)
+            self.root.fem.gfu.vec.data = self.U0 \
+                    - self.minv * ( self.a51 * self.K1 + self.a52 * self.K2 \
+                                  + self.a53 * self.K3 + self.a54 * self.K4 )
+            yield {'stage': 4}
+
+        else:
+            raise TypeError(f"Stage {iStage} does not exist.")
+
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
+        yield from self.solve_stage(3)
+        yield from self.solve_stage(4)
 
 
 class SSPRK3(ExplicitSchemes):
@@ -83,12 +330,9 @@ class SSPRK3(ExplicitSchemes):
         # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
 
-        # Number of stages.
-        self.RKnStage = 3
-
         # Reserve space for the solution at the old time step (at t^n).
-        self.Un = self.root.fem.gfu
-        self.U0 = self.Un.vec.CreateVector()
+        self.rhs = self.root.fem.gfu.vec.CreateVector()
+        self.U0  = self.root.fem.gfu.vec.CreateVector()
 
         # Time stamps for the stage values between t = [n,n+1].
         self.c1 = 0.0
@@ -112,20 +356,20 @@ class SSPRK3(ExplicitSchemes):
 
         # First stage.
         self.blf.Apply(Un.vec, self.rhs)
-        Un.vec.data = self.U0 + self.minv * self.rhs
+        Un.vec.data = self.U0 - self.minv * self.rhs
 
         # Second stage.
         self.blf.Apply(Un.vec, self.rhs)
 
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
         Un.vec.data *= self.alpha21
-        Un.vec.data += self.alpha20 * self.U0 + self.beta21 * self.minv * self.rhs
+        Un.vec.data += self.alpha20 * self.U0 - self.beta21 * self.minv * self.rhs
 
         # Third stage.
         self.blf.Apply(Un.vec, self.rhs)
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
         Un.vec.data *= self.alpha32
-        Un.vec.data += self.alpha30 * self.U0 + self.beta32 * self.minv * self.rhs
+        Un.vec.data += self.alpha30 * self.U0 - self.beta32 * self.minv * self.rhs
         
         yield {}
 
@@ -150,9 +394,6 @@ class CRK4(ExplicitSchemes):
         # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
 
-        # Number of stages.
-        self.RKnStage = 4
-
         # Define the CRK4 coefficients.
         self.a21 = 0.5
         self.a32 = 0.5
@@ -169,6 +410,7 @@ class CRK4(ExplicitSchemes):
         self.c4 = 1.0
 
         # Reserve space for the tentative solution.
+        self.rhs = self.root.fem.gfu.vec.CreateVector() # can be avoided (I think)
         self.K1 = self.root.fem.gfu.vec.CreateVector()
         self.K2 = self.root.fem.gfu.vec.CreateVector()
         self.K3 = self.root.fem.gfu.vec.CreateVector()
@@ -179,27 +421,27 @@ class CRK4(ExplicitSchemes):
 
         # First stage.
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
-        self.K1.data = self.minv * self.rhs
+        self.K1.data = -self.minv * self.rhs
 
         # Second stage.
         self.Us.data = self.root.fem.gfu.vec + self.a21 * self.K1
         self.blf.Apply(self.Us, self.rhs)
-        self.K2.data = self.minv * self.rhs
+        self.K2.data = -self.minv * self.rhs
 
         # Third stage.
         self.Us.data = self.root.fem.gfu.vec + self.a32 * self.K2
         self.blf.Apply(self.Us, self.rhs)
-        self.K3.data = self.minv * self.rhs
+        self.K3.data = -self.minv * self.rhs
 
         # Fourth stage.
         self.Us.data = self.root.fem.gfu.vec + self.K3
         self.blf.Apply(self.Us, self.rhs)
-        self.K4.data = self.minv * self.rhs
+        self.K4.data = -self.minv * self.rhs
 
         # Reconstruct the solution at t^{n+1}.
         self.root.fem.gfu.vec.data += self.b1 * self.K1 \
-            + self.b2 * self.K2 \
-            + self.b3 * self.K3 \
-            + self.b4 * self.K4
+                                    + self.b2 * self.K2 \
+                                    + self.b3 * self.K3 \
+                                    + self.b4 * self.K4
 
         yield {}

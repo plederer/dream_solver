@@ -5,7 +5,10 @@ import ngsolve as ngs
 import typing
 import dream.bla as bla
 
-from dream.time import TimeSchemes, TransientRoutine, PseudoTimeSteppingRoutine
+from dream.time import (TimeSchemes,
+                        TransientRoutine,
+                        PseudoTimeSteppingRoutine,
+                        MultizoneIMEXTimeRoutine)
 from dream.config import Configuration, dream_configuration, Integrals
 from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
 from dream.compressible.config import (flowfields,
@@ -16,9 +19,10 @@ from dream.compressible.config import (flowfields,
                                        Symmetry,
                                        IsothermalWall,
                                        AdiabaticWall,
+                                       InterfaceBC,
                                        CBC)
 
-from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2, IMEXRK_ARS443
+from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2, IMEXRK_ARS443
 
 logger = logging.getLogger(__name__)
 
@@ -398,11 +402,13 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
     @scheme.setter
     def scheme(self, scheme: TimeSchemes) -> None:
         if isinstance(self.root.time, TransientRoutine):
-            OPTIONS = [ImplicitEuler, BDF2, IMEXRK_ARS443, SDIRK22, SDIRK33, SDIRK54, DIRK34_LDD, DIRK43_WSO2]
+            OPTIONS = [ImplicitEuler, BDF2, IMEXRK_ARS443, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2]
         elif isinstance(self.root.time, PseudoTimeSteppingRoutine):
             OPTIONS = [ImplicitEuler, BDF2]
+        elif isinstance(self.root.time, MultizoneIMEXTimeRoutine):
+            OPTIONS = [ImplicitEuler, SDIRK22, SDIRK33, SDIRK43] 
         else:
-            raise TypeError("HDG method only supports transient or pseudo time stepping routines!")
+            raise TypeError("HDG method only supports transient, pseudo time stepping or multizone time routines!")
         self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
 
     @dream_configuration
@@ -517,6 +523,9 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
 
             elif isinstance(bc, AdiabaticWall):
                 self.add_adiabatic_wall_formulation(blf, lf, bc, bnd)
+
+            elif isinstance(bc, InterfaceBC):
+                self.add_interface_formulation(blf, lf, bc, bnd)
 
             else:
                 raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
@@ -705,6 +714,28 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
 
         Gamma_ad = ngs.InnerProduct(U_bc, Vhat)
         blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_ad * dS
+
+    def add_interface_formulation(self, blf: Integrals, lf: Integrals, bc: InterfaceBC, bnd: str):
+        bonus = self.bonus_int_order['convection']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
+
+        U, _ = self.TnT['U']
+        Uhat, Vhat = self.TnT['Uhat']
+        Uhat = self.get_conservative_fields(Uhat)
+
+        U_infty = ngs.CF(
+            (self.root.density(bc.fields),
+             self.root.momentum(bc.fields),
+             self.root.energy(bc.fields)))
+
+
+        An_in = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'incoming')
+        An_out = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'outgoing')
+        Gamma_infty = ngs.InnerProduct(An_out * (Uhat.U - U) - An_in * (Uhat.U - U_infty), Vhat)
+
+        blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_infty * dS
+
+
 
     def add_sponge_layer_formulation(self, blf: Integrals, lf: Integrals, dc: SpongeLayer, dom: str):
 

@@ -44,6 +44,13 @@ class ImplicitSchemes(TimeSchemes):
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         raise NotImplementedError()
 
+    def get_num_stages(self) -> int:
+        raise NotImplementedError()
+    def get_stage_dt(self) -> list[float]:
+        raise NotImplementedError()
+    def update_solution(self) -> None:
+        pass
+
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         for log in self.root.fem.solver.solve_nonlinear_system():
@@ -62,6 +69,19 @@ class ImplicitEuler(ImplicitSchemes):
     name: str = "implicit_euler"
     aliases = ("ie", )
     time_levels = ('n', 'n+1')
+
+    def get_num_stages(self) -> int:
+        return 1
+    def get_stage_dt(self) -> float:
+        return [x * self.dt.Get() for x in [0.0, 1.0]] 
+
+    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+        
+        if iStage != 1:
+            raise TypeError(f"Stage {iStage} does not exist.")
+
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield log
 
     def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return (gfus['n+1'] - gfus['n'])/self.dt
@@ -160,7 +180,8 @@ class DIRKSchemes(TimeSchemes):
                                                       \bm{0}
         \end{pmatrix}.
     """
-
+    time_levels = ('n+1',)
+    
     def assemble(self) -> None:
 
         condense = self.root.fem.static_condensation
@@ -192,6 +213,62 @@ class DIRKSchemes(TimeSchemes):
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
         self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, self.rhs)
 
+    def get_num_stages(self) -> int:
+        raise NotImplementedError()
+    def get_stage_dt(self) -> list[float]:
+        raise NotImplementedError()
+    def update_solution(self) -> None:
+        pass
+
+    # Generic function to store (S-)DIRK coefficient, vector pairs.
+    def setup_stage_definitions(self, 
+                                stage_data: list[tuple[typing.Any, list[tuple[float, typing.Any]]]]
+                                ) -> None:
+        r"""
+        stage_data:
+            list of (apply_target, coeffs) for each stage, starting at stage 1.
+            apply_target: vector to pass to Apply() or None.
+            coeffs: list of (coeff, vector) pairs to sum into rhs.
+        """
+        self.stage_definitions = \
+        {
+            i + 1: {"apply_target": apply_target, "coeffs": coeffs}
+            for i, (apply_target, coeffs) in enumerate(stage_data)
+        }
+
+    # Generic function that solves a (S-)DIRK scheme.
+    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+
+        # Extract the stage information, if possible.
+        try:
+            stage_info = self.stage_definitions[iStage]
+        except KeyError:
+            raise TypeError(f"Stage {iStage} does not exist.")
+    
+        # Stage 1 is a special case, we handle it separately.
+        if iStage == 1:
+            self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
+ 
+        # Distinguish between singly-diagonal (SDIRK) and variable (DIRK) coefficients.
+        if self.variable_aii is not None:
+            self.aii.Set( self.variable_aii[iStage] ) # should be set before the solving routine.
+            ovaii = 1.0/self.variable_aii[iStage]
+            self.rhs.data = ovaii * self.mu0
+        else:
+            self.rhs.data = self.mu0
+
+        # Compute previous-stage residuals, if the apply_target exists.
+        if stage_info["apply_target"] is not None:
+            self.blfs.Apply(self.root.fem.gfu.vec, stage_info["apply_target"])
+           
+        # Build the right-hand side, scaled with its respective coefficients.
+        for aij, xj in stage_info["coeffs"]:
+            self.rhs.data += aij * xj
+    
+        # Solve the resulting nonlinear system.
+        for log in self.root.fem.solver.solve_nonlinear_system():
+            yield {"stage": iStage, **log}
+
 
 class SDIRK22(DIRKSchemes):
     r""" Updates the solution via a 2-stage 2nd-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Section 2.6 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is:
@@ -208,8 +285,7 @@ class SDIRK22(DIRKSchemes):
     
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{2}`.
     """
-    name: str = "sdirk22"
-    time_levels = ('n', 'n+1')
+    name: str = "sdirk22" 
 
     def initialize_butcher_tableau(self):
         
@@ -219,20 +295,37 @@ class SDIRK22(DIRKSchemes):
         self.a21 = alpha 
        
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1  = 1.0 - alpha
-        self.c2  = 1.0 
+        self.c = [1.0 - alpha, 1.0] 
 
-        # This is possible, because the method is L-stable.
-        self.b1  = self.a21
-        self.b2  = self.aii
+        # This is possible, because the method is stiffly-accurate.
+        self.b1 = self.a21
+        self.b2 = self.aii
+
+    def get_num_stages(self) -> int:
+        return 2
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
+
+    def configure_scheme(self) -> None:
+        
+        # This is an SDIRK scheme, aii is constant.
+        self.variable_aii = None
+        
+        # Scale the coefficients by their (-ve) diagonal counterpart.
+        a21 = -self.a21 / self.aii
+        self.setup_stage_definitions([
+            (None, []),                 # stage 1
+            (self.x1, [(a21, self.x1)]) # stage 2
+        ])
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
  
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
+
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -250,27 +343,9 @@ class SDIRK22(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
- 
-        # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
-        # Abbreviations.
-        a21 = -self.a21 / self.aii
-        
-        # Stage: 1.
-        self.rhs.data = self.mu0
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 1, **log}
-
-        # Stage: 2.
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
-        self.rhs.data = self.mu0 + a21 * self.x1
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 2, **log}
-
-        # NOTE,
-        # No need to explicitly update the gfu, since the last stage 
-        # corresponds to the value at time: t^{n+1}.
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2) # last stage corresponds to u^{n+1}.
 
 
 class SDIRK33(DIRKSchemes):
@@ -288,7 +363,6 @@ class SDIRK33(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{3}`.
     """
     name: str = "sdirk33"
-    time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
@@ -298,23 +372,45 @@ class SDIRK33(DIRKSchemes):
         self.a32 = -0.6443631710
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1  =  0.4358665215 
-        self.c2  =  0.7179332608
-        self.c3  =  1.0
+        self.c = [0.4358665215, 0.7179332608, 1.0]
 
-        # This is possible, because the method is L-stable.
-        self.b1  = self.a31
-        self.b2  = self.a32
-        self.b3  = self.aii
+        # This is possible, because the method is stiffly-accurate.
+        self.b1 = self.a31
+        self.b2 = self.a32
+        self.b3 = self.aii
+        
+    def get_num_stages(self) -> int:
+        return 3
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
+
+    def configure_scheme(self) -> None:
+        
+        # This is an SDIRK scheme, aii is constant.
+        self.variable_aii = None
+        
+        # Scale the coefficients by their (-ve) diagonal counterpart.
+        a21 = -self.a21 / self.aii
+        a31 = -self.a31 / self.aii 
+        a32 = -self.a32 / self.aii
+        self.setup_stage_definitions([
+            (None, []),                                 # stage 1
+            (self.x1, [(a21, self.x1)]),                # stage 2
+            (self.x2, [(a31, self.x1), (a32, self.x2)]) # stage 3
+        ])
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
  
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
         self.x2 = self.root.fem.gfu.vec.CreateVector()
+
+        # Invert the (weighted-)mass matrix.
+        self.minv = self.root.fem.solver.get_inverse(self.mass, self.root.fem.fes)
+
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -332,35 +428,104 @@ class SDIRK33(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
- 
-        # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
-        # Abbreviations.
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
+        yield from self.solve_stage(3) # last stage corresponds to u^{n+1}.
+
+
+class SDIRK43(DIRKSchemes):
+    r""" Updates the solution via a 4-stage 3rd-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Section 2.8 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is:
+
+    .. math::
+        \begin{array}{c|cccc}
+	        \frac{1}{2} & \phantom{-}\frac{1}{2} & \phantom{-}0           & 0           & 0 \\
+	        \frac{2}{3} & \phantom{-}\frac{1}{6} & \phantom{-}\frac{1}{2} & 0           & 0 \\
+            \frac{1}{2} & -\frac{1}{2}           & \phantom{-}\frac{1}{2} & \frac{1}{2} & 0 \\
+            1           & \phantom{-}\frac{3}{2} & -\frac{3}{2}           & \frac{1}{2} & \frac{1}{2} \\
+            \hline
+	                    & \phantom{-}\frac{3}{2} & -\frac{3}{2}           & \frac{1}{2} & \frac{1}{2}
+        \end{array}
+    
+    :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{2}`.
+    """
+    name: str = "sdirk43"
+
+    def initialize_butcher_tableau(self):
+
+        self.aii =  1.0/2.0
+        self.a21 =  1.0/6.0
+        self.a31 = -1.0/2.0
+        self.a32 =  1.0/2.0
+        self.a41 =  3.0/2.0
+        self.a42 = -3.0/2.0
+        self.a43 =  1.0/2.0
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c = [1.0/2.0, 2.0/3.0, 1.0/2.0, 1.0]
+
+        # This is possible, because the method is stiffly-accurate.
+        self.b1 = self.a41
+        self.b2 = self.a42
+        self.b3 = self.a43
+        self.b4 = self.aii
+
+    def get_num_stages(self) -> int:
+        return 4
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
+
+    def configure_scheme(self) -> None:
+        
+        # This is an SDIRK scheme, aii is constant.
+        self.variable_aii = None
+        
+        # Scale the coefficients by their (-ve) diagonal counterpart.
         a21 = -self.a21 / self.aii
-        a31 = -self.a31 / self.aii
+        a31 = -self.a31 / self.aii 
         a32 = -self.a32 / self.aii
+        a41 = -self.a41 / self.aii 
+        a42 = -self.a42 / self.aii
+        a43 = -self.a43 / self.aii
+        self.setup_stage_definitions([
+            (None, []),                                                 # stage 1
+            (self.x1, [(a21, self.x1)]),                                # stage 2
+            (self.x2, [(a31, self.x1), (a32, self.x2)]),                # stage 3
+            (self.x3, [(a41, self.x1), (a42, self.x2), (a43, self.x3)]) # stage 4
+        ])
 
-        # Stage: 1.
-        self.rhs.data = self.mu0
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 1, **log}
+    def assemble(self) -> None:
+        super().assemble()
+ 
+        # Reserve space for additional vectors.
+        self.x1 = self.root.fem.gfu.vec.CreateVector()
+        self.x2 = self.root.fem.gfu.vec.CreateVector()
+        self.x3 = self.root.fem.gfu.vec.CreateVector()
 
-        # Stage: 2.
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
-        self.rhs.data = self.mu0 + a21 * self.x1
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 2, **log}
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
 
-        # Stage: 3.
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x2)
-        self.rhs.data = self.mu0 + a31 * self.x1 + a32 * self.x2
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 3, **log}
+    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
-        # NOTE,
-        # No need to explicitly update the gfu, since the last stage 
-        # corresponds to the value at time: t^{n+1}.
+        u, v = self.root.fem.TnT['U']
+        gfus = self.gfus['U'].copy()
+        gfus['n+1'] = u
+       
+        # This initializes the coefficients for this scheme.
+        self.initialize_butcher_tableau()
+
+        # Abbreviation.
+        ovadt = 1.0/(self.aii*self.dt)
+
+        # Add the scaled mass matrix.
+        blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
+
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
+        yield from self.solve_stage(3)
+        yield from self.solve_stage(4) # last stage corresponds to u^{n+1}.
 
 
 class SDIRK54(DIRKSchemes):
@@ -380,43 +545,61 @@ class SDIRK54(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{5}`.
     """
     name: str = "sdirk54"
-    time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
         self.aii =    1.0/4.0
-        
         self.a21 =    1.0/2.0 
-        
         self.a31 =   17.0/50.0 
         self.a32 =   -1.0/25.0
-        
         self.a41 =  371.0/1360.0
         self.a42 = -137.0/2720.0
         self.a43 =   15.0/544.0
-        
         self.a51 =   25.0/24.0
         self.a52 =  -49.0/48.0
         self.a53 =  125.0/16.0
         self.a54 =  -85.0/12.0
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1  =  1.0/4.0
-        self.c2  =  3.0/4.0
-        self.c3  = 11.0/20.0
-        self.c4  =  1.0/2.0
-        self.c5  =  1.0
+        self.c = [1.0/4.0, 3.0/4.0, 11.0/20.0, 1.0/2.0, 1.0]
 
-        # This is possible, because the method is L-stable.
-        self.b1  = self.a51
-        self.b2  = self.a52
-        self.b3  = self.a53
-        self.b4  = self.a54
-        self.b5  = self.aii
+        # This is possible, because the method is stiffly-accurate.
+        self.b1 = self.a51
+        self.b2 = self.a52
+        self.b3 = self.a53
+        self.b4 = self.a54
+        self.b5 = self.aii
+
+    def get_num_stages(self) -> int:
+        return 5
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
+
+    def configure_scheme(self) -> None:
+        
+        # This is an SDIRK scheme, aii is constant.
+        self.variable_aii = None
+        
+        # Scale the coefficients by their (-ve) diagonal counterpart.
+        a21 = -self.a21 / self.aii
+        a31 = -self.a31 / self.aii 
+        a32 = -self.a32 / self.aii
+        a41 = -self.a41 / self.aii 
+        a42 = -self.a42 / self.aii
+        a43 = -self.a43 / self.aii
+        a51 = -self.a51 / self.aii
+        a52 = -self.a52 / self.aii
+        a53 = -self.a53 / self.aii
+        a54 = -self.a54 / self.aii
+        self.setup_stage_definitions([
+            (None, []),                                                                 # stage 1
+            (self.x1, [(a21, self.x1)]),                                                # stage 2
+            (self.x2, [(a31, self.x1), (a32, self.x2)]),                                # stage 3
+            (self.x3, [(a41, self.x1), (a42, self.x2), (a43, self.x3)]),                # stage 4
+            (self.x4, [(a51, self.x1), (a52, self.x2), (a53, self.x3), (a54, self.x4)]) # stage 5
+        ])
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
  
         # Reserve space for additional vectors.
@@ -424,6 +607,9 @@ class SDIRK54(DIRKSchemes):
         self.x2 = self.root.fem.gfu.vec.CreateVector()
         self.x3 = self.root.fem.gfu.vec.CreateVector()
         self.x4 = self.root.fem.gfu.vec.CreateVector()
+
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -441,67 +627,12 @@ class SDIRK54(DIRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
- 
-        # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
 
-        # Abbreviations.
-        a21 = -self.a21 / self.aii
-        
-        a31 = -self.a31 / self.aii
-        a32 = -self.a32 / self.aii
-
-        a41 = -self.a41 / self.aii
-        a42 = -self.a42 / self.aii
-        a43 = -self.a43 / self.aii
-
-        a51 = -self.a51 / self.aii
-        a52 = -self.a52 / self.aii
-        a53 = -self.a53 / self.aii
-        a54 = -self.a54 / self.aii
-
-        # Stage: 1.
-        self.rhs.data = self.mu0
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 1, **log}
-
-        # Stage: 2.
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
-        self.rhs.data = self.mu0      \
-            + a21 * self.x1
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 2, **log}
-
-        # Stage: 3.
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x2)
-        self.rhs.data = self.mu0      \
-            + a31 * self.x1 \
-            + a32 * self.x2
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 3, **log}
-
-        # Stage: 4.
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x3)
-        self.rhs.data = self.mu0      \
-            + a41 * self.x1 \
-            + a42 * self.x2 \
-            + a43 * self.x3
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 4, **log}
-
-        # Stage: 5.
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x4)
-        self.rhs.data = self.mu0      \
-            + a51 * self.x1 \
-            + a52 * self.x2 \
-            + a53 * self.x3 \
-            + a54 * self.x4
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 5, **log}
-
-        # NOTE,
-        # No need to explicitly update the gfu, since the last stage 
-        # corresponds to the value at time: t^{n+1}.
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
+        yield from self.solve_stage(3)
+        yield from self.solve_stage(4)
+        yield from self.solve_stage(5) # last stage corresponds to u^{n+1}.
 
 
 class DIRK43_WSO2(DIRKSchemes):
@@ -520,45 +651,66 @@ class DIRK43_WSO2(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{4}`.
     """
     name: str = "dirk43_wso2"
-    time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
         self.a11 =  0.01900072890
-        
         self.a21 =  0.40434605601
         self.a22 =  0.38435717512
-        
         self.a31 =  0.06487908412
         self.a32 = -0.16389640295
         self.a33 =  0.51545231222
-
         self.a41 =  0.02343549374
         self.a42 = -0.41207877888
         self.a43 =  0.96661161281
         self.a44 =  0.42203167233
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1  = self.a11 
-        self.c2  = self.a21 + self.a22 
-        self.c3  = self.a31 + self.a32 + self.a33 
-        self.c4  = 1.0
+        self.c  = [self.a11, 
+                   self.a21 + self.a22,
+                   self.a31 + self.a32 + self.a33,
+                   1.0]
 
-        # This is possible, because the method is L-stable.
-        self.b1  = self.a41
-        self.b2  = self.a42
-        self.b3  = self.a43
-        self.b4  = self.a44
+        # This is possible, because the method is stiffly-accurate.
+        self.b1 = self.a41
+        self.b2 = self.a42
+        self.b3 = self.a43
+        self.b4 = self.a44
+
+    def get_num_stages(self) -> int:
+        return 4
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
+
+    def configure_scheme(self) -> None:
+        
+        # This is a non-single DIRK scheme, aii is different between stages.
+        self.variable_aii = [None, self.a11, self.a22, self.a33, self.a44] # 1st stage is padded.
+
+        # Scale the coefficients by their (-ve) diagonal counterpart.
+        a21 = -self.a21 / self.a22
+        a31 = -self.a31 / self.a33 
+        a32 = -self.a32 / self.a33
+        a41 = -self.a41 / self.a44 
+        a42 = -self.a42 / self.a44
+        a43 = -self.a43 / self.a44
+        self.setup_stage_definitions([
+            (None, []),                                                 # stage 1
+            (self.x1, [(a21, self.x1)]),                                # stage 2
+            (self.x2, [(a31, self.x1), (a32, self.x2)]),                # stage 3
+            (self.x3, [(a41, self.x1), (a42, self.x2), (a43, self.x3)]) # stage 4
+        ]) 
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
  
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
         self.x2 = self.root.fem.gfu.vec.CreateVector()
         self.x3 = self.root.fem.gfu.vec.CreateVector()
+
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -572,68 +724,20 @@ class DIRK43_WSO2(DIRKSchemes):
         # Create a variable parameter, for the diagonal coefficients a_{ii}.
         self.aii = ngs.Parameter(1.0)
 
-        # Abbreviation.
-        ovadt = 1.0/(self.aii*self.dt)
+        # NOTE, aii needs to be kept here as a stage-variable, since it shows 
+        # up in the residual iterations via the nonlinear solver.
+        ovadt = 1.0/(self.aii*self.dt) 
 
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
+        yield from self.solve_stage(3)
+        yield from self.solve_stage(4) # last stage corresponds to u^{n+1}.
  
-        # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
-
-        # Stage: 1.
-        self.aii.Set( self.a11 )
-        ovaii = 1.0 / self.aii.Get()
-        
-        self.rhs.data = ovaii * self.mu0
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 1, **log}
-
-        # Stage: 2.
-        self.aii.Set( self.a22 )
-        ovaii =  1.0 / self.aii.Get()
-        a21 = -ovaii * self.a21
-
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
-        self.rhs.data = ovaii * self.mu0 \
-            + a21 * self.x1
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 2, **log}
-
-        # Stage: 3.
-        self.aii.Set( self.a33 )
-        ovaii =  1.0 / self.aii.Get()
-        a31 = -self.a31 * ovaii
-        a32 = -self.a32 * ovaii
-
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x2)
-        self.rhs.data = ovaii * self.mu0 \
-            + a31 * self.x1  \
-            + a32 * self.x2
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 3, **log}
-
-        # Stage: 4.
-        self.aii.Set(self.a44)
-        ovaii = 1.0 / self.aii.Get()
-        a41 = -ovaii * self.a41
-        a42 = -ovaii * self.a42
-        a43 = -ovaii * self.a43
-
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x3)
-        self.rhs.data = ovaii * self.mu0 \
-            + a41 * self.x1  \
-            + a42 * self.x2  \
-            + a43 * self.x3
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 4, **log}
-
-        # NOTE,
-        # No need to explicitly update the gfu, since the last stage 
-        # corresponds to the value at time: t^{n+1}.
-
 
 class DIRK34_LDD(DIRKSchemes):
     r""" Updates the solution via a 3-stage 4th-order diagonally-implicit Runge-Kutta (DIRK) with a low-dispersion and dissipation. Taken from Table A.1 in :cite:`najafi2013low`. Its corresponding Butcher tableau is: 
@@ -649,32 +753,45 @@ class DIRK34_LDD(DIRKSchemes):
     """
 
     name: str = "dirk34_ldd"
-    time_levels = ('n', 'n+1')
 
     def initialize_butcher_tableau(self):
 
         self.a11 =  0.377847764031163
-        
         self.a21 =  0.385232756462588
         self.a22 =  0.461548399939329
-        
         self.a31 =  0.675724855841358
         self.a32 = -0.061710969841169
         self.a33 =  0.241480233100410
-
+        
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1  =  0.257820901066211 
-        self.c2  =  0.434296446908075  
-        self.c3  =  0.758519768667167
+        self.c = [0.257820901066211, 0.434296446908075, 0.758519768667167]
 
         # NOTE, this is not L-stable.
-        self.b1  =  0.750869573741408
-        self.b2  = -0.362218781852651
-        self.b3  =  0.611349208111243
+        self.b1 =  0.750869573741408
+        self.b2 = -0.362218781852651
+        self.b3 =  0.611349208111243
+
+    def get_num_stages(self) -> int:
+        return 3
+    def get_stage_dt(self) -> list[float]:
+        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
+
+    def configure_scheme(self) -> None:
+        
+        # This is a non-single DIRK scheme, aii is different between stages.
+        self.variable_aii = [None, self.a11, self.a22, self.a33] # 1st stage is padded.
+
+        # Scale the coefficients by their (-ve) diagonal counterpart.
+        a21 = -self.a21 / self.a22
+        a31 = -self.a31 / self.a33 
+        a32 = -self.a32 / self.a33
+        self.setup_stage_definitions([
+            (None, []),                                 # stage 1
+            (self.x1, [(a21, self.x1)]),                # stage 2
+            (self.x2, [(a31, self.x1), (a32, self.x2)]) # stage 3
+        ]) 
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
  
         # Reserve space for additional vectors.
@@ -686,6 +803,9 @@ class DIRK34_LDD(DIRKSchemes):
         # Precompute the mass matrix of the volume elements.
         self.minv = self.root.fem.solver.get_inverse(self.mass, self.root.fem.fes)
 
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
+        
         # Compute the inverse mass matrix for the facets only. Needed to update uhat^{n+1}.
         # NOTE, this assumes uhat^{n+1} = 0.5*( U_L^{n+1} + U_R^{n+1} ).
         
@@ -718,62 +838,36 @@ class DIRK34_LDD(DIRKSchemes):
         # Create a variable parameter, for the diagonal coefficients a_{ii}.
         self.aii = ngs.Parameter(1.0)
 
-        # Abbreviation.
+        # NOTE, aii needs to be kept here as a stage-variable, since it shows 
+        # up in the residual iterations via the nonlinear solver.
         ovadt = 1.0/(self.aii*self.dt)
 
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
- 
-        # Book-keep the initial solution at U^n.
-        self.u0.data = self.root.fem.gfu.vec
-
-        # Initial vector: M*U^n.
-        self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
-
-        # Stage: 1.
-        self.aii.Set( self.a11 )
-        ovaii = 1.0 / self.aii.Get()
+    def update_solution(self) -> None:
         
-        self.rhs.data = ovaii * self.mu0
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 1, **log}
-
-        # Stage: 2.
-        self.aii.Set( self.a22 )
-        ovaii =  1.0 / self.aii.Get()
-        a21 = -ovaii * self.a21
-
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x1)
-        self.rhs.data = ovaii * self.mu0 \
-                      + a21 * self.x1
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 2, **log}
-
-        # Stage: 3.
-        self.aii.Set( self.a33 )
-        ovaii =  1.0 / self.aii.Get()
-        a31 = -self.a31 * ovaii
-        a32 = -self.a32 * ovaii
-
-        self.blfs.Apply(self.root.fem.gfu.vec, self.x2)
-        self.rhs.data = ovaii * self.mu0 \
-            + a31 * self.x1  \
-            + a32 * self.x2
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {'stage': 3, **log}
-
-        # Spatial term evaluated at stage 3.
+        # Spatial term evaluated at the final stage: 3.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x3)
 
         # Need to explicitly update the solution.
-        self.root.fem.gfu.vec.data = self.u0           \
-            - self.minv *       \
-            (self.b1 * self.x1
-             + self.b2 * self.x2
-             + self.b3 * self.x3)
+        self.root.fem.gfu.vec.data = self.u0 \
+            - self.minv * ( self.b1 * self.x1 + self.b2 * self.x2 + self.b3 * self.x3)
 
-        # We assumbe f, because it uses the (volume) solution at u^{n+1}.
+        # We assume f, because it uses the (volume) solution at u^{n+1}.
         self.f_uhat.Assemble()
         self.root.fem.gfus['Uhat'].vec.data = self.minv_uhat * self.f_uhat.vec
+
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+
+        # Book-keep the solution at u^{n}.
+        self.u0.data = self.root.fem.gfu.vec # NOTE, this needs changes to work as an IMEX-pair.
+
+        yield from self.solve_stage(1)
+        yield from self.solve_stage(2)
+        yield from self.solve_stage(3)
+
+        # NOTE, must explicitly reconstruct the solution at u^{n+1}.
+        self.update_solution()
+
+
