@@ -84,7 +84,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         # Compute the flux on the surface of an element, in the normal direction.
         Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
 
-        # Assemble the explicit bilinear form, keeping in mind this is placed on the RHS.
+        # Assemble the explicit bilinear form, keeping in mind this is placed on the LHS.
         blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus['vol'])
         blf['U']['convection'] += mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
