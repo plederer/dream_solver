@@ -472,7 +472,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
        
     # Function that checks whether the specified schemes form a viable IMEX pair.
-    def isvalid_imex_schemes(self) -> bool:
+    def is_valid_imex_schemes(self) -> bool:
 
         n_imp = self.cfg_implicit.fem.scheme.get_num_stages()
         n_exp = self.cfg_explicit.fem.scheme.get_num_stages()
@@ -534,7 +534,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
             self.cfg_implicit.fem.scheme.assemble()
             self.cfg_explicit.fem.scheme.assemble()
 
-        if not self.isvalid_imex_schemes():
+        if not self.is_valid_imex_schemes():
             raise TypeError(f"Specified time schemes do not form an IMEX pair.")
 
         with self.cfg_implicit.io as io_imp, self.cfg_explicit.io as io_exp:
