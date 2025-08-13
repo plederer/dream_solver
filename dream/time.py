@@ -563,8 +563,9 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 io_exp.save_in_time_routine(t, rate)
                 io_imp.save_in_time_routine(t, rate)
                 
-                io_exp.redraw(rate)
-                io_imp.redraw(rate)
+                # NOTE, currently, not possible to visualiza multizones in netgen.
+                #io_exp.redraw(rate)
+                #io_imp.redraw(rate)
                 
             io_exp.save_post_time_routine(t, rate)
             io_imp.save_post_time_routine(t, rate)
