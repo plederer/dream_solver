@@ -83,6 +83,8 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
         if isinstance(U, ngs.GridFunction):
             dU = ngs.grad(U)
             U = U.components
+        elif isinstance(U, ngs.comp.ProxyFunction):
+            dU = ngs.grad(U)
 
         U_ = flowfields()
         U_.rho = U[0]
