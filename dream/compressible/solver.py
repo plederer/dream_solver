@@ -641,13 +641,13 @@ class CompressibleFlowSolver(SolverConfiguration):
     @equation
     def heat_flux(self, U: flowfields, dU: flowfields) -> ngs.CF:
 
-        k = self.viscosity(U)
+        mu = self.viscosity(U)
         Re = self.scaling.reference_reynolds_number
         Pr = self.prandtl_number
 
-        if all((k, dU.grad_T)):
+        if all((mu, dU.grad_T)):
             logger.debug("Returning heat flux from temperature gradient.")
-            return -k/(Re * Pr) * dU.grad_T
+            return -mu/(Re * Pr) * dU.grad_T
 
     @equation
     def characteristic_velocities(self, U: flowfields, unit_vector: ngs.CF, type: str = None) -> ngs.CF:

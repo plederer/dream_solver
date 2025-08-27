@@ -451,6 +451,10 @@ class SolverConfiguration(Configuration, is_interface=True):
 
         self.fem.initialize()
 
+    def get_all_solution_fields(self) -> ngsdict:
+        
+        return self.fem.get_solution_fields()
+
     def get_solution_fields(self, *fields) -> ngsdict:
 
         uh = self.fem.get_solution_fields()
