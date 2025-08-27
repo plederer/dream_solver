@@ -65,7 +65,6 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         self._interior_penalty_coefficient = alpha
 
     def get_scaled_penalty_coefficient(self):
-        
         h = self.mesh.meshsize
         alpha = self.interior_penalty_coefficient 
         N = self.fem.order
@@ -92,7 +91,6 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         self.add_surface_term(blf, lf)
         self.add_symmetrizing_term(blf, lf)
         self.add_penalizing_term(blf, lf)
-
 
     def add_surface_term(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -184,8 +182,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         KU22 = (KU22i + KU22j) / 2
 
         # Form the penalty term, which is based on the contraction of the diffusion matrices.
-        penn = nx * ( KU11*nx + KU12*ny ) \
-             + ny * ( KU21*nx + KU22*ny )
+        penn = nx * ( KU11*nx + KU12*ny ) + ny * ( KU21*nx + KU22*ny )
         blf['U']['diffusion'] += ngs.InnerProduct(tau*penn * jumpU, jumpV) * dS
 
     def get_frozen_diffusion_matrices_conservative_transposed(self, U: flowfields):
@@ -297,14 +294,13 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         # We're done.
         return KU11, KU12, KU21, KU22
 
-
-
     def add_viscous_interface_formulation(self, blf: Integrals, lf: Integrals, bc: InterfaceBC, bnd: str):
         
         bonus = self.fem.bonus_int_order['diffusion']
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
         U, V = self.TnT['U']
 
+        # Form the boundary state, written as conservative variables.
         U_infty = ngs.CF(
             (self.root.density(bc.fields),
              self.root.momentum(bc.fields),
@@ -312,8 +308,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
 
         # Extract local and neighboring solution (with gradients).
         Ui = self.fem.get_conservative_fields(U, with_gradients=True)
-        #Uj = self.fem.get_conservative_fields(U.Other(bnd=U_infty), with_gradients=True)
-        Uj = bc.fields
+        Uj = bc.fields # NOTE, this uses the Other's relations to compute its quantities.
 
         # # # 
         # Surface term.
@@ -326,7 +321,6 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         # Form the surface term.
         surf = (Gi + Gj) * self.mesh.normal / 2 
         blf['U'][f"{bc.name}_{bnd}"] -= ngs.InnerProduct(surf, V) * dS
-
 
         # # #
         # Symmetrizing term.
@@ -354,7 +348,6 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         # Form the symmetrizing term.
         blf['U'][f"{bc.name}_{bnd}"] -= ngs.InnerProduct(FTi, jumpU) * dS
 
-
         # # # 
         # Penalty term.
         # # 
@@ -373,11 +366,8 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         KU22 = (KU22i + KU22j) / 2
 
         # Form the penalty term, which is based on the contraction of the diffusion matrices.
-        penn = nx * ( KU11*nx + KU12*ny ) \
-             + ny * ( KU21*nx + KU22*ny )
+        penn = nx * ( KU11*nx + KU12*ny ) + ny * ( KU21*nx + KU22*ny )
         blf['U'][f"{bc.name}_{bnd}"] += ngs.InnerProduct(tau*penn * jumpU, V) * dS
-
-
 
 
 class ConservativeDG(ConservativeFiniteElementMethod):
@@ -387,9 +377,6 @@ class ConservativeDG(ConservativeFiniteElementMethod):
     def __init__(self, mesh, root=None, **default):
 
         DEFAULT = {'viscous_treatment': None,}
-
-        # TODO:
-        # initialize viscous_treatment from InteriorPenaltyMethod, otherwise turn off in case of inviscid formulation.
 
         DEFAULT.update(default)
 
@@ -440,9 +427,12 @@ class ConservativeDG(ConservativeFiniteElementMethod):
     def add_convection_form(self, blf: Integrals, lf:  Integrals):
 
         bonus = self.bonus_int_order['convection']
+        dV = ngs.dx(bonus_intorder=bonus['vol'])
+        dS = ngs.dx(skeleton=True, bonus_intorder=bonus['bnd'])
         U, V = self.TnT['U']
 
-        mask = self.get_domain_boundary_mask()
+        # Jump of the test functions.
+        jumpV = V - V.Other()
 
         # Extract local and neighboring solution.
         Ui = self.get_conservative_fields(U)
@@ -455,12 +445,8 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
 
         # Assemble the explicit bilinear form, keeping in mind this is placed on the LHS.
-        blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus['vol'])
-        blf['U']['convection'] += mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
-        
-        # TODO: Change the above to this, as its more efficient (also delete mask).
-        #blf['U']['convection'] += bla.inner(Fn, V-V.Other()) * ngs.dx(skeleton=True, bonus_intorder=bonus['bnd'])
-
+        blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * dV
+        blf['U']['convection'] += bla.inner(Fn, jumpV) * dS 
 
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
 
@@ -482,13 +468,13 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
             elif isinstance(bc, Outflow):
                 self.add_outflow_formulation(blf, lf, bc, bnd)
-
-            elif isinstance(bc, Periodic):
-                continue
-            
+   
             elif isinstance(bc, InterfaceBC):
                 self.add_interface_formulation(blf, lf, bc, bnd)
 
+            elif isinstance(bc, Periodic):
+                continue
+         
             else:
                 raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
 
@@ -505,7 +491,6 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
-
 
     def add_farfield_formulation(self, blf: Integrals, lf: Integrals, bc: FarField, bnd: str):
         
@@ -526,13 +511,16 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         Gamma_infty = bla.inner(Fn, V)
         blf['U'][f"{bc.name}_{bnd}"] = Gamma_infty * dS
 
-
     def add_outflow_formulation(self, blf: Integrals, lf: Integrals, bc: Outflow, bnd: str):
  
+        # NOTE, I took this out of my thesis (Section 5.1.1.3). 
+        # If you want I can reference it from somewhere else,
+        # ... maybe NASA's FUN3D documentation?
+
         bonus = self.bonus_int_order['convection']
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
         U, V = self.TnT['U']
- 
+        
         n = bla.as_vector(self.mesh.normal)
         gamma = self.root.equation_of_state.heat_capacity_ratio
         
@@ -565,30 +553,34 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         Gamma_infty = bla.inner(Fn, V)
         blf['U'][f"{bc.name}_{bnd}"] = Gamma_infty * dS
 
-
     def add_interface_formulation(self, blf: Integrals, lf: Integrals, bc: InterfaceBC, bnd: str):
         
         bonus = self.bonus_int_order['convection']
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
         U, V = self.TnT['U']
 
+        # Form the boundary state, written as conservative variables.
         U_infty = ngs.CF(
             (self.root.density(bc.fields),
              self.root.momentum(bc.fields),
              self.root.energy(bc.fields)))
 
         Ui = self.get_conservative_fields(U)
-        Uj = self.get_conservative_fields(U.Other(bnd=U_infty))
+        Uj = self.get_conservative_fields(U.Other(bnd=U_infty)) # Maybe not needed with bnd=U_infty?
+
+        # # #
+        # Inviscid treatment.
+        # # 
 
         Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
         
         Gamma_infty = bla.inner(Fn, V)
         blf['U'][f"{bc.name}_{bnd}"] = Gamma_infty * dS
-
         
         # # # 
         # Viscous treatment.
         # # 
+        
         if not self.root.dynamic_viscosity.is_inviscid:
             self.viscous_treatment.add_viscous_interface_formulation(blf, lf, bc, bnd)
 
