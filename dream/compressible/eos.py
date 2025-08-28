@@ -125,6 +125,10 @@ class IdealGas(EquationOfState):
     def heat_capacity_ratio(self, value: ngs.Parameter):
         self._heat_capacity_ratio.Set(value)
 
+    @property
+    def specific_heat_cv(self) -> ngs.Parameter:
+        return 1/self.heat_capacity_ratio
+
     def density(self, U: flowfields) -> ngs.CF:
         r"""Returns the density from given fields
 

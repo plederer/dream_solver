@@ -518,14 +518,14 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
             elif isinstance(bc, IsothermalWall):
                 self.add_isothermal_wall_formulation(blf, lf, bc, bnd)
 
-            elif isinstance(bc, Periodic):
-                continue
-
             elif isinstance(bc, AdiabaticWall):
                 self.add_adiabatic_wall_formulation(blf, lf, bc, bnd)
 
             elif isinstance(bc, InterfaceBC):
                 self.add_interface_formulation(blf, lf, bc, bnd)
+
+            elif isinstance(bc, Periodic):
+                continue
 
             else:
                 raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
@@ -728,6 +728,9 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
              self.root.momentum(bc.fields),
              self.root.energy(bc.fields)))
 
+        # # #
+        # Inviscid treatment.
+        # # 
 
         An_in = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'incoming')
         An_out = self.root.get_conservative_convective_jacobian(Uhat, self.mesh.normal, 'outgoing')
@@ -735,7 +738,34 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
 
         blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_infty * dS
 
+        # # # 
+        # Viscous treatment.
+        # # 
 
+        if not self.root.dynamic_viscosity.is_inviscid:
+            
+            bonus = self.bonus_int_order['diffusion']
+            dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
+
+            # Extract the neighboring solution, with gradients.
+            Uj = bc.fields
+
+            # Extract the mixed variables.
+            Q, _ = self.TnT['Q']
+            Q = self.mixed_method.get_mixed_fields(Q)
+
+            # Get the viscous stabilization matrix, which is only a function of Uhat.
+            tau_d = self.mixed_method.get_diffusive_stabilisation_matrix(Uhat)
+            
+            # Get the viscous fluxes.
+            Gi = self.root.get_diffusive_flux(Uhat, Q)
+            Gj = self.root.get_diffusive_flux(Uj, Uj)
+
+            # Get the unit normal vector.
+            n = self.mesh.normal
+            
+            # Add the viscous numerical flux.
+            blf['Uhat'][f"{bc.name}_{bnd}"] += ngs.InnerProduct( (Gi - Gj)*n - tau_d * (U + U_infty - 2*Uhat.U), Vhat ) * dS
 
     def add_sponge_layer_formulation(self, blf: Integrals, lf: Integrals, dc: SpongeLayer, dom: str):
 
