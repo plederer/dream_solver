@@ -130,7 +130,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         # Jump of the conservative solution.
         jumpU = U - U.Other()
 
-        # Get the averaged gradient of the test functions.
+        # Get the gradient of the test functions.
         gradVi = ngs.grad(V)
         gradVj = ngs.grad(V.Other())
         
@@ -196,16 +196,16 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         Re = self.root.scaling.reference_reynolds_number
         Pr = self.root.prandtl_number
 
-        # Average the velocities.
+        # Extract the velocities.
         u = U.u[0] 
         v = U.u[1]
         
-        # Average the density and energies.
+        # Extract the density and energies.
         rho = U.rho 
         ei  = self.root.specific_inner_energy(U)
         ek  = self.root.specific_kinetic_energy(U)
 
-        # Average the viscosity.
+        # Extract the viscosity.
         mu = self.root.viscosity(U)
 
         # NOTE, we explicitly scale the viscosity with Re, 
@@ -333,7 +333,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         # Jump of the conservative solution.
         jumpU = U - U_infty
 
-        # Get the averaged gradient of the test functions.
+        # Get the gradient of the test functions.
         gradVi = ngs.grad(V)
         
         # Extract the x and y-components of the gradient of the test functions.
