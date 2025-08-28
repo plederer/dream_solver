@@ -52,7 +52,6 @@ class CompressibleFlowSolver(SolverConfiguration):
         """
         return self._fem
 
-
     @fem.setter
     def fem(self, fem):
         OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
@@ -274,6 +273,27 @@ class CompressibleFlowSolver(SolverConfiguration):
         u = self.velocity(U)
         mu = self.viscosity(U)
         return rho * ngs.sqrt(bla.inner(u, u)) / mu
+
+    def get_local_time_step_estimate(self, U: flowfields):
+
+        order = self.fem.order
+        h = self.mesh.meshsize
+        u = self.velocity(U)
+        lambda_max = ngs.sqrt(bla.inner(u, u)) + self.speed_of_sound(U)
+
+        fes = ngs.L2(self.mesh, order=0)
+        (u, v) = fes.TnT()
+        gfu = ngs.GridFunction(fes)
+
+        lf = ngs.LinearForm(fes)
+        lf += h/(2*order+1)*lambda_max * v * ngs.dx
+        lf.Assemble()
+
+        gfu.vec.data = fes.Mass(1).Inverse() * lf.vec
+
+        logger.info(f"Minimum time step estimate: {min(gfu.vec)}, Maximum time step estimate: {max(gfu.vec)}")
+
+        return min(gfu.vec)
 
     def get_primitive_convective_jacobian(self, U: flowfields, unit_vector: ngs.CF, type: str = None):
         lambdas = self.characteristic_velocities(U, unit_vector, type)

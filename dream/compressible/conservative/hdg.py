@@ -65,6 +65,9 @@ class MixedMethod(Configuration, is_interface=True):
         tau_d = [0] + [1 for _ in range(self.mesh.dim)] + [1/Pr]
         return bla.diagonal(tau_d) * mu / Re
 
+    def set_initial_conditions(self) -> None:
+        logger.warning(f"Mixed method {self} does not implement set_initial_conditions method!")
+
 
 class Inactive(MixedMethod):
 
@@ -74,6 +77,10 @@ class Inactive(MixedMethod):
 
         if not self.root.dynamic_viscosity.is_inviscid:
             raise TypeError(f"Viscous configuration requires mixed method!")
+
+    def set_initial_conditions(self):
+        """ No mixed fields to set initial conditions for. """
+        return None
 
 
 class StrainHeat(MixedMethod):
@@ -308,6 +315,93 @@ class StrainHeat(MixedMethod):
         B = self.get_mixed_diffusive_jacobian_y(U)
         return A * unit_vector[0] + B * unit_vector[1]
 
+    def set_initial_conditions(self):
+        """ Set initial conditions for the mixed fields based on the initial condition of the conservative fields. """
+
+        if self.mesh.dim == 3:
+            raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
+
+        Q_ = {}
+        for dom, dc in self.root.dcs.to_pattern(Initial).items():
+            eps = self._get_strain_rate_tensor_from_initial_condition(dc.fields.copy(), voigt_notation=True)
+            grad_T = self._get_temperature_gradient_from_initial_condition(dc.fields.copy())
+            Q_[dom] = ngs.CF((eps, grad_T))
+        Q_ = self.mesh.MaterialCF(Q_)
+
+        gfu = self.gfus['Q']
+        fes = self.gfus['Q'].space
+        Q, P = fes.TnT()
+
+        blf = ngs.BilinearForm(fes)
+        blf += Q * P * ngs.dx
+
+        f = ngs.LinearForm(fes)
+        f += Q_ * P * ngs.dx
+
+        with ngs.TaskManager():
+            blf.Assemble()
+            f.Assemble()
+            gfu.vec.data = blf.mat.Inverse(freedofs=fes.FreeDofs(), inverse="sparsecholesky") * f.vec
+
+    def _get_strain_rate_tensor_from_initial_condition(self, U: flowfields, voigt_notation: bool = False):
+        """ Compute the strain-rate tensor from the initial condition fields."""
+
+        if U.grad_u is not None:
+            eps = self.root.strain_rate_tensor(U)
+
+        elif U.u is not None:
+            U.grad_u = ngs.CF(
+                (U.u[0].Diff(ngs.x),
+                 U.u[0].Diff(ngs.y),
+                 U.u[1].Diff(ngs.x),
+                 U.u[1].Diff(ngs.y)), dims=(2, 2))
+            eps = self.root.strain_rate_tensor(U)
+
+        elif all((U.rho, U.rho_u, U.grad_rho, U.grad_rho_u)):
+            U.grad_u = self.root.velocity_gradient(U, U)
+            eps = self.root.strain_rate_tensor(U)
+
+        elif all((U.rho, U.rho_u)):
+            U.grad_rho = ngs.CF((U.rho.Diff(ngs.x), U.rho.Diff(ngs.y)))
+            U.grad_rho_u = ngs.CF(
+                (U.rho_u[0].Diff(ngs.x),
+                 U.rho_u[0].Diff(ngs.y),
+                 U.rho_u[1].Diff(ngs.x),
+                 U.rho_u[1].Diff(ngs.y)), dims=(2, 2))
+            U.grad_u = self.root.velocity_gradient(U, U)
+            eps = self.root.strain_rate_tensor(U)
+
+        else:
+            raise ValueError(f"Initial condition does not provide sufficient fields to compute the strain-rate tensor!")
+
+        if voigt_notation:
+            eps = ngs.CF((eps[0, 0], eps[0, 1], eps[1, 1]))
+
+        return eps
+
+    def _get_temperature_gradient_from_initial_condition(self, U: flowfields):
+        """ Compute the temperature gradient from the initial condition fields."""
+
+        if U.grad_T is not None:
+            grad_T = U.grad_T
+
+        elif U.T is not None:
+            U.grad_T = ngs.CF((U.T.Diff(ngs.x), U.T.Diff(ngs.y)))
+            grad_T = self.root.temperature_gradient(U, U)
+
+        elif all((U.rho, U.p, U.grad_p, U.grad_rho)):
+            grad_T = self.root.temperature_gradient(U, U)
+
+        elif all((U.rho, U.p)):
+            U.grad_rho = ngs.CF((U.rho.Diff(ngs.x), U.rho.Diff(ngs.y)))
+            U.grad_p = ngs.CF((U.p.Diff(ngs.x), U.p.Diff(ngs.y)))
+            grad_T = self.root.temperature_gradient(U, U)
+
+        else:
+            raise ValueError(f"Initial condition does not provide sufficient fields to compute the temperature gradient!")
+
+        return grad_T
+
 
 class Gradient(MixedMethod):
 
@@ -406,7 +500,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         elif isinstance(self.root.time, PseudoTimeSteppingRoutine):
             OPTIONS = [ImplicitEuler, BDF2]
         elif isinstance(self.root.time, MultizoneIMEXTimeRoutine):
-            OPTIONS = [ImplicitEuler, SDIRK22, SDIRK33, SDIRK43] 
+            OPTIONS = [ImplicitEuler, SDIRK22, SDIRK33, SDIRK43]
         else:
             raise TypeError("HDG method only supports transient, pseudo time stepping or multizone time routines!")
         self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
@@ -873,6 +967,8 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
             blf.Assemble()
             f.Assemble()
             gfu.vec.data = blf.mat.Inverse(freedofs=fes.FreeDofs(), inverse="sparsecholesky") * f.vec
+
+        self.mixed_method.set_initial_conditions()
 
         super().set_initial_conditions()
 
