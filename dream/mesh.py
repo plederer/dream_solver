@@ -321,31 +321,6 @@ class Perturbation(Condition):
             raise TypeError(f"Perturbation fields must be of type '{ngsdict}' or '{dict}'")
 
 
-class Force(Condition):
-
-    def __init__(self, fields: ngsdict | None = None):
-        super().__init__()
-        self.fields = fields
-
-    @dream_configuration
-    def fields(self) -> ngsdict:
-        """ Returns the force of the corresponding equation """
-        if self._fields is None:
-            raise ValueError("Force fields not set!")
-        return self._fields
-
-    @fields.setter
-    def fields(self, fields: ngsdict) -> None:
-        if isinstance(fields, ngsdict):
-            self._fields = fields
-        elif isinstance(fields, dict):
-            self._fields = ngsdict(**fields)
-        elif fields is None:
-            self._fields = None
-        else:
-            raise TypeError(f"Fields must be of type '{ngsdict}' or '{dict}'")
-
-
 class Buffer(Condition):
 
     def __init__(self, function: ngs.CF | None = None, order: int = 0):
@@ -372,8 +347,7 @@ class Buffer(Condition):
     def order(self) -> int:
         return self._order
 
-    order.setter
-
+    @order.setter
     def order(self, order):
         self._order = int(order)
 

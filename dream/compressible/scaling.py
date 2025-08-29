@@ -84,7 +84,7 @@ from __future__ import annotations
 import typing
 import ngsolve as ngs
 
-from dream.config import Configuration, dream_configuration
+from dream.config import Configuration
 
 if typing.TYPE_CHECKING:
     from .solver import CompressibleFlowSolver
@@ -95,39 +95,13 @@ class Scaling(Configuration, is_interface=True):
 
     root: CompressibleFlowSolver
 
-    def __init__(self, mesh, root=None, **default):
-
-        self._farfield = {'L': 1, 'rho_inf': 1.293, 'u_inf': 1, 'c_inf': 343, 'T_inf': 293.15, 'p_inf': 101325}
-        super().__init__(mesh, root, **default)
-
-    @dream_configuration
-    def farfield(self) -> dict[str, ngs.CF]:
-        r""" Returns the dimensionful farfield values :math:`\overline{\cdot}_\infty` for the scaling. 
-
-            :getter: Returns the farfield values as dictionary.
-            :setter: Sets the farfield values, defaults to 
-
-                * :math:`\overline{L} = 1 \, \mathrm{m}`
-                * :math:`\overline{\rho}_\infty = 1.293 \, \mathrm{kg/m^3}`
-                * :math:`|\overline{\vec{u}}_\infty| = 1 \, \mathrm{m/s}`
-                * :math:`\overline{c}_\infty = 343 \, \mathrm{m/s}`
-                * :math:`\overline{T}_\infty = 293.15 \, \mathrm{K}`
-                * :math:`\overline{p}_\infty = 101325 \, \mathrm{Pa}`
-        """
-        return self._farfield
-
-    @farfield.setter
-    def farfield(self, farfield: dict[str, ngs.CF]):
-        self._farfield.update(**farfield)
-
     @property
-    def reference_density(self) -> ngs.CF:
-        r""" Returns the reference density.
+    def dim_fields(self):
 
-            .. math::
-                \rho_{ref} = \overline{\rho}_\infty
-        """
-        return self._farfield['rho_inf']
+        if self.root.dimensional_fields is None:
+            raise ValueError("Dimensional fields have to be set to access dimensional quantities.")
+
+        return self.root.dimensional_fields
 
     @property
     def density(self) -> float:
@@ -137,6 +111,38 @@ class Scaling(Configuration, is_interface=True):
                 \rho_\infty = 1
         """
         return 1.0
+
+    @property
+    def reference_density(self) -> ngs.CF:
+        r""" Returns the reference density.
+
+            .. math::
+                \rho_{ref} = \overline{\rho}_\infty
+        """
+        return self.dim_fields.rho
+    
+    @property
+    def reference_velocity(self) -> ngs.CF:
+        r""" Returns the reference velocity. """
+        raise NotImplementedError("reference_velocity has to be implemented in subclass.")
+
+    @property
+    def reference_pressure(self) -> ngs.CF:
+        r""" Returns the reference pressure.
+
+            .. math::
+                \p_{ref} = \rho_{ref} u^2_{ref}
+        """
+        return self.dim_fields.rho * self.reference_velocity**2
+    
+    @property
+    def reference_time_scale(self) -> ngs.CF:
+        r""" Returns the reference time.
+
+            .. math::
+                t_{ref} = \frac{L_{ref}}{u_{ref}}
+        """
+        return self.dim_fields.L / self.reference_velocity
 
 
 class Aerodynamic(Scaling):
@@ -150,7 +156,7 @@ class Aerodynamic(Scaling):
             .. math::
                 u_{ref} = |\overline{\vec{u}}_\infty|
         """
-        return self._farfield['u_inf']
+        return self.dim_fields.u
 
     @property
     def velocity(self):
@@ -169,7 +175,7 @@ class Aerodynamic(Scaling):
                 T_{ref} = \overline{T}_\infty \Ma^2_\infty (\gamma - 1)
         """
         gamma = self.root.equation_of_state.heat_capacity_ratio
-        return self._farfield['T_inf'] * self.root.mach_number**2 * (gamma - 1)
+        return self.dim_fields.T * self.root.mach_number**2 * (gamma - 1)
 
     @property
     def temperature(self) -> ngs.CF:
@@ -226,7 +232,7 @@ class Acoustic(Scaling):
             .. math::
                 u_{ref} = \overline{c}_\infty
         """
-        return self._farfield['c_inf']
+        return self.dim_fields.c
 
     @property
     def velocity(self):
@@ -245,7 +251,7 @@ class Acoustic(Scaling):
                 T_{ref} = \overline{T}_\infty (\gamma - 1)
         """
         gamma = self.root.equation_of_state.heat_capacity_ratio
-        return self._farfield['T_inf'] * (gamma - 1)
+        return self.dim_fields.T * (gamma - 1)
 
     @property
     def temperature(self) -> ngs.CF:
@@ -297,7 +303,7 @@ class Aeroacoustic(Scaling):
             .. math::
                 u_{ref} = |\overline{\vec{u}}_\infty| + \overline{c}_\infty
         """
-        return self._farfield['u_inf'] + self._farfield['c_inf']
+        return self.dim_fields.u + self.dim_fields.c
 
     @property
     def velocity(self):
@@ -316,7 +322,7 @@ class Aeroacoustic(Scaling):
                 T_{ref} = \overline{T}_\infty (1+ \Ma_\infty)^2 (\gamma - 1)
         """
         gamma = self.root.equation_of_state.heat_capacity_ratio
-        return self._farfield['T_inf'] * (1 + self.root.mach_number)**2 * (gamma - 1)
+        return self.dim_fields.T * (1 + self.root.mach_number)**2 * (gamma - 1)
 
     @property
     def temperature(self) -> ngs.CF:

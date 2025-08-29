@@ -1,5 +1,6 @@
 from .solver import CompressibleFlowSolver
 from .config import (flowfields,
+                     dimensionalfields,
                      FarField,
                      Outflow,
                      InviscidWall,
@@ -20,6 +21,7 @@ from .config import (flowfields,
 
 __all__ = ['CompressibleFlowSolver',
            'flowfields',
+           'dimensionalfields',
            'FarField',
            'Outflow',
            'InviscidWall',
