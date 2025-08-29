@@ -540,6 +540,20 @@ class InterfaceBC(Condition):
             raise TypeError(f"InterfaceBC fields must be of type '{flowfields}' or '{dict}'")
 
 
+class Dirichlet(Condition):
+    r""" Dirichlet boundary condition for compressible flow.
+
+    The Dirichlet condition is used to set the conservative variables :math:`\vec{U} = (\rho, \rho \vec{u}, \rho E)`
+    at the boundary. It is mainly used for testing purposes.
+    """
+
+    name = "dirichlet"
+
+    def __init__(self, fields: flowfields):
+        self.fields = fields
+        super().__init__()
+
+
 class Force(Condition):
 
     def __init__(self,
@@ -575,7 +589,7 @@ class Force(Condition):
         self._order = int(order)
 
 
-BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, InterfaceBC, Periodic]
+BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, InterfaceBC, Periodic, Dirichlet]
 
 
 # ------- Domain Conditions ------- #

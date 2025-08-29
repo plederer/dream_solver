@@ -14,12 +14,16 @@ class ImplicitSchemes(TimeSchemes):
         condense = self.root.fem.static_condensation
 
         self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
-        self.lf = ngs.LinearForm(self.root.fem.fes)
-
         self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'implicit bilinear form')
-        self.add_sum_of_integrals(self.lf, self.root.fem.lf, 'linear form')
 
-        self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, self.lf.vec)
+        rhs = None
+        if self.root.fem.lf:
+            self.lf = ngs.LinearForm(self.root.fem.fes)
+            self.add_sum_of_integrals(self.lf, self.root.fem.lf, 'linear form')
+            self.lf.Assemble()
+            rhs = self.lf.vec
+
+        self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, rhs)
 
         # NOTE
         # Pehaps its better to avoid lf, since it is empty, and specify the 3nd. 
