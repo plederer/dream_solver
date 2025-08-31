@@ -116,7 +116,44 @@ class Upwind(RiemannSolver):
         return Qn + ngs.Id(unit_vector.dim + 2)
 
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        raise ValueError("FVS solver in a standard DG has not been implemented (yet).")
+        
+        # Extract the normal.
+        n = bla.as_vector(unit_vector)
+        
+        # Extract the local conservative solution.
+        rhoi = self.root.density(Ui)
+        momi = self.root.momentum(Ui)
+        rhoEi = self.root.energy(Ui)
+
+        # Extract the neighboring conservative solution.
+        rhoj = self.root.density(Uj)
+        momj = self.root.momentum(Uj)
+        rhoEj = self.root.energy(Uj)
+        
+        # Assemble the averaged conservative solution.
+        rho = (rhoi + rhoj) / 2
+        mom = (momi + momj) / 2
+        rhoE = (rhoEi + rhoEj) / 2 
+
+        # Assemble a flowfields data, from the averaged state.
+        Um = ngs.CF( (rho, mom, rhoE) )
+        Umm = self.root.fem.get_conservative_fields( Um ) 
+        
+        # Assemble an explicit coefficient function for each of the states.
+        Uii = ngs.CF( (rhoi, momi, rhoEi) )
+        Ujj = ngs.CF( (rhoj, momj, rhoEj) )
+        
+        # Compute the incoming and outgoing matrices, based on the averaged state.
+        Am = self.root.get_conservative_convective_jacobian(Umm, n, 'incoming')
+        Ap = self.root.get_conservative_convective_jacobian(Umm, n, 'outgoing')
+        
+        # Deduce the flux based on the below split form.
+        fs = Ap * Uii + Am * Ujj
+
+        # Return the Vijayasundaram numerical flux.
+        return fs
+
+
 
 
 class LaxFriedrich(RiemannSolver):
@@ -212,7 +249,82 @@ class Roe(RiemannSolver):
         return ngs.Id(unit_vector.dim + 2)
 
     def get_convective_numerical_flux_dg(self, Ui: flowfields, Uj: flowfields, unit_vector: ngs.CF) -> ngs.CF:
-        raise ValueError("Roe solver in a standard DG has not been implemented (yet).")
+
+        # Extract the normal, taken w.r.t. the ith solution.
+        n = bla.as_vector(unit_vector)
+
+        # Compute the actual fluxes on the surface (for averaging).
+        Fi = self.root.get_convective_flux(Ui)
+        Fj = self.root.get_convective_flux(Uj)
+
+        # Compute the jump of the conservative variables.
+        dr = self.root.density(Uj) - self.root.density(Ui)
+        dmom = self.root.momentum(Uj) - self.root.momentum(Ui)
+        drE = self.root.energy(Uj) - self.root.energy(Ui)
+       
+        # Extract the relevant variables.
+        pi   = self.root.pressure(Ui)
+        pj   = self.root.pressure(Uj)
+        veli = self.root.velocity(Ui)
+        velj = self.root.velocity(Uj)
+        rHi  = self.root.enthalpy(Ui)
+        rHj  = self.root.enthalpy(Uj)
+
+        # Compute the Roe's average state.
+        zi = ngs.sqrt( self.root.density(Ui) )
+        zj = ngs.sqrt( self.root.density(Uj) )
+        ovz = 1/(zi+zj)
+        vel_avg = ovz * ( veli*zi + velj*zj ) 
+        H_avg   = ovz * (  rHi/zi +  rHj/zj )
+
+        # Some abbreviations.
+        gamma    = self.root.equation_of_state.heat_capacity_ratio
+        gm1      = gamma - 1
+        ek_avg   = ( bla.inner(vel_avg, vel_avg) )/2
+        tmp      = gm1 * (H_avg - ek_avg)
+        a2_avg   = bla.abs( tmp )
+        a_avg    = ngs.sqrt( a2_avg )
+        un_avg   = bla.inner(vel_avg, n)
+        ova_avg  = 1/a_avg
+        ova2_avg = 1/a2_avg
+
+        # Compute the absolute of the averaged-state eigenvalues.
+        lmb1 = bla.abs( un_avg + a_avg )
+        lmb2 = bla.abs( un_avg - a_avg )
+        lmb3 = bla.abs( un_avg )
+
+        # NOTE, doing a bla.max seems to slow things significantly!
+        #
+        ## Apply an entropy fix, based on Mavriplis' suggestion, taken from:
+        ## Unstructured Mesh Discretizations and Solvers for Computational Aerodynamics (2007, AIAA).
+        #delta = 0.001
+        #tmp  = bla.max( lmb1, lmb2 ) * delta 
+        #lmb1 = bla.max( lmb1, tmp  )
+        #lmb2 = bla.max( lmb2, tmp  )
+        #lmb3 = bla.max( lmb3, tmp  )
+
+        # Some more abbreviations (because, why not).
+        abv1 = (lmb1 + lmb2) / 2
+        abv2 = (lmb1 - lmb2) / 2
+        abv3 =  abv1 - lmb3
+        abv4 = gm1 * ( ek_avg*dr  - bla.inner(dmom, vel_avg) + drE )
+        abv5 = bla.inner(dmom, n) - un_avg*dr
+        abv6 = abv3*abv4*ova2_avg + abv2*abv5*ova_avg
+        abv7 = abv2*abv4*ova_avg  + abv3*abv5
+
+        # Compute: |A|*(Uj - Ui).
+        frho  = lmb3*dr + abv6
+        fmom  = lmb3*dmom + vel_avg*abv6 + n*abv7
+        fener = lmb3*drE + H_avg*abv6 + un_avg*abv7
+        
+        # Form the dissipation vector.
+        df = ngs.CF( (frho, fmom, fener) )
+        
+        # Compute the numerical flux: (Fi + Fj)*n/2 - 0.5 * |A| * (Uj - Ui).
+        froe = ( (Fi + Fj) * n - df)/2
+
+        # Return Roe's numerical flux.
+        return froe
 
 
 class HLL(RiemannSolver):
