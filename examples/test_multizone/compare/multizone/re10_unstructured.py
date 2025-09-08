@@ -46,6 +46,8 @@ class IsentropicVortexParam:
 # Class containing the global parameters.
 class GlobalParameters:
 
+    Re = 10
+    Pr = 0.72
     Ma = IsentropicVortexParam.Minf
     gamma = IsentropicVortexParam.gamma
 
@@ -95,7 +97,7 @@ def create_simple_grid(ne, lx, ly):
     dx1 = lx1/2 
 
     # Overall, initial domain: will end up implicit.
-    domain0 = occ.WorkPlane().RectangleC(lx, ly).Face()
+    domain0 = occ.WorkPlane().MoveTo(2, 0).RectangleC(lx, ly).Face()
     domain0.name = "imp_internal"
     domain0.edges[0].name = 'imp_bottom'
     domain0.edges[1].name = 'interface'
@@ -103,7 +105,7 @@ def create_simple_grid(ne, lx, ly):
     domain0.edges[3].name = 'imp_left'
     
     # Subdomain: will end up explicit.
-    domain1 = occ.WorkPlane().MoveTo(dx1, 0).RectangleC(lx1, ly).Face()
+    domain1 = occ.WorkPlane().MoveTo(dx1+1, 0).RectangleC(lx1+2, ly).Face()
     domain1.name = "exp_internal"
     domain1.edges[0].name = 'exp_bottom'
     domain1.edges[1].name = 'exp_right'
@@ -121,8 +123,8 @@ def create_simple_grid(ne, lx, ly):
     maxh = min( lx, ly )/ne
 
     # Generate the meshes.
-    mesh_imp = ngs.Mesh(occ.OCCGeometry(domain0, dim=2).GenerateMesh(maxh=maxh, quad_dominated=True))
-    mesh_exp = ngs.Mesh(occ.OCCGeometry(domain1, dim=2).GenerateMesh(maxh=maxh, quad_dominated=True))
+    mesh_imp = ngs.Mesh(occ.OCCGeometry(domain0, dim=2).GenerateMesh(maxh=maxh))#, quad_dominated=True))
+    mesh_exp = ngs.Mesh(occ.OCCGeometry(domain1, dim=2).GenerateMesh(maxh=maxh))#, quad_dominated=True))
     
     return mesh_imp, mesh_exp
 
@@ -252,7 +254,6 @@ def get_perturbation(t, ni, nj):
 # Function that visualizes the data using VTK format.
 def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
     if plot_sol_vtk:
-        
         # Extract the specific heat ratio.
         gamma = IsentropicVortexParam.gamma 
     
@@ -281,12 +282,12 @@ def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
             order = 1
         else:
             order = cfg.fem.order
- 
+
         cfg.io.vtk.fields = fields 
         cfg.io.vtk.enable=True
         cfg.io.vtk.rate = 50
-        cfg.io.vtk.subdivision = order
-        cfg.io.vtk.path = "inviscid"
+        cfg.io.vtk.subdivision = cfg.fem.order
+        cfg.io.vtk.path = "viscous_unstructured"
         cfg.io.vtk.filename = filename
 
 
@@ -294,15 +295,18 @@ def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
 # Function that sets the HDG configuration.
 def init_hdg_cfg(cfg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=False):
 
-    cfg.dynamic_viscosity = "inviscid"
+    cfg.dynamic_viscosity = "constant"
     cfg.equation_of_state = "ideal"
     cfg.equation_of_state.heat_capacity_ratio = GlobalParameters.gamma
     cfg.scaling = "aerodynamic"
     cfg.mach_number = GlobalParameters.Ma
+    cfg.reynolds_number = GlobalParameters.Re
+    cfg.prandtl_number = GlobalParameters.Pr
 
     cfg.riemann_solver = "lax_friedrich"
     cfg.fem = "conservative_hdg"
     cfg.fem.order = nPoly
+    cfg.fem.mixed_method = "strain_heat"
     
     cfg.time = multizone_time
     cfg.fem.scheme = get_imex_scheme_implicit(nStage)
@@ -328,22 +332,26 @@ def init_hdg_cfg(cfg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=Fal
     cfg.fem.initialize_time_scheme_gridfunctions()
 
     # Set up VTK stream.
-    init_vtk_stream(cfg, plot_sol_vtk, "hdg_ees")
+    init_vtk_stream(cfg, plot_sol_vtk, "hdg_nse")
 
 
 
 # Function that sets the SDG configuration.
 def init_sdg_cfg(cfg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=False):
-
-    cfg.dynamic_viscosity = "inviscid"
+    
+    cfg.dynamic_viscosity = "constant"
     cfg.equation_of_state = "ideal"
     cfg.equation_of_state.heat_capacity_ratio = GlobalParameters.gamma
     cfg.scaling = "aerodynamic"
     cfg.mach_number = GlobalParameters.Ma
+    cfg.reynolds_number = GlobalParameters.Re
+    cfg.prandtl_number = GlobalParameters.Pr
 
     cfg.riemann_solver = "lax_friedrich"
     cfg.fem = "conservative_dg"
     cfg.fem.order = nPoly
+    cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
+    cfg.fem.viscous_treatment.interior_penalty_coefficient = 2.0
 
     cfg.time = multizone_time
     cfg.fem.scheme = get_imex_scheme_explicit(nStage)
@@ -369,7 +377,7 @@ def init_sdg_cfg(cfg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=Fal
     cfg.fem.initialize_time_scheme_gridfunctions()
 
     # Set up VTK stream.
-    init_vtk_stream(cfg, plot_sol_vtk, "sdg_ees")
+    init_vtk_stream(cfg, plot_sol_vtk, "sdg_nse")
 
 
 # Function that imposes the interface conditions
@@ -413,14 +421,14 @@ mesh_imp, mesh_exp = create_simple_grid(ne, lx, ly)
 nStage = 1
 
 # Time information.
-time_info = TimeInfo( t0=0.0, tf=8.0, dt=0.01 )
+time_info = TimeInfo( t0=0.0, tf=8.0, dt=0.005 )
 
 # Polynomial order.
 nPoly = 3
 
 
 # # 
-# Solver configuration: Compressible (inviscid) flow.
+# Solver configuration: Compressible flow.
 # # 
 
 cfg_hdg = CompressibleFlowSolver(mesh_imp)

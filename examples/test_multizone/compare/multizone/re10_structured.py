@@ -5,7 +5,7 @@ from dream.time import MultizoneIMEXTimeRoutine
 import ngsolve as ngs 
 import numpy as np
 from matplotlib import pyplot as plt
-from netgen.occ import OCCGeometry, WorkPlane
+import netgen.occ as occ
 from netgen.meshing import IdentificationType
 
 ngs.ngsglobals.msg_level = 0 
@@ -86,37 +86,47 @@ def get_imex_scheme_explicit(nStage):
     else:
         raise ValueError(f"Number of stages is not implemented (yet).")
 
-
-# Function that generates a grid.
+# Function that creates a grid from two zones, based on the input info.
 def create_simple_grid(ne, lx, ly):
+    
+    # Grid dimensions.
+    # 1) We assume ly is identical in both grids.
+    # 2) We assume x=0 is the interface location.
+    lx0 = lx/2
+    lx1 = lx-lx0
+    dx1 = lx1/2 
 
-    # Select a common element size.
-    h0 = min( lx, ly )/ne
+    # Overall, initial domain: will end up implicit.
+    domain0 = occ.WorkPlane().RectangleC(lx, ly).Face()
+    domain0.name = "imp_internal"
+    domain0.edges[0].name = 'imp_bottom'
+    domain0.edges[1].name = 'interface'
+    domain0.edges[2].name = 'imp_top'
+    domain0.edges[3].name = 'imp_left'
+    
+    # Subdomain: will end up explicit.
+    domain1 = occ.WorkPlane().MoveTo(dx1, 0).RectangleC(lx1, ly).Face()
+    domain1.name = "exp_internal"
+    domain1.edges[0].name = 'exp_bottom'
+    domain1.edges[1].name = 'exp_right'
+    domain1.edges[2].name = 'exp_top'
+    domain1.edges[3].name = 'interface'
+    
+    # Subtract the domains, to get the two regions.
+    domain0 -= domain1
 
-    # Generate a simple rectangular geometry.
-    domain = WorkPlane().RectangleC(lx, ly).Face()
+    # Make the vertical boundaries periodic.
+    domain0.edges[1].Identify( domain0.edges[3], "imp_periodic", IdentificationType.PERIODIC)
+    domain1.edges[0].Identify( domain1.edges[2], "exp_periodic", IdentificationType.PERIODIC)
+    
+    # Deduce the grid spacing.
+    maxh = min( lx, ly )/ne
 
-    # Assign the name of the internal solution in the domain.
-    domain.name = 'internal'
-
-    # For convenience, extract and name each of the edges consistently.
-    bottom = domain.edges[0]; bottom.name = 'bottom'
-    right  = domain.edges[1]; right.name  = 'right'
-    top    = domain.edges[2]; top.name    = 'top'
-    left   = domain.edges[3]; left.name   = 'left'
-
-    # Pair the boundaries in each direction: vertical and horizontal.
-    bottom.Identify(top, "ydir", IdentificationType.PERIODIC)
-    #right.Identify(left, "xdir", IdentificationType.PERIODIC)
-
-    # Initialize a rectangular 2D geometry.
-    geo = OCCGeometry(domain, dim=2)
-
-    # Discretize the domain.
-    mesh = ngs.Mesh(geo.GenerateMesh(maxh=h0, quad_dominated=True))
-
-    # Return our fancy grid.
-    return mesh
+    # Generate the meshes.
+    mesh_imp = ngs.Mesh(occ.OCCGeometry(domain0, dim=2).GenerateMesh(maxh=maxh, quad_dominated=True))
+    mesh_exp = ngs.Mesh(occ.OCCGeometry(domain1, dim=2).GenerateMesh(maxh=maxh, quad_dominated=True))
+    
+    return mesh_imp, mesh_exp
 
 
 # Function that defines the analytic solution.
@@ -244,7 +254,6 @@ def get_perturbation(t, ni, nj):
 # Function that visualizes the data using VTK format.
 def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
     if plot_sol_vtk:
-        
         # Extract the specific heat ratio.
         gamma = IsentropicVortexParam.gamma 
     
@@ -267,18 +276,130 @@ def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
         fields["Diff[Velocity]"] = ue.u - uh.u
         fields["Deviation[Isentropy]"] = isentropic_deviation 
 
+        #dU = cfg.get_all_solution_fields() 
+        #fields["StressTensor"] = cfg.deviatoric_stress_tensor(fields, dU)
         if cfg.fem.order == 0:
             order = 1
         else:
             order = cfg.fem.order
-        
+
         cfg.io.vtk.fields = fields 
         cfg.io.vtk.enable=True
         cfg.io.vtk.rate = 50
-        cfg.io.vtk.subdivision = order
-        cfg.io.vtk.path = "viscous"
+        cfg.io.vtk.subdivision = cfg.fem.order
+        cfg.io.vtk.path = "viscous_structured"
         cfg.io.vtk.filename = filename
 
+
+
+# Function that sets the HDG configuration.
+def init_hdg_cfg(cfg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=False):
+
+    cfg.dynamic_viscosity = "constant"
+    cfg.equation_of_state = "ideal"
+    cfg.equation_of_state.heat_capacity_ratio = GlobalParameters.gamma
+    cfg.scaling = "aerodynamic"
+    cfg.mach_number = GlobalParameters.Ma
+    cfg.reynolds_number = GlobalParameters.Re
+    cfg.prandtl_number = GlobalParameters.Pr
+
+    cfg.riemann_solver = "lax_friedrich"
+    cfg.fem = "conservative_hdg"
+    cfg.fem.order = nPoly
+    cfg.fem.mixed_method = "strain_heat"
+    
+    cfg.time = multizone_time
+    cfg.fem.scheme = get_imex_scheme_implicit(nStage)
+    cfg.time.timer.interval = (time_info.t0, time_info.tf)
+    cfg.time.timer.step = time_info.dt
+    
+    cfg.fem.solver.method = "newton"
+    cfg.fem.solver.method.damping_factor = 1
+    cfg.fem.solver.method.max_iterations = 10
+    cfg.fem.solver.method.convergence_criterion = 1e-10
+    
+    Uic = get_initial_condition(cfg)
+    Uinf = get_farfield_solution(cfg)
+    
+    # Boundary conditions (non-interface).
+    cfg.bcs['imp_top|imp_bottom'] = "periodic"
+    cfg.bcs['imp_left'] = FarField(fields=Uinf)
+    cfg.dcs['imp_internal'] = Initial(fields=Uic)
+
+    cfg.fem.initialize_finite_element_spaces()
+    cfg.fem.initialize_trial_and_test_functions()
+    cfg.fem.initialize_gridfunctions()
+    cfg.fem.initialize_time_scheme_gridfunctions()
+
+    # Set up VTK stream.
+    init_vtk_stream(cfg, plot_sol_vtk, "hdg_nse")
+
+
+
+# Function that sets the SDG configuration.
+def init_sdg_cfg(cfg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=False):
+    
+    cfg.dynamic_viscosity = "constant"
+    cfg.equation_of_state = "ideal"
+    cfg.equation_of_state.heat_capacity_ratio = GlobalParameters.gamma
+    cfg.scaling = "aerodynamic"
+    cfg.mach_number = GlobalParameters.Ma
+    cfg.reynolds_number = GlobalParameters.Re
+    cfg.prandtl_number = GlobalParameters.Pr
+
+    cfg.riemann_solver = "lax_friedrich"
+    cfg.fem = "conservative_dg"
+    cfg.fem.order = nPoly
+    cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
+    cfg.fem.viscous_treatment.interior_penalty_coefficient = 1.0
+
+    cfg.time = multizone_time
+    cfg.fem.scheme = get_imex_scheme_explicit(nStage)
+    cfg.time.timer.interval = (time_info.t0, time_info.tf)
+    cfg.time.timer.step = time_info.dt
+    
+    #cfg.fem.bonus_int_order['convection']['vol'] = 5
+    #cfg.fem.bonus_int_order['convection']['bnd'] = 5
+    #cfg.fem.bonus_int_order['diffusion']['vol'] = 5
+    #cfg.fem.bonus_int_order['diffusion']['bnd'] = 5
+
+    Uic = get_initial_condition(cfg)
+    Uinf = get_farfield_solution(cfg)
+    
+    # Boundary conditions (non-interface).
+    cfg.bcs['exp_top|exp_bottom'] = "periodic"
+    cfg.bcs['exp_right'] = Outflow(pressure=Uinf)
+    cfg.dcs['exp_internal'] = Initial(fields=Uic)
+
+    cfg.fem.initialize_finite_element_spaces()
+    cfg.fem.initialize_trial_and_test_functions()
+    cfg.fem.initialize_gridfunctions()
+    cfg.fem.initialize_time_scheme_gridfunctions()
+
+    # Set up VTK stream.
+    init_vtk_stream(cfg, plot_sol_vtk, "sdg_nse")
+
+
+# Function that imposes the interface conditions
+def set_interface_conditions(cfg_imp, cfg_exp):
+
+    # Get the gridfuctions for both regions.
+    gfu_imp = cfg_imp.get_all_solution_fields()
+    gfu_exp = cfg_exp.get_all_solution_fields()
+
+    # Impose the interface conditions.
+    cfg_imp.bcs['interface'] = InterfaceBC(fields=gfu_exp)
+    cfg_exp.bcs['interface'] = InterfaceBC(fields=gfu_imp)
+
+    # Finalize the implicit set up.
+    cfg_imp.fem.set_boundary_conditions()
+    cfg_imp.fem.set_initial_conditions()
+    cfg_imp.fem.initialize_symbolic_forms()
+
+    # Finalize the explicit set up.
+    cfg_exp.fem.set_boundary_conditions()
+    cfg_exp.fem.set_initial_conditions()
+    cfg_exp.fem.initialize_symbolic_forms()
 
 
 
@@ -287,15 +408,17 @@ def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
 # # 
 
 # Number of elements per dimension.
-ne = 8
+ne = 10
 
 # Dimension of the rectangular domain.
 lx = 20 
-ly = 10 
+ly = 14 
 
 # Generate a simple grid.
-mesh = create_simple_grid(ne, lx, ly)
+mesh_imp, mesh_exp = create_simple_grid(ne, lx, ly)
 
+# Number of stages in the IMEX scheme.
+nStage = 1
 
 # Time information.
 time_info = TimeInfo( t0=0.0, tf=8.0, dt=0.01 )
@@ -303,52 +426,25 @@ time_info = TimeInfo( t0=0.0, tf=8.0, dt=0.01 )
 # Polynomial order.
 nPoly = 3
 
-# Number of stages in the IMEX scheme.
-nStage = 1
 
-# Create the solver.
-cfg = CompressibleFlowSolver(mesh)
+# # 
+# Solver configuration: Compressible flow.
+# # 
+
+cfg_hdg = CompressibleFlowSolver(mesh_imp)
+cfg_sdg = CompressibleFlowSolver(mesh_exp)
 
 
-# Assign the relevant information and values.
-cfg.dynamic_viscosity = "constant"
-cfg.equation_of_state = "ideal"
-cfg.equation_of_state.heat_capacity_ratio = GlobalParameters.gamma
-cfg.scaling = "aerodynamic"
-cfg.mach_number = GlobalParameters.Ma
-cfg.reynolds_number = GlobalParameters.Re
-cfg.prandtl_number = GlobalParameters.Pr
+# Create a multizone time strategy IMEX class.
+multizone_time = MultizoneIMEXTimeRoutine(cfg_implicit=cfg_hdg, cfg_explicit=cfg_sdg)
 
-cfg.riemann_solver = "lax_friedrich"
-cfg.fem = "conservative_hdg"
-cfg.fem.order = nPoly
-cfg.fem.mixed_method = "strain_heat"
+# Initialize the non-interface configurations.
+init_hdg_cfg(cfg_hdg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=True)
+init_sdg_cfg(cfg_sdg, time_info, multizone_time, nPoly, nStage, plot_sol_vtk=True)
 
-cfg.time = "transient"
-cfg.fem.scheme = get_imex_scheme_implicit(nStage)
-cfg.time.timer.interval = (time_info.t0, time_info.tf)
-cfg.time.timer.step = time_info.dt
+# Initialize the interface and remaining configuration.
+set_interface_conditions(cfg_hdg, cfg_sdg)
 
-cfg.fem.solver.method = "newton"
-cfg.fem.solver.method.damping_factor = 1
-cfg.fem.solver.method.max_iterations = 10
-cfg.fem.solver.method.convergence_criterion = 1e-10
-
-Uic = get_initial_condition(cfg)
-Uinf = get_farfield_solution(cfg)
-
-# Boundary conditions (non-interface).
-#cfg.bcs['left|right'] = "periodic"
-cfg.bcs['right'] = FarField(fields=Uinf)
-cfg.bcs['left'] = FarField(fields=Uinf)
-cfg.bcs['top|bottom'] = "periodic"
-cfg.dcs['internal'] = Initial(fields=Uic)
-
-# Allocate the necessary data.
-cfg.initialize()
-
-# Set up VTK stream.
-init_vtk_stream(cfg, True, "hdg_nse")
 
 
 # # #
@@ -356,9 +452,10 @@ init_vtk_stream(cfg, True, "hdg_nse")
 # # 
 
 with ngs.TaskManager(): 
-    cfg.solve()
+    multizone_time.solve()
         
         
+
 
 
 

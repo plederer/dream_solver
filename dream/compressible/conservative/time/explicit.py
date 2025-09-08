@@ -147,7 +147,6 @@ class RK_ARS22(ExplicitSchemes):
         yield from self.solve_stage(2)
 
 
-# # 
 class RK_ARS33(ExplicitSchemes):
     r""" Class responsible for implementing an explicit 3-stage, 3rd-order Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.7, Equation in :cite:`ascher1997implicit`. Assuming a standard DG formulation,
 

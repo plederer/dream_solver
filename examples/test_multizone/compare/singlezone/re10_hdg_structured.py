@@ -46,6 +46,8 @@ class IsentropicVortexParam:
 # Class containing the global parameters.
 class GlobalParameters:
 
+    Re = 10
+    Pr = 0.72
     Ma = IsentropicVortexParam.Minf
     gamma = IsentropicVortexParam.gamma
 
@@ -274,7 +276,7 @@ def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
         cfg.io.vtk.enable=True
         cfg.io.vtk.rate = 50
         cfg.io.vtk.subdivision = order
-        cfg.io.vtk.path = "inviscid"
+        cfg.io.vtk.path = "viscous_structured"
         cfg.io.vtk.filename = filename
 
 
@@ -285,11 +287,11 @@ def init_vtk_stream(cfg, plot_sol_vtk=False, filename="output"):
 # # 
 
 # Number of elements per dimension.
-ne = 8
+ne = 10
 
 # Dimension of the rectangular domain.
 lx = 20 
-ly = 10 
+ly = 14 
 
 # Generate a simple grid.
 mesh = create_simple_grid(ne, lx, ly)
@@ -309,18 +311,21 @@ cfg = CompressibleFlowSolver(mesh)
 
 
 # Assign the relevant information and values.
-cfg.dynamic_viscosity = "inviscid"
+cfg.dynamic_viscosity = "constant"
 cfg.equation_of_state = "ideal"
 cfg.equation_of_state.heat_capacity_ratio = GlobalParameters.gamma
 cfg.scaling = "aerodynamic"
 cfg.mach_number = GlobalParameters.Ma
+cfg.reynolds_number = GlobalParameters.Re
+cfg.prandtl_number = GlobalParameters.Pr
 
 cfg.riemann_solver = "lax_friedrich"
-cfg.fem = "conservative_dg"
+cfg.fem = "conservative_hdg"
 cfg.fem.order = nPoly
+cfg.fem.mixed_method = "strain_heat"
 
 cfg.time = "transient"
-cfg.fem.scheme = get_imex_scheme_explicit(nStage)
+cfg.fem.scheme = get_imex_scheme_implicit(nStage)
 cfg.time.timer.interval = (time_info.t0, time_info.tf)
 cfg.time.timer.step = time_info.dt
 
@@ -333,17 +338,16 @@ Uic = get_initial_condition(cfg)
 Uinf = get_farfield_solution(cfg)
 
 # Boundary conditions (non-interface).
-#cfg.bcs['left|right'] = "periodic"
-cfg.bcs['right'] = FarField(fields=Uinf)
-cfg.bcs['left'] = FarField(fields=Uinf)
 cfg.bcs['top|bottom'] = "periodic"
+cfg.bcs['right'] = Outflow(pressure=Uinf)
+cfg.bcs['left'] = FarField(fields=Uinf)
 cfg.dcs['internal'] = Initial(fields=Uic)
 
 # Allocate the necessary data.
 cfg.initialize()
 
 # Set up VTK stream.
-init_vtk_stream(cfg, True, "sdg_ees")
+init_vtk_stream(cfg, True, "hdg_nse")
 
 
 # # #

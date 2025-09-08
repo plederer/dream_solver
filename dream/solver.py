@@ -484,6 +484,25 @@ class SolverConfiguration(Configuration, is_interface=True):
 
         self.doc = doc
 
+    def get_averaged_time_step_estimate(self, U: flowfields):
+        raise NotImplementedError("Overload this function in a derived class.")
+
     def solve(self, reassemble: bool = True):
+        
+        # At the start, get an estimate of an averaged (stable) time step.
+        dtmin = self.get_averaged_time_step_estimate( self.fem.get_solution_fields() )
+        
+        dt = self.time.timer.step.Get()
+        logger.info(f"Ratio of dt/dtmin is: {dt/dtmin}")
+
+
+        # Proceed with the simulation.
         for t in self.time.start_solution_routine(reassemble):
             pass
+
+
+
+
+
+
+

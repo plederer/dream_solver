@@ -67,11 +67,20 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
     def get_scaled_penalty_coefficient(self):
         h = self.mesh.meshsize
         alpha = self.interior_penalty_coefficient 
-        N = self.fem.order
-        if self.fem.order == 0:
-            N = 1
-        return alpha * (N**2) / h
 
+        # This is taken from Hillewaert's thesis, see Table 3.1 in [1].
+        # [1] Hillewaert, Koen. Development of the discontinuous Galerkin method for 
+        #     high-resolution, large scale CFD and acoustics in industrial geometries. 
+        #     Presses univ. de Louvain, 2013.
+        #
+        # ... alpha is usually set to unity, higher numbers imply a stiffer system. 
+        #     Additionally, this assumes non-curved elements.
+        # Perhaps an if condition if this is grid uses triangles/quads? Note, however, 
+        # if we use an imex with quads and triangles on both sides, we need to take quads, 
+        # as this is a stronger threshold.
+        #return alpha * (self.fem.order + 1) * (self.fem.order + 2) / (2*h) # for triangles
+        return alpha * (self.fem.order + 1)**2 / h # for quadrilaterals
+    
     def add_diffusion_form(self, blf: Integrals, lf: Integrals):
 
         bonus = self.fem.bonus_int_order['diffusion']
@@ -341,12 +350,18 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
 
         # Get the diffusion matrices transposed, based on the conservative gradients.
         KU11Ti, KU12Ti, KU21Ti, KU22Ti = self.get_frozen_diffusion_matrices_conservative_transposed(Ui)
+        KU11Tj, KU12Tj, KU21Tj, KU22Tj = self.get_frozen_diffusion_matrices_conservative_transposed(Uj)
 
+        KU11T = (KU11Ti + KU11Tj) / 2
+        KU12T = (KU12Ti + KU12Tj) / 2
+        KU21T = (KU21Ti + KU21Tj) / 2
+        KU22T = (KU22Ti + KU22Tj) / 2
+        
         # Form the term: {G^T * grad(V)}, for the current and neighbor solution.
-        FTi = nx*(KU11Ti*dVidx + KU21Ti*dVidy) + ny*(KU12Ti*dVidx + KU22Ti*dVidy) 
+        FT = nx*(KU11T*dVidx + KU21T*dVidy) + ny*(KU12T*dVidx + KU22T*dVidy) 
   
         # Form the symmetrizing term.
-        blf['U'][f"{bc.name}_{bnd}"] -= ngs.InnerProduct(FTi, jumpU) * dS
+        blf['U'][f"{bc.name}_{bnd}"] -= ngs.InnerProduct(FT, jumpU) * dS
 
         # # # 
         # Penalty term.
