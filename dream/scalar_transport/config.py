@@ -8,7 +8,6 @@ from dream.config import quantity, dream_configuration, ngsdict
 from dream.mesh import (Condition,
                         Periodic,
                         Initial,
-                        Force,
                         Perturbation,
                         SpongeLayer,
                         PSpongeLayer,

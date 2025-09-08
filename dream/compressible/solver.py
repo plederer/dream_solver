@@ -13,7 +13,7 @@ from .eos import IdealGas, EquationOfState
 from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
 from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
-from .config import flowfields, BCS, DCS
+from .config import flowfields, dimensionalfields, BCS, DCS
 from .conservative import ConservativeHDG, ConservativeDG, ConservativeDG_HDG
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         self._mach_number = ngs.Parameter(0.3)
         self._reynolds_number = ngs.Parameter(150)
         self._prandtl_number = ngs.Parameter(0.72)
+        self._dim_fields = None
 
         DEFAULT = {
             "equation_of_state": IdealGas(mesh, self),
@@ -39,6 +40,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             "mach_number": 0.3,
             "reynolds_number": 150,
             "prandtl_number": 0.72,
+            "dimensional_fields": None,
         }
         DEFAULT.update(default)
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
@@ -167,6 +169,42 @@ class CompressibleFlowSolver(SolverConfiguration):
     def riemann_solver(self, riemann_solver: str | LaxFriedrich | Roe | HLL | HLLEM | Upwind):
         OPTIONS = [LaxFriedrich, Roe, HLL, HLLEM, Upwind]
         self._riemann_solver = self._get_configuration_option(riemann_solver, OPTIONS, RiemannSolver)
+
+    @dream_configuration
+    def dimensional_fields(self) -> dimensionalfields | None:
+        """ Dimensional fields used to set the dimensionless numbers. 
+
+            :getter: Returns the dimensional fields if set, otherwise None
+            :setter: Sets the dimensional fields, overwrites the dimensionless numbers if set
+        """
+        return self._dim_fields
+
+    @dimensional_fields.setter
+    def dimensional_fields(self, dim_fields: dimensionalfields | None):
+
+        if dim_fields is None:
+            self._dim_fields = None
+            return
+
+        if not isinstance(dim_fields, dimensionalfields):
+            raise ValueError(f"Dimensional fields has to be of type dimensionalfields, not {type(dim_fields)}!")
+
+        gamma = self.equation_of_state.heat_capacity_ratio.Get()
+        dim_fields.c = ngs.sqrt((gamma-1) * dim_fields.c_p * dim_fields.T)
+
+        Ma = dim_fields.u / dim_fields.c
+        Re = dim_fields.rho * dim_fields.u * dim_fields.L / dim_fields.mu
+        Pr = dim_fields.c_p * dim_fields.mu / dim_fields.k
+
+        if Ma < 0.05 and isinstance(self.scaling, Aerodynamic):
+            logger.warning(f"Mach number {Ma} < 0.05. Consider using Acoustic or Aeroacoustic scaling.")
+
+        self.mach_number = Ma
+        self.reynolds_number = Re
+        self.prandtl_number = Pr
+
+        self._dim_fields = dim_fields
+        self._dim_fields.t = self.scaling.reference_time_scale
 
     def get_solution_fields(self, *fields: str, default_fields: bool = True) -> flowfields:
         """ Returns the solution fields depending on the underlying finite element method.

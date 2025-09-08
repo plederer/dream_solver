@@ -20,6 +20,8 @@ from dream.compressible.config import (flowfields,
                                        IsothermalWall,
                                        AdiabaticWall,
                                        InterfaceBC,
+                                       Dirichlet,
+                                       Force,
                                        CBC)
 
 from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2, IMEXRK_ARS443
@@ -618,6 +620,9 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
             elif isinstance(bc, InterfaceBC):
                 self.add_interface_formulation(blf, lf, bc, bnd)
 
+            elif isinstance(bc, Dirichlet):
+                self.add_dirichlet_formulation(blf, lf, bc, bnd)
+
             elif isinstance(bc, Periodic):
                 continue
 
@@ -637,6 +642,9 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
 
             elif isinstance(dc, PSpongeLayer):
                 self.add_psponge_layer_formulation(blf, lf, dc, dom)
+
+            elif isinstance(dc, Force):
+                self.add_forcing_formulation(blf, lf, dc, dom)
 
             elif isinstance(dc, Initial):
                 continue
@@ -861,13 +869,21 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         #    # Add the viscous numerical flux.
         #    blf['Uhat'][f"{bc.name}_{bnd}"] += ngs.InnerProduct( (Gi - Gj)*n - tau_d * (U + U_infty - 2*Uhat.U), Vhat ) * dS
 
-
         # This presumes an interface between an implicit (current) and an explicit (other) region. 
         # Hence, it makes sense to utilize the solution obtained weakly in the explicit step as the BCs.
         # NOTE, even though that this is being imposed "strongly", it is still obtained in a weak manner.
         blf['Uhat'][f"{bc.name}_{bnd}"] = ngs.InnerProduct(Uhat.U - U_infty, Vhat) * dS
 
     
+    def add_dirichlet_formulation(self, blf: Integrals, lf: Integrals, bc: Outflow, bnd: str):
+
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd))
+        Uhat, Vhat = self.TnT['Uhat']
+        Ud = ngs.CF((self.root.density(bc.fields), self.root.momentum(bc.fields), self.root.energy(bc.fields)))
+
+        Gamma_out = ngs.InnerProduct(Uhat - Ud, Vhat)
+        blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_out * dS
+
     def add_sponge_layer_formulation(self, blf: Integrals, lf: Integrals, dc: SpongeLayer, dom: str):
 
         dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
@@ -878,7 +894,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
              self.root.momentum(dc.target_state),
              self.root.energy(dc.target_state)))
 
-        blf['Uhat'][f"{dc.name}_{dom}"] = dc.function * (U - U_target) * V * dX
+        blf['U'][f"{dc.name}_{dom}"] = dc.function * (U - U_target) * V * dX
 
     def add_psponge_layer_formulation(self, blf: Integrals, lf: Integrals, dc: PSpongeLayer, dom: str):
 
@@ -901,7 +917,16 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
             U_low = ngs.CF(tuple(ngs.Interpolate(proxy, low_order_space) for proxy in U))
             Delta_U = U - U_low
 
-        blf['Uhat'][f"{dc.name}_{dom}"] = dc.function * Delta_U * V * dX
+        blf['U'][f"{dc.name}_{dom}"] = dc.function * Delta_U * V * dX
+
+    def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
+
+        dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+
+        _, V = self.TnT['U']
+        F = dc.get_force_vector(self.mesh.dim)
+
+        lf['U'][f"{dc.name}_{dom}"] = F * V * dX
 
     def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: ngs.CF):
         r"""

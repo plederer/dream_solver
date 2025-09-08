@@ -12,6 +12,7 @@ from dream.compressible.config import (flowfields,
                                        Outflow,
                                        InterfaceBC,
                                        Periodic,
+                                       Force,
                                        Initial)
 
 from .time import ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS33, RK_ARS43
@@ -646,6 +647,9 @@ class ConservativeDG(ConservativeFiniteElementMethod):
             if isinstance(dc, Initial):
                 continue
 
+            elif isinstance(dc, Force):
+                self.add_forcing_formulation(blf, lf, dc, dom)
+
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
 
@@ -764,4 +768,11 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         if not self.root.dynamic_viscosity.is_inviscid:
             self.viscous_treatment.add_viscous_interface_formulation(blf, lf, bc, bnd)
 
+    def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
 
+        dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+
+        _, V = self.TnT['U']
+        F = dc.get_force_vector(self.mesh.dim)
+
+        lf['U'][f"{dc.name}_{dom}"] = F * V * dX

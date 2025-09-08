@@ -9,7 +9,6 @@ from dream.solver import FiniteElementMethod
 from dream.mesh import (Condition,
                         Periodic,
                         Initial,
-                        Force,
                         Perturbation,
                         SpongeLayer,
                         PSpongeLayer,
@@ -23,7 +22,7 @@ if typing.TYPE_CHECKING:
 class CompressibleFiniteElementMethod(FiniteElementMethod):
 
     root: CompressibleFlowSolver
-    
+
     def __init__(self, mesh, root=None, **default):
 
         DEFAULT = {
@@ -177,6 +176,37 @@ class flowfields(ngsdict):
     grad_H = quantity('specific_enthalpy_gradient')
     grad_c = quantity('speed_of_sound_gradient')
     eps = quantity('strain_rate_tensor', r"\bm{\varepsilon}")
+
+
+class dimensionalfields(dict):
+    """ Mutable mapping for scalar dimensionalisation fields. """
+    rho = quantity('density', r"\rho \, [\mathrm{kg/m^3}]")
+    u = quantity('velocity', r"\bm{u} \, [\mathrm{m/s}]")
+    T = quantity('temperature', r"T \, [\mathrm{K}]")
+    c = quantity('speed_of_sound', r"c \, [\mathrm{m/s}]")
+    L = quantity('length scale', r"L \, [\mathrm{m}]")
+    t = quantity('time scale', r"t \, [\mathrm{s}]")
+    mu = quantity('viscosity', r"\mu \, [\mathrm{kg/(m \cdot s)}]")
+    k = quantity('thermal_conductivity', r"k \, [\mathrm{W/(m \cdot K)}]")
+    c_p = quantity('specific_heat_capacity_p', r"c_p \, [\mathrm{J/(kg \cdot K)}]")
+
+    def __init__(self,
+                 rho_inf: float,
+                 u_inf: float,
+                 T_inf: float,
+                 L: float = 1.0,
+                 mu_inf: float = 1.7894e-5,
+                 k_inf: float = 2.587e-2,
+                 c_p: float = 1004.5, **kwargs):
+
+        self.rho = rho_inf
+        self.u = u_inf
+        self.T = T_inf
+        self.L = L
+        self.mu = mu_inf
+        self.k = k_inf
+        self.c_p = c_p
+        super().__init__(**kwargs)
 
 
 class FarField(Condition):
@@ -510,9 +540,56 @@ class InterfaceBC(Condition):
             raise TypeError(f"InterfaceBC fields must be of type '{flowfields}' or '{dict}'")
 
 
+class Dirichlet(Condition):
+    r""" Dirichlet boundary condition for compressible flow.
+
+    The Dirichlet condition is used to set the conservative variables :math:`\vec{U} = (\rho, \rho \vec{u}, \rho E)`
+    at the boundary. It is mainly used for testing purposes.
+    """
+
+    name = "dirichlet"
+
+    def __init__(self, fields: flowfields):
+        self.fields = fields
+        super().__init__()
 
 
-BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, InterfaceBC, Periodic]
+class Force(Condition):
+
+    def __init__(self,
+                 continuum: float | None = None,
+                 momentum: float | None = None,
+                 energy: float | None = None,
+                 order: int = 0):
+
+        super().__init__()
+        self.order = order
+        self._continuum = continuum
+        self._momentum = momentum
+        self._energy = energy
+
+    def get_force_vector(self, dim: int = 2) -> ngs.CF:
+        return ngs.CF((self.continuum(), self.momentum(dim), self.energy()))
+
+    def continuum(self) -> ngs.CF:
+        return ngs.CF(self._continuum) if self._continuum is not None else 0.0
+
+    def momentum(self, dim: int = 2) -> ngs.CF:
+        return ngs.CF(self._momentum) if self._momentum is not None else tuple(dim * [0.0])
+
+    def energy(self) -> ngs.CF:
+        return ngs.CF(self._energy) if self._energy is not None else 0.0
+
+    @dream_configuration
+    def order(self) -> int:
+        return self._order
+
+    @order.setter
+    def order(self, order):
+        self._order = int(order)
+
+
+BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, InterfaceBC, Periodic, Dirichlet]
 
 
 # ------- Domain Conditions ------- #

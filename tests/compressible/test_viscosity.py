@@ -1,7 +1,7 @@
 import pytest
 import ngsolve as ngs
 
-from dream.compressible import CompressibleFlowSolver, flowfields
+from dream.compressible import CompressibleFlowSolver, flowfields, dimensionalfields
 
 mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
 mip = mesh(0.5, 0.5)
@@ -48,6 +48,8 @@ def sutherland():
     cfg.dynamic_viscosity = "sutherland"
     cfg.dynamic_viscosity.sutherland_temperature = 1
 
+    cfg._dim_fields = dimensionalfields(rho_inf=1, u_inf=1, T_inf=1)
+
     return cfg
 
 
@@ -65,13 +67,10 @@ def test_viscosity_sutherland(sutherland):
     fields = flowfields(temperature=1)
 
     sutherland.scaling = "aerodynamic"
-    sutherland.scaling.farfield["T_inf"] = 1
     assert mu.viscosity(fields)(mip) == pytest.approx((0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
     sutherland.scaling = "acoustic"
-    sutherland.scaling.farfield["T_inf"] = 1
     assert mu.viscosity(fields)(mip) == pytest.approx((0.4)**(3/2) * (2/0.4)/(1+1/0.4))
 
     sutherland.scaling = "aeroacoustic"
-    sutherland.scaling.farfield["T_inf"] = 1
     assert mu.viscosity(fields)(mip) == pytest.approx((1.6)**(3/2) * (2/1.6)/(1+1/1.6))
