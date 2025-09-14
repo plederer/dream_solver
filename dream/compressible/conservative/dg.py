@@ -11,6 +11,7 @@ from dream.compressible.config import (flowfields,
                                        FarField,
                                        Outflow,
                                        InterfaceBC,
+                                       Dirichlet,
                                        Periodic,
                                        Force,
                                        Initial)
@@ -526,7 +527,83 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         penn = nx * ( KU11*nx + KU12*ny ) + ny * ( KU21*nx + KU22*ny )
         blf['U'][f"{bc.name}_{bnd}"] += ngs.InnerProduct(tau*penn * jumpU, V) * dS
 
+
+    # TESTING
+    def add_viscous_dirichlet_formulation(self, blf: Integrals, lf: Integrals, bc: Outflow, bnd: str):
         
+        bonus = self.fem.bonus_int_order['diffusion']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
+        U, V = self.TnT['U']
+
+
+        #G = self.root.get_diffusive_flux(bc.fields, bc.fields)
+        #Gamma_viscous = ngs.InnerProduct(G*n, V)
+        #blf['U'][f"{bc.name}_{bnd}"] -= Gamma_viscous * dS
+
+        # Form the boundary state, written as conservative variables.
+        U_infty = ngs.CF(
+            (self.root.density(bc.fields),
+             self.root.momentum(bc.fields),
+             self.root.energy(bc.fields)))
+
+        # Extract local and neighboring solution (with gradients).
+        Ui = self.fem.get_conservative_fields(U, with_gradients=True)
+        Uj = bc.fields 
+
+        # # # 
+        # Surface term.
+        # # 
+
+        # Compute the flux of the solution, which is afunction of the solution and external.
+        G = self.root.get_diffusive_flux(Uj, Uj) # NOTE, the gradient is from the local solution.
+
+        # Form the surface term.
+        surf = G * self.mesh.normal
+        blf['U'][f"{bc.name}_{bnd}"] -= ngs.InnerProduct(surf, V) * dS
+
+        # # #
+        # Symmetrizing term.
+        # # 
+
+        # Extract the components of the unit normal vector.
+        nx = self.mesh.normal[0]
+        ny = self.mesh.normal[1]
+
+        # Jump of the conservative solution.
+        jumpU = U - U_infty
+
+        # Get the gradient of the test functions.
+        gradV = ngs.grad(V)
+        
+        # Extract the x and y-components of the gradient of the test functions.
+        dVdx = gradV[:, 0]; dVdy = gradV[:, 1]
+
+        # Get the diffusion matrices transposed, based on the conservative gradients.
+        KU11T, KU12T, KU21T, KU22T = self.get_frozen_diffusion_matrices_conservative_transposed(Uj)
+
+        # Form the term: {G^T * grad(V)}, for the local solution.
+        FT = nx*(KU11T*dVdx + KU21T*dVdy) + ny*(KU12T*dVdx + KU22T*dVdy) 
+  
+        # Form the symmetrizing term.
+        blf['U'][f"{bc.name}_{bnd}"] -= ngs.InnerProduct(FT, jumpU) * dS
+
+        # # # 
+        # Penalty term.
+        # # 
+
+        # Interior penalty coefficient.
+        tau = self.get_scaled_penalty_coefficient() 
+
+        # Get the diffusion matrices, based on the conservative gradients.
+        KU11, KU12, KU21, KU22 = self.get_frozen_diffusion_matrices_conservative(Uj)
+
+        # Form the penalty term, which is based on the contraction of the diffusion matrices.
+        penn = nx * ( KU11*nx + KU12*ny ) + ny * ( KU21*nx + KU22*ny )
+        blf['U'][f"{bc.name}_{bnd}"] += ngs.InnerProduct(tau*penn * jumpU, V) * dS
+
+
+
+
 
 class ConservativeDG(ConservativeFiniteElementMethod):
 
@@ -629,6 +706,9 @@ class ConservativeDG(ConservativeFiniteElementMethod):
    
             elif isinstance(bc, InterfaceBC):
                 self.add_interface_formulation(blf, lf, bc, bnd)
+
+            elif isinstance(bc, Dirichlet):
+                self.add_dirichlet_formulation(blf, lf, bc, bnd)
 
             elif isinstance(bc, Periodic):
                 continue
@@ -776,3 +856,52 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         F = dc.get_force_vector(self.mesh.dim)
 
         lf['U'][f"{dc.name}_{dom}"] = F * V * dX
+
+    def add_dirichlet_formulation(self, blf: Integrals, lf: Integrals, bc: Dirichlet, bnd: str):
+        
+        bonus_convection = self.bonus_int_order['convection']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus_convection['bnd'])
+        U, V = self.TnT['U']
+        n = self.mesh.normal
+
+        # # #
+        # Inviscid treatment.
+        # # 
+
+        # NOTE, cannot impose this strongly, as it will always blow up (even if the analytic solution is imposed).
+        #F = self.root.get_convective_flux(bc.fields)
+        #Gamma_inviscid = ngs.InnerProduct(F*n, V)
+        #blf['U'][f"{bc.name}_{bnd}"] = Gamma_inviscid * dS
+        
+        # We impose this, as if it was a farfield (which makes sense).
+        U_infty = ngs.CF(
+            (self.root.density(bc.fields),
+             self.root.momentum(bc.fields),
+             self.root.energy(bc.fields)))
+
+        Ui = self.get_conservative_fields(U)
+        Uj = self.get_conservative_fields(U.Other(bnd=U_infty))
+
+        Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
+        Gamma_inviscid = ngs.InnerProduct(Fn, V)
+        blf['U'][f"{bc.name}_{bnd}"] = Gamma_inviscid * dS
+        
+        # # #
+        # Viscous treatment.
+        # # 
+
+        if not self.root.dynamic_viscosity.is_inviscid:
+            # NOTE, same comment as above: blows up if we impose this strongly.
+            #bonus_diffusion = self.bonus_int_order['diffusion']
+            #dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus_diffusion['bnd'])
+            #G = self.root.get_diffusive_flux(bc.fields, bc.fields)
+            #Gamma_viscous = ngs.InnerProduct(G*n, V)
+            #blf['U'][f"{bc.name}_{bnd}"] -= Gamma_viscous * dS
+            self.viscous_treatment.add_viscous_dirichlet_formulation(blf, lf, bc, bnd)
+
+
+
+
+
+
+

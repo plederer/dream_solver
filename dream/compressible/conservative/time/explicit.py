@@ -17,9 +17,14 @@ class ExplicitSchemes(TimeSchemes):
         if "mass" not in self.root.fem.blf['U']:
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
-        # NOTE, we assume that self.lf is not needed here (for efficiency).
         self.blf = ngs.BilinearForm(self.root.fem.fes, nonassemble=True) 
-        self.minv = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
+        self.minv = ngs.BilinearForm(self.root.fem.fes, symmetric=True) # TODO: diag=True
+
+        self.lf = None
+        if self.root.fem.lf:
+            self.lf = ngs.LinearForm(self.root.fem.fes)
+            self.add_sum_of_integrals(self.lf, self.root.fem.lf, 'linear form')
+            self.lf.Assemble()
 
         # Step 1: precompute and store the inverse mass matrix. Note, this is scaled by dt.
         self.minv += self.root.fem.blf['U']['mass']
@@ -76,6 +81,10 @@ class ExplicitEuler(ExplicitSchemes):
             raise TypeError(f"Stage {iStage} does not exist.")
 
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
+
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
         self.root.fem.gfu.vec.data -= self.minv * self.rhs
         yield {'stage': 1}
 
@@ -355,10 +364,18 @@ class SSPRK3(ExplicitSchemes):
 
         # First stage.
         self.blf.Apply(Un.vec, self.rhs)
+        
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
         Un.vec.data = self.U0 - self.minv * self.rhs
 
         # Second stage.
         self.blf.Apply(Un.vec, self.rhs)
+
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
 
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
         Un.vec.data *= self.alpha21
@@ -366,6 +383,11 @@ class SSPRK3(ExplicitSchemes):
 
         # Third stage.
         self.blf.Apply(Un.vec, self.rhs)
+        
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
+
         # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
         Un.vec.data *= self.alpha32
         Un.vec.data += self.alpha30 * self.U0 - self.beta32 * self.minv * self.rhs

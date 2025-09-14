@@ -302,17 +302,22 @@ import numpy as np
 
 H = sorted(ERROR.keys(), reverse=True)
 
-fig, axes = plt.subplots(2, 3)
-axes = {(str(sim), field): axes[i, j] for i, sim in enumerate(SIMULATIONS) for j, field in enumerate(['rho', 'u', 'p'])}
+fig, axes_grid = plt.subplots(2, 3, figsize=(10, 6))
+axes = {(str(sim), field): axes_grid[i, j]
+        for i, sim in enumerate(SIMULATIONS)
+        for j, field in enumerate(['rho', 'u', 'p'])}
 
 for key, ax in axes.items():
     sim, field = key
 
     for order in ORDERS:
         errors = [ERROR[h][sim][order][field] for h in H]
-        ax.loglog(H, errors, marker='o',  label=fr"$p={order}$")
+        ax.loglog(H, errors, marker='o', label=fr"$p={order}$")
 
     ax.set_xlabel(r"$h$")
     ax.set_title(rf"${field}$")
     ax.legend()
+
+plt.tight_layout()
+plt.show()
 

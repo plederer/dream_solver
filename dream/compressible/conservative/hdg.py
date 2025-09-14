@@ -875,7 +875,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         blf['Uhat'][f"{bc.name}_{bnd}"] = ngs.InnerProduct(Uhat.U - U_infty, Vhat) * dS
 
     
-    def add_dirichlet_formulation(self, blf: Integrals, lf: Integrals, bc: Outflow, bnd: str):
+    def add_dirichlet_formulation(self, blf: Integrals, lf: Integrals, bc: Dirichlet, bnd: str):
 
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd))
         Uhat, Vhat = self.TnT['Uhat']
