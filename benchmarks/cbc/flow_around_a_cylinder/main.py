@@ -2,6 +2,18 @@
 from ngsolve import *
 from netgen.occ import *
 from dream import *
+import argparse
+from ngsolve.webgui import Draw
+
+parser = argparse.ArgumentParser(description='Flow around the cylinder benchmark')
+parser.add_argument('outflow', metavar='o', type=int, help='Outfow position')
+parser.add_argument('--minus', default=1, type=int, help='Minus', required=False)
+args = vars(parser.parse_args())
+outflow = args['outflow']
+print(args)
+if args['minus'] == -1:
+    outflow = -outflow
+
 SetNumThreads(8)
 
 R = 0.5
@@ -17,8 +29,8 @@ cyl.edges.maxh = 0.035
 
 bl = 4
 wp.MoveTo(0, bl*R).Direction(-1, 0).Arc(bl*R, 180)
-wp.LineTo((20+offset)*R, -bl*R)
-wp.LineTo((20+offset)*R, bl*R)
+wp.LineTo((20+outflow+offset)*R, -bl*R)
+wp.LineTo((20+outflow+offset)*R, bl*R)
 wp.LineTo(0, bl*R)
 wake = wp.Face()
 
@@ -26,7 +38,8 @@ wake.faces.maxh = 0.5
 wake -= cyl
 
 # domain
-domain = wp.MoveTo(offset*R, 0).RectangleC(40*R, 40*R).Face()
+# domain = wp.MoveTo(offset*R, 0).RectangleC(40*R, 40*R).Face()
+domain = wp.MoveTo(-15*R, -20*R).Rectangle((40+outflow)*R, 40*R).Face()
 domain.faces.maxh = 1.5
 
 for edge, name_ in zip(domain.edges, ['planar', 'outflow', 'planar', 'inflow']):
@@ -49,8 +62,8 @@ cfg.scaling = 'aerodynamic'
 cfg.mixed_method = 'strain_heat'
 cfg.dynamic_viscosity = 'constant'
 cfg.riemann_solver = 'farfield'
-cfg.Mach_number = 0.1
-cfg.Reynolds_number = 200
+cfg.Mach_number = 0.2
+cfg.Reynolds_number = 150
 cfg.order = 4
 cfg.compile_flag = True
 cfg.static_condensation = True
