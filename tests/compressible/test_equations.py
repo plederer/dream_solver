@@ -2,7 +2,7 @@ import pytest
 import numpy.testing as nptest
 import ngsolve as ngs
 
-from dream.compressible import CompressibleFlowSolver, flowfields
+from dream.compressible import CompressibleFlowSolver, flowfields, dimensionalfields
 
 mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
 mip = mesh(0.5, 0.5)
@@ -226,3 +226,15 @@ def test_farfield_fields(cfg):
     for is_, exp_ in zip(INF.items(), results.items()):
         assert is_[0] == exp_[0]
         nptest.assert_almost_equal(is_[1], exp_[1])
+
+def test_set_configuration_from_dimensional_fields(cfg: CompressibleFlowSolver):
+
+    fields = dimensionalfields(rho_inf = 1.293, u_inf = 50, T_inf = 293.15)
+    cfg.dimensional_fields = fields
+
+    assert cfg.mach_number.Get() == pytest.approx(0.14568676132527716)
+    assert cfg.reynolds_number.Get() == pytest.approx(3612942.885883536)
+    assert cfg.prandtl_number.Get() == pytest.approx(0.6948018167761886)
+
+    
+

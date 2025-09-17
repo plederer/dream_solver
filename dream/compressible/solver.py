@@ -188,6 +188,8 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         if not isinstance(dim_fields, dimensionalfields):
             raise ValueError(f"Dimensional fields has to be of type dimensionalfields, not {type(dim_fields)}!")
+        
+        logger.info("Setting dimensionless numbers from dimensional fields. Previous values will be overwritten.")
 
         gamma = self.equation_of_state.heat_capacity_ratio.Get()
         dim_fields.c = ngs.sqrt((gamma-1) * dim_fields.c_p * dim_fields.T)
