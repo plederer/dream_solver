@@ -203,8 +203,8 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         
         # Extract the density and energies.
         rho = U.rho 
-        ei  = self.root.specific_energy(U)
-        ek  = self.root.specific_kinetic_energy(U)
+        E  = self.root.specific_energy(U)
+        Ek  = self.root.specific_kinetic_energy(U)
 
         # Extract the viscosity.
         mu = self.root.viscosity(U)
@@ -236,7 +236,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         KU11_22 =  ovrho*lmbp2mu
         KU11_31 = -ovrho*mu * v
         KU11_33 =  ovrho*mu
-        KU11_41 =  ovrhocv*kappa*(2*ek-ei) - ovrho*( lmbp2mu*u2 + mu*v2 )
+        KU11_41 =  ovrhocv*kappa*(2*Ek-E) - ovrho*( lmbp2mu*u2 + mu*v2 )
         KU11_42 = (ovrho*lmbp2mu - ovrhocv*kappa) * u 
         KU11_43 = (ovrho*mu      - ovrhocv*kappa) * v
         KU11_44 =  ovrhocv*kappa
@@ -252,7 +252,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         KU22_22 =  ovrho*mu
         KU22_31 = -ovrho*lmbp2mu * v
         KU22_33 =  ovrho*lmbp2mu
-        KU22_41 =  ovrhocv*kappa*(2*ek-ei) - ovrho*( mu*u2 + lmbp2mu*v2 )
+        KU22_41 =  ovrhocv*kappa*(2*Ek-E) - ovrho*( mu*u2 + lmbp2mu*v2 )
         KU22_42 = (ovrho*mu      - ovrhocv*kappa) * u 
         KU22_43 = (ovrho*lmbp2mu - ovrhocv*kappa) * v
         KU22_44 =  ovrhocv*kappa
