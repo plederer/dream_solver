@@ -58,6 +58,9 @@ class EquationOfState(Configuration, is_interface=True):
 
     def temperature_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         raise NotImplementedError()
+    
+    def specific_inner_energy_gradient(self, U: flowfields,  dU: flowfields) -> ngs.CF:
+        raise NotImplementedError()
 
     def characteristic_velocities(
             self, U: flowfields, unit_vector: ngs.CF, type_: str = None) -> ngs.CF:
@@ -351,6 +354,20 @@ class IdealGas(EquationOfState):
         elif dU.grad_Ei is not None:
             logger.debug("Returning temperature gradient from specific inner energy gradient.")
             return gamma * dU.grad_Ei
+        
+    def specific_inner_energy_gradient(self, U: flowfields,  dU: flowfields) -> ngs.CF:
+        r"""Returns the specific inner energy gradient from given fields
+
+        .. math::
+            (1) \quad \nabla E_i &= \frac{\nabla T}{\gamma},
+        """
+
+        gamma = self.heat_capacity_ratio
+        if dU.grad_Ei is not None:
+            return dU.grad_Ei
+
+        elif dU.grad_T is not None:
+            return dU.grad_T/gamma
 
     def characteristic_velocities(self, U: flowfields, unit_vector: ngs.CF, type: str = None) -> ngs.CF:
 

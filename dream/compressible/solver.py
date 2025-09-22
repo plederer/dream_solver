@@ -611,18 +611,26 @@ class CompressibleFlowSolver(SolverConfiguration):
     def inner_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_Ei is not None:
             return dU.grad_rho_Ei
+        elif all((U.rho, dU.grad_rho, dU.Ei, dU.grad_Ei)):
+            logger.debug("Returning inner energy gradient from density and specific inner energy.")
+            return dU.grad_rho * dU.Ei + U.rho * dU.grad_Ei
         elif all((dU.grad_rho_E, dU.grad_rho_Ek)):
             logger.debug("Returning inner energy gradient from energy and kinetic energy.")
             return dU.grad_rho_E - dU.grad_rho_Ek
 
     @equation
     def specific_inner_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
-        if dU.grad_Ei is not None:
-            return dU.grad_Ei
-        elif all((dU.grad_E, dU.grad_Ek)):
-            logger.debug(
-                "Returning specific inner energy gradient from specific energy and specific kinetic energy.")
-            return dU.grad_E - dU.grad_Ek
+
+        grad_Ei = self.equation_of_state.specific_inner_energy_gradient(U, dU)
+
+        if grad_Ei is None:
+
+            if all((dU.grad_E, dU.grad_Ek)):
+                logger.debug(
+                    "Returning specific inner energy gradient from specific energy and specific kinetic energy.")
+                grad_Ei = dU.grad_E - dU.grad_Ek
+
+        return grad_Ei
 
     @equation
     def kinetic_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
