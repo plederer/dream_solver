@@ -297,6 +297,43 @@ class Outflow(Condition):
         else:
             raise TypeError(f"Pressure must be a scalar or '{flowfields}'")
 
+class Inflow(Condition):
+    r""" Inflow condition for subsonic compressible flow.
+
+    The inflow condition is used to set the subsonic inflow conditions for compressible flows by setting
+    the static variables: density and velocity, :math:`rho_\infty, u_\infty, v_\infty` at the inflow boundaries. By the hard imposition of these variables, the inflow condition acts reflecting for acoustic waves. Also, this can become too constricting/unstable for internal flows, due to choking.
+    """
+
+    name = "inflow"
+
+    def __init__(self, density: float, velocity: float):
+
+        self.density = density
+        self.velocity = velocity
+
+        super().__init__()
+
+    @dream_configuration
+    def density(self) -> ngs.CF:
+        if self._density is None:
+            raise ValueError(f"Density value must be specified.")
+        return self._density
+
+    @density.setter
+    def density(self, value: ngs.CF) -> None:
+        self._density = ngs.CF( value )
+
+    @dream_configuration
+    def velocity(self) -> ngs.CF:
+        if self._velocity is None:
+            raise ValueError(f"Velocity values must be specified.")
+        return self._velocity
+
+    @velocity.setter
+    def velocity(self, value: ngs.CF) -> None:
+        if value.dim != 2:
+            raise ValueError(f"Velocity vector must have a dimension of 2.")
+        self._velocity = ngs.CF( value )
 
 class CBC(Condition):
 
@@ -589,7 +626,7 @@ class Force(Condition):
         self._order = int(order)
 
 
-BCS = [FarField, Outflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, InterfaceBC, Periodic, Dirichlet]
+BCS = [FarField, Outflow, Inflow, GRCBC, NSCBC, InviscidWall, Symmetry, IsothermalWall, AdiabaticWall, InterfaceBC, Periodic, Dirichlet]
 
 
 # ------- Domain Conditions ------- #

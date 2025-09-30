@@ -102,7 +102,7 @@ class EulerMMS(NamedTuple):
         return Force(F[0], (F[1], F[2]), F[3])
 
     def __str__(self):
-        return "Euler"
+        return "EE"
 
 
 class NavierStokesMMS(NamedTuple):
@@ -186,26 +186,19 @@ class NavierStokesMMS(NamedTuple):
 
 
 # Define refinement levels, polynomial orders and simulations to run
-#LEVELS = 4
-#ORDERS = [1, 2, 3, 4, 5]
-#SIMULATIONS = [EulerMMS(), NavierStokesMMS()]
 LEVELS = 3
-ORDERS = [2]
-#SIMULATIONS = [EulerMMS()]
-SIMULATIONS = [NavierStokesMMS()]
-#SIMULATIONS = [EulerMMS(), NavierStokesMMS()]
+ORDERS = [1, 2, 3, 4, 5]
+SIMULATIONS = [EulerMMS(), NavierStokesMMS()]
 
-
-# LEVELS = 1
-# ORDERS = [5]
-# SIMULATIONS = [EulerMS()]
-# SIMULATIONS = [NavierStokesMS()]
+# Temporal values.
+TIME_T0 = 0.0
+TIME_T1 = 3.0  # 2 is enough
+TIME_DT = 1e-5 # 2e-5 is stable
 
 draw = False
 write_vtk = True
+
 # Setup solution routine
-
-
 def mms_routine(func):
 
     def polynomial_order_routine(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS, order: int, level: int):
@@ -238,8 +231,8 @@ def mms_routine(func):
             
             cfg.io.vtk.fields = fields 
             cfg.io.vtk.enable=True
-            cfg.io.vtk.rate = 200
-            cfg.io.vtk.subdivision = order
+            cfg.io.vtk.rate = 10000000 # just output the last step.
+            #cfg.io.vtk.subdivision = order
             cfg.io.vtk.path = path 
             cfg.io.vtk.filename = fn 
 
@@ -278,8 +271,8 @@ def mms_routine(func):
 
         cfg.time = "transient"
         cfg.time.scheme = "explicit_euler"
-        cfg.time.timer.step = 0.00025
-        cfg.time.timer.interval = (0.0, 2.0)
+        cfg.time.timer.step = TIME_DT
+        cfg.time.timer.interval = (TIME_T0, TIME_T1)
 
         L2 = {}
         for LEVEL in range(LEVELS):
@@ -316,51 +309,60 @@ def conservative_sdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierS
     #cfg.fem.bonus_int_order['diffusion']['bnd']  = nOverInt 
 
 
-
 # Run the simulations and collect errors
 ERROR = conservative_sdg()
 
-# Plot the results
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
 import numpy as np
-
-
-#H = sorted(ERROR.keys(), reverse=True)
-#
-#fig, axes = plt.subplots(2, 3)
-#axes = {(str(sim), field): axes[i, j] for i, sim in enumerate(SIMULATIONS) for j, field in enumerate(['rho', 'u', 'p'])}
-#
-#for key, ax in axes.items():
-#    sim, field = key
-#
-#    for order in ORDERS:
-#        errors = [ERROR[h][sim][order][field] for h in H]
-#        ax.loglog(H, errors, marker='o',  label=fr"$p={order}$")
-#
-#    ax.set_xlabel(r"$h$")
-#    ax.set_title(rf"${field}$")
-#    ax.legend()
-#    plt.show()
-
+import csv
 
 H = sorted(ERROR.keys(), reverse=True)
 
-fig, axes_grid = plt.subplots(2, 3, figsize=(10, 6))
+fig, axes_grid = plt.subplots(2, 3, figsize=(10, 6)) 
 axes = {(str(sim), field): axes_grid[i, j]
         for i, sim in enumerate(SIMULATIONS)
         for j, field in enumerate(['rho', 'u', 'p'])}
 
-for key, ax in axes.items():
-    sim, field = key
+# Open the CSV file and write the plot data. 
+with open("mms_sdg_errors.csv", "w", newline="") as f:
+    
+    # Write the header information.
+    writer = csv.writer(f)
+    f.write(f"levels (refinement): {LEVELS}\n")
+    f.write(f"dt: {TIME_DT}\n")
+    f.write(f"simulation time (t0,tf): ({TIME_T0}, {TIME_T1})\n")
+    f.write("\n")
+    f.write("------------------------------------------------------------------------\n")
+    f.write("h, eq, field, order, error\n")
+    f.write("------------------------------------------------------------------------\n")
+    
+    for key, ax in axes.items():
+        sim, field = key 
 
-    for order in ORDERS:
-        errors = [ERROR[h][sim][order][field] for h in H]
-        ax.loglog(H, errors, marker='o', label=fr"$p={order}$")
+        for order in ORDERS:
+            errors = [ERROR[h][sim][order][field] for h in H]
+            ax.loglog(H, errors, marker='o', label=fr"$p={order}$")
 
-    ax.set_xlabel(r"$h$")
-    ax.set_title(rf"${field}$")
-    ax.legend()
+            # Save the data onto the file. 
+            for h, err in zip(H, errors):
+                field_fmt = field
+                if field in ["u", "p"]:
+                    field_fmt = f"  {field}" # prepend two spaces
+                row = [
+                    f"{h:.15e}", sim, field_fmt, str(order), f"{err:.15e}"
+                ]
+                f.write(",\t".join(row) + "\n")
+
+        ax.set_xlabel(r"$h$")
+        ax.set_title(rf"${field}$")
+        ax.legend()
 
 plt.tight_layout()
+
+# Save the whole figure in vector formats.
+plt.savefig("mms_sdg_errors.pdf")
+plt.savefig("mms_sdg_errors.svg")
+
 plt.show()
+
 
