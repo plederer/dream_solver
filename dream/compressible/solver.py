@@ -253,7 +253,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Returns the conservative convective flux from given fields.
 
             .. math::
-                \bm{F} = \begin{pmatrix} \rho \bm{u} \\ \rho \bm{u} \otimes \bm{u} + p \bm{I} \\ \rho H \bm{u} \end{pmatrix}
+                \bm{F}(\bm{U}) = \begin{pmatrix} \rho \bm{u} \\ \rho \bm{u} \otimes \bm{u} + p \bm{I} \\ \rho H \bm{u} \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
             :type U: flowfields
@@ -272,7 +272,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Returns the conservative diffusive flux from given states.
 
             .. math::
-                \bm{G} = \begin{pmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \bm{q}\right) \end{pmatrix}
+                \bm{G}(\bm{U}, \bm{\nabla U}) = \begin{pmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \bm{q}\right) \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
             :type U: flowfields

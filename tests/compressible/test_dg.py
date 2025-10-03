@@ -21,6 +21,7 @@ def cfg():
 
     yield cfg
 
+
 def test_set_initial_conditions(cfg: CompressibleFlowSolver):
 
     cfg.dynamic_viscosity = "constant"
@@ -35,7 +36,7 @@ def test_set_initial_conditions(cfg: CompressibleFlowSolver):
     cfg.fem.set_initial_conditions()
 
     U = cfg.get_solution_fields('rho', 'momentum', 'rho_E')
-    U.grad_u = ngs.CF((1, 0, 0, -1), dims=(2,2))
+    U.grad_u = ngs.CF((1, 0, 0, -1), dims=(2, 2))
     U.grad_rho = (0, 0)
     U.grad_p = (1, 0)
 
@@ -48,18 +49,19 @@ def test_set_initial_conditions(cfg: CompressibleFlowSolver):
     nptest.assert_almost_equal(ngs.Integrate(U.eps, mesh), [1, 0, 0, -1])
     nptest.assert_almost_equal(ngs.Integrate(U.grad_T, mesh), [1.4/(1.4 - 1), 0])
 
-def test_viscous_diffusion_diffusion_matrices(cfg: CompressibleFlowSolver):
+
+def test_viscous_diffusion_matrices(cfg: CompressibleFlowSolver):
 
     cfg.dynamic_viscosity = "constant"
     cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
 
     cfg.reynolds_number = 10
     cfg.mach_number = 1
-    cfg.prandtl_number  = 0.72
+    cfg.prandtl_number = 0.72
     cfg.equation_of_state.heat_capacity_ratio = 1.4
 
     U = flowfields(rho=1+ngs.y, u=(ngs.x, -ngs.y), p=1+ngs.x)
-    U.grad_u = ngs.CF((1, 0, 0, -1), dims=(2,2))
+    U.grad_u = ngs.CF((1, 0, 0, -1), dims=(2, 2))
     U.grad_rho = (0, 1)
     U.grad_p = (1, 0)
 
@@ -80,82 +82,39 @@ def test_viscous_diffusion_diffusion_matrices(cfg: CompressibleFlowSolver):
     Fv = cfg.get_diffusive_flux(U, U)
 
     K11, K12, K21, K22 = cfg.fem.viscous_treatment.get_frozen_diffusion_matrices_conservative(U)
-    grad_U = ngs.CF((U.grad_rho, U.grad_rho_u, U.grad_rho_E), dims=(4,2))
-    Fv_mat = ngs.CF((K11*grad_U[:, 0] + K12*grad_U[:, 1], K21 * grad_U[:, 0] + K22 * grad_U[:, 1]), dims=(2,4)).trans
+    grad_U = ngs.CF((U.grad_rho, U.grad_rho_u, U.grad_rho_E), dims=(4, 2))
+    Fv_mat = ngs.CF((K11*grad_U[:, 0] + K12*grad_U[:, 1], K21 * grad_U[:, 0] + K22 * grad_U[:, 1]), dims=(2, 4)).trans
 
     print(Fv(mesh()), ngs.Integrate(Fv, mesh))
     print(Fv_mat(mesh()), ngs.Integrate(Fv_mat, mesh))
     nptest.assert_almost_equal(np.array(ngs.Integrate(Fv, mesh)), np.array(ngs.Integrate(Fv_mat, mesh)))
 
-def test_consistent_viscous_flux_and_matrix_jump_gradient(cfg: CompressibleFlowSolver):
+
+def test_diffusive_flux_from_conservative_jump(cfg: CompressibleFlowSolver):
 
     cfg.dynamic_viscosity = "constant"
     cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
 
     cfg.reynolds_number = 10
     cfg.mach_number = 1
-    cfg.prandtl_number  = 0.72
+    cfg.prandtl_number = 0.72
     cfg.equation_of_state.heat_capacity_ratio = 1.4
 
-    # Simulated normal vector should pass
+    # Simulated normal vector
     for n in [ngs.CF((1, 1)), ngs.CF((-1, -1))]:
 
         U = flowfields(rho=1+ngs.y, u=(ngs.x, -ngs.y), p=1+ngs.x)
-        U.rho_u = cfg.momentum(U)
-        Ujump = flowfields(grad_rho=n, grad_rho_u=bla.outer(n, n), grad_rho_E=n)
 
-        Ujump.grad_u = cfg.velocity_gradient(U, Ujump)
-        Ujump.grad_rho_Ek = cfg.kinetic_energy_gradient(U, Ujump)
-        Ujump.grad_rho_Ei = cfg.inner_energy_gradient(U, Ujump)
-        Ujump.grad_p = cfg.pressure_gradient(U, Ujump)
-        Ujump.grad_T = cfg.temperature_gradient(U, Ujump)
+        # Viscous flux from jump in U only
+        Ujump = ngs.CF((1, n, 1))
+        Fv = cfg.fem.viscous_treatment.get_diffusive_flux_from_conservative_jump(U, Ujump, n)
 
-        Fv = cfg.get_diffusive_flux(U, Ujump)
-
+        # Viscous flux viscous jacobians and gradient of U
         K11, K12, K21, K22 = cfg.fem.viscous_treatment.get_frozen_diffusion_matrices_conservative(U)
-        grad_U = ngs.CF((Ujump.grad_rho, Ujump.grad_rho_u, Ujump.grad_rho_E), dims=(4,2))
-        Fv_mat = ngs.CF((K11*grad_U[:, 0] + K12*grad_U[:, 1], K21 * grad_U[:, 0] + K22 * grad_U[:, 1]), dims=(2,4)).trans
+        grad_U = ngs.CF((n, bla.outer(n, n), n), dims=(4, 2))
+        Fv_mat = ngs.CF(
+            (K11 * grad_U[:, 0] + K12 * grad_U[:, 1],
+             K21 * grad_U[:, 0] + K22 * grad_U[:, 1]),
+            dims=(2, 4)).trans
 
         nptest.assert_almost_equal(np.array(ngs.Integrate(Fv, mesh)), np.array(ngs.Integrate(Fv_mat, mesh)))
-
-def test_inconsistent_viscous_flux_and_matrix_jump_gradient(cfg: CompressibleFlowSolver):
-
-    cfg.dynamic_viscosity = "constant"
-    cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
-
-    cfg.reynolds_number = 10
-    cfg.mach_number = 1
-    cfg.prandtl_number  = 0.72
-    cfg.equation_of_state.heat_capacity_ratio = 1.4
-
-    # Simulated normal vector should pass
-    for n in [ngs.CF((1, 1)), ngs.CF((-1, -1))]:
-
-        U = flowfields(rho=1+ngs.y, u=(ngs.x, -ngs.y), p=1+ngs.x)
-        U.rho_u = cfg.momentum(U)
-        Ufalse = flowfields(rho=1, u=(ngs.x, -ngs.y), p=1+ngs.x)
-        Ufalse.rho_u = cfg.momentum(Ufalse)
-        Ujump = flowfields(grad_rho=n, grad_rho_u=bla.outer(n, n), grad_rho_E=n)
-
-        Ujump.grad_u = cfg.velocity_gradient(Ufalse, Ujump)
-        Ujump.grad_rho_Ek = cfg.kinetic_energy_gradient(U, Ujump)
-        Ujump.grad_rho_Ei = cfg.inner_energy_gradient(U, Ujump)
-        Ujump.grad_p = cfg.pressure_gradient(U, Ujump)
-        Ujump.grad_T = cfg.temperature_gradient(U, Ujump)
-
-        Fv = cfg.get_diffusive_flux(U, Ujump)
-
-        K11, K12, K21, K22 = cfg.fem.viscous_treatment.get_frozen_diffusion_matrices_conservative(U)
-        grad_U = ngs.CF((Ujump.grad_rho, Ujump.grad_rho_u, Ujump.grad_rho_E), dims=(4,2))
-        Fv_mat = ngs.CF((K11*grad_U[:, 0] + K12*grad_U[:, 1], K21 * grad_U[:, 0] + K22 * grad_U[:, 1]), dims=(2,4)).trans
-
-        with pytest.raises(AssertionError) as excinfo:
-            nptest.assert_almost_equal(np.array(ngs.Integrate(Fv, mesh)), np.array(ngs.Integrate(Fv_mat, mesh)))
-
-
-
-
-
-
-
-
