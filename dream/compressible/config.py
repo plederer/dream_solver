@@ -560,6 +560,7 @@ class Force(Condition):
                  continuum: float | None = None,
                  momentum: float | None = None,
                  energy: float | None = None,
+                 flux: ngs.CF | None = None,
                  order: int = 0):
 
         super().__init__()
@@ -567,6 +568,7 @@ class Force(Condition):
         self._continuum = continuum
         self._momentum = momentum
         self._energy = energy
+        self._flux = flux
 
     def get_force_vector(self, dim: int = 2) -> ngs.CF:
         return ngs.CF((self.continuum(), self.momentum(dim), self.energy()))

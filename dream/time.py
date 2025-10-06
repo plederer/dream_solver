@@ -125,7 +125,9 @@ class Scheme(Configuration, is_interface=True):
     @compile.setter
     def compile(self, compile: bool):
 
-        if bool(compile):
+        if isinstance(compile, dict):
+            self._compile.update(compile)
+        elif bool(compile):
             self._compile['realcompile'] = True
         else:
             self._compile['realcompile'] = False
@@ -142,11 +144,8 @@ class Scheme(Configuration, is_interface=True):
             for term, cf in terms.items():
 
                 logger.debug(f"  Adding {term} term for space {space} to {name}!")
-
-                if self.compile['realcompile']:
-                    form += cf.Compile(**self.compile)
-                else:
-                    form += cf
+                
+                form += cf.Compile(**self.compile)
 
         logger.debug("Done.")
 

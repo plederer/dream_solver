@@ -237,7 +237,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         INF.T = self.scaling.temperature
         INF.p = self.scaling.pressure
 
-        direction = bla.as_vector(direction)
+        direction = bla.unit_vector(direction)
 
         if not direction.dim == self.mesh.dim:
             raise ValueError(f"Direction dimension {direction.dim} does not match mesh dimension {self.mesh.dim}")

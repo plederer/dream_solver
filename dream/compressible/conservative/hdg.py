@@ -916,11 +916,18 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
     def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
 
         dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+        dXe = ngs.dx(element_boundary=True, definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+        n = self.mesh.normal
 
         _, V = self.TnT['U']
-        F = dc.get_force_vector(self.mesh.dim)
 
-        lf['U'][f"{dc.name}_{dom}"] = F * V * dX
+        if any([dc._continuum, dc._momentum, dc._energy]):
+            F = dc.get_force_vector(self.mesh.dim)
+            lf['U'][f"{dc.name}_{dom}"] = F * V * dX
+            
+        elif dc._flux is not None:
+            lf['U'][f"{dc.name}_{dom}"] = -ngs.InnerProduct(dc._flux,  ngs.grad(V)) * dX
+            lf['U'][f"{dc.name}_{dom}"] += ngs.InnerProduct(dc._flux * n,  V) * dXe
 
     def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: ngs.CF):
         r"""
