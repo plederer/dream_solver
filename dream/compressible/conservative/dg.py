@@ -15,7 +15,6 @@ from dream.compressible.config import (flowfields,
                                        Outflow,
                                        Inflow,
                                        InterfaceBC,
-                                       Dirichlet,
                                        Periodic,
                                        Force,
                                        Initial)
@@ -493,21 +492,6 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         penn = tau * KUij * jumpU
         blf['U'][f"{bc.name}_{bnd}"] += ngs.InnerProduct(penn, V) * dS
 
-        # NOTE,
-        # if we compare this vs an HDG farfield, at least the way it is implemented, we notice:
-        # 1) they are not exactly equivalent, as also observed numerically. 
-        # 2) the HDG imposes only the convective part, which is still used in the viscous flux 
-        #    at the surface (that isn't tested with Vhat). In other words, the penalty term on
-        #    the facet is missing, as well as the jump in the viscous flux.
-        # 3) We seem to get a similar solution if we comment the symmetrizing and penalty terms 
-        #    in the current SDG's viscous farfield treatment. Which means that the surface term
-        #    mimics the "internal" viscous fluxes inherent in the HDG formulation, which, to be 
-        #    fair, are also a function of the facet solution obtain from the convective treatment.
-        #
-        # ... All the above suggests we still need to debate which is "better". 
-        #     However, they should be equivalent when,
-        #     (a): no disturbances impinge on the farfield boundary.
-        #     (b): viscosity is negligible, or more generally, Re >> 1.
 
 
 
@@ -615,9 +599,6 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
             elif isinstance(bc, InterfaceBC):
                 self.add_interface_formulation(blf, lf, bc, bnd)
-
-            elif isinstance(bc, Dirichlet):
-                self.add_dirichlet_formulation(blf, lf, bc, bnd)
 
             elif isinstance(bc, Periodic):
                 continue
@@ -894,46 +875,6 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         
         if not self.root.dynamic_viscosity.is_inviscid:
             self.viscous_treatment.add_viscous_interface_formulation(blf, lf, bc, bnd)
-
-    def add_dirichlet_formulation(self, blf: Integrals, lf: Integrals, bc: Dirichlet, bnd: str):
-        
-        bonus = self.bonus_int_order['convection']
-        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
-        U, V = self.TnT['U']
-
-        # Form the boundary state, written as conservative variables.
-        U_infty = ngs.CF(
-            (self.root.density(bc.fields),
-             self.root.momentum(bc.fields),
-             self.root.energy(bc.fields)))
-
-        Ui = self.get_conservative_fields(U)
-        Uj = self.get_conservative_fields(U_infty)
-        Uj.U = U_infty
-
-        # # #
-        # Inviscid treatment.
-        # # 
-
-        Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
-        
-        Gamma_infty = ngs.InnerProduct(Fn, V)
-        blf['U'][f"{bc.name}_{bnd}"] = Gamma_infty * dS
-        
-        # # # 
-        # Viscous treatment.
-        # # 
-        
-        if not self.root.dynamic_viscosity.is_inviscid:
-            self.viscous_treatment.add_viscous_farfield_formulation(U_infty, blf, lf, bc, bnd)
-            
-            ## NOTE, use the below formulation, if you plan to impose the viscous boundary strongly.
-            #bonus_diffusion = self.bonus_int_order['diffusion']
-            #dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus_diffusion['bnd'])
-            #G = self.root.get_diffusive_flux(bc.fields, bc.fields)
-            #Gamma_viscous = ngs.InnerProduct(G*self.mesh.normal, V)
-            #blf['U'][f"{bc.name}_{bnd}"] -= Gamma_viscous * dS
-
 
     def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
 
