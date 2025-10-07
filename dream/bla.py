@@ -198,3 +198,17 @@ def skewsymmetric_matrix_from_vector(x: ngs.CF, factor: float = 1):
         return factor * ngs.CF((0, -x[0], x[1], x[0], 0, -x[2], -x[1], x[2], 0), dims=(3, 3))
     else:
         raise ValueError(f"Can not create symmetric matrix with component vector of length {x.dim}!")
+
+
+def estimate_condition_number_sparse_matrix(mat: ngs.CF) -> float:
+ 
+    import numpy as np
+    import scipy.sparse as sp
+    
+    rows,cols,vals = mat.COO()
+    A = sp.csr_matrix((vals,(rows,cols)))
+    k = np.linalg.cond(A.todense())
+    #print( "condition number: ", k )
+    return k
+
+

@@ -314,26 +314,100 @@ class CompressibleFlowSolver(SolverConfiguration):
         mu = self.viscosity(U)
         return rho * ngs.sqrt(bla.inner(u, u)) / mu
 
-    def get_local_time_step_estimate(self, U: flowfields):
+    def get_averaged_time_step_estimate(self, U: flowfields):
 
-        order = self.fem.order
-        h = self.mesh.meshsize
-        u = self.velocity(U)
-        lambda_max = ngs.sqrt(bla.inner(u, u)) + self.speed_of_sound(U)
+        # Effective length scale and its inverse.
+        #leff = self.mesh.meshsize / ( 2 * self.fem.order + 1)
+        leff = self.mesh.meshsize / ( self.fem.order + 1) # TESTING
+        ovl  = 1.0/leff 
 
+        # Required velocities.
+        vel = self.velocity(U)
+        uabs = bla.abs( vel[0] )
+        vabs = bla.abs( vel[1] )
+        a    = self.speed_of_sound(U) 
+
+        # Estimate the spectral radius of the inviscid (EEs) part.
+        rad_ees = ngs.sqrt( (uabs + a)**2 + (vabs + a)**2 ) # units: m/s
+        rad_nse = 0.0 # default: inviscid.
+
+        # Account for diffusion, in case the NSE are solved.
+        if not self.root.dynamic_viscosity.is_inviscid:
+            # Extract the viscosity.
+            mu = self.root.viscosity(U)
+
+            # Get the relevant nondimensional numbers.
+            Re = self.root.scaling.reference_reynolds_number
+            Pr = self.root.prandtl_number
+
+            # NOTE, we explicitly scale the viscosity with Re, 
+            # to obtain the correct nondimensionalization.
+            mu /= Re
+
+            # Compute the respective thermal conductivity constant.
+            kappa = mu/Pr # mu already is divided by Re.
+            
+            # Get the nondimensionalized specific heat at constant volume.
+            cv = self.root.equation_of_state.specific_heat_cv
+
+            # Second viscosity.
+            lmb = -2*mu/3
+
+            # Extract density.
+            rho = self.density(U)
+
+            # Estimate the spetral radius of the viscous part.
+            rad_nse = bla.max( 2*mu + lmb, kappa/cv ) / rho # units: m2/s
+
+        # Obtain the relevant space, based on constant polynomials.
         fes = ngs.L2(self.mesh, order=0)
         (u, v) = fes.TnT()
         gfu = ngs.GridFunction(fes)
 
+        # Assemble the rhs, while taking the correct scaling into account.
         lf = ngs.LinearForm(fes)
-        lf += h/(2*order+1)*lambda_max * v * ngs.dx
+        lf += ovl * ( rad_ees + ovl * rad_nse ) * v * ngs.dx
         lf.Assemble()
 
+        # Note, this estimates (1/dt) and for order>0 is an averaged one. 
         gfu.vec.data = fes.Mass(1).Inverse() * lf.vec
 
-        logger.info(f"Minimum time step estimate: {min(gfu.vec)}, Maximum time step estimate: {max(gfu.vec)}")
+        dtmin = 1.0/max(gfu.vec)
+        dtmax = 1.0/min(gfu.vec)
+        ratio = dtmax/dtmin
 
-        return min(gfu.vec)
+        logger.info(f"Minimum (averaged) time step estimate: {dtmin}")
+        logger.info(f"Maximum (averaged) time step estimate: {dtmax}")
+        logger.info(f"Ratio (averaged) dtmax/dtmin estimate: {ratio}")
+        
+
+        # FIXME 
+        # For nPoly=0, it seems the constraint for the inviscid part is good.
+        # However, for viscous terms, the estimate isn't good at all 
+        # (at least with explicit Euler). Why?
+        # ... uncomment the below to get a picture of the dtmin from inviscid and viscous terms.
+        # NOTE, currently, for nPoly=0, CFL = 0.9 and CFL = 0.6 are stable for an inviscid and 
+        #       viscous simulation, respectively -- where, dt = CFL * dtmin (explicit Euler).
+
+        ## Inviscid estimate.
+        #lf_ees = ngs.LinearForm(fes)
+        #lf_ees += ovl * ( rad_ees ) * v * ngs.dx
+        #lf_ees.Assemble()
+        #gfu.vec.data = fes.Mass(1).Inverse() * lf_ees.vec
+        #dtmin_ees = 1.0/max(gfu.vec)
+
+        ## Viscous estimate.
+        #dtmin_nse = 0.0
+        #if not self.root.dynamic_viscosity.is_inviscid:
+        #    lf_nse = ngs.LinearForm(fes)
+        #    lf_nse += ovl * ( ovl * rad_nse ) * v * ngs.dx
+        #    lf_nse.Assemble()
+        #    gfu.vec.data = fes.Mass(1).Inverse() * lf_nse.vec
+        #    dtmin_nse = 1.0/max(gfu.vec)
+
+        #logger.info(f"dtmin_ees: {dtmin_ees}, dtmin_nse: {dtmin_nse}")
+        
+        return dtmin
 
     def get_primitive_convective_jacobian(self, U: flowfields, unit_vector: ngs.CF, type: str = None):
         lambdas = self.characteristic_velocities(U, unit_vector, type)
