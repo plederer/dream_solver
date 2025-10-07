@@ -48,10 +48,11 @@ class EulerMMS(NamedTuple):
         # Parameters for dimensionalization
         c_p = self.gamma * self.R / (self.gamma - 1)
         T = self.p.c / (self.R * self.rho.c)
+        u_inf = ngs.sqrt(self.u.c**2 + self.v.c**2)
 
         # Pass dimensional fields to determine dimensionless numbers
         cfg.equation_of_state.heat_capacity_ratio = self.gamma
-        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=self.u.c,
+        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=u_inf,
                                                    T_inf=T, c_p=c_p, L=self.L)
 
     def set_conditions(self, cfg: CompressibleFlowSolver) -> flowfields:
@@ -119,12 +120,13 @@ class NavierStokesMMS(NamedTuple):
         # Parameters for dimensionalization
         c_p = self.gamma * self.R / (self.gamma - 1)
         T = self.p.c / (self.R * self.rho.c)
+        u_inf = ngs.sqrt(self.u.c**2 + self.v.c**2)
 
         k_inf = self.mu * c_p / self.Pr
 
         # Pass dimensional fields to determine dimensionless numbers
         cfg.equation_of_state.heat_capacity_ratio = self.gamma
-        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=self.u.c, T_inf=T,
+        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=u_inf, T_inf=T,
                                                    mu_inf=self.mu, k_inf=k_inf, c_p=c_p, L=self.L)
 
     def set_conditions(self, cfg: CompressibleFlowSolver) -> flowfields:

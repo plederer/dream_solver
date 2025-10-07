@@ -188,6 +188,8 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         if not isinstance(dim_fields, dimensionalfields):
             raise ValueError(f"Dimensional fields has to be of type dimensionalfields, not {type(dim_fields)}!")
+        
+        logger.info("Setting dimensionless numbers from dimensional fields. Previous values will be overwritten.")
 
         gamma = self.equation_of_state.heat_capacity_ratio.Get()
         dim_fields.c = ngs.sqrt((gamma-1) * dim_fields.c_p * dim_fields.T)
@@ -251,7 +253,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Returns the conservative convective flux from given fields.
 
             .. math::
-                \bm{F} = \begin{pmatrix} \rho \bm{u} \\ \rho \bm{u} \otimes \bm{u} + p \bm{I} \\ \rho H \bm{u} \end{pmatrix}
+                \bm{F}(\bm{U}) = \begin{pmatrix} \rho \bm{u} \\ \rho \bm{u} \otimes \bm{u} + p \bm{I} \\ \rho H \bm{u} \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
             :type U: flowfields
@@ -270,7 +272,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         r""" Returns the conservative diffusive flux from given states.
 
             .. math::
-                \bm{G} = \begin{pmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \bm{q}\right) \end{pmatrix}
+                \bm{G}(\bm{U}, \bm{\nabla U}) = \begin{pmatrix} \bm{0} \\ \bm{\tau} \\ \left( \bm{\tau} \bm{u} - \bm{q}\right) \end{pmatrix}
 
             :param U: A dictionary containing the flow quantities
             :type U: flowfields
@@ -683,18 +685,26 @@ class CompressibleFlowSolver(SolverConfiguration):
     def inner_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_Ei is not None:
             return dU.grad_rho_Ei
+        elif all((U.rho, dU.grad_rho, dU.Ei, dU.grad_Ei)):
+            logger.debug("Returning inner energy gradient from density and specific inner energy.")
+            return dU.grad_rho * dU.Ei + U.rho * dU.grad_Ei
         elif all((dU.grad_rho_E, dU.grad_rho_Ek)):
             logger.debug("Returning inner energy gradient from energy and kinetic energy.")
             return dU.grad_rho_E - dU.grad_rho_Ek
 
     @equation
     def specific_inner_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
-        if dU.grad_Ei is not None:
-            return dU.grad_Ei
-        elif all((dU.grad_E, dU.grad_Ek)):
-            logger.debug(
-                "Returning specific inner energy gradient from specific energy and specific kinetic energy.")
-            return dU.grad_E - dU.grad_Ek
+
+        grad_Ei = self.equation_of_state.specific_inner_energy_gradient(U, dU)
+
+        if grad_Ei is None:
+
+            if all((dU.grad_E, dU.grad_Ek)):
+                logger.debug(
+                    "Returning specific inner energy gradient from specific energy and specific kinetic energy.")
+                grad_Ei = dU.grad_E - dU.grad_Ek
+
+        return grad_Ei
 
     @equation
     def kinetic_energy_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:

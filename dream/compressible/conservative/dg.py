@@ -133,7 +133,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         KU11_22 =  ovrho*lmbp2mu
         KU11_31 = -ovrho*mu * v
         KU11_33 =  ovrho*mu
-        KU11_41 =  ovrhocv*kappa*(ek-ei) - ovrho*( lmbp2mu*u2 + mu*v2 )
+        KU11_41 =  ovrhocv*kappa*(2*Ek-E) - ovrho*( lmbp2mu*u2 + mu*v2 )
         KU11_42 = (ovrho*lmbp2mu - ovrhocv*kappa) * u 
         KU11_43 = (ovrho*mu      - ovrhocv*kappa) * v
         KU11_44 =  ovrhocv*kappa
@@ -149,7 +149,7 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         KU22_22 =  ovrho*mu
         KU22_31 = -ovrho*lmbp2mu * v
         KU22_33 =  ovrho*lmbp2mu
-        KU22_41 =  ovrhocv*kappa*(ek-ei) - ovrho*( mu*u2 + lmbp2mu*v2 )
+        KU22_41 =  ovrhocv*kappa*(2*Ek-E) - ovrho*( mu*u2 + lmbp2mu*v2 )
         KU22_42 = (ovrho*mu      - ovrhocv*kappa) * u 
         KU22_43 = (ovrho*lmbp2mu - ovrhocv*kappa) * v
         KU22_44 =  ovrhocv*kappa
@@ -310,6 +310,38 @@ class InteriorPenaltyMethodSDG(ViscousTreatment):
         KUij = nx * (KU11*nx + KU12*ny) + ny * (KU21*nx + KU22*ny)
         penn = tau * KUij * jumpU
         blf['U']['diffusion'] += ngs.InnerProduct(penn, jumpV) * dS
+    
+    def get_diffusive_flux_from_conservative_jump(self, U: flowfields, Ujump: ngs.CF, unit_vector: ngs.CF) -> ngs.CF:
+        r""" Returns the conservative diffusive flux from given states and jump in the conservative variables along the unit normal vector.
+
+            .. math::
+                \bm{G}(\bm{U}, \jump{U} \otimes \bm{n})
+
+            :param U: A dictionary containing the flow quantities
+            :type U: flowfields
+            :param dU: A CoefficientFunction containing the jump in the conservative variables
+            :type dU: CoefficientFunction
+        """
+
+        dim = unit_vector.dim
+        unit_vector = bla.as_vector(unit_vector)
+
+        U.rho = self.root.density(U)
+        U.rho_u = self.root.momentum(U)
+        U.rho_E = self.root.energy(U)
+        U.u = self.root.velocity(U)
+        U.p = self.root.pressure(U)
+                
+        Ujump = bla.outer(Ujump, unit_vector)
+        Ujump = flowfields(grad_rho=Ujump[0, :], grad_rho_u=ngs.CF(tuple(Ujump[i, :] for i in range(1, dim+1)), dims=(dim, dim)), grad_rho_E=Ujump[dim+1, :])
+                
+        Ujump.grad_u = self.root.velocity_gradient(U, Ujump)
+        Ujump.grad_rho_Ek = self.root.kinetic_energy_gradient(U, Ujump)
+        Ujump.grad_rho_Ei = self.root.inner_energy_gradient(U, Ujump)
+        Ujump.grad_p = self.root.pressure_gradient(U, Ujump)
+        Ujump.grad_T = self.root.temperature_gradient(U, Ujump)
+
+        return self.root.get_diffusive_flux(U, Ujump)
 
     def add_viscous_interface_formulation(self, blf: Integrals, lf: Integrals, bc: InterfaceBC, bnd: str):
         

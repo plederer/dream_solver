@@ -17,7 +17,7 @@ class ImplicitSchemes(TimeSchemes):
         self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'implicit bilinear form')
 
         rhs = None
-        if self.root.fem.lf:
+        if any([space for space, forms in self.root.fem.lf.items() if forms]):
             self.lf = ngs.LinearForm(self.root.fem.fes)
             self.add_sum_of_integrals(self.lf, self.root.fem.lf, 'linear form')
             self.lf.Assemble()
