@@ -168,23 +168,22 @@ class MMS:
         Ue_ = ngs.CF((Ue.rho, Ue.rho_u, Ue.rho_E))
         Uh_ = ngs.CF((Uh.rho, Uh.rho_u, Uh.rho_E))
 
+        weight = ngs.sin(ngs.pi * ngs.x/self.length) * ngs.sin(ngs.pi * ngs.y/self.length)
+        J_e = 4/ngs.pi**2
+
         self.errors[key] = {
             'rho': ngs.sqrt(ngs.Integrate((Uh.rho - Ue.rho) ** 2, self.cfg.mesh, order=order + 10)),
             'u': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh.u - Ue.u, Uh.u - Ue.u), self.cfg.mesh, order=order + 10)),
             'p': ngs.sqrt(ngs.Integrate((Uh.p - Ue.p) ** 2, self.cfg.mesh, order=order + 10)),
             'rho_u': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh.rho_u - Ue.rho_u, Uh.rho_u - Ue.rho_u), self.cfg.mesh, order=order + 10)),
             'rho_E': ngs.sqrt(ngs.Integrate((Uh.rho_E - Ue.rho_E) ** 2, self.cfg.mesh, order=order + 10)),
-            'U': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh_ - Ue_, Uh_ - Ue_), self.cfg.mesh, order=order + 10))
+            'U': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh_ - Ue_, Uh_ - Ue_), self.cfg.mesh, order=order + 10)),
+            'J(rho)': abs(ngs.Integrate(ngs.InnerProduct(Uh.rho, weight), self.cfg.mesh, order=order + 10) - J_e)
         }
-
-        weight = ngs.sin(ngs.pi * ngs.x/self.length) * ngs.sin(ngs.pi * ngs.y/self.length)
-        J_e = 4/ngs.pi**2
-        self.J_errors[key] = {'J(rho)': abs(ngs.Integrate(ngs.InnerProduct(
-            Uh.rho, weight), self.cfg.mesh, order=order + 10) - J_e)}
 
         # Uh['Ma'] = self.cfg.get_local_mach_number(Uh)
         # filename = f'Ma_{self.filename}_{self.routine_log['order']}_level{self.routine_log["level"]}'
-        # vtk = ngs.VTKOutput(cfg.mesh, list(Uh.values()), list(Uh.keys()), filename=filename, subdivision=3)
+        # vtk = ngs.VTKOutput(self.cfg.mesh, list(Uh.values()), list(Uh.keys()), filename=filename, subdivision=3)
         # vtk.Do()
 
         self.Uh = Uh
@@ -193,7 +192,6 @@ class MMS:
         self.routine_log = {'level': 0, 'h': 0.0, 'order': 0}
 
         self.errors = {}
-        self.J_errors = {}
 
     def close_output_streams(self):
         self.cfg.io.path.mkdir(parents=True, exist_ok=True)
@@ -219,18 +217,12 @@ class MMS:
             file.write("------------------------------------------------------------------------\n")
 
             errors = sorted(self.errors.items(), key=lambda x: x[0][2])
-            for field in ['rho', 'u', 'p', 'rho_u', 'rho_E', 'U']:
+            for field in ['rho', 'u', 'p', 'rho_u', 'rho_E', 'U', 'J(rho)']:
 
                 for key, error in errors:
                     level, h, order = key
-
                     dt = 1.0  # just a dummy, for the output.
-                    field_fmt = field
-                    if field in ["u", "p", "U"]:
-                        field_fmt = f"    {field}"  # prepend four spaces
-                    elif field == "rho":
-                        field_fmt = f"  {field}"  # prepend two spaces
-                    row = [f"{h:.15e}", f"{dt:.15e}", str(self), field_fmt, str(order), f"{error[field]:.15e}"]
+                    row = [f"{h:.15e}", f"{dt:.15e}", str(self), f"{field:6}", str(order), f"{error[field]:.15e}"]
                     file.write(",\t".join(row) + "\n")
 
     def export_errors_to_fig(self):
@@ -268,11 +260,7 @@ class MMS:
         labels = {'J(rho)': r"$\| J(\rho_h) - J(\rho_e) \|$"}
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
-        df = pd.DataFrame.from_dict(self.J_errors, orient='index')
-        df.index.names = ['level', 'h', 'order']
-        h = df.index.get_level_values('h').unique()
         data = df.xs('J(rho)', axis=1)
-
         for order in df.index.levels[2]:
             error = data.loc[:, :, order]
             ax.loglog(h, error, marker='o',  label=fr"$p={order}$")
@@ -296,17 +284,27 @@ class MMS:
 
         k = 2*ngs.pi/self.length
         omega = 2*np.pi*self.frequency/self.period
-        wave = (1 + self.amplitude * ngs.sin(k*(ngs.x + ngs.y) - omega*t))
+        wave = ngs.sin(k*(ngs.x + ngs.y) - omega*t)
 
         U_inf = self.cfg.get_farfield_fields(self.flow_direction)
         U_inf.rho_u = self.cfg.momentum(U_inf)
-        U_inf.E = self.cfg.specific_energy(U_inf)
 
         U = flowfields()
-        U.rho = U_inf.rho * wave
-        U.rho_u = U_inf.rho_u * wave**2
-        U.rho_E = U_inf.rho_E * wave**3
 
+        M = self.cfg.mach_number.Get()
+        if M < 0.3:
+            U.rho = U_inf.rho * (1 + M**2 * wave)
+            U.u = U_inf.u * (1 + M * wave)
+            U.p = U_inf.p * (1 + M**2 * wave)
+        else:
+            U.rho = U_inf.rho * (1 + self.amplitude * wave)
+            U.u = U_inf.u * (1 + self.amplitude * wave)
+            U.p = U_inf.p * (1 + self.amplitude * wave)
+
+        U.rho_u = self.cfg.momentum(U)
+        U.rho_Ei = self.cfg.inner_energy(U)
+        U.rho_Ek = self.cfg.kinetic_energy(U)
+        U.rho_E = self.cfg.energy(U)
         return U
 
 
