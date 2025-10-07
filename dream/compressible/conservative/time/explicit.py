@@ -127,6 +127,9 @@ class RK_ARS22(ExplicitSchemes):
         self.b1 = self.a31
         self.b2 = self.a32
 
+        if self.lf is not None:
+            raise NotImplementedError(f"RHS term has not been implimented in this scheme (yet).")
+
     def get_num_stages(self) -> int:
         return 2
     def get_stage_dt(self) -> list[float]:
@@ -189,6 +192,9 @@ class RK_ARS33(ExplicitSchemes):
         self.b3 = -0.6443631710
         self.b4 =  0.4358665215
 
+        if self.lf is not None:
+            raise NotImplementedError(f"RHS term has not been implimented in this scheme (yet).")
+
     def get_num_stages(self) -> int:
         return 3
     def get_stage_dt(self) -> list[float]:
@@ -235,6 +241,7 @@ class RK_ARS33(ExplicitSchemes):
         # NOTE, must explicitly reconstruct the solution at u^{n+1}.
         self.update_solution()
 
+
 class RK_ARS43(ExplicitSchemes):
     r""" Class responsible for implementing an explicit 4-stage, 3rd-order Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.8, Equation in :cite:`ascher1997implicit`. Assuming a standard DG formulation,
 
@@ -273,6 +280,8 @@ class RK_ARS43(ExplicitSchemes):
         self.b3 = self.a53
         self.b4 = self.a54
 
+        if self.lf is not None:
+            raise NotImplementedError(f"RHS term has not been implimented in this scheme (yet).")
 
     def get_num_stages(self) -> int:
         return 4
@@ -364,7 +373,6 @@ class SSPRK3(ExplicitSchemes):
 
         # First stage.
         self.blf.Apply(Un.vec, self.rhs)
-        
         if self.lf is not None:
             self.rhs.data -= self.lf.vec
 
@@ -372,23 +380,21 @@ class SSPRK3(ExplicitSchemes):
 
         # Second stage.
         self.blf.Apply(Un.vec, self.rhs)
-
         if self.lf is not None:
             self.rhs.data -= self.lf.vec
 
 
-        # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
+        # NOTE, avoid 1-liners with dependency on the same read/write data.
         Un.vec.data *= self.alpha21
         Un.vec.data += self.alpha20 * self.U0 - self.beta21 * self.minv * self.rhs
 
         # Third stage.
         self.blf.Apply(Un.vec, self.rhs)
-        
         if self.lf is not None:
             self.rhs.data -= self.lf.vec
 
 
-        # NOTE, avoid 1-liners with dependency on the same read/write data. Can be bugged in NGSolve.
+        # NOTE, avoid 1-liners with dependency on the same read/write data.
         Un.vec.data *= self.alpha32
         Un.vec.data += self.alpha30 * self.U0 - self.beta32 * self.minv * self.rhs
         
@@ -441,22 +447,34 @@ class CRK4(ExplicitSchemes):
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # First stage.
-        self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
+        self.blf.Apply(self.root.fem.gfu.vec, self.rhs) 
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
         self.K1.data = -self.minv * self.rhs
 
         # Second stage.
         self.Us.data = self.root.fem.gfu.vec + self.a21 * self.K1
         self.blf.Apply(self.Us, self.rhs)
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
         self.K2.data = -self.minv * self.rhs
 
         # Third stage.
         self.Us.data = self.root.fem.gfu.vec + self.a32 * self.K2
         self.blf.Apply(self.Us, self.rhs)
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
         self.K3.data = -self.minv * self.rhs
 
         # Fourth stage.
         self.Us.data = self.root.fem.gfu.vec + self.K3
         self.blf.Apply(self.Us, self.rhs)
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
         self.K4.data = -self.minv * self.rhs
 
         # Reconstruct the solution at t^{n+1}.
