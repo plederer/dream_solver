@@ -12,6 +12,7 @@ from dream.config import Configuration, dream_configuration, Integrals
 from dream.compressible.config import (flowfields,
                                        ConservativeFiniteElementMethod,
                                        FarField,
+                                       Dirichlet,
                                        Outflow,
                                        Inflow,
                                        InterfaceBC,
@@ -588,7 +589,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
             logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
 
-            if isinstance(bc, FarField):
+            if isinstance(bc, (FarField, Dirichlet)):
                 self.add_farfield_formulation(blf, lf, bc, bnd)
 
             elif isinstance(bc, Outflow):
@@ -879,11 +880,18 @@ class ConservativeDG(ConservativeFiniteElementMethod):
     def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
 
         dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+        dXe = ngs.dx(element_boundary=True, definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+        n = self.mesh.normal
 
         _, V = self.TnT['U']
-        F = dc.get_force_vector(self.mesh.dim)
 
-        lf['U'][f"{dc.name}_{dom}"] = F * V * dX
+        if any([dc._continuum, dc._momentum, dc._energy]):
+            F = dc.get_force_vector(self.mesh.dim)
+            lf['U'][f"{dc.name}_{dom}"] = F * V * dX
+            
+        elif dc._flux is not None:
+            lf['U'][f"{dc.name}_{dom}"] = -ngs.InnerProduct(dc._flux,  ngs.grad(V)) * dX
+            lf['U'][f"{dc.name}_{dom}"] += ngs.InnerProduct(dc._flux * n,  V) * dXe
 
 
 

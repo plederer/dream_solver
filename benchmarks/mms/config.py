@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 
 from dream.compressible import CompressibleFlowSolver, Force, FarField, Initial, flowfields,  Dirichlet
 from dream.time import TransientRoutine
-from dream.bla import abs
 
 
 def get_geometry(periodic: bool = False):
@@ -50,7 +49,7 @@ TRANSIENT_CFG = {
     'fem.scheme': 'implicit_euler',
     'fem.scheme.compile': {'realcompile': False, 'wait': False, 'keep_files': False},
     'fem.mixed_method': 'inactive',
-    'io.path': 'mms_results',
+    'io.path': 'test',
 }
 
 PSEUDO_STATIONARY_CFG = {
@@ -74,7 +73,7 @@ PSEUDO_STATIONARY_CFG = {
     'fem.solver.method.damping_factor': 1.0,
     'fem.scheme': "implicit_euler",
     'fem.scheme.compile': {'realcompile': False, 'wait': False, 'keep_files': False},
-    'io.path': 'mms_results',
+    'io.path': 'test',
 }
 
 
