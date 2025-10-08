@@ -243,6 +243,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             raise ValueError(f"Direction dimension {direction.dim} does not match mesh dimension {self.mesh.dim}")
 
         INF.u = self.scaling.velocity * direction
+        INF.rho_u = self.momentum(INF)
         INF.rho_Ei = self.inner_energy(INF)
         INF.rho_Ek = self.kinetic_energy(INF)
         INF.rho_E = self.energy(INF)

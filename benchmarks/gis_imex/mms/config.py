@@ -88,8 +88,8 @@ class MMS:
                  frequency=5.0,
                  length=1.0,
                  period=1.0,
-                 is_periodic: bool = False):
-
+                 is_periodic: bool = False, **export):
+        
         if filename is None:
             filename = f"{str(self)}"
 
@@ -104,6 +104,9 @@ class MMS:
         self.period = period
         self.filename = filename
         self.is_periodic = is_periodic
+        self.export = {'to_fig': True, 'to_csv': True, 'to_dat': True, 'to_vtk': True}
+        self.export.update(export)
+
 
     def get_exact_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
         # Construct dimensionless fields
@@ -168,8 +171,8 @@ class MMS:
         Ue_ = ngs.CF((Ue.rho, Ue.rho_u, Ue.rho_E))
         Uh_ = ngs.CF((Uh.rho, Uh.rho_u, Uh.rho_E))
 
-        weight = ngs.sin(ngs.pi * ngs.x/self.length) * ngs.sin(ngs.pi * ngs.y/self.length)
-        J_e = 4/ngs.pi**2
+        # weight = ngs.sin(ngs.pi * ngs.x/self.length) * ngs.sin(ngs.pi * ngs.y/self.length)
+        # J_e = 4/ngs.pi**2
 
         self.errors[key] = {
             'rho': ngs.sqrt(ngs.Integrate((Uh.rho - Ue.rho) ** 2, self.cfg.mesh, order=order + 10)),
@@ -178,26 +181,35 @@ class MMS:
             'rho_u': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh.rho_u - Ue.rho_u, Uh.rho_u - Ue.rho_u), self.cfg.mesh, order=order + 10)),
             'rho_E': ngs.sqrt(ngs.Integrate((Uh.rho_E - Ue.rho_E) ** 2, self.cfg.mesh, order=order + 10)),
             'U': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh_ - Ue_, Uh_ - Ue_), self.cfg.mesh, order=order + 10)),
-            'J(rho)': abs(ngs.Integrate(ngs.InnerProduct(Uh.rho, weight), self.cfg.mesh, order=order + 10) - J_e)
+            # 'J(rho)': abs(ngs.Integrate(ngs.InnerProduct(Uh.rho, weight), self.cfg.mesh, order=order + 10) - J_e)
         }
 
-        # Uh['Ma'] = self.cfg.get_local_mach_number(Uh)
-        # filename = f'Ma_{self.filename}_{self.routine_log['order']}_level{self.routine_log["level"]}'
-        # vtk = ngs.VTKOutput(self.cfg.mesh, list(Uh.values()), list(Uh.keys()), filename=filename, subdivision=3)
-        # vtk.Do()
+        if self.export['to_vtk']:
+            filepath = self.cfg.io.path.joinpath(f"{self.filename}_{self.routine_log['order']}_level{self.routine_log["level"]}")
+            Uh['Ma'] = self.cfg.get_local_mach_number(Uh)
+            vtk = ngs.VTKOutput(self.cfg.mesh, list(Uh.values()), list(Uh.keys()), filename=str(filepath), subdivision=3)
+            vtk.Do()
 
         self.Uh = Uh
 
     def open_output_streams(self):
+        if any(self.export.values()):
+            self.cfg.io.path.mkdir(parents=True, exist_ok=True)
+
         self.routine_log = {'level': 0, 'h': 0.0, 'order': 0}
 
         self.errors = {}
 
     def close_output_streams(self):
-        self.cfg.io.path.mkdir(parents=True, exist_ok=True)
-        self.export_errors_to_csv()
-        self.export_errors_to_fig()
-        self.export_errors_to_dat()
+
+        if self.export['to_csv']:
+            self.export_errors_to_csv()
+
+        if self.export['to_fig']:
+            self.export_errors_to_fig()
+
+        if self.export['to_dat']:
+            self.export_errors_to_dat()
 
     def update_configurations(self, cfg: CompressibleFlowSolver, config: dict):
         cfg.update(config)
@@ -217,12 +229,12 @@ class MMS:
             file.write("------------------------------------------------------------------------\n")
 
             errors = sorted(self.errors.items(), key=lambda x: x[0][2])
-            for field in ['rho', 'u', 'p', 'rho_u', 'rho_E', 'U', 'J(rho)']:
+            for field in ['rho', 'u', 'p', 'rho_u', 'rho_E', 'U']:
 
                 for key, error in errors:
                     level, h, order = key
                     dt = 1.0  # just a dummy, for the output.
-                    row = [f"{h:.15e}", f"{dt:.15e}", str(self), f"{field:6}", str(order), f"{error[field]:.15e}"]
+                    row = [f"{h:.15e}", f"{dt:.15e}", str(self), f"{field:5}", str(order), f"{error[field]:.15e}"]
                     file.write(",\t".join(row) + "\n")
 
     def export_errors_to_fig(self):
@@ -257,22 +269,22 @@ class MMS:
         fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}.png"))
 
         # Mean density functional
-        labels = {'J(rho)': r"$\| J(\rho_h) - J(\rho_e) \|$"}
-        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        # labels = {'J(rho)': r"$\| J(\rho_h) - J(\rho_e) \|$"}
+        # fig, ax = plt.subplots(1, 1, figsize=(5, 5))
 
-        data = df.xs('J(rho)', axis=1)
-        for order in df.index.levels[2]:
-            error = data.loc[:, :, order]
-            ax.loglog(h, error, marker='o',  label=fr"$p={order}$")
-            ax.loglog(h, h**(2*order)/h[0]**(2*order) * error.iloc[0], ls='--', color='k')
+        # data = df.xs('J(rho)', axis=1)
+        # for order in df.index.levels[2]:
+        #     error = data.loc[:, :, order]
+        #     ax.loglog(h, error, marker='o',  label=fr"$p={order}$")
+        #     ax.loglog(h, h**(2*order)/h[0]**(2*order) * error.iloc[0], ls='--', color='k')
 
-            ax.set_xlabel(r"$h$")
-            ax.set_title(labels['J(rho)'])
-            ax.legend()
+        #     ax.set_xlabel(r"$h$")
+        #     ax.set_title(labels['J(rho)'])
+        #     ax.legend()
 
-            ax.set_ylim(1e-16, 2)
+        #     ax.set_ylim(1e-16, 2)
 
-        fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}_J(rho).png"))
+        # fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}_J(rho).png"))
 
     def export_errors_to_dat(self):
         df = pd.DataFrame.from_dict(self.errors, orient='index')
@@ -287,24 +299,19 @@ class MMS:
         wave = ngs.sin(k*(ngs.x + ngs.y) - omega*t)
 
         U_inf = self.cfg.get_farfield_fields(self.flow_direction)
-        U_inf.rho_u = self.cfg.momentum(U_inf)
+        U_inf.E = self.cfg.specific_energy(U_inf)
 
         U = flowfields()
 
-        M = self.cfg.mach_number.Get()
-        if M < 0.3:
-            U.rho = U_inf.rho * (1 + M**2 * wave)
-            U.u = U_inf.u * (1 + M * wave)
-            U.p = U_inf.p * (1 + M**2 * wave)
-        else:
-            U.rho = U_inf.rho * (1 + self.amplitude * wave)
-            U.u = U_inf.u * (1 + self.amplitude * wave)
-            U.p = U_inf.p * (1 + self.amplitude * wave)
+        U.rho = U_inf.rho * (1 + self.amplitude * wave)
+        U.rho_u = U.rho * U_inf.u
+        U.rho_E = U.rho * U_inf.E
 
-        U.rho_u = self.cfg.momentum(U)
-        U.rho_Ei = self.cfg.inner_energy(U)
+        U.u = self.cfg.velocity(U)
         U.rho_Ek = self.cfg.kinetic_energy(U)
-        U.rho_E = self.cfg.energy(U)
+        U.rho_Ei = self.cfg.inner_energy(U)
+        U.p = self.cfg.pressure(U)
+        U.T = self.cfg.temperature(U)
         return U
 
 
@@ -352,6 +359,65 @@ class NavierStokesMMS(MMS):
 
     def __str__(self):
         return "NS"
+
+
+class RoyMMS(NavierStokesMMS):
+
+    def __call__(self, t: float = 0) -> flowfields:
+
+        U_inf = self.cfg.get_farfield_fields(self.flow_direction)
+
+        def sin(a):
+            return ngs.sin(a * ngs.pi/self.length)
+
+        def cos(a):
+            return ngs.cos(a * ngs.pi/self.length)
+
+        rho = {'c':   1.0, 'x': (0.1, 0.75, sin), 'y': (0.15,  1.0, cos), 'xy': (0.08, 1.25, cos)}
+        u = {'c':  70.0, 'x': (4.0,  5/3, sin), 'y': (-12.0,  1.5, cos), 'xy': (7.0,  0.6, cos)}
+        v = {'c':  90.0, 'x': (-20.0,  1.5, cos), 'y': (4.0,  1.0, sin), 'xy': (-11.0,  0.9, cos)}
+        p = {'c': 1.0e5, 'x': (-0.3e5,  1.0, cos), 'y': (0.2e5, 1.25, sin), 'xy': (-0.25e5, 0.75, sin)}
+
+        def to_dimensionless(*U):
+
+            ref = ngs.sqrt(sum(u['c']**2 for u in U))
+            cf = []
+            for u in U:
+
+                val = u['c']/ref
+
+                if 'x' in u:
+                    amp, factor, func = u['x']
+                    val += amp/ref * func(factor*ngs.x)
+
+                if 'y' in u:
+                    amp, factor, func = u['y']
+                    val += amp/ref * func(factor*ngs.y)
+
+                if 'xy' in u:
+                    amp, factor, func = u['xy']
+                    val += amp/ref * func(factor*ngs.y * ngs.x / self.length)
+
+                if 't' in u:
+                    amp, factor, func = u['t']
+                    val += amp/ref * func(factor*ngs.pi/self.period * t)
+
+                cf.append(val)
+
+            return ngs.CF(tuple(cf))
+
+        U = flowfields()
+        U.rho = U_inf.rho * to_dimensionless(rho)
+        U.u = self.cfg.scaling.velocity * to_dimensionless(u, v)
+        U.p = U_inf.p * to_dimensionless(p)
+
+        U.rho_u = self.cfg.momentum(U)
+        U.T = self.cfg.temperature(U)
+        U.rho_Ei = self.cfg.inner_energy(U)
+        U.rho_Ek = self.cfg.kinetic_energy(U)
+        U.rho_E = self.cfg.energy(U)
+
+        return U
 
 
 def mesh_routine(*simulations: MMS,
