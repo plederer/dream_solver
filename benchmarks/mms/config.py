@@ -87,7 +87,9 @@ class MMS:
                  frequency=5.0,
                  length=1.0,
                  period=1.0,
-                 is_periodic: bool = False, **export):
+                 init_exact: bool = False,
+                 is_periodic: bool = False, 
+                 **export):
         
         if filename is None:
             filename = f"{str(self)}"
@@ -103,6 +105,7 @@ class MMS:
         self.period = period
         self.filename = filename
         self.is_periodic = is_periodic
+        self.init_exact = init_exact
         self.export = {'to_fig': True, 'to_csv': True, 'to_dat': True, 'to_vtk': True}
         self.export.update(export)
 
@@ -134,7 +137,7 @@ class MMS:
     def get_initial_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
         # Construct dimensionless initial fields from constant terms only
 
-        if isinstance(cfg, TransientRoutine):
+        if isinstance(cfg, TransientRoutine) or self.init_exact:
             U = self(t=0)
         else:
             U = cfg.get_farfield_fields(self.flow_direction)
