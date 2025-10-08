@@ -485,5 +485,14 @@ class SolverConfiguration(Configuration, is_interface=True):
         self.doc = doc
 
     def solve(self, reassemble: bool = True):
+        
+        # Proceed with the simulation.
         for t in self.time.start_solution_routine(reassemble):
             pass
+
+
+
+
+
+
+
