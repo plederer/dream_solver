@@ -462,7 +462,7 @@ def simulation_routine(simulation: MMS, orders=[1, 2, 3, 4, 5]):
         simulation.routine_log['order'] = order
 
         # Solve for different polynomial orders
-        Uh = polyomial_order_routine(simulation, order)
+        polyomial_order_routine(simulation, order)
 
 
 def polyomial_order_routine(simulation: EulerMMS, order: int):
