@@ -36,7 +36,7 @@ def measure_execution_time(func):
         result = func(*args, **kwargs)
         end = time()
 
-        logger.info(f"Function {func.__name__} took {start - end:2.6f} sec")
+        logger.info(f"Function {func.__name__} took {end - start:2.6f} sec")
 
         return result
 
