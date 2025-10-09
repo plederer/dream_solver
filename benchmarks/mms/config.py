@@ -88,9 +88,9 @@ class MMS:
                  length=1.0,
                  period=1.0,
                  init_exact: bool = False,
-                 is_periodic: bool = False, 
+                 is_periodic: bool = False,
                  **export):
-        
+
         if filename is None:
             filename = f"{str(self)}"
 
@@ -109,6 +109,9 @@ class MMS:
         self.export = {'to_fig': True, 'to_csv': True, 'to_dat': True, 'to_vtk': True}
         self.export.update(export)
 
+    @property
+    def is_transient(self) -> bool:
+        return isinstance(self.cfg.time, TransientRoutine)
 
     def get_exact_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
         # Construct dimensionless fields
@@ -117,7 +120,7 @@ class MMS:
         U_inf.E = cfg.specific_energy(U_inf)
 
         t = 0
-        if isinstance(cfg.time, TransientRoutine):
+        if self.is_transient:
             t = cfg.time.timer.t
 
         U = self(t)
@@ -164,11 +167,16 @@ class MMS:
         self.Ue = self.get_exact_fields(cfg)
         self.U0 = self.get_initial_fields(cfg)
 
-    def write_to_output_streams(self, Uh: flowfields = None):
-        Ue = self.Ue
+    def set_solution_fields(self, Uh: flowfields):
+        Uh['Ma'] = self.cfg.get_local_mach_number(Uh)
+        self.Uh = Uh
 
-        order = self.routine_log['order']
-        key = (self.routine_log['level'], self.routine_log['h'], self.routine_log['order'])
+    def write_to_output_streams(self):
+        Ue = self.Ue
+        Uh = self.Uh
+
+        order = self.log['order']
+        key = (self.log['level'], self.log['h'], self.log['order'])
 
         Ue_ = ngs.CF((Ue.rho, Ue.rho_u, Ue.rho_E))
         Uh_ = ngs.CF((Uh.rho, Uh.rho_u, Uh.rho_E))
@@ -186,19 +194,14 @@ class MMS:
             # 'J(rho)': abs(ngs.Integrate(ngs.InnerProduct(Uh.rho, weight), self.cfg.mesh, order=order + 10) - J_e)
         }
 
-        if self.export['to_vtk']:
-            filepath = self.cfg.io.path.joinpath(f"{self.filename}_{self.routine_log['order']}_level{self.routine_log["level"]}")
-            Uh['Ma'] = self.cfg.get_local_mach_number(Uh)
-            vtk = ngs.VTKOutput(self.cfg.mesh, list(Uh.values()), list(Uh.keys()), filename=str(filepath), subdivision=3)
-            vtk.Do()
-
-        self.Uh = Uh
+        if not self.is_transient and self.export['to_vtk']:
+            self.export_to_vtk()
 
     def open_output_streams(self):
         if any(self.export.values()):
             self.cfg.io.path.mkdir(parents=True, exist_ok=True)
 
-        self.routine_log = {'level': 0, 'h': 0.0, 'order': 0}
+        self.log = {'level': 0, 'h': 0.0, 'order': 0}
 
         self.errors = {}
 
@@ -294,6 +297,18 @@ class MMS:
         df.sort_index(axis=0, level=2, inplace=True)
         df.to_csv(self.cfg.io.path.joinpath(f"{self.filename}.dat"))
 
+    def export_to_vtk(self, vtk: ngs.VTKOutput = None, t: float = -1):
+
+        if vtk is None:
+            filepath = self.cfg.io.path.joinpath(f"{self.filename}_{self.log['order']}_level{self.log["level"]}")
+            vtk = ngs.VTKOutput(
+                self.cfg.mesh, list(self.Uh.values()),
+                list(self.Uh.keys()),
+                filename=str(filepath),
+                subdivision=3)
+
+        vtk.Do(t)
+
     def __call__(self, t: float = 0) -> flowfields:
 
         k = 2*ngs.pi/self.length
@@ -375,10 +390,10 @@ class RoyMMS(NavierStokesMMS):
         def cos(a):
             return ngs.cos(a * ngs.pi/self.length)
 
-        rho = {'c':   1.0, 'x': (0.1, 0.75, sin), 'y': (0.15,  1.0, cos), 'xy': (0.08, 1.25, cos)}
-        u = {'c':  70.0, 'x': (4.0,  5/3, sin), 'y': (-12.0,  1.5, cos), 'xy': (7.0,  0.6, cos)}
-        v = {'c':  90.0, 'x': (-20.0,  1.5, cos), 'y': (4.0,  1.0, sin), 'xy': (-11.0,  0.9, cos)}
-        p = {'c': 1.0e5, 'x': (-0.3e5,  1.0, cos), 'y': (0.2e5, 1.25, sin), 'xy': (-0.25e5, 0.75, sin)}
+        rho = {'c':   1.0, 'x': (0.1, 0.75, sin), 'y': (0.15,  1.0, cos), 'xy': (0.08, 1.25, cos), 't': (0.1, 1.0, sin)}
+        u = {'c':  70.0, 'x': (4.0,  5/3, sin), 'y': (-12.0,  1.5, cos), 'xy': (7.0,  0.6, cos), 't': (5, 1.0, sin)}
+        v = {'c':  90.0, 'x': (-20.0,  1.5, cos), 'y': (4.0,  1.0, sin), 'xy': (-11.0,  0.9, cos), 't': (10, 1.0, sin)}
+        p = {'c': 1.0e5, 'x': (-0.3e5, 1.0, cos),'y': (0.2e5, 1.25, sin),'xy': (-0.25e5, 0.75, sin), 't': (0.02e5, 1.0, sin)}
 
         def to_dimensionless(*U):
 
@@ -387,6 +402,10 @@ class RoyMMS(NavierStokesMMS):
             for u in U:
 
                 val = u['c']/ref
+
+                if 't' in u and t != 0:
+                    amp, factor, func = u['t']
+                    val += amp/ref * func(factor*ngs.pi/self.period * t)
 
                 if 'x' in u:
                     amp, factor, func = u['x']
@@ -399,10 +418,6 @@ class RoyMMS(NavierStokesMMS):
                 if 'xy' in u:
                     amp, factor, func = u['xy']
                     val += amp/ref * func(factor*ngs.y * ngs.x / self.length)
-
-                if 't' in u:
-                    amp, factor, func = u['t']
-                    val += amp/ref * func(factor*ngs.pi/self.period * t)
 
                 cf.append(val)
 
@@ -449,8 +464,8 @@ def mesh_routine(*simulations: MMS,
                     mesh.Refine()
                     maxh *= 0.5
 
-                simulation.routine_log['level'] = level+1
-                simulation.routine_log['h'] = maxh
+                simulation.log['level'] = level+1
+                simulation.log['h'] = maxh
                 simulation_routine(simulation, orders=orders)
 
             simulation.close_output_streams()
@@ -459,7 +474,7 @@ def mesh_routine(*simulations: MMS,
 def simulation_routine(simulation: MMS, orders=[1, 2, 3, 4, 5]):
 
     for order in orders:
-        simulation.routine_log['order'] = order
+        simulation.log['order'] = order
 
         # Solve for different polynomial orders
         polyomial_order_routine(simulation, order)
@@ -477,13 +492,19 @@ def polyomial_order_routine(simulation: EulerMMS, order: int):
 
     # Get solution fields
     Uh = cfg.get_solution_fields('rho_u', 'rho_E')
+    simulation.set_solution_fields(Uh)
 
     # Solve the system
     with ngs.TaskManager():
-        cfg.solve()
 
-    # Set solution fields
-    simulation.write_to_output_streams(Uh)
+        if simulation.is_transient:
+            for t in cfg.time.start_transient_routine():
+                simulation.write_to_output_streams_transient(t)
+
+        else:
+            cfg.solve()
+            # Set solution fields
+            simulation.write_to_output_streams()
 
 
 def test_configuration(expected: dict, result: CompressibleFlowSolver):
@@ -530,7 +551,7 @@ def test_exact_solution(cfg):
             Uh.p = cfg.pressure(Uh)
             Uh.rho_u = cfg.momentum(Uh)
 
-            sim.routine_log = {'level': level, 'h': maxh, 'order': order}
+            sim.log = {'level': level, 'h': maxh, 'order': order}
             sim.write_to_output_streams(Uh)
 
     sim.export_errors_to_fig()
