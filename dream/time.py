@@ -414,6 +414,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
         self.timer.reset()
+        dt = self.timer.step.Get()
 
         scheme = self.root.fem.scheme
 
@@ -435,6 +436,9 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
             # Solution routine ends here
             io.save_post_time_routine()
+
+        self.timer.step = dt
+
 
     def solver_iteration_update(self, it: int):
         old_time_step = self.timer.step.Get()
