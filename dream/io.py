@@ -10,6 +10,8 @@ import dream.bla as bla
 from dream.config import dream_configuration, Configuration, ngsdict, is_notebook
 from dream.mesh import get_pattern_from_sequence, get_regions_from_pattern
 from dream._version import acknowledgements, header
+from functools import wraps
+from time import time
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
@@ -23,6 +25,22 @@ def get_directory_paths(path: Path, pattern: str = "") -> tuple[Path, ...]:
 
 def get_directory_names(path: Path, pattern: str = "") -> tuple[str, ...]:
     return tuple(dir.name for dir in path.glob(pattern + "*") if dir.is_dir())
+
+
+def measure_execution_time(func):
+
+    @wraps(func)
+    def wrap(*args, **kwargs):
+
+        start = time()
+        result = func(*args, **kwargs)
+        end = time()
+
+        logger.info(f"Function {func.__name__} took {start - end:2.6f} sec")
+
+        return result
+
+    return wrap
 
 
 class Stream(Configuration, is_interface=True):
@@ -358,7 +376,7 @@ class GridfunctionStream(Stream):
 
             for it, t in enumerate(self.root.time.timer.start(stride=self.rate)):
                 logger.info(f"file: {self.filename} | t: {t}")
-                
+
                 self.load_routine(t)
                 io.redraw()
                 io.save_in_time_routine(t, it)
@@ -529,7 +547,7 @@ class LogStream(Stream):
         # Set logger to carriage return
         stream_handler = self._get_handler("terminal")
         # TODO: needs fixing, by having this as an option.
-        #if stream_handler:
+        # if stream_handler:
         #    stream_handler.terminator = "\r"
 
         return self
