@@ -33,7 +33,7 @@ def cfg():
     cfg.time = "transient"
 
     cfg.fem = "conservative_hdg"
-    cfg.fem.mixed_method = "inactive"
+    cfg.fem.viscous_treatment = None
 
     cfg.mach_number = 0.3
     cfg.reynolds_number = 2

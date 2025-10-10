@@ -361,7 +361,7 @@ cfg.prandtl_number = GlobalParameters.Pr
 cfg.riemann_solver = "lax_friedrich"
 cfg.fem = "conservative_hdg"
 cfg.fem.order = nPoly
-cfg.fem.mixed_method = "strain_heat"
+cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
 
 cfg.time = "transient"
 cfg.fem.scheme = get_imex_scheme_implicit(nStage)

@@ -36,10 +36,23 @@ GENERAL['fem.solver.method.damping_factor'] = 1.0
 GENERAL['fem.scheme'] = "implicit_euler"
 GENERAL['fem.bonus_int_order'] = 10
 
+if Ma < 0.1:
+    GENERAL['scaling'] = 'acoustic'
+    GENERAL['time.timer.step'] = 1
+    GENERAL['time.max_time_step'] = 32
+    GENERAL['time.increment_at'] = 10
+    GENERAL['time.increment_factor'] = 2
+    GENERAL['fem.solver'] = 'direct'
+    GENERAL['fem.solver.method'] = 'newton'
+    GENERAL['fem.solver.method.max_iterations'] = 80
+    GENERAL['fem.solver.method.convergence_criterion'] = 1e-20
+    GENERAL['fem.solver.method.damping_factor'] = 1.0
+
+
 # HDG Navier-Stokes setting
 HDG = GENERAL.copy()
 HDG['fem'] = 'conservative_hdg'
-HDG['fem.mixed_method'] = 'strain_heat'
+HDG['fem.viscous_treatment'] = 'mixed_strain_temperature_gradient'
 
 # DG Navier-Stokes setting
 DG = GENERAL.copy()
@@ -58,4 +71,4 @@ elif fem == 'dg':
 
 if __name__ == "__main__":
     # Start Routine
-    mesh_routine(FEM, levels=5, orders=[1, 2, 3, 4, 5])
+    mesh_routine(FEM, levels=4, orders=[1, 2, 3, 4, 5])
