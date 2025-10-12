@@ -14,7 +14,7 @@ from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
 from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
 from .config import flowfields, dimensionalfields, BCS, DCS
-from .conservative import ConservativeHDG, ConservativeDG, ConservativeDG_HDG
+from .conservative import ConservativeHDG, ConservativeDG, ConservativeDG_HDG, ConservativeHDG_SIP
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
 
     @dream_configuration
-    def fem(self) -> ConservativeHDG | ConservativeDG | ConservativeDG_HDG:
+    def fem(self) -> ConservativeHDG | ConservativeDG | ConservativeDG_HDG | ConservativeHDG_SIP:
         r""" Sets the finite element for the compressible flow solver. 
 
             :getter: Returns the finite element
@@ -56,7 +56,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @fem.setter
     def fem(self, fem):
-        OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
+        OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG, ConservativeHDG_SIP]
         self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
 
     @dream_configuration
