@@ -24,6 +24,7 @@ from dream.compressible.config import (flowfields,
                                        Force,
                                        CBC)
 
+from .diffusion import ViscousTreatment, InteriorPenaltyHDG
 from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2, IMEXRK_ARS443
 from .diffusion import ViscousTreatment, StrainHeat, Gradient
 
@@ -605,3 +606,228 @@ class ConservativeDG_HDG(ConservativeHDG):
 
         blf['Uhat']['test'] = mask * ngs.InnerProduct(eq,
                                                       Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
+
+
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# TESTING, TODO: delete this and merge it with ConservativeHDG.
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+class ConservativeHDG_SIP(ConservativeFiniteElementMethod):
+    name: str = "conservative_hdg_sip"
+
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            'viscous_treatment': None,
+            'static_condensation': True,
+        }
+
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def viscous_treatment(self) -> InteriorPenaltyHDG | None:
+        return self._viscous_treatment
+
+    @viscous_treatment.setter
+    def viscous_treatment(self, value: str | ViscousTreatment | None):
+        
+        if value is None:
+            self._viscous_treatment = None
+            return
+
+        OPTIONS = [InteriorPenaltyHDG]
+        self._viscous_treatment = self._get_configuration_option(value, OPTIONS, ViscousTreatment)
+
+    @dream_configuration
+    def scheme(self) -> ImplicitEuler | BDF2 | IMEXRK_ARS443 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK34_LDD | DIRK43_WSO2:
+        return self._scheme
+
+    @scheme.setter
+    def scheme(self, scheme: TimeSchemes) -> None:
+        if isinstance(self.root.time, TransientRoutine):
+            OPTIONS = [ImplicitEuler, BDF2, IMEXRK_ARS443, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2]
+        elif isinstance(self.root.time, PseudoTimeSteppingRoutine):
+            OPTIONS = [ImplicitEuler, BDF2]
+        elif isinstance(self.root.time, MultizoneIMEXTimeRoutine):
+            OPTIONS = [ImplicitEuler, SDIRK22, SDIRK33, SDIRK43]
+        else:
+            raise TypeError("HDG method only supports transient, pseudo time stepping or multizone time routines!")
+        self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
+
+    def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]) -> None:
+
+        order = self.order
+        dim = self.mesh.dim + 2
+
+        U = ngs.L2(self.mesh, order=order)
+        Uhat = ngs.FacetFESpace(self.mesh, order=order)
+
+        if self.root.bcs.has_condition(Periodic):
+            Uhat = ngs.Periodic(Uhat)
+
+        fes['U'] = U**dim
+        fes['Uhat'] = Uhat**dim
+
+
+    def add_convection_form(self, blf: Integrals, lf: Integrals):
+
+        bonus = self.bonus_int_order['convection']
+        dX = ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
+
+        mask = self.get_domain_boundary_mask()
+
+        U, V = self.TnT['U']
+        Uhat, Vhat = self.TnT['Uhat']
+
+        U = self.get_conservative_fields(U)
+        Uhat = self.get_conservative_fields(Uhat)
+
+        F = self.root.get_convective_flux(U)
+        Fn = self.get_convective_numerical_flux(U, Uhat, self.mesh.normal)
+
+        blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus['vol'])
+        blf['U']['convection'] += bla.inner(Fn, V) * dX
+
+        if self.root.dynamic_viscosity.is_inviscid:
+            tau_cs = self.root.riemann_solver.get_simplified_convective_stabilisation_matrix_hdg(Uhat, self.mesh.normal)
+            blf['Uhat']['convection'] = -mask * (tau_cs*U.U - Uhat.U) * Vhat * dX
+        else:
+            blf['Uhat']['convection'] = -mask * bla.inner(Fn, Vhat) * dX
+
+    def add_diffusion_form(self, blf: Integrals, lf: Integrals):
+
+        if self.viscous_treatment is None:
+            raise TypeError(f"Viscous configuration requires a treatment strategy.")
+
+        self.viscous_treatment.add_diffusion_form(blf, lf)
+
+
+    def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
+
+        bnds = self.root.bcs.to_pattern()
+
+        for bnd, bc in bnds.items():
+
+            logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
+
+            #if isinstance(bc, FarField):
+            #    self.add_farfield_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, CBC):
+            #    self.add_cbc_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, Outflow):
+            #    self.add_outflow_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, (InviscidWall, Symmetry)):
+            #    self.add_inviscid_wall_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, IsothermalWall):
+            #    self.add_isothermal_wall_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, AdiabaticWall):
+            #    self.add_adiabatic_wall_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, InterfaceBC):
+            #    self.add_interface_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, Dirichlet):
+            #    self.add_dirichlet_formulation(blf, lf, bc, bnd)
+
+            #elif isinstance(bc, Periodic):
+            #    continue
+           
+
+            # XXX use a smaller sample of BCs for development purposes.
+            if isinstance(bc, Periodic):
+                continue
+            
+            elif isinstance(bc, Dirichlet):
+                self.add_dirichlet_formulation(blf, lf, bc, bnd)
+
+            else:
+                raise TypeError(f"Boundary condition {bc} not implemented in {self}!")
+
+    def add_domain_conditions(self, blf: Integrals, lf: Integrals):
+
+        doms = self.root.dcs.to_pattern()
+
+        for dom, dc in doms.items():
+
+            logger.debug(f"Adding domain condition {dc} on domain {dom}.")
+
+            if isinstance(dc, Force):
+                self.add_forcing_formulation(blf, lf, dc, dom)
+
+            elif isinstance(dc, Initial):
+                continue
+
+            else:
+                raise TypeError(f"Domain condition {dc} not implemented in {self}!")
+
+    def add_dirichlet_formulation(self, blf: Integrals, lf: Integrals, bc: Dirichlet, bnd: str):
+
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd))
+        Uhat, Vhat = self.TnT['Uhat']
+        Ud = ngs.CF((self.root.density(bc.fields), self.root.momentum(bc.fields), self.root.energy(bc.fields)))
+
+        Gamma_out = ngs.InnerProduct(Uhat - Ud, Vhat)
+        blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_out * dS
+
+    def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
+
+        dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+
+        _, V = self.TnT['U']
+        F = dc.get_force_vector(self.mesh.dim)
+
+        lf['U'][f"{dc.name}_{dom}"] = F * V * dX
+
+    def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: ngs.CF):
+        r"""
+        Convective numerical flux
+
+        .. math::
+
+            \hat{\vec{F}}_h  \vec{n}^\pm  := \vec{F}(\hat{\vec{U}}_h) \vec{n}^\pm + \mat{\tau}_c(\hat{\vec{U}}_h) (\vec{U}_h - \hat{\vec{U}}_h)
+
+        :note: See equation :math:`(E22a)` in :cite:`vila-perezHybridisableDiscontinuousGalerkin2021`.
+        :note: See :class:`~dream.compressible.riemann_solver` for more details on the definition of :math:`\mat{\tau}_c`.
+        """
+        unit_vector = bla.as_vector(unit_vector)
+
+        tau_c = self.root.riemann_solver.get_convective_stabilisation_matrix_hdg(Uhat, unit_vector)
+
+        return self.root.get_convective_flux(Uhat) * unit_vector + tau_c * (U.U - Uhat.U)
+
+    def set_initial_conditions(self):
+
+        U = self.mesh.MaterialCF({dom: ngs.CF(
+            (self.root.density(dc.fields),
+             self.root.momentum(dc.fields),
+             self.root.energy(dc.fields))) for dom, dc in self.root.dcs.to_pattern(Initial).items()})
+
+        gfu = self.gfus['Uhat']
+        fes = self.gfus['Uhat'].space
+        u, v = fes.TnT()
+
+        blf = ngs.BilinearForm(fes)
+        blf += u * v * ngs.dx(element_boundary=True)
+
+        f = ngs.LinearForm(fes)
+        f += U * v * ngs.dx(element_boundary=True)
+
+        with ngs.TaskManager():
+            blf.Assemble()
+            f.Assemble()
+            gfu.vec.data = blf.mat.Inverse(freedofs=fes.FreeDofs(), inverse="sparsecholesky") * f.vec
+
+        super().set_initial_conditions()
+
+
+
