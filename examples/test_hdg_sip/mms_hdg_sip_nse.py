@@ -362,8 +362,8 @@ def mms_routine(func):
 @mms_routine
 def conservative_hdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS, order: int):
     # Set only finite element configuration
-    #cfg.fem = 'conservative_hdg'
-    cfg.fem = 'conservative_hdg_sip'
+    cfg.fem = 'conservative_hdg'
+    #cfg.fem = 'conservative_hdg_sip'
 
     cfg.fem.order = order
     cfg.fem.scheme = "implicit_euler"
@@ -384,7 +384,7 @@ def conservative_hdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierS
             cfg.fem.viscous_treatment = "interior_penalty"
             cfg.fem.viscous_treatment.interior_penalty_coefficient = alpha
         elif isinstance(cfg.fem, ConservativeHDG):
-            cfg.fem.mixed_method = "strain_heat"
+            cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
         else:
             raise ValueError(f"Specified viscous conditions in HDG are not implemented.")
 
