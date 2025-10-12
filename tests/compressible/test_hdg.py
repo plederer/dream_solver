@@ -22,7 +22,7 @@ def cfg():
 def test_set_initial_conditions(cfg: CompressibleFlowSolver):
 
     cfg.dynamic_viscosity = "constant"
-    cfg.fem.mixed_method = "strain_heat"
+    cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
 
     # cfg.dcs['default'] = Initial(flowfields(rho=1, momentum=(ngs.x, -ngs.y), p=ngs.x))
     cfg.dcs['default'] = Initial(flowfields(rho=1, u=(ngs.x, -ngs.y), p=ngs.x))

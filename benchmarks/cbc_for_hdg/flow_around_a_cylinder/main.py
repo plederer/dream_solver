@@ -84,7 +84,7 @@ cfg.scaling = 'aerodynamic'
 
 cfg.fem = 'conservative_hdg'
 cfg.fem.order = 4
-cfg.fem.mixed_method = 'strain_heat'
+cfg.fem.viscous_treatment = 'mixed_strain_temperature_gradient'
 cfg.fem.scheme = 'bdf2'
 cfg.fem.bonus_int_order = cfg.fem.order
 

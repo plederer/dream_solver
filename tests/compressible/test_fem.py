@@ -13,7 +13,7 @@ def cfg():
     cfg.time = "transient"
 
     cfg.fem = "conservative_hdg"
-    cfg.fem.mixed_method = "inactive"
+    cfg.fem.viscous_treatment = None
 
     cfg.mach_number = 0.3
     cfg.equation_of_state = "ideal"
@@ -28,7 +28,7 @@ def cfg():
 def test_inviscid_finite_element_spaces(cfg):
     spaces = {}
     cfg.dynamic_viscosity = "inviscid"
-    cfg.fem.mixed_method = 'inactive'
+    cfg.fem.viscous_treatment = None
     cfg.fem.add_finite_element_spaces(spaces)
 
     for space, expected in zip(spaces, ('U', 'Uhat'), strict=True):
@@ -36,10 +36,10 @@ def test_inviscid_finite_element_spaces(cfg):
         assert isinstance(spaces[space], ngs.ProductSpace)
 
 
-def test_strain_heat_finite_element_spaces(cfg):
+def test_mixed_strain_temperature_gradient_finite_element_spaces(cfg):
     spaces = {}
     cfg.dynamic_viscosity = "constant"
-    cfg.fem.mixed_method = "strain_heat"
+    cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
     cfg.fem.add_finite_element_spaces(spaces)
 
     for space, expected in zip(spaces, ('U', 'Uhat', 'Q'), strict=True):
@@ -50,7 +50,7 @@ def test_strain_heat_finite_element_spaces(cfg):
 def test_gradient_finite_element_spaces(cfg):
     spaces = {}
     cfg.dynamic_viscosity = "constant"
-    cfg.fem.mixed_method = "gradient"
+    cfg.fem.viscous_treatment = "conservative_gradient"
     cfg.fem.add_finite_element_spaces(spaces)
 
     for space, expected in zip(spaces, ('U', 'Uhat', 'Q'), strict=True):

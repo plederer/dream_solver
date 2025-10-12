@@ -55,7 +55,7 @@ cfg.riemann_solver = "lax_friedrich"
 cfg.fem = "conservative_hdg"
 cfg.fem.scheme = "bdf2"
 cfg.fem.order = 4
-cfg.fem.mixed_method = "inactive"
+cfg.fem.viscous_treatment = None
 cfg.fem.bonus_int_order = 4
 
 cfg.fem.solver = "direct"

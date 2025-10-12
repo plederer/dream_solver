@@ -293,7 +293,7 @@ def init_hdg_cfg(cfg, time_info, multizone_time, nPoly, nStage, nOutput, plot_so
     cfg.riemann_solver = "lax_friedrich"
     cfg.fem = "conservative_hdg"
     cfg.fem.order = nPoly
-    cfg.fem.mixed_method = "strain_heat"
+    cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
    
     cfg.time = multizone_time
     cfg.fem.scheme = get_imex_scheme_implicit(nStage)

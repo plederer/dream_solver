@@ -1,6 +1,10 @@
 import pytest
+import numpy.testing as nptest
+
+import ngsolve as ngs
 from dream.time import Scheme
 
+mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
 
 def test_parse_sum_of_integrals_basic():
     scheme = Scheme(None)
@@ -88,13 +92,27 @@ def test_add_sum_of_integrals():
     """
 
     scheme = Scheme(None)
+    fes = ngs.L2(mesh, order=0)
+    u, v = fes.TnT()
 
     integrals = {
-        "U": {"time": [0], "convection": [1, 2]},
-        "Uhat": {"convection": [3, 4, 5]}
+        "U": {"time": u * v * ngs.dx, "convection": 2 * u * v * ngs.dx},
+        "Uhat": {"convection": 4* u * v * ngs.dx}
     }
 
-    blf = []
+    blf = ngs.BilinearForm(fes)
     scheme.add_sum_of_integrals(blf, integrals)
+    blf.Assemble()
 
-    assert blf == [0, 1, 2, 3, 4, 5]
+    nptest.assert_almost_equal(tuple(blf.mat.AsVector()), (3.5, 3.5))
+
+    integrals = {
+        "U": {"time": 1 * v * ngs.dx, "convection": 2 * v * ngs.dx},
+        "Uhat": {"convection": 4 *  v * ngs.dx}
+    }
+
+    lf = ngs.LinearForm(fes)
+    scheme.add_sum_of_integrals(lf, integrals)
+    lf.Assemble()
+
+    nptest.assert_almost_equal(tuple(lf.vec), (3.5, 3.5))

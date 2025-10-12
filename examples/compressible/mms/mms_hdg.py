@@ -305,9 +305,9 @@ def conservative_hdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierS
     cfg.fem.solver.method.convergence_criterion = 1e-12
 
     if isinstance(simulation, NavierStokesMMS):
-        cfg.fem.mixed_method = "strain_heat"
+        cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
     else:
-        cfg.fem.mixed_method = "inactive"
+        cfg.fem.viscous_treatment = None
 
 # Run the simulations and collect errors
 ERROR = conservative_hdg()
