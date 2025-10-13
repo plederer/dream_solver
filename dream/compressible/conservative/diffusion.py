@@ -880,6 +880,19 @@ class InteriorPenaltyHDG(InteriorPenalty):
     def add_adiabatic_wall_formulation(self, blf, lf, bc, bnd):
 
         logger.warning("Careful, this has not been properly tested.") # TODO: finish me.
+        
+        # # 
+        # This needs some modifications even on the convection side. Here's a couple of nice references:
+        # 
+        # [1]. Mengaldo, Gianmarco, et al. 
+        #  "A guide to the implementation of boundary conditions in compact high-order methods for compressible aerodynamics." 
+        #   7th AIAA theoretical fluid mechanics conference. 2014. 
+        #
+        # [2]. Hartmann, Ralf, and Tobias Leicht. 
+        #  "Generalized adjoint consistent treatment of wall boundary conditions for compressible flows." 
+        #   Journal of Computational Physics 300 (2015): 754-778.
+        # # # # 
+
 
         bonus = self.fem.bonus_int_order['diffusion']
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
