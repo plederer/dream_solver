@@ -41,7 +41,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         super().__init__(mesh, root, **DEFAULT)
 
     @dream_configuration
-    def viscous_treatment(self) -> InteriorPenaltyMethodSDG | None:
+    def viscous_treatment(self) -> InteriorPenaltySDG | None:
         return self._viscous_treatment
 
     @viscous_treatment.setter
@@ -51,7 +51,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
             self._viscous_treatment = None
             return
 
-        OPTIONS = [InteriorPenaltyMethodSDG]
+        OPTIONS = [InteriorPenaltySDG]
         self._viscous_treatment = self._get_configuration_option(value, OPTIONS, ViscousTreatment)
 
     @dream_configuration

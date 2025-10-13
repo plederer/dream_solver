@@ -25,7 +25,7 @@ def cfg():
 def test_set_initial_conditions(cfg: CompressibleFlowSolver):
 
     cfg.dynamic_viscosity = "constant"
-    cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
+    cfg.fem.viscous_treatment = "interior_penalty"
 
     cfg.dcs['default'] = Initial(flowfields(rho=1, u=(ngs.x, -ngs.y), p=ngs.x))
 
@@ -53,7 +53,7 @@ def test_set_initial_conditions(cfg: CompressibleFlowSolver):
 def test_viscous_diffusion_matrices(cfg: CompressibleFlowSolver):
 
     cfg.dynamic_viscosity = "constant"
-    cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
+    cfg.fem.viscous_treatment = "interior_penalty"
 
     cfg.reynolds_number = 10
     cfg.mach_number = 1
@@ -93,7 +93,7 @@ def test_viscous_diffusion_matrices(cfg: CompressibleFlowSolver):
 def test_diffusive_flux_from_conservative_jump(cfg: CompressibleFlowSolver):
 
     cfg.dynamic_viscosity = "constant"
-    cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
+    cfg.fem.viscous_treatment = "interior_penalty"
 
     cfg.reynolds_number = 10
     cfg.mach_number = 1
