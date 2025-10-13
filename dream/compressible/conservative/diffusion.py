@@ -881,65 +881,23 @@ class InteriorPenaltyHDG(InteriorPenalty):
 
         logger.warning("Careful, this has not been properly tested.") # TODO: finish me.
         
-        # # 
-        # This needs some modifications even on the convection side. Here's a couple of nice references:
-        # 
-        # [1]. Mengaldo, Gianmarco, et al. 
-        #  "A guide to the implementation of boundary conditions in compact high-order methods for compressible aerodynamics." 
-        #   7th AIAA theoretical fluid mechanics conference. 2014. 
-        #
-        # [2]. Hartmann, Ralf, and Tobias Leicht. 
-        #  "Generalized adjoint consistent treatment of wall boundary conditions for compressible flows." 
-        #   Journal of Computational Physics 300 (2015): 754-778.
-        # # # # 
-
-
         bonus = self.fem.bonus_int_order['diffusion']
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
 
-        n = self.mesh.normal
-
         U, _ = self.TnT['U']
         Uhat, Vhat = self.TnT['Uhat']
-
+        
+        
         U = self.fem.get_conservative_fields(U, with_gradients=True)
         Uhat = self.fem.get_conservative_fields(Uhat)
 
-        # Get the inner energy: rho*ei,
-        Ei = self.root.inner_energy(U)
-
-        # Compute the boundary state. Note, the velocity (kinetic energy) and heat flux 
-        # are set to zero. Remaining variables (density and pressure) are extrapolated.
-        Ub = ngs.CF( (U.rho, 0, 0, Ei) ) 
-
-        # Choose the linearization state, needed for: K_{ij} = K_{ij}(U0).
-        U0 = self.fem.get_conservative_fields(U)
-
-        # # # 
-        # Surface term.
-        # # 
-
-        # Compute the flux of the solution, which is a function of the solution and external.
-        surf = self.get_surface_viscous_flux_from_linearized_state( U0, ngs.grad(U) )
-        blf['Uhat'][f"{bc.name}_{bnd}_surf"] = ngs.InnerProduct(surf, Vhat) * dS
-
-        # # # 
-        # Penalty term.
-        # # 
-
-        # Jump of the solution.
-        jumpU = Ub - Uhat
-
-        # Interior penalty coefficient.
+        n = self.mesh.normal
         tau = self.get_scaled_penalty_coefficient() 
-
-        # Get the diffusion matrices, based on the conservative gradients.
-        KU11, KU12, KU21, KU22 = self.get_frozen_diffusion_matrices_conservative(U0)
-
-        # Form the penalty term, which is based on the contraction of the diffusion matrices.
-        KUij = nx * (KU11*nx + KU12*ny) + ny * (KU21*nx + KU22*ny)
-        penn = tau * KUij * jumpU
-        blf['Uhat'][f"{bc.name}_{bnd}_penn"] = -ngs.InnerProduct(penn, Vhat) * dS
+        q = self.root.heat_flux(Uhat, U)
+        
+        U_bc = ngs.CF((Uhat.rho - U.rho, Uhat.rho_u, tau * (Uhat.rho_E - U.rho_E) - q * n))
+        Gamma_ad = ngs.InnerProduct(U_bc, Vhat)
+        blf['Uhat'][f"{bc.name}_{bnd}"] = Gamma_ad * dS
 
 
 
