@@ -91,7 +91,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
 
     @dream_configuration
-    def viscous_treatment(self) -> None | StrainHeat | Gradient:
+    def viscous_treatment(self) -> None | StrainHeat | Gradient | InteriorPenaltyHDG:
         """
         The viscous treatment to be used for the conservative HDG method.
         """
@@ -104,7 +104,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
             self._viscous_treatment = None
             return
 
-        OPTIONS = [StrainHeat, Gradient]
+        OPTIONS = [StrainHeat, Gradient, InteriorPenaltyHDG]
         self._viscous_treatment = self._get_configuration_option(value, OPTIONS, ViscousTreatment)
 
     def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]) -> None:

@@ -384,7 +384,9 @@ def conservative_hdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierS
             cfg.fem.viscous_treatment = "interior_penalty"
             cfg.fem.viscous_treatment.interior_penalty_coefficient = alpha
         elif isinstance(cfg.fem, ConservativeHDG):
-            cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
+            cfg.fem.viscous_treatment = "interior_penalty"
+            cfg.fem.viscous_treatment.interior_penalty_coefficient = alpha
+            #cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
         else:
             raise ValueError(f"Specified viscous conditions in HDG are not implemented.")
 
