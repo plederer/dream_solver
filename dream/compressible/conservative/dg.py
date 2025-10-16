@@ -15,6 +15,10 @@ from dream.compressible.config import (flowfields,
                                        Dirichlet,
                                        Outflow,
                                        Inflow,
+                                       InviscidWall,
+                                       Symmetry,
+                                       AdiabaticWall,
+                                       IsothermalWall,
                                        InterfaceBC,
                                        Periodic,
                                        Force,
@@ -130,6 +134,15 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
             elif isinstance(bc, InterfaceBC):
                 self.add_interface_formulation(blf, lf, bc, bnd)
+
+            elif isinstance(bc, (InviscidWall, Symmetry)):
+                self.add_inviscid_wall_formulation(blf, lf, bc, bnd)
+
+            elif isinstance(bc, AdiabaticWall):
+                self.add_adiabatic_wall_formulation(blf, lf, bc, bnd)
+
+            elif isinstance(bc, IsothermalWall):
+                self.add_isothermal_wall_formulation(blf, lf, bc, bnd)
 
             elif isinstance(bc, Periodic):
                 continue
@@ -261,8 +274,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         # # 
         
         if not self.root.dynamic_viscosity.is_inviscid:
-            # NOTE, the following will diverge (and is slower) if we use U_farfield, instead of U_infty.
-            self.viscous_treatment.add_viscous_farfield_formulation(U_infty, blf, lf, bc, bnd)
+            self.viscous_treatment.add_standard_viscous_formulation(U_infty, blf, lf, bc, bnd)
 
     def add_outflow_formulation(self, blf: Integrals, lf: Integrals, bc: Outflow, bnd: str):
  
@@ -318,7 +330,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         
         # NOTE, check if we even need to impose viscous conditions.
         if not self.root.dynamic_viscosity.is_inviscid:
-            self.viscous_treatment.add_viscous_farfield_formulation(U_infty, blf, lf, bc, bnd)
+            self.viscous_treatment.add_standard_viscous_formulation(U_infty, blf, lf, bc, bnd)
 
 
     def add_inflow_formulation(self, blf: Integrals, lf: Integrals, bc: Inflow, bnd: str):
@@ -374,7 +386,87 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         
         # NOTE, check if we even need to impose viscous conditions.
         if not self.root.dynamic_viscosity.is_inviscid:
-            self.viscous_treatment.add_viscous_farfield_formulation(U_infty, blf, lf, bc, bnd)
+            self.viscous_treatment.add_standard_viscous_formulation(U_infty, blf, lf, bc, bnd)
+
+    def add_inviscid_wall_formulation(self, blf: Integrals, lf: Integrals, bc: InviscidWall, bnd: str):
+        if not self.root.dynamic_viscosity.is_inviscid:
+            raise TypeError(f"Inviscid wall requires an inviscid formulation.")
+
+        bonus = self.bonus_int_order['convection']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
+        U, V = self.TnT['U']
+        n = self.mesh.normal
+
+        Ui = self.get_conservative_fields(U)
+        rho = self.root.density(Ui)
+        rho_u = self.root.momentum(Ui)
+        rho_E = self.root.energy(Ui)
+        Ei = self.root.inner_energy(Ui)
+        u = self.root.velocity(Ui)
+        un = ngs.InnerProduct(u, n)
+        
+        # Get the wall values.
+        u_wall =  u - un*n
+        Ek_wall = rho * ngs.InnerProduct(u_wall, u_wall) / 2
+        rhoE_wall = Ei + Ek_wall
+        rhou_wall = rho*u_wall
+
+        # Form the conservative values, based on the inviscid wall condition.
+        Uw = ngs.CF((rho, rhou_wall, rhoE_wall))
+        
+        # Based on Hartmann's analysis when used with a Riemann solver, See Eq (12) and the paragraph below in:
+        #  Hartmann, Ralf, and Tobias Leicht. 
+        #  "Generalized adjoint consistent treatment of wall boundary conditions for compressible flows." 
+        #  Journal of Computational Physics 300 (2015): 754-778. 
+        Uw = 2*Uw -  U 
+        Uj = self.get_conservative_fields(Uw)
+
+        Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
+        Gamma_inv = ngs.InnerProduct(Fn, V)
+        blf['U'][f"{bc.name}_{bnd}"] = Gamma_inv * dS
+
+    def add_adiabatic_wall_formulation(self, blf: Integrals, lf: Integrals, bc: AdiabaticWall, bnd: str):
+ 
+        if self.viscous_treatment is None:
+            raise TypeError(f"Adiabatic wall requires viscous treatment.")
+
+        bonus = self.bonus_int_order['convection']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
+        U, V = self.TnT['U']
+
+        # Get the flowfields from the local (ith) and boundary (jth) states.
+        Ui = self.get_conservative_fields(U)
+        U_infty = self.viscous_treatment.get_adiabatic_boundary_state(Ui)
+        Uj = self.get_conservative_fields(U_infty)
+        
+        # We use the Riemann solver, to impose the BC weakly.
+        Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
+        blf['U'][f"{bc.name}_{bnd}_conv"] = ngs.InnerProduct(Fn, V) * dS
+        
+        # Proceed with the viscous treatment, based on its respective class.
+        self.viscous_treatment.add_adiabatic_wall_formulation(blf, lf, bc, bnd)
+
+    def add_isothermal_wall_formulation(self, blf: Integrals, lf: Integrals, bc: IsothermalWall, bnd: str):
+        
+        if self.viscous_treatment is None:
+            raise TypeError(f"Isothermal wall requires viscous treatment.")
+
+        bonus = self.bonus_int_order['convection']
+        dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
+        U, V = self.TnT['U']
+
+        # Get the flowfields from the local (ith) and boundary (jth) states.
+        Ui = self.get_conservative_fields(U)
+        T_infty = bc.fields.T
+        U_infty = self.viscous_treatment.get_isothermal_boundary_state(Ui, T_infty)
+        Uj = self.get_conservative_fields(U_infty)
+        
+        # We use the Riemann solver, to impose the BC weakly.
+        Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
+        blf['U'][f"{bc.name}_{bnd}_conv"] = ngs.InnerProduct(Fn, V) * dS
+        
+        # Proceed with the viscous treatment, based on its respective class.
+        self.viscous_treatment.add_isothermal_wall_formulation(blf, lf, bc, bnd)
 
     def add_interface_formulation(self, blf: Integrals, lf: Integrals, bc: InterfaceBC, bnd: str):
         
