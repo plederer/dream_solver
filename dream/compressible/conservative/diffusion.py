@@ -692,8 +692,8 @@ class InteriorPenalty(ViscousTreatment, is_interface=True):
         return KU11.trans, KU12.trans, KU21.trans, KU22.trans
 
     def get_adiabatic_boundary_state(self, U: flowfields) -> ngs.CF:
-        Ei = self.root.inner_energy(U)
-        return ngs.CF((U.rho, 0, 0, Ei))
+        rho_Ei = self.root.inner_energy(U)
+        return ngs.CF((U.rho, 0, 0, rho_Ei))
 
     def get_isothermal_boundary_state(self, U:flowfields, T_infty: ngs.CF) -> ngs.CF:
         cv = self.root.equation_of_state.specific_heat_cv
