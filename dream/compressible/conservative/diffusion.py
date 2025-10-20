@@ -543,7 +543,6 @@ class Gradient(ViscousTreatment):
         return Q_
 
 
-
 # # #
 # Generic Interior penalty Method   #
 # # # # # # # # # # # # # # # # # # #
@@ -1252,10 +1251,5 @@ class InteriorPenaltySDG(InteriorPenalty):
         KUij = nx * (KU11*nx + KU12*ny) + ny * (KU21*nx + KU22*ny)
         penn = tau * KUij * jumpU
         blf['U'][f"{bc.name}_{bnd}_penn"] = ngs.InnerProduct(penn, V) * dS
-
-
-
-
-
 
 

@@ -623,7 +623,3 @@ class ConservativeDG_HDG(ConservativeHDG):
         blf['Uhat']['test'] = mask * ngs.InnerProduct(eq,
                                                       Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
 
-
-
-
-

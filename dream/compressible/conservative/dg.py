@@ -515,9 +515,3 @@ class ConservativeDG(ConservativeFiniteElementMethod):
             lf['U'][f"{dc.name}_{dom}"] = -ngs.InnerProduct(dc._flux,  ngs.grad(V)) * dX
             lf['U'][f"{dc.name}_{dom}"] += ngs.InnerProduct(dc._flux * n,  V) * dXe
 
-
-
-
-
-
-
