@@ -1120,6 +1120,30 @@ def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
     return X, Y
 
 
+def get_chord_naca_4digit_series_coordinates(number: str | int,
+                                             LE=(0, 0),
+                                             chord: float = 1.0,
+                                             n: int = 600) -> list[tuple[float, float, 0]]:
+    """ Returns a 2D NACA airfoil profile with leading edge at position (0, 0).
+
+        :param number: NACA digit number
+        :type number: str | int
+        :param LE: Leading edge coordinates, defaults to (0, 0)
+        :type LE: tuple, optional
+        :param chord: Chord length, defaults to 1
+        :type chord: float, optional
+        :param n: Number of coordinates, defaults to 600
+        :type n: int, optional
+        :return: NACA airfoil points
+        :rtype: list[tuple[float, float, 0]]
+    """
+    xs, ys = get_unit_chord_naca_4digit_series_coordinates(number, n)
+    xs = chord * xs + LE[0]
+    ys = chord * ys + LE[1]
+    pnts = [(x, y, 0) for x, y in zip(xs, ys)]
+    return pnts
+
+
 def get_2d_naca_occ_profile(number: str | int,
                             AoA=0,
                             LE=(0, 0),
@@ -1140,12 +1164,9 @@ def get_2d_naca_occ_profile(number: str | int,
         :return: NACA airfoil profile
         :rtype: occ.TopoDS_Shape
     """
-    xs, ys = get_unit_chord_naca_4digit_series_coordinates(number, n)
-    xs = chord * xs + LE[0]
-    ys = chord * ys + LE[1]
-    pnts = [(x, y, 0) for x, y in zip(xs, ys)]
+    pnts = get_chord_naca_4digit_series_coordinates(number, LE, chord, n)
 
-    curve = occ.Wire(occ.SplineApproximation(pnts))
+    curve = occ.Wire(occ.SplineApproximation(pnts, continuity=occ.ShapeContinuity.C0))
     wing = occ.Face(curve)
     wing = wing.Rotate(occ.Axis((LE[0], LE[1], 0), occ.Z), -AoA)
     return wing
