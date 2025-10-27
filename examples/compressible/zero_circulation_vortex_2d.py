@@ -2,7 +2,7 @@
 # ------- Import Modules ------- #
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
-from dream.compressible import CompressibleFlowSolver, flowfields, FarField, Initial, Outflow, GRCBC, NSCBC, AdiabaticWall
+from dream.compressible import CompressibleFlowSolver, flowfields, FarField, Initial, Outflow, GRCBC, NSCBC
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)
@@ -21,7 +21,7 @@ cfg.time.timer.interval = (0, 200)
 cfg.time.timer.step = 0.01
 
 cfg.dynamic_viscosity = "inviscid"
-cfg.dynamic_viscosity = "constant"
+#cfg.dynamic_viscosity = "constant"
 cfg.equation_of_state = "ideal"
 cfg.equation_of_state.heat_capacity_ratio = 1.4
 cfg.scaling = "aerodynamic"
@@ -33,9 +33,9 @@ cfg.riemann_solver = "upwind"
 cfg.fem = "conservative_hdg"
 cfg.fem.scheme = "bdf2"
 cfg.fem.order = 4
-cfg.fem.viscous_treatment = None
 cfg.fem.bonus_int_order = 4
-cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
+cfg.fem.viscous_treatment = None
+#cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
 
 
 cfg.fem.solver = "direct"
@@ -61,14 +61,12 @@ rho_0 = Uinf.rho * (1 - (gamma - 1)/2 * Mt**2 * exp((R**2 - r**2)/(R**2)))**(1/(
 p_00 = Uinf.p * (1 - (gamma - 1)/2 * Mt**2 * exp(1))**(gamma/(gamma - 1))
 
 # cfg.bcs['right'] = Outflow(fields=Uinf)
-# cfg.bcs['top|bottom'] = "inviscid_wall"
 cfg.bcs['right'] = GRCBC(fields=Uinf,
                          target="outflow",
                          relaxation_factor=0.1,
                          tangential_relaxation=cfg.mach_number,
-                         is_viscous_fluxes=True)
-cfg.bcs['left'] = FarField(fields=Uinf)
-cfg.bcs['top|bottom'] = AdiabaticWall()
+                         is_viscous_fluxes=False)
+cfg.bcs['left|top|bottom'] = FarField(fields=Uinf)
 
 initial = Initial(fields=flowfields(rho=rho_0, u=u_0, p=p_0))
 cfg.dcs['default'] = initial

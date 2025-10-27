@@ -117,9 +117,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
     def add_boundary_conditions(self, blf: Integrals, lf:  Integrals):
 
-        bnds = self.root.bcs.to_pattern()
-
-        for bnd, bc in bnds.items():
+        for bnd, bc in self.root.bcs.items():
 
             logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
 
@@ -152,9 +150,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
     def add_domain_conditions(self, blf: Integrals, lf:  Integrals):
 
-        doms = self.root.dcs.to_pattern()
-
-        for dom, dc in doms.items():
+        for dom, dc in self.root.dcs.items():
 
             logger.debug(f"Adding domain condition {dc} on domain {dom}.")
 

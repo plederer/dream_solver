@@ -85,8 +85,6 @@ def test_viscous_diffusion_matrices(cfg: CompressibleFlowSolver):
     grad_U = ngs.CF((U.grad_rho, U.grad_rho_u, U.grad_rho_E), dims=(4, 2))
     Fv_mat = ngs.CF((K11*grad_U[:, 0] + K12*grad_U[:, 1], K21 * grad_U[:, 0] + K22 * grad_U[:, 1]), dims=(2, 4)).trans
 
-    print(Fv(mesh()), ngs.Integrate(Fv, mesh))
-    print(Fv_mat(mesh()), ngs.Integrate(Fv_mat, mesh))
     nptest.assert_almost_equal(np.array(ngs.Integrate(Fv, mesh)), np.array(ngs.Integrate(Fv_mat, mesh)))
 
 

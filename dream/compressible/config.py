@@ -64,7 +64,7 @@ class CompressibleFiniteElementMethod(FiniteElementMethod):
         mask = ngs.GridFunction(fes, name="mask")
         mask.vec[:] = 0
 
-        bnd_dofs = fes.GetDofs(self.mesh.Boundaries(self.root.bcs.get_domain_boundaries(True)))
+        bnd_dofs = fes.GetDofs(self.mesh.Boundaries(self.root.bcs.get_domain_boundaries()))
         mask.vec[~bnd_dofs] = 1
 
         return mask
@@ -128,7 +128,7 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
         U = self.mesh.MaterialCF({dom: ngs.CF(
             (self.root.density(dc.fields),
                 self.root.momentum(dc.fields),
-                self.root.energy(dc.fields))) for dom, dc in self.root.dcs.to_pattern(Initial).items()})
+                self.root.energy(dc.fields))) for dom, dc in self.root.dcs.items(Initial)})
 
         self.gfus['U'].Set(U)
 
@@ -598,7 +598,8 @@ class Force(Condition):
                  momentum: float | None = None,
                  energy: float | None = None,
                  flux: ngs.CF | None = None,
-                 order: int = 0):
+                 order: int = 0,
+                 is_time_dependent: bool = False):
 
         super().__init__()
         self.order = order
@@ -606,6 +607,7 @@ class Force(Condition):
         self._momentum = momentum
         self._energy = energy
         self._flux = flux
+        self.is_time_dependent = is_time_dependent
 
     def get_force_vector(self, dim: int = 2) -> ngs.CF:
         return ngs.CF((self.continuum(), self.momentum(dim), self.energy()))

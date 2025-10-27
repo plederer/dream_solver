@@ -115,12 +115,12 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         U = ngs.L2(self.mesh, order=order)
         Uhat = ngs.FacetFESpace(self.mesh, order=order)
 
-        psponge_layers = self.root.dcs.to_pattern(PSpongeLayer)
+        psponge_layers = self.root.dcs.get_psponge_layers()
         if psponge_layers:
             U = self.root.dcs.reduce_psponge_layers_order_elementwise(U, psponge_layers)
             Uhat = self.root.dcs.reduce_psponge_layers_order_facetwise(Uhat, psponge_layers)
 
-        if self.root.bcs.has_condition(Periodic):
+        if Periodic in self.root.bcs:
             Uhat = ngs.Periodic(Uhat)
 
         fes['U'] = U**dim
@@ -163,9 +163,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
 
     def add_boundary_conditions(self, blf: Integrals, lf: Integrals):
 
-        bnds = self.root.bcs.to_pattern()
-
-        for bnd, bc in bnds.items():
+        for bnd, bc in self.root.bcs.items():
 
             logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
 
@@ -201,9 +199,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
 
     def add_domain_conditions(self, blf: Integrals, lf: Integrals):
 
-        doms = self.root.dcs.to_pattern()
-
-        for dom, dc in doms.items():
+        for dom, dc in self.root.dcs.items():
 
             logger.debug(f"Adding domain condition {dc} on domain {dom}.")
 
@@ -487,7 +483,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
     def initialize_time_scheme_gridfunctions(self, *spaces: str):
 
         SPACES = []
-        if self.root.bcs.has_condition(CBC):
+        if CBC in self.root.bcs:
             SPACES.append('Uhat')
         SPACES.extend(spaces)
 
@@ -498,7 +494,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         U = self.mesh.MaterialCF({dom: ngs.CF(
             (self.root.density(dc.fields),
                 self.root.momentum(dc.fields),
-                self.root.energy(dc.fields))) for dom, dc in self.root.dcs.to_pattern(Initial).items()})
+                self.root.energy(dc.fields))) for dom, dc in self.root.dcs.items(Initial)})
 
         gfu = self.gfus['Uhat']
         fes = self.gfus['Uhat'].space

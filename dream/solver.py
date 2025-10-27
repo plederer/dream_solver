@@ -446,7 +446,7 @@ class SolverConfiguration(Configuration, is_interface=True):
 
     def initialize(self) -> None:
 
-        if self.mesh.is_periodic and not self.root.bcs.has_condition(Periodic):
+        if self.mesh.is_periodic and not Periodic in self.root.bcs:
             raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
 
         self.fem.initialize()

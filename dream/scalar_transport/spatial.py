@@ -59,7 +59,7 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
         super().initialize_time_scheme_gridfunctions(*spaces)
     
     def set_initial_conditions(self) -> None:
-        U = self.mesh.MaterialCF({dom: self.root.phi(dc.fields) for dom, dc in self.root.dcs.to_pattern(Initial).items()})
+        U = self.mesh.MaterialCF({dom: self.root.phi(dc.fields) for dom, dc in self.root.dcs.items(Initial)})
 
         self.gfus['U'].Set(U)
         super().set_initial_conditions()
@@ -71,7 +71,7 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
         mask = ngs.GridFunction(fes, name="mask")
         mask.vec[:] = 0
 
-        bnd_dofs = fes.GetDofs(self.mesh.Boundaries(self.root.bcs.get_domain_boundaries(True)))
+        bnd_dofs = fes.GetDofs(self.mesh.Boundaries(self.root.bcs.get_domain_boundaries()))
         mask.vec[~bnd_dofs] = 1
 
         return mask
@@ -128,9 +128,8 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
 
         The available options are: :class:`FarField <dream.scalar_transport.config.FarField>` and :class:`Periodic`
         """
-        bnds = self.root.bcs.to_pattern()
 
-        for bnd, bc in bnds.items():
+        for bnd, bc in self.root.bcs.items():
 
             logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
 
@@ -146,9 +145,8 @@ class ScalarTransportFiniteElementMethod(FiniteElementMethod):
     def add_domain_conditions(self, blf: Integrals, lf: Integrals):
         r""" Adds domain conditions. 
         """
-        doms = self.root.dcs.to_pattern()
 
-        for dom, dc in doms.items():
+        for dom, dc in self.root.dcs.items():
 
             logger.debug(f"Adding domain condition {dc} on domain {dom}.")
 
@@ -219,7 +217,7 @@ class HDG(ScalarTransportFiniteElementMethod):
         else:
             Uhat = ngs.FacetFESpace(self.mesh, order=order)
 
-        if self.root.bcs.has_condition(Periodic):
+        if Periodic in self.root.bcs:
             Uhat = ngs.Periodic(Uhat)
 
         fes['U'] = U
