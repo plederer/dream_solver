@@ -25,7 +25,7 @@ from dream.compressible.config import (flowfields,
                                        CBC)
 
 from .diffusion import ViscousTreatment, InteriorPenaltyHDG
-from .time import ImplicitEuler, BDF2, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2, IMEXRK_ARS443
+from .time import ImplicitEuler, BDF2, BDF3, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2, IMEXRK_ARS443
 from .diffusion import ViscousTreatment, StrainHeat, Gradient
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         super().__init__(mesh, root, **DEFAULT)
 
     @dream_configuration
-    def scheme(self) -> ImplicitEuler | BDF2 | IMEXRK_ARS443 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK34_LDD | DIRK43_WSO2:
+    def scheme(self) -> ImplicitEuler | BDF2 | BDF3 | IMEXRK_ARS443 | SDIRK22 | SDIRK33 | SDIRK54 | DIRK34_LDD | DIRK43_WSO2:
         """ Time scheme for the HDG method depending on the choosen time routine.
 
             :getter: Returns the time scheme
@@ -81,7 +81,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
     @scheme.setter
     def scheme(self, scheme: TimeSchemes) -> None:
         if isinstance(self.root.time, TransientRoutine):
-            OPTIONS = [ImplicitEuler, BDF2, IMEXRK_ARS443, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2]
+            OPTIONS = [ImplicitEuler, BDF2, BDF3, IMEXRK_ARS443, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2]
         elif isinstance(self.root.time, PseudoTimeSteppingRoutine):
             OPTIONS = [ImplicitEuler, BDF2]
         elif isinstance(self.root.time, MultizoneIMEXTimeRoutine):
@@ -444,18 +444,13 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
     def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
 
         dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
-        dXe = ngs.dx(element_boundary=True, definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
-        n = self.mesh.normal
-
         _, V = self.TnT['U']
 
-        if any([dc._continuum, dc._momentum, dc._energy]):
-            F = dc.get_force_vector(self.mesh.dim)
+        F = dc.get_force_vector(self.mesh.dim)
+        if dc.is_constant:
             lf['U'][f"{dc.name}_{dom}"] = F * V * dX
-
-        elif dc._flux is not None:
-            lf['U'][f"{dc.name}_{dom}"] = -ngs.InnerProduct(dc._flux,  ngs.grad(V)) * dX
-            lf['U'][f"{dc.name}_{dom}"] += ngs.InnerProduct(dc._flux * n,  V) * dXe
+        else:
+            blf['U'][f"{dc.name}_{dom}"] = -F * V * dX
 
     def get_convective_numerical_flux(self, U: flowfields, Uhat: flowfields, unit_vector: ngs.CF):
         r"""

@@ -212,6 +212,10 @@ class TimeSchemes(Scheme):
     @property
     def dt(self) -> ngs.Parameter:
         return self.root.time.timer.step
+    
+    @property
+    def t(self) -> ngs.Parameter:
+        return self.root.time.timer.t
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
         raise NotImplementedError("Overload this method in derived class!")
