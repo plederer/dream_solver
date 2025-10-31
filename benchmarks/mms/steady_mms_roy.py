@@ -1,12 +1,12 @@
-# Import modules
-from config import PSEUDO_STATIONARY_CFG, mesh_routine, RoyMMS
+from config import PSEUDO_STATIONARY_CFG, mesh_refinement_routine, NavierStokesMMS, get_roy_mms
 
 import argparse
-parser = argparse.ArgumentParser(description='Flow around cylinder benchmark')
+parser = argparse.ArgumentParser(description='Steady MMS Roy benchmark')
 parser.add_argument('Ma', type=float, help='Mach number')
 parser.add_argument('Re', type=float, help='Reynolds number')
 parser.add_argument('riemann_solver', type=str, help='Riemann solver')
 parser.add_argument('fem', type=str, help='Finite element method')
+parser.add_argument('--viscous', type=str, help='Viscous treatment', default='interior_penalty')
 parser.add_argument('--IP', type=float, help='Interior penalty coefficient', default=10.0)
 OPTIONS = vars(parser.parse_args())
 
@@ -14,7 +14,12 @@ Ma = OPTIONS['Ma']
 Re = OPTIONS['Re']
 riemann_solver = OPTIONS['riemann_solver']
 fem = OPTIONS['fem']
+viscous = OPTIONS['viscous']
 IP = OPTIONS['IP']
+
+filename = f"{fem}_Ma{Ma}_Re{Re}_{riemann_solver}_{viscous}"
+if viscous == 'interior_penalty':
+    filename += f"_IP{IP}"
 
 GENERAL = PSEUDO_STATIONARY_CFG.copy()
 GENERAL['mach_number'] = Ma
@@ -35,6 +40,11 @@ GENERAL['fem.solver.method.convergence_criterion'] = 1e-20
 GENERAL['fem.solver.method.damping_factor'] = 1.0
 GENERAL['fem.scheme'] = "implicit_euler"
 GENERAL['fem.bonus_int_order'] = 10
+GENERAL['fem.viscous_treatment'] = viscous
+if viscous == 'interior_penalty':
+    GENERAL['fem.viscous_treatment.interior_penalty_coefficient'] = IP
+GENERAL['io.path'] = f"steady_roy/{filename}"
+GENERAL['io.vtk.enable'] = False
 
 if Ma < 0.1:
     GENERAL['scaling'] = 'acoustic'
@@ -52,23 +62,16 @@ if Ma < 0.1:
 # HDG Navier-Stokes setting
 HDG = GENERAL.copy()
 HDG['fem'] = 'conservative_hdg'
-HDG['fem.viscous_treatment'] = 'mixed_strain_temperature_gradient'
 
 # DG Navier-Stokes setting
 DG = GENERAL.copy()
 DG['fem'] = 'conservative_dg'
-DG['fem.viscous_treatment'] = 'interior_penalty_method_sdg'
-DG['fem.viscous_treatment.interior_penalty_coefficient'] = IP
 
 if fem == 'hdg':
-    filename = f"{fem}_Ma{Ma}_Re{Re}_{riemann_solver}"
-    HDG['io.path'] = f'roy/{filename}'
-    FEM = RoyMMS(HDG, filename=filename)
+    FEM = NavierStokesMMS(HDG, get_roy_mms, filename=filename)
 elif fem == 'dg':
-    filename = f"{fem}_Ma{Ma}_Re{Re}_{riemann_solver}_IP{IP}"
-    DG['io.path'] = f'roy/{filename}'
-    FEM = RoyMMS(DG, filename=filename)
+    FEM = NavierStokesMMS(DG,  get_roy_mms,filename=filename)
 
 if __name__ == "__main__":
     # Start Routine
-    mesh_routine(FEM, levels=4, orders=[1, 2, 3, 4, 5])
+    mesh_refinement_routine(FEM, levels=3, orders=[1, 2, 3, 4])

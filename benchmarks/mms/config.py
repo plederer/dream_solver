@@ -26,14 +26,27 @@ def div(F):
     return ngs.CF(tuple(F[i, 0].Diff(ngs.x) + F[i, 1].Diff(ngs.y) for i in range(F.dims[0])))
 
 
+SCHEME_ORDER = {
+    'implicit_euler': 1,
+    'explicit_euler': 1,
+    'bdf2': 2,
+    'bdf3': 3,
+    'rk_ars22': 2,
+    'rk_ars33': 3,
+    'crk4': 4,
+    'sdirk22': 2,
+    'sdirk33': 3,
+    'sdirk43': 3,
+    'sdirk54': 4
+}
+
 TRANSIENT_CFG = {
     'mach_number': 0.2,
     'reynolds_number': 1.0,
     'prandtl_number': 0.72,
     'equation_of_state': 'ideal',
     'equation_of_state.heat_capacity_ratio': 1.4,
-    'dynamic_viscosity': 'inviscid',
-    'scaling': 'acoustic',
+    'scaling': 'aerodynamic',
     'riemann_solver': 'lax_friedrich',
     'time': 'transient',
     'time.timer.interval': (0.0, 10.0),
@@ -48,8 +61,11 @@ TRANSIENT_CFG = {
     'fem.bonus_int_order': 4,
     'fem.scheme': 'implicit_euler',
     'fem.scheme.compile': {'realcompile': False, 'wait': False, 'keep_files': False},
-    'fem.mixed_method': 'inactive',
+    'fem.viscous_treatment': None,
     'io.path': 'test',
+    'io.vtk.enable': False,
+    'io.vtk.rate': 1,
+    'io.vtk.subdivision': 2,
 }
 
 PSEUDO_STATIONARY_CFG = {
@@ -74,19 +90,21 @@ PSEUDO_STATIONARY_CFG = {
     'fem.scheme': "implicit_euler",
     'fem.scheme.compile': {'realcompile': False, 'wait': False, 'keep_files': False},
     'io.path': 'test',
+    'io.vtk.enable': False,
+    'io.vtk.rate': 1,
+    'io.vtk.subdivision': 2,
 }
 
 
 class MMS:
 
     def __init__(self,
-                 *configurations: dict,
+                 cfg: dict,
+                 mms: callable,
                  filename: str | None = None,
                  flow_direction: tuple = (1.0, 1.0),
-                 amplitude=0.1,
-                 frequency=5.0,
-                 length=1.0,
-                 period=1.0,
+                 length: float = 1.0,
+                 periods: int = 5,
                  init_exact: bool = False,
                  is_periodic: bool = False,
                  **export):
@@ -97,16 +115,15 @@ class MMS:
         if is_periodic:
             filename += "_periodic"
 
-        self.configurations = configurations
+        self._cfg = cfg
+        self._mms = mms
         self.flow_direction = flow_direction
-        self.amplitude = amplitude
-        self.frequency = frequency
-        self.length = length
-        self.period = period
+        self.length = float(length)
+        self.periods = int(periods)
         self.filename = filename
         self.is_periodic = is_periodic
         self.init_exact = init_exact
-        self.export = {'to_fig': True, 'to_csv': True, 'to_dat': True, 'to_vtk': True}
+        self.export = {'to_fig': True, 'to_csv': True, 'to_dat': True}
         self.export.update(export)
 
     @property
@@ -116,32 +133,33 @@ class MMS:
     def get_exact_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
         # Construct dimensionless fields
 
-        U_inf = cfg.get_farfield_fields(self.flow_direction)
-        U_inf.E = cfg.specific_energy(U_inf)
-
-        t = 0
+        t = None
         if self.is_transient:
             t = cfg.time.timer.t
 
         U = self(t)
+        U.u = cfg.velocity(U)
         U.rho_Ek = cfg.kinetic_energy(U)
         U.rho_Ei = cfg.inner_energy(U)
         U.p = cfg.pressure(U)
-        U.u = cfg.velocity(U)
+        U.T = cfg.temperature(U)
 
         U.grad_rho = ngs.CF((U.rho.Diff(ngs.x), U.rho.Diff(ngs.y)))
         U.grad_p = ngs.CF((U.p.Diff(ngs.x), U.p.Diff(ngs.y)))
         U.grad_u = ngs.CF((U.u[0].Diff(ngs.x), U.u[0].Diff(ngs.y),
                            U.u[1].Diff(ngs.x), U.u[1].Diff(ngs.y)), dims=(2, 2))
         U.grad_T = cfg.temperature_gradient(U, U)
+        U['Ma'] = cfg.get_local_mach_number(U)
 
         return U
 
     def get_initial_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
         # Construct dimensionless initial fields from constant terms only
 
-        if isinstance(cfg, TransientRoutine) or self.init_exact:
+        if self.is_transient:
             U = self(t=0)
+        elif self.init_exact:
+            U = self()
         else:
             U = cfg.get_farfield_fields(self.flow_direction)
 
@@ -160,6 +178,7 @@ class MMS:
 
     def set_conditions(self, cfg: CompressibleFlowSolver):
         self.cfg = cfg
+        cfg.update(self._cfg)
 
         cfg.bcs.clear()
         cfg.dcs.clear()
@@ -169,20 +188,26 @@ class MMS:
 
     def set_solution_fields(self, Uh: flowfields):
         Uh['Ma'] = self.cfg.get_local_mach_number(Uh)
+        Uh.rho_u = self.cfg.momentum(Uh)
+        Uh.rho_E = self.cfg.energy(Uh)
+        Uh.T = self.cfg.temperature(Uh)
         self.Uh = Uh
 
-    def write_to_output_streams(self):
+    def write_to_streams(self, t: float = None, **log):
+        self.log = log
+
         Ue = self.Ue
         Uh = self.Uh
 
-        order = self.log['order']
-        key = (self.log['level'], self.log['h'], self.log['order'])
+        order = self.cfg.fem.order
+
+        key = tuple(log.values())
+        if t is not None:
+            key = key + (t,)
+            self.log['t'] = t
 
         Ue_ = ngs.CF((Ue.rho, Ue.rho_u, Ue.rho_E))
         Uh_ = ngs.CF((Uh.rho, Uh.rho_u, Uh.rho_E))
-
-        # weight = ngs.sin(ngs.pi * ngs.x/self.length) * ngs.sin(ngs.pi * ngs.y/self.length)
-        # J_e = 4/ngs.pi**2
 
         self.errors[key] = {
             'rho': ngs.sqrt(ngs.Integrate((Uh.rho - Ue.rho) ** 2, self.cfg.mesh, order=order + 10)),
@@ -191,19 +216,28 @@ class MMS:
             'rho_u': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh.rho_u - Ue.rho_u, Uh.rho_u - Ue.rho_u), self.cfg.mesh, order=order + 10)),
             'rho_E': ngs.sqrt(ngs.Integrate((Uh.rho_E - Ue.rho_E) ** 2, self.cfg.mesh, order=order + 10)),
             'U': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh_ - Ue_, Uh_ - Ue_), self.cfg.mesh, order=order + 10)),
-            # 'J(rho)': abs(ngs.Integrate(ngs.InnerProduct(Uh.rho, weight), self.cfg.mesh, order=order + 10) - J_e)
         }
-
-        if not self.is_transient and self.export['to_vtk']:
-            self.export_to_vtk()
 
     def open_output_streams(self):
         if any(self.export.values()):
             self.cfg.io.path.mkdir(parents=True, exist_ok=True)
 
-        self.log = {'level': 0, 'h': 0.0, 'order': 0}
-
         self.errors = {}
+
+    def open_vtk_stream(self, **log):
+
+        filename = self.filename
+        for key, value in log.items():
+            if isinstance(value, str):
+                filename += f"_{value}"
+            else:
+                filename += f"_{key}{value}"
+
+        self.cfg.io.vtk.filename = filename
+        export = ['density', 'velocity', 'pressure', 'temperature', 'Ma', 'energy']
+        fields = {f"{key}_h": value for key, value in self.Uh.items() if key in export}
+        fields.update({f"{key}_e": value for key, value in self.Ue.items() if key in export})
+        self.cfg.io.vtk.fields = fields
 
     def close_output_streams(self):
 
@@ -216,31 +250,47 @@ class MMS:
         if self.export['to_dat']:
             self.export_errors_to_dat()
 
-    def update_configurations(self, cfg: CompressibleFlowSolver, config: dict):
-        cfg.update(config)
-
     def export_errors_to_csv(self):
 
         filepath = self.cfg.io.path.joinpath(f"{self.filename}.csv")
 
         with filepath.open('w', newline='') as file:
 
-            LEVELS = max([level for level, _, _ in self.errors.keys()])
+            if not self.is_transient:
 
-            file.write(f"levels (refinement): {LEVELS}\n")
-            file.write("\n")
-            file.write("------------------------------------------------------------------------\n")
-            file.write("h, dt, eq, field, order, error\n")
-            file.write("------------------------------------------------------------------------\n")
+                LEVELS = max([level for level, _, _ in self.errors.keys()])
 
-            errors = sorted(self.errors.items(), key=lambda x: x[0][2])
-            for field in ['rho', 'u', 'p', 'rho_u', 'rho_E', 'U']:
+                file.write(f"levels (refinement): {LEVELS}\n")
+                file.write("\n")
+                file.write("------------------------------------------------------------------------\n")
+                file.write("h, dt, eq, field, order, error\n")
+                file.write("------------------------------------------------------------------------\n")
 
-                for key, error in errors:
-                    level, h, order = key
-                    dt = 1.0  # just a dummy, for the output.
-                    row = [f"{h:.15e}", f"{dt:.15e}", str(self), f"{field:5}", str(order), f"{error[field]:.15e}"]
-                    file.write(",\t".join(row) + "\n")
+                errors = sorted(self.errors.items(), key=lambda x: x[0][2])
+                for field in ['rho', 'u', 'p', 'rho_u', 'rho_E', 'U']:
+
+                    for key, error in errors:
+                        _, h, order = key
+                        row = [f"{h:.15e}", f"{1.0:.15e}", str(self), f"{field:5}", str(order), f"{error[field]:.15e}"]
+                        file.write(",\t".join(row) + "\n")
+
+            else:
+
+                SCHEMES = list(set(scheme for scheme, _, _ in self.errors))
+                TIME_STEPS = list(set(dt for _, dt, _ in self.errors))
+                TIME_STEPS.sort(reverse=True)
+                file.write(f"Schemes: {SCHEMES}, Time steps: {TIME_STEPS}\n")
+                file.write("\n")
+                file.write("------------------------------------------------------------------------\n")
+                file.write("scheme, dt, eq, field, t, error\n")
+                file.write("------------------------------------------------------------------------\n")
+
+                for field in ['rho', 'u', 'p', 'rho_u', 'rho_E', 'U']:
+
+                    for key, error in self.errors.items():
+                        scheme, dt, t = key
+                        row = [f"{scheme:15}", f"{dt:5}", str(self), f"{field:5}", f"{t:.8e}", f"{error[field]:.15e}"]
+                        file.write(",\t".join(row) + "\n")
 
     def export_errors_to_fig(self):
 
@@ -253,98 +303,80 @@ class MMS:
         axes = axes.flatten()
 
         df = pd.DataFrame.from_dict(self.errors, orient='index')
-        df.index.names = ['level', 'h', 'order']
-        h = df.index.get_level_values('h').unique()
+        df.index.names = list(self.log)
 
-        for ax, field in zip(axes, labels):
+        if 'h' in df.index.names:
+            h = df.index.get_level_values('h').unique()
 
-            data = df.xs(field, axis=1)
+            for ax, field in zip(axes, labels):
 
-            for order in df.index.levels[2]:
-                error = data.loc[:, :, order]
-                ax.loglog(h, error, marker='o',  label=fr"$p={order}$")
-                ax.loglog(h, h**(order+1)/h[0]**(order+1) * error.iloc[0], ls='--', color='k')
+                data = df.xs(field, axis=1)
 
-            ax.set_xlabel(r"$h$")
-            ax.set_title(labels[field])
-            ax.legend()
+                for order in df.index.levels[2]:
+                    error = data.loc[:, :, order]
+                    ax.loglog(h, error, marker='o',  label=fr"$p={order}$")
+                    ax.loglog(h, h**(order+1)/h[0]**(order+1) * error.iloc[0], ls='--', color='k')
 
-            ax.set_ylim(1e-10, 1)
+                ax.set_xlabel(r"$h$")
+                ax.set_title(labels[field])
+                ax.legend()
 
-        fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}.png"))
+                ax.set_ylim(1e-10, 1)
 
-        # Mean density functional
-        # labels = {'J(rho)': r"$\| J(\rho_h) - J(\rho_e) \|$"}
-        # fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+            fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}.png"))
 
-        # data = df.xs('J(rho)', axis=1)
-        # for order in df.index.levels[2]:
-        #     error = data.loc[:, :, order]
-        #     ax.loglog(h, error, marker='o',  label=fr"$p={order}$")
-        #     ax.loglog(h, h**(2*order)/h[0]**(2*order) * error.iloc[0], ls='--', color='k')
+        elif 'dt' in df.index.names:
+            dt = df.index.get_level_values('dt').unique()
+            schemes = df.index.get_level_values('scheme').unique()
+            mean = pd.DataFrame([df.loc[i, j].mean() for i in schemes for j in dt])
+            mean.index = pd.MultiIndex.from_product([schemes, dt])
 
-        #     ax.set_xlabel(r"$h$")
-        #     ax.set_title(labels['J(rho)'])
-        #     ax.legend()
+            for ax, field in zip(axes, labels):
 
-        #     ax.set_ylim(1e-16, 2)
+                data = mean.xs(field, axis=1)
 
-        # fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}_J(rho).png"))
+                for scheme in schemes:
+                    error = data.loc[scheme]
+                    ax.loglog(dt/dt.max(), error, marker='o',  label=fr"{scheme}")
+
+                    if scheme in SCHEME_ORDER:
+                        order = SCHEME_ORDER[scheme]
+                        ax.loglog(dt/dt.max(), dt**order/dt[0]**order * error.iloc[0], ls='--', color='k')
+
+                ax.set_xlabel(r"$\Delta t_{ny}$")
+                ax.set_title(labels[field])
+                ax.legend()
+
+                ax.set_ylim(1e-6, 1)
+
+            fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}.png"))
 
     def export_errors_to_dat(self):
         df = pd.DataFrame.from_dict(self.errors, orient='index')
-        df.index.names = ['level', 'h', 'order']
-        df.sort_index(axis=0, level=2, inplace=True)
+        df.index.names = list(self.log)
+        if 'h' in df.index.names:
+            df.sort_index(axis=0, level=2, inplace=True)
         df.to_csv(self.cfg.io.path.joinpath(f"{self.filename}.dat"))
 
-    def export_to_vtk(self, vtk: ngs.VTKOutput = None, t: float = -1):
-
-        if vtk is None:
-            filepath = self.cfg.io.path.joinpath(f"{self.filename}_{self.log['order']}_level{self.log["level"]}")
-            vtk = ngs.VTKOutput(
-                self.cfg.mesh, list(self.Uh.values()),
-                list(self.Uh.keys()),
-                filename=str(filepath),
-                subdivision=3)
-
-        vtk.Do(t)
-
-    def __call__(self, t: float = 0) -> flowfields:
-
-        k = 2*ngs.pi/self.length
-        omega = 2*np.pi*self.frequency/self.period
-        wave = ngs.sin(k*(ngs.x + ngs.y) - omega*t)
-
-        U_inf = self.cfg.get_farfield_fields(self.flow_direction)
-        U_inf.E = self.cfg.specific_energy(U_inf)
-
-        U = flowfields()
-
-        U.rho = U_inf.rho * (1 + self.amplitude * wave)
-        U.rho_u = U.rho * U_inf.u
-        U.rho_E = U.rho * U_inf.E
-
-        U.u = self.cfg.velocity(U)
-        U.rho_Ek = self.cfg.kinetic_energy(U)
-        U.rho_Ei = self.cfg.inner_energy(U)
-        U.p = self.cfg.pressure(U)
-        U.T = self.cfg.temperature(U)
-        return U
+    def __call__(self, t: float = None) -> flowfields:
+        return self._mms(self, t)
 
 
 class EulerMMS(MMS):
 
-    def update_configurations(self, cfg, config):
-        cfg.dynamic_viscosity = "inviscid"
-        super().update_configurations(cfg, config)
-
     def set_conditions(self, cfg: CompressibleFlowSolver):
+
+        cfg.dynamic_viscosity = "inviscid"
 
         super().set_conditions(cfg)
 
-        F = cfg.get_convective_flux(self.Ue)
+        F = div(cfg.get_convective_flux(self.Ue))
+        if self.is_transient:
+            t = cfg.time.timer.t
+            F += ngs.CF((self.Ue.rho.Diff(t), self.Ue.rho_u.Diff(t), self.Ue.rho_E.Diff(t)))
+
         cfg.dcs['default'] = Initial(fields=self.U0)
-        cfg.dcs['default'] = Force(flux=F, order=10)
+        cfg.dcs['default'] = Force(F[0], F[1:3], F[3], order=10, is_constant=not self.is_transient)
 
         if self.is_periodic:
             cfg.bcs['left|right|top|bottom'] = "periodic"
@@ -357,17 +389,19 @@ class EulerMMS(MMS):
 
 class NavierStokesMMS(MMS):
 
-    def update_configurations(self, cfg, config):
-        cfg.dynamic_viscosity = "constant"
-        super().update_configurations(cfg, config)
+    def set_conditions(self, cfg: CompressibleFlowSolver):
 
-    def set_conditions(self, cfg: CompressibleFlowSolver) -> flowfields:
+        cfg.dynamic_viscosity = "constant"
 
         super().set_conditions(cfg)
 
-        F = cfg.get_convective_flux(self.Ue) - cfg.get_diffusive_flux(self.Ue, self.Ue)
+        F = div(cfg.get_convective_flux(self.Ue) - cfg.get_diffusive_flux(self.Ue, self.Ue))
+        if self.is_transient:
+            t = cfg.time.timer.t
+            F += ngs.CF((self.Ue.rho.Diff(t), self.Ue.rho_u.Diff(t), self.Ue.rho_E.Diff(t)))
+
         cfg.dcs['default'] = Initial(fields=self.U0)
-        cfg.dcs['default'] = Force(flux=F, order=10)
+        cfg.dcs['default'] = Force(F[0], F[1:3], F[3], order=10, is_constant=not self.is_transient)
 
         if self.is_periodic:
             cfg.bcs['left|right|top|bottom'] = "periodic"
@@ -378,70 +412,151 @@ class NavierStokesMMS(MMS):
         return "NS"
 
 
-class RoyMMS(NavierStokesMMS):
+def get_constant_mach_mms(mms: MMS, t: float = None) -> flowfields:
 
-    def __call__(self, t: float = 0) -> flowfields:
+    k = 2*ngs.pi/mms.length
+    wave = ngs.sin(k*(ngs.x + ngs.y))
 
-        U_inf = self.cfg.get_farfield_fields(self.flow_direction)
+    if t is not None:
+        T = mms.cfg.time.timer.interval[1] - mms.cfg.time.timer.interval[0]
+        omega = 2*np.pi*mms.periods/T
+        wave = ngs.sin(k*(ngs.x + ngs.y) - omega * t)
 
-        def sin(a):
-            return ngs.sin(a * ngs.pi/self.length)
+    U_inf = mms.cfg.get_farfield_fields(mms.flow_direction)
+    U_inf.E = mms.cfg.specific_energy(U_inf)
 
-        def cos(a):
-            return ngs.cos(a * ngs.pi/self.length)
+    U = flowfields()
 
-        rho = {'c':   1.0, 'x': (0.1, 0.75, sin), 'y': (0.15,  1.0, cos), 'xy': (0.08, 1.25, cos), 't': (0.1, 1.0, sin)}
-        u = {'c':  70.0, 'x': (4.0,  5/3, sin), 'y': (-12.0,  1.5, cos), 'xy': (7.0,  0.6, cos), 't': (5, 1.0, sin)}
-        v = {'c':  90.0, 'x': (-20.0,  1.5, cos), 'y': (4.0,  1.0, sin), 'xy': (-11.0,  0.9, cos), 't': (10, 1.0, sin)}
-        p = {'c': 1.0e5, 'x': (-0.3e5, 1.0, cos),'y': (0.2e5, 1.25, sin),'xy': (-0.25e5, 0.75, sin), 't': (0.02e5, 1.0, sin)}
+    U.rho = U_inf.rho * (1 + 0.1 * wave)
+    U.rho_u = U.rho * U_inf.u
+    U.rho_E = U.rho * U_inf.E
 
-        def to_dimensionless(*U):
-
-            ref = ngs.sqrt(sum(u['c']**2 for u in U))
-            cf = []
-            for u in U:
-
-                val = u['c']/ref
-
-                if 't' in u and t != 0:
-                    amp, factor, func = u['t']
-                    val += amp/ref * func(factor*ngs.pi/self.period * t)
-
-                if 'x' in u:
-                    amp, factor, func = u['x']
-                    val += amp/ref * func(factor*ngs.x)
-
-                if 'y' in u:
-                    amp, factor, func = u['y']
-                    val += amp/ref * func(factor*ngs.y)
-
-                if 'xy' in u:
-                    amp, factor, func = u['xy']
-                    val += amp/ref * func(factor*ngs.y * ngs.x / self.length)
-
-                cf.append(val)
-
-            return ngs.CF(tuple(cf))
-
-        U = flowfields()
-        U.rho = U_inf.rho * to_dimensionless(rho)
-        U.u = self.cfg.scaling.velocity * to_dimensionless(u, v)
-        U.p = U_inf.p * to_dimensionless(p)
-
-        U.rho_u = self.cfg.momentum(U)
-        U.T = self.cfg.temperature(U)
-        U.rho_Ei = self.cfg.inner_energy(U)
-        U.rho_Ek = self.cfg.kinetic_energy(U)
-        U.rho_E = self.cfg.energy(U)
-
-        return U
+    U.u = mms.cfg.velocity(U)
+    U.rho_Ek = mms.cfg.kinetic_energy(U)
+    U.rho_Ei = mms.cfg.inner_energy(U)
+    U.p = mms.cfg.pressure(U)
+    U.T = mms.cfg.temperature(U)
+    return U
 
 
-def mesh_routine(*simulations: MMS,
-                 levels=4,
-                 orders=[1, 2, 3, 4, 5],
-                 maxh=0.5,
-                 quad_dominated=True):
+def get_roy_mms(mms: MMS, t: float = None) -> flowfields:
+
+    def sin(a):
+        return ngs.sin(a * ngs.pi)
+
+    def cos(a):
+        return ngs.cos(a * ngs.pi)
+
+    rho = {'c':   1.0, 'x': (0.1, 0.75, sin), 'y': (0.15,  1.0, cos), 'xy': (0.08, 1.25, cos), 't': (0.05, sin)}
+    u = {'c':  70.0, 'x': (4.0,  5/3, sin), 'y': (-12.0,  1.5, cos), 'xy': (7.0,  0.6, cos), 't': (2.0, cos)}
+    v = {'c':  90.0, 'x': (-20.0,  1.5, cos), 'y': (4.0,  1.0, sin), 'xy': (-11.0,  0.9, cos), 't': (4.0, sin)}
+    p = {'c': 1.0e5, 'x': (-0.3e5, 1.0, cos), 'y': (0.2e5, 1.25, sin),
+         'xy': (-0.25e5, 0.75, sin), 't': (0.1e5, cos)}
+    U_inf = mms.cfg.get_farfield_fields((u['c'], v['c']))
+
+    def to_dimensionless(*U):
+
+        ref = ngs.sqrt(sum(u['c']**2 for u in U))
+        cf = []
+        for u in U:
+
+            val = u['c']/ref
+
+            if 't' in u and t is not None:
+                amp, func = u['t']
+                period = mms.cfg.time.timer.interval[1] - mms.cfg.time.timer.interval[0]
+                val += amp/ref * func(2*mms.periods/period * t)
+
+            if 'x' in u:
+                amp, k, func = u['x']
+                val += amp/ref * func(k*ngs.x/mms.length)
+
+            if 'y' in u:
+                amp, k, func = u['y']
+                val += amp/ref * func(k*ngs.y/mms.length)
+
+            if 'xy' in u:
+                amp, k, func = u['xy']
+                val += amp/ref * func(k*ngs.y * ngs.x / mms.length**2)
+
+            cf.append(val)
+
+        return ngs.CF(tuple(cf))
+
+    U = flowfields()
+    U.rho = U_inf.rho * to_dimensionless(rho)
+    U.u = mms.cfg.scaling.velocity * to_dimensionless(u, v)
+    U.p = U_inf.p * to_dimensionless(p)
+
+    U.rho_u = mms.cfg.momentum(U)
+    U.T = mms.cfg.temperature(U)
+    U.rho_Ei = mms.cfg.inner_energy(U)
+    U.rho_Ek = mms.cfg.kinetic_energy(U)
+    U.rho_E = mms.cfg.energy(U)
+
+    return U
+
+
+def get_gassner_mms(mms: MMS, t: float = None) -> flowfields:
+
+    if t is None:
+        t = 0.0
+
+    c = 4.0
+    gamma = mms.cfg.equation_of_state.heat_capacity_ratio
+
+    k = 2*ngs.pi/mms.length
+    T = mms.cfg.time.timer.interval[1] - mms.cfg.time.timer.interval[0]
+    omega = 2*np.pi*mms.periods/T
+    wave = ngs.sin(k*(ngs.x + ngs.y) - omega * t)
+
+    U = flowfields()
+    U.rho = 1.0 + wave/c
+    U.u = 1/ngs.sqrt(2) * ngs.CF((1, 1))
+    U.T = gamma/2 * (c - 1 + wave)
+
+    U.rho_u = mms.cfg.momentum(U)
+    U.rho_Ek = mms.cfg.kinetic_energy(U)
+    U.p = mms.cfg.pressure(U)
+    U.rho_Ei = mms.cfg.inner_energy(U)
+    U.rho_E = mms.cfg.energy(U)
+
+    return U
+
+
+def time_refinement_routine(mesh: ngs.Mesh, schemes: list, time_steps: list,  *simulations: MMS):
+
+    for simulation in simulations:
+
+        # Define common solver configuration
+        cfg = CompressibleFlowSolver(mesh)
+        simulation.set_conditions(cfg)
+
+        if not simulation.is_transient:
+            raise ValueError("Time refinement routine only works for transient simulations!")
+
+        simulation.open_output_streams()
+        for scheme in schemes:
+            simulation.cfg.fem.scheme = scheme
+
+            # Solve for different time integration schemes
+            time_step_routine(simulation, time_steps, scheme=scheme)
+
+        simulation.close_output_streams()
+
+
+def time_step_routine(simulation: MMS, time_steps: list, **log):
+
+    for dt in time_steps:
+        simulation.cfg.time.timer.step = dt
+        solution_routine(simulation, **log, dt=dt)
+
+
+def mesh_refinement_routine(*simulations: MMS,
+                            levels=4,
+                            orders=[1, 2, 3, 4, 5],
+                            maxh=0.5,
+                            quad_dominated=True):
 
     for simulation in simulations:
 
@@ -450,61 +565,59 @@ def mesh_routine(*simulations: MMS,
 
         # Define common solver configuration
         cfg = CompressibleFlowSolver(mesh)
+        simulation.set_conditions(cfg)
 
-        for sim_cfg in simulation.configurations:
+        simulation.open_output_streams()
+        for level in range(levels):
 
-            simulation.update_configurations(cfg, sim_cfg)
-            simulation.set_conditions(cfg)
+            # Refine Mesh
+            if level > 0:
+                mesh.Refine()
+                maxh *= 0.5
 
-            simulation.open_output_streams()
-            for level in range(levels):
+            polynomial_order_routine(simulation, orders=orders, level=level+1, h=maxh)
 
-                # Refine Mesh
-                if level > 0:
-                    mesh.Refine()
-                    maxh *= 0.5
-
-                simulation.log['level'] = level+1
-                simulation.log['h'] = maxh
-                simulation_routine(simulation, orders=orders)
-
-            simulation.close_output_streams()
+        simulation.close_output_streams()
 
 
-def simulation_routine(simulation: MMS, orders=[1, 2, 3, 4, 5]):
+def polynomial_order_routine(simulation: MMS, orders=[1, 2, 3, 4, 5], **log):
 
     for order in orders:
-        simulation.log['order'] = order
+        simulation.cfg.fem.order = order
 
         # Solve for different polynomial orders
-        polyomial_order_routine(simulation, order)
+        solution_routine(simulation, **log, order=order)
 
 
-def polyomial_order_routine(simulation: EulerMMS, order: int):
+def solution_routine(simulation: MMS, **log):
 
     cfg = simulation.cfg
-
-    # Set polynomial order
-    cfg.fem.order = order
 
     # Initialize the solver
     cfg.initialize()
 
     # Get solution fields
-    Uh = cfg.get_solution_fields('rho_u', 'rho_E')
+    Uh = cfg.get_solution_fields()
     simulation.set_solution_fields(Uh)
+
+    if cfg.io.vtk.enable:
+        simulation.open_vtk_stream(**log)
+
+    if simulation.is_transient:
+        simulation.write_to_streams(0.0, **log)
+
+        old = {'bdf2': ['n-1'], 'bdf3': ['n-1', 'n-2']}
+        if cfg.fem.scheme.name in old:
+            for i, n in enumerate(old[cfg.fem.scheme.name], 1):
+                Uold = simulation(t=-i*cfg.time.timer.step.Get())
+                cfg.fem.scheme.gfus['U'][n].Set(ngs.CF((Uold.rho, Uold.rho_u, Uold.rho_E)))
+
 
     # Solve the system
     with ngs.TaskManager():
 
-        if simulation.is_transient:
-            for t in cfg.time.start_transient_routine():
-                simulation.write_to_output_streams_transient(t)
-
-        else:
-            cfg.solve()
-            # Set solution fields
-            simulation.write_to_output_streams()
+        for t in cfg.time.start_solution_routine():
+            simulation.write_to_streams(t, **log)
 
 
 def test_configuration(expected: dict, result: CompressibleFlowSolver):
@@ -551,8 +664,9 @@ def test_exact_solution(cfg):
             Uh.p = cfg.pressure(Uh)
             Uh.rho_u = cfg.momentum(Uh)
 
-            sim.log = {'level': level, 'h': maxh, 'order': order}
-            sim.write_to_output_streams(Uh)
+            sim.set_solution_fields(Uh)
+            sim.open_vtk_stream(level=level, order=order)
+            sim.write_to_streams(level=level, h=maxh, order=order)
 
     sim.export_errors_to_fig()
 
