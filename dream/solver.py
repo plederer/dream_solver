@@ -137,18 +137,23 @@ class Solver(Configuration, is_interface=True):
 
             self.solve_update_step()
             error = self.get_iteration_error(self.du, self.res)
+            log = {'it': it, 'error': error, 'is_diverged': False}
 
             if isnan(error):
-                logger.error("Solution process diverged!")
+                log['is_diverged'] = True
                 break
 
             self.method.update_solution(self.gfu, self.du)
 
-            yield {'it': it, 'error': error}
+            yield log
 
             if error < self.method.convergence_criterion:
                 logger.debug(f"Solution process converged!")
                 break
+
+        if log['is_diverged']:
+            logger.error(f"Solution process diverged at iteration {it}!")
+            yield log
 
         if it + 1 == self.method.max_iterations:
             logger.warning(f"Solution process did not converge after {self.method.max_iterations} iterations!")

@@ -286,6 +286,11 @@ class StationaryRoutine(TimeRoutine):
             for log in scheme.solve_stationary():
                 logger.info(self.parse_routine_log(**log))
 
+                is_diverged = log.get('is_diverged', False)
+                if is_diverged:
+                    logger.error("Stationary routine diverged!")
+                    break
+
             yield None
             # Solution routine ends here
 
@@ -351,6 +356,14 @@ class TransientRoutine(TimeRoutine):
 
                 for log in scheme.solve_current_time_level():
                     logger.info(self.parse_routine_log(t=t, **log))
+                    
+                    is_diverged = log.get('is_diverged', False)
+                    if is_diverged:
+                        break
+
+                if is_diverged:
+                    logger.error("Transient routine diverged!")
+                    break
 
                 scheme.update_gridfunctions()
 
@@ -431,6 +444,11 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
             # Solution routine starts here
             for log in scheme.solve_current_time_level():
                 logger.info(self.parse_routine_log(**log))
+                    
+                is_diverged = log.get('is_diverged', False)
+                if is_diverged:
+                    logger.error("Pseudo time stepping routine diverged!")
+                    break
 
                 scheme.update_gridfunctions()
                 self.solver_iteration_update(log['it'])
@@ -555,8 +573,23 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 for iStage in range(1, self.nStage):
                     for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage):
                         logger.info(self.parse_routine_log(t=t, **log_explicit))
+                        
+                        is_diverged = log_explicit.get('is_diverged', False)
+                        if is_diverged:
+                            logger.error("Explicit Multizone IMEX routine diverged!")
+                            break
+
+
                     for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage):
                         logger.info(self.parse_routine_log(t=t, **log_implicit))
+
+                        is_diverged = log_implicit.get('is_diverged', False)
+                        if is_diverged:
+                            logger.error("Implicit Multizone IMEX routine diverged!")
+                            break
+
+                if is_diverged:
+                    break
 
                 # These are needed in case the schemes aren't stiffly accurate.
                 self.cfg_explicit.fem.scheme.update_solution()

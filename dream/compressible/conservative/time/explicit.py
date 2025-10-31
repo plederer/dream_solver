@@ -1,6 +1,7 @@
 """ Definitions of explicit time integration schemes for conservative methods. """
 from __future__ import annotations
 
+import numpy as np
 import ngsolve as ngs
 import typing
 from dream.time import TimeSchemes
@@ -56,6 +57,17 @@ class ExplicitSchemes(TimeSchemes):
     def update_solution(self) -> None:
         pass
 
+    def is_diverged(self, vec) -> bool:
+        return np.isnan(vec).any()
+    
+    def solve_current_time_level(self):
+        self.t0 = self.t.Get() - self.dt.Get()
+
+        for i in range(1, self.get_num_stages() + 1):
+            yield from self.solve_stage(i)
+
+        if self.is_diverged(self.root.fem.gfu.vec):
+            yield {'is_diverged': True}
 
 class ExplicitEuler(ExplicitSchemes):
     r""" Class responsible for implementing an explicit (forwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Assuming a standard DG formulation,
@@ -77,7 +89,9 @@ class ExplicitEuler(ExplicitSchemes):
         return [x * self.dt.Get() for x in [0.0, 1.0]] 
 
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
-        
+
+        log = {'stage': iStage, 'is_diverged': False}
+
         if iStage > 1:
             raise TypeError(f"Stage {iStage} does not exist.")
 
@@ -87,11 +101,8 @@ class ExplicitEuler(ExplicitSchemes):
             self.rhs.data -= self.lf.vec
 
         self.root.fem.gfu.vec.data -= self.minv * self.rhs
-        yield {'stage': 1}
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-        
-        yield from self.solve_stage(1)
+        yield log
 
 
 class RK_ARS22(ExplicitSchemes):
@@ -137,27 +148,26 @@ class RK_ARS22(ExplicitSchemes):
         return [x * self.dt.Get() for x in [self.c1, self.c2, self.c3]] 
 
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
-
+        
+        log = {'stage': iStage, 'is_diverged': False}
+        
         if iStage == 1:
             
             self.U0.data = self.root.fem.gfu.vec
             self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
-            yield {'stage': 1}
+
+            yield log
 
         elif iStage == 2:
             
             self.blf.Apply(self.root.fem.gfu.vec, self.K2)
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
-            yield {'stage': 2}
+
+            yield log
    
         else:
             raise TypeError(f"Stage {iStage} does not exist.")
-
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        yield from self.solve_stage(1)
-        yield from self.solve_stage(2)
 
 
 class RK_ARS33(ExplicitSchemes):
@@ -203,26 +213,28 @@ class RK_ARS33(ExplicitSchemes):
 
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
 
+        log = {'stage': iStage, 'is_diverged': False}
+
         if iStage == 1:
             
             self.U0.data = self.root.fem.gfu.vec
             self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
-            yield {'stage': 1}
+            yield log
 
         elif iStage == 2:
             
             self.blf.Apply(self.root.fem.gfu.vec, self.K2)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
-            yield {'stage': 2}
+            yield log
 
         elif iStage == 3:
 
             self.blf.Apply(self.root.fem.gfu.vec, self.K3)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a41 * self.K1 + self.a42 * self.K2 + self.a43 * self.K3 )
-            yield {'stage': 3}
+            yield log
 
         else:
             raise TypeError(f"Stage {iStage} does not exist.")
@@ -235,10 +247,7 @@ class RK_ARS33(ExplicitSchemes):
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
-        yield from self.solve_stage(1)
-        yield from self.solve_stage(2)
-        yield from self.solve_stage(3)
-
+        yield from super().solve_current_time_level()
         # NOTE, must explicitly reconstruct the solution at u^{n+1}.
         self.update_solution()
 
@@ -291,26 +300,28 @@ class RK_ARS43(ExplicitSchemes):
 
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
 
+        log = {'stage': iStage, 'is_diverged': False}
+
         if iStage == 1:
             
             self.U0.data = self.root.fem.gfu.vec
             self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
-            yield {'stage': 1}
+            yield log
 
         elif iStage == 2:
             
             self.blf.Apply(self.root.fem.gfu.vec, self.K2)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
-            yield {'stage': 2}
+            yield log
 
         elif iStage == 3:
 
             self.blf.Apply(self.root.fem.gfu.vec, self.K3)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a41 * self.K1 + self.a42 * self.K2 + self.a43 * self.K3 )
-            yield {'stage': 3}
+            yield log
 
         elif iStage == 4:
 
@@ -318,17 +329,10 @@ class RK_ARS43(ExplicitSchemes):
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a51 * self.K1 + self.a52 * self.K2 \
                                   + self.a53 * self.K3 + self.a54 * self.K4 )
-            yield {'stage': 4}
+            yield log
 
         else:
             raise TypeError(f"Stage {iStage} does not exist.")
-
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        yield from self.solve_stage(1)
-        yield from self.solve_stage(2)
-        yield from self.solve_stage(3)
-        yield from self.solve_stage(4)
 
 
 class SSPRK3(ExplicitSchemes):
@@ -368,6 +372,8 @@ class SSPRK3(ExplicitSchemes):
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
+        log = {'is_diverged': False}
+
         # Extract the current solution.
         Un = self.root.fem.gfu
         self.U0.data = Un.vec
@@ -398,8 +404,11 @@ class SSPRK3(ExplicitSchemes):
         # NOTE, avoid 1-liners with dependency on the same read/write data.
         Un.vec.data *= self.alpha32
         Un.vec.data += self.alpha30 * self.U0 - self.beta32 * self.minv * self.rhs
+
+        if self.is_diverged(self.root.fem.gfu.vec):
+            log['is_diverged'] = True
         
-        yield {}
+        yield log
 
 
 class CRK4(ExplicitSchemes):
@@ -447,6 +456,8 @@ class CRK4(ExplicitSchemes):
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
+        log = {'is_diverged': False}
+
         # First stage.
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs) 
         if self.lf is not None:
@@ -484,4 +495,7 @@ class CRK4(ExplicitSchemes):
                                     + self.b3 * self.K3 \
                                     + self.b4 * self.K4
 
-        yield {}
+        if self.is_diverged(self.root.fem.gfu.vec):
+            log['is_diverged'] = True
+        
+        yield log

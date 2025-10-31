@@ -56,10 +56,7 @@ class ImplicitSchemes(TimeSchemes):
         pass
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield log
-
+        yield from self.root.fem.solver.solve_nonlinear_system()
 
 class ImplicitEuler(ImplicitSchemes):
     r""" Class responsible for implementing an implicit (backwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Assuming an HDG formulation,
