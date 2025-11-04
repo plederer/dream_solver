@@ -56,10 +56,7 @@ class ImplicitSchemes(TimeSchemes):
         pass
 
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        for log in self.root.fem.solver.solve_nonlinear_system():
-            yield log
-
+        yield from self.root.fem.solver.solve_nonlinear_system()
 
 class ImplicitEuler(ImplicitSchemes):
     r""" Class responsible for implementing an implicit (backwards-)Euler time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`). Assuming an HDG formulation,
@@ -124,6 +121,25 @@ class BDF2(ImplicitSchemes):
         if normalized:
             return (2.0/3.0)*self.dt
         return 2.0*self.dt
+
+class BDF3(ImplicitSchemes):
+
+    name: str = "bdf3"
+    time_levels = ('n-2', 'n-1', 'n', 'n+1')
+
+    def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
+        return (11.0*gfus['n+1'] - 18.0*gfus['n'] + 9.0 * gfus['n-1']- 2.0 * gfus['n-2'])/(6.0*self.dt)
+    
+    def get_current_level(self, space: str, normalized: bool = False) -> ngs.CF:
+        gfus = self.gfus[space]
+        if normalized:
+            return 18.0/11*gfus['n'] - 9.0/11 * gfus['n-1'] + 2.0/11 * gfus['n-2']
+        return 18.0*gfus['n'] - 9.0 * gfus['n-1'] + 2.0 * gfus['n-2']
+
+    def get_time_step(self, normalized: bool = False) -> ngs.CF:
+        if normalized:
+            return (6.0/11.0)*self.dt
+        return 6.0*self.dt
 
 
 class DIRKSchemes(TimeSchemes):
@@ -263,16 +279,22 @@ class DIRKSchemes(TimeSchemes):
 
         # Compute previous-stage residuals, if the apply_target exists.
         if stage_info["apply_target"] is not None:
+            self.t.Set(self.t0 + self.get_stage_dt()[iStage - 1])
             self.blfs.Apply(self.root.fem.gfu.vec, stage_info["apply_target"])
            
         # Build the right-hand side, scaled with its respective coefficients.
         for aij, xj in stage_info["coeffs"]:
             self.rhs.data += aij * xj
     
+        self.t.Set(self.t0 + self.get_stage_dt()[iStage])
         # Solve the resulting nonlinear system.
         for log in self.root.fem.solver.solve_nonlinear_system():
             yield {"stage": iStage, **log}
 
+    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+        self.t0 = self.t.Get() - self.dt.Get()
+        for i in range(1, self.get_num_stages() + 1):
+            yield from self.solve_stage(i)
 
 class SDIRK22(DIRKSchemes):
     r""" Updates the solution via a 2-stage 2nd-order (stiffly-accurate) singly diagonally-implicit Runge-Kutta (SDIRK). Taken from Section 2.6 in :cite:`ascher1997implicit`. Its corresponding Butcher tableau is:
@@ -345,11 +367,6 @@ class SDIRK22(DIRKSchemes):
 
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
-
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        yield from self.solve_stage(1)
-        yield from self.solve_stage(2) # last stage corresponds to u^{n+1}.
 
 
 class SDIRK33(DIRKSchemes):
@@ -430,12 +447,6 @@ class SDIRK33(DIRKSchemes):
 
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
-
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        yield from self.solve_stage(1)
-        yield from self.solve_stage(2)
-        yield from self.solve_stage(3) # last stage corresponds to u^{n+1}.
 
 
 class SDIRK43(DIRKSchemes):
@@ -523,13 +534,6 @@ class SDIRK43(DIRKSchemes):
 
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
-
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        yield from self.solve_stage(1)
-        yield from self.solve_stage(2)
-        yield from self.solve_stage(3)
-        yield from self.solve_stage(4) # last stage corresponds to u^{n+1}.
 
 
 class SDIRK54(DIRKSchemes):

@@ -8,7 +8,7 @@ from dream.time import (TimeSchemes,
                         TransientRoutine,
                         PseudoTimeSteppingRoutine,
                         MultizoneIMEXTimeRoutine)
-from dream.config import Configuration, dream_configuration, Integrals
+from dream.config import dream_configuration, Integrals
 from dream.compressible.config import (flowfields,
                                        ConservativeFiniteElementMethod,
                                        FarField,
@@ -25,7 +25,7 @@ from dream.compressible.config import (flowfields,
                                        Initial)
 
 from .diffusion import ViscousTreatment, InteriorPenaltySDG
-from .time import ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2
+from .time import ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2, SDIRK22, SDIRK33
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
     def scheme(self, scheme: TimeSchemes) -> None:
 
         if isinstance(self.root.time, TransientRoutine):
-            OPTIONS = [ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2]
+            OPTIONS = [ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2, SDIRK22, SDIRK33]
         elif isinstance(self.root.time, PseudoTimeSteppingRoutine):
             OPTIONS = [ImplicitEuler, BDF2]
         elif isinstance(self.root.time, MultizoneIMEXTimeRoutine):
@@ -117,9 +117,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
     def add_boundary_conditions(self, blf: Integrals, lf:  Integrals):
 
-        bnds = self.root.bcs.to_pattern()
-
-        for bnd, bc in bnds.items():
+        for bnd, bc in self.root.bcs.items():
 
             logger.debug(f"Adding boundary condition {bc} on boundary {bnd}.")
 
@@ -152,9 +150,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
     def add_domain_conditions(self, blf: Integrals, lf:  Integrals):
 
-        doms = self.root.dcs.to_pattern()
-
-        for dom, dc in doms.items():
+        for dom, dc in self.root.dcs.items():
 
             logger.debug(f"Adding domain condition {dc} on domain {dom}.")
 
@@ -502,16 +498,12 @@ class ConservativeDG(ConservativeFiniteElementMethod):
     def add_forcing_formulation(self, blf: Integrals, lf: Integrals, dc: Force, dom: str):
 
         dX = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
-        dXe = ngs.dx(element_boundary=True, definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
-        n = self.mesh.normal
-
         _, V = self.TnT['U']
 
-        if any([dc._continuum, dc._momentum, dc._energy]):
-            F = dc.get_force_vector(self.mesh.dim)
+        F = dc.get_force_vector(self.mesh.dim)
+        if dc.is_constant:
             lf['U'][f"{dc.name}_{dom}"] = F * V * dX
-            
-        elif dc._flux is not None:
-            lf['U'][f"{dc.name}_{dom}"] = -ngs.InnerProduct(dc._flux,  ngs.grad(V)) * dX
-            lf['U'][f"{dc.name}_{dom}"] += ngs.InnerProduct(dc._flux * n,  V) * dXe
+        else:
+            blf['U'][f"{dc.name}_{dom}"] = -F * V * dX
+
 

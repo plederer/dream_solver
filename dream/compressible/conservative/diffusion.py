@@ -419,7 +419,7 @@ class StrainHeat(ViscousTreatment):
             raise NotImplementedError("StrainHeat method is not implemented for domain dimension 3!")
 
         Q_ = {}
-        for dom, dc in self.root.dcs.to_pattern(Initial).items():
+        for dom, dc in self.root.dcs.items(Initial):
             eps = self._get_strain_rate_tensor_from_initial_condition(dc.fields.copy(), voigt_notation=True)
             grad_T = self._get_temperature_gradient_from_initial_condition(dc.fields.copy())
             Q_[dom] = ngs.CF((eps, grad_T))

@@ -1,11 +1,9 @@
-# %%
 from __future__ import annotations
 import logging
 import ngsolve as ngs
 import netgen.occ as occ
 
-from collections import UserDict
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Generator
 
 from dream import bla
 from dream.config import ngsdict, dream_configuration
@@ -309,6 +307,7 @@ class GridMapping:
 class Condition:
 
     name: str
+    mesh: ngs.Mesh
 
     def __init_subclass__(cls) -> None:
         if not hasattr(cls, "name"):
@@ -323,8 +322,6 @@ class Condition:
     def __ne__(self, other):
         return self is not other
 
-    def __repr__(self) -> str:
-        return f"{self.name}"
 
 
 class Periodic(Condition):
@@ -625,48 +622,37 @@ class PSpongeLayer(SpongeLayer):
     low_order: int
 
 
-class Conditions(UserDict):
+class Conditions:
 
     def __init__(self, regions: list[str], mesh: ngs.Mesh, options: list[Condition]) -> None:
-        self.data = {region: [] for region in regions}
+        self._reg2con = {region: [] for region in regions}
+        self._con2reg = {}
         self.mesh = mesh
         self.options = {option.name: option for option in options}
 
-    def get_region(self, *condition_types, as_pattern=False) -> str | list[str]:
-        reg = [name for name, cond in self.items() if any(isinstance(c, condition_types) for c in cond)]
-        if as_pattern:
-            reg = get_pattern_from_sequence(reg)
-        return reg
+    def items(self, *condition_types) -> Generator[tuple[str, Condition], None, None]:
 
-    def has_condition(self, condition_type: Condition | str) -> bool:
+        condition_types = tuple(self.options[condition] if isinstance(condition, str) else condition for condition in condition_types)
+        if not condition_types:
+            condition_types = tuple(self.options.values())
 
-        if isinstance(condition_type, str):
-            condition_type = self.options[condition_type]
+        for condition in self._con2reg:
+            if not isinstance(condition, condition_types):
+                continue
 
-        for container in self.values():
-            if any(isinstance(condition, condition_type) for condition in container):
-                return True
-
-        return False
-
-    def to_pattern(self, condition_type: Condition | str = Condition) -> dict[str, Condition]:
-
-        if isinstance(condition_type, str):
-            condition_type = self.options[condition_type]
-
-        pattern = {}
-        unique_conditions = set([condition for conditions in self.values()
-                                for condition in conditions if isinstance(condition, condition_type)])
-
-        for unique in unique_conditions:
-            regions = [region for region in self if unique in self[region]]
-            pattern[get_pattern_from_sequence(regions)] = unique
-
-        return pattern
+            regions = self._con2reg[condition]
+            yield regions, condition
 
     def clear(self) -> None:
-        self.data = {region: [] for region in self}
+        self._reg2con = {region: [] for region in self._reg2con}
+        self._con2reg = {}
 
+    def __iter__(self):
+        return iter(self._reg2con)
+    
+    def __getitem__(self, key: str) -> list[Condition]:
+        return self._reg2con[key]
+            
     def __setitem__(self, pattern: str, condition: Condition) -> None:
 
         if isinstance(condition, str):
@@ -678,47 +664,56 @@ class Conditions(UserDict):
 
         elif not isinstance(condition, Condition):
             raise TypeError(f"Condition must be instance of '{Condition}'")
+        
+        # Give mesh access to the condition
+        condition.mesh = self.mesh
 
         if isinstance(pattern, str):
             pattern = pattern.split("|")
 
-        regions = get_regions_from_pattern(self, pattern)
+        regions = get_regions_from_pattern(self._reg2con, pattern)
 
         for miss in set(pattern).difference(regions):
             logger.warning(f"Region '{miss}' does not exist! Condition can not be set!")
 
-        for region in regions:
-            self.data[region].append(condition)
+        if regions:
 
-            # Give mesh access to the condition
-            condition.mesh = self.mesh
+            if condition not in self._con2reg:
+                self._con2reg[condition] = get_pattern_from_sequence(regions)
+            else:
+                self._con2reg[condition] += "|" + get_pattern_from_sequence(regions)
+        
+            for region in regions:
+                self._reg2con[region].append(condition)
 
-            if len(self.data[region]) > 1:
-                logger.warning(f"""Multiple conditions set for region '{region}': {
-                               '|'.join([condition.name for condition in self[region]])}!""")
+                if len(self._reg2con[region]) > 1:
+                    logger.warning(f"""Multiple conditions set for region '{region}': {
+                                '|'.join([condition.name for condition in self[region]])}!""")
+        
+    def __contains__(self, key: str | Condition) -> bool:
 
-
+        if isinstance(key, str):
+            return key in self._reg2con
+        elif issubclass(key, Condition):
+            return any(isinstance(condition, key) for condition in self._con2reg)
+        else:
+            raise TypeError(f"Key must be of type '{str}' or '{Condition}'")
+        
 class BoundaryConditions(Conditions):
 
     def __init__(self, mesh: ngs.Mesh, options: list[Condition]) -> None:
         super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh, options)
 
-    def get_periodic_boundaries(self, as_pattern: bool = False) -> str | list[str]:
-        return self.get_region(Periodic, as_pattern=as_pattern)
+    def get_periodic_boundaries(self) -> str:
+        return get_pattern_from_sequence([bnd  for bnd, _ in self.items(Periodic)])
 
-    def get_domain_boundaries(self, as_pattern: bool = False) -> list | str:
+    def get_domain_boundaries(self) -> str:
         """ Returns a list or pattern of the domain boundaries!
 
             The domain boundaries are deduced by the current set boundary conditions,
             while periodic boundaries are neglected! 
         """
-
-        bnds = [bnd for bnd, bcs in self.items() if not any([isinstance(bc, Periodic) for bc in bcs]) and bcs]
-
-        if as_pattern:
-            bnds = get_pattern_from_sequence(bnds)
-
-        return bnds
+        return get_pattern_from_sequence([bnd  for bnd, bc in self.items() if not isinstance(bc, Periodic)]) 
 
 
 class DomainConditions(Conditions):
@@ -727,27 +722,27 @@ class DomainConditions(Conditions):
         super().__init__(list(dict.fromkeys(mesh.GetMaterials())), mesh, options)
 
     def get_psponge_layers(self) -> dict[str, PSpongeLayer]:
-        return {region: dc for region, dcs in self.items() for dc in dcs if isinstance(dc, PSpongeLayer)}
+        return {region: dc for region, dc in self.items(PSpongeLayer)}
 
     def get_sponge_layers(self) -> dict[str, SpongeLayer]:
-        return {region: dc for region, dcs in self.items() for dc in dcs if isinstance(dc, SpongeLayer) and not isinstance(dc, PSpongeLayer)}
+        return {region: dc for region, dc in self.items(SpongeLayer) if not isinstance(dc, PSpongeLayer)}
 
     def get_grid_deformations(self) -> dict[str, GridDeformation]:
-        return {region: dc for region, dcs in self.items() for dc in dcs if isinstance(dc, GridDeformation)}
+        return {region: dc for region, dc in self.items(GridDeformation)}
 
     def get_grid_deformation_function(self, grid_deformations: dict[str, GridDeformation] = None):
         if grid_deformations is None:
-            self.to_pattern(GridDeformation)
+            grid_deformations = self.get_grid_deformations()
         return self.get_buffer_function_(grid_deformations, GridDeformation)
 
     def get_sponge_layer_function(self, sponge_layers: dict[str, SpongeLayer] = None):
         if sponge_layers is None:
-            sponge_layers = self.to_pattern(SpongeLayer)
+            sponge_layers = self.get_sponge_layers()
         return self.get_buffer_function_(sponge_layers, SpongeLayer)
 
     def get_psponge_layer_function(self, psponge_layers:  dict[str, PSpongeLayer] = None):
         if psponge_layers is None:
-            psponge_layers = self.to_pattern(PSpongeLayer)
+            psponge_layers = self.get_psponge_layers()
         return self.get_buffer_function_(psponge_layers, PSpongeLayer)
 
     def get_buffer_function_(self, domains: dict[str, Buffer], buffer_type: Buffer) -> ngs.GridFunction:
@@ -789,7 +784,7 @@ class DomainConditions(Conditions):
             raise TypeError("Can not reduce element order of non L2-spaces!")
 
         if psponge_layers is None:
-            psponge_layers = self.to_pattern(PSpongeLayer)
+            psponge_layers = self.get_psponge_layers()
 
         if psponge_layers:
 
@@ -816,7 +811,7 @@ class DomainConditions(Conditions):
             raise TypeError("Can not reduce element order of non FacetFESpace-spaces!")
 
         if psponge_layers is None:
-            psponge_layers = self.to_pattern(PSpongeLayer)
+            psponge_layers = self.get_psponge_layers()
 
         if psponge_layers:
 
@@ -904,7 +899,6 @@ def get_cylinder_omesh(ri: float,
 
             pnums.append(mesh.Add(MeshPoint(Pnt(r * px, r * py, 0))))
 
-    # print(pnums)
     mesh.Add(FaceDescriptor(surfnr=1, domin=1, bc=1))
     mesh.Add(FaceDescriptor(surfnr=2, domin=1, domout=0, bc=1))
     mesh.Add(FaceDescriptor(surfnr=3, domin=1, domout=0, bc=2))
@@ -912,10 +906,7 @@ def get_cylinder_omesh(ri: float,
     idx_dom = 1
 
     for j in range(n_radial):
-        # print("j=",j)
         for i in range(n_polar-1):
-            # print("i=",i)
-            # offset =
             mesh.Add(
                 Element2D(
                     idx_dom, [pnums[i + j * (n_polar)],

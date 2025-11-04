@@ -1,6 +1,7 @@
 """ Definitions of conservative time discretizations. """
 from .implicit import (ImplicitEuler,
                        BDF2,
+                       BDF3,
                        SDIRK22,
                        SDIRK33,
                        SDIRK43,
@@ -17,6 +18,7 @@ from .imex import (IMEXRK_ARS443)
 
 __all__ = ['ImplicitEuler',
            'BDF2',
+           'BDF3',
            'SDIRK22',
            'SDIRK33',
            'SDIRK43',

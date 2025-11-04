@@ -70,61 +70,68 @@ def test_set_object(bcs):
     b = Periodic()
 
     bcs['d'] = a
-    assert bcs.data == {'a': [], 'b': [], 'c': []}
+    assert bcs._reg2con == {'a': [], 'b': [], 'c': []}
+    assert bcs._con2reg == {}
 
     bcs['c'] = a
-    assert bcs.data == {'a': [], 'b': [], 'c': [a]}
+    assert bcs._reg2con == {'a': [], 'b': [], 'c': [a]}
+    assert bcs._con2reg == {a: 'c'}
     bcs.clear()
 
     bcs['a|b'] = a
     bcs['c'] = b
-    assert bcs.data == {"a": [a], "b": [a], "c": [b]}
+    assert bcs._reg2con == {"a": [a], "b": [a], "c": [b]}
+    assert bcs._con2reg == {a: 'a|b', b: 'c'}
 
 
 def test_set_pattern(bcs):
     bcs['d'] = "periodic"
-    assert bcs.data == {'a': [], 'b': [], 'c': []}
+    assert bcs._reg2con == {'a': [], 'b': [], 'c': []}
+    assert bcs._con2reg == {}
 
     bcs['c'] = "periodic"
-    assert bcs.data == {'a': [], 'b': [], 'c': bcs['c']}
+    assert bcs._reg2con == {'a': [], 'b': [], 'c': bcs['c']}
+    assert bcs._con2reg == {bcs['c'][0]: 'c'}
     bcs.clear()
 
     bcs['a|b'] = 'periodic'
     bcs['c'] = 'periodic'
-    assert bcs.data == {"a": bcs['a'], "b": bcs['a'], "c": bcs['c']}
-
-    assert isinstance(bcs['a'][0], Periodic)
-    assert isinstance(bcs['c'][0], Periodic)
+    assert bcs._reg2con == {"a": bcs['a'], "b": bcs['a'], "c": bcs['c']}
+    assert bcs._con2reg == {bcs['a'][0]: "a|b", bcs['c'][0]: "c"}
 
 
 def test_get_boundaries(bcs):
     bcs['a'] = Periodic()
-    bcs['b'] = Condition()
-    bcs['c'] = Condition()
+    bcs['b|c'] = Periodic()
 
-    assert bcs.get_region(Periodic) == ['a']
-    assert bcs.get_region(Periodic, as_pattern=True) == 'a'
+    periodic = bcs.items(Periodic)
+    region, _ = next(periodic)
+    assert region == 'a'
 
-    assert bcs.get_region(Periodic, Condition) == ['a', 'b', 'c']
-    assert bcs.get_region(Periodic, Condition, as_pattern=True) == 'a|b|c'
+    region, _ = next(periodic)
+    assert region == 'b|c'
 
 
 def test_get_domain_boundaries(bcs):
+    bcs.options['bnd'] = Condition
     bcs['a'] = Periodic()
     bcs['b'] = Condition()
 
-    assert bcs.get_domain_boundaries() == ['b']
-    assert bcs.get_domain_boundaries(as_pattern=True) == 'b'
-
+    assert bcs.get_domain_boundaries() == 'b'
     bcs.clear()
 
     bcs['a'] = Periodic()
     bcs['b'] = Condition()
     bcs['c'] = Condition()
 
-    assert bcs.get_domain_boundaries() == ['b', 'c']
-    assert bcs.get_domain_boundaries(as_pattern=True) == 'b|c'
+    assert bcs.get_domain_boundaries() == 'b|c'
 
+def test_contains_periodic(bcs):
+    bcs['d'] = Periodic()
+    assert not Periodic in bcs
+
+    bcs['a'] = Periodic()
+    assert Periodic in bcs
 
 @pytest.fixture
 def dcs():
