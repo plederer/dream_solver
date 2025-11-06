@@ -10,8 +10,6 @@ import dream.bla as bla
 from dream.config import dream_configuration, Configuration, ngsdict, is_notebook
 from dream.mesh import get_pattern_from_sequence, get_regions_from_pattern
 from dream._version import acknowledgements, header
-from functools import wraps
-from time import time
 
 if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
@@ -25,22 +23,6 @@ def get_directory_paths(path: Path, pattern: str = "") -> tuple[Path, ...]:
 
 def get_directory_names(path: Path, pattern: str = "") -> tuple[str, ...]:
     return tuple(dir.name for dir in path.glob(pattern + "*") if dir.is_dir())
-
-
-def measure_execution_time(func):
-
-    @wraps(func)
-    def wrap(*args, **kwargs):
-
-        start = time()
-        result = func(*args, **kwargs)
-        end = time()
-
-        logger.info(f"Function {func.__name__} took {end - start:2.6f} sec")
-
-        return result
-
-    return wrap
 
 
 class Stream(Configuration, is_interface=True):
@@ -460,7 +442,8 @@ class LogStream(Stream):
         self.logger = logging.getLogger('dream')
 
         DEFAULT = {
-            "level": logging.INFO
+            "level": logging.INFO,
+            "time_routines": False,
         }
         DEFAULT.update(default)
 
@@ -473,6 +456,14 @@ class LogStream(Stream):
     @level.setter
     def level(self, level: int | str):
         self.logger.setLevel(level)
+
+    @dream_configuration
+    def time_routines(self) -> bool:
+        return self._time_routines
+
+    @time_routines.setter
+    def time_routines(self, time_routines: bool):
+        self._time_routines = bool(time_routines)
 
     @Stream.enable.setter
     def enable(self, enable: bool):
