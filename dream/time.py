@@ -130,6 +130,72 @@ class Timer(Configuration):
         digit = f"{step:.16f}".split(".")[1]
         self.digit = len(digit.rstrip("0"))
 
+class StageTimer(Configuration):
+
+    def __init__(self, mesh=None, root=None, **default):
+
+        DEFAULT = {
+            "interval": (0.0, 1.0),
+            "steps": (0.0, 1.0),
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def interval(self) -> tuple[float, float]:
+        return self._interval
+
+    @interval.setter
+    def interval(self, interval: tuple[float, float]):
+        self._interval = interval
+
+    @dream_configuration
+    def steps(self) -> tuple[float, ...]:
+        return self._steps
+    
+    @steps.setter
+    def steps(self, steps: tuple[float, ...]):
+        self._steps = steps
+        self._stage_steps = tuple(steps[i] - steps[i-1] for i in range(1, len(steps)))
+
+    @property
+    def t(self) -> ngs.Parameter:
+        return self.root.time.timer.t
+    
+    @property
+    def dt(self) -> ngs.Parameter:
+        return self.root.time.timer.step
+    
+    def implicit(self):
+        """ Return a generator that iterates over the stages of the time-stepping scheme,
+            updating the time and time step before return stages accordingly.
+        """
+
+        dT = self.dt.Get()
+        t0, t1 = self.interval
+
+        for stage, step in enumerate(self._stage_steps, 1):
+            self.dt.Set(step*dT)
+            self.t.Set(self.t.Get() + self.dt.Get())
+            yield stage
+
+        self.dt.Set(dT)
+        self.t.Set(t1)
+
+    def explicit(self):
+
+        dT = self.dt.Get()
+        t0, t1 = self.interval
+
+        for stage, step in enumerate(self.steps[1:], 1):
+            self.dt.Set(dT * step)
+            yield stage
+            self.t.Set(self.t.Get() + self.dt.Get())
+
+        self.dt.Set(dT)
+        self.t.Set(t1)
+
 
 class Scheme(Configuration, is_interface=True):
 
@@ -237,6 +303,27 @@ class Scheme(Configuration, is_interface=True):
 class TimeSchemes(Scheme):
 
     time_levels: tuple[str, ...]
+
+    def __init__(self, mesh, root=None, **default):
+
+        DEFAULT = {
+            "stage_timer": StageTimer(mesh, root)
+        }
+        DEFAULT.update(default)
+
+        super().__init__(mesh, root, **DEFAULT)
+
+    @dream_configuration
+    def stage_timer(self) -> StageTimer:
+        return self._stage_timer
+    
+    @stage_timer.setter
+    def stage_timer(self, stage_timer: StageTimer):
+        
+        if not isinstance(stage_timer, StageTimer):
+            raise TypeError(f"Stage timer must be of type {StageTimer}!")
+
+        self._stage_timer = stage_timer
 
     @property
     def dt(self) -> ngs.Parameter:
@@ -384,6 +471,8 @@ class TransientRoutine(TimeRoutine):
 
             # Solution routine starts here
             for rate, t0, t1 in self.timer():
+
+                scheme.stage_timer.interval = (t0, t1)
 
                 for log in scheme.solve_current_time_level():
                     logger.info(self.parse_routine_log(t=t1, **log))
