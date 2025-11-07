@@ -232,7 +232,7 @@ class VTKStream(Stream):
     @subdivision.setter
     def subdivision(self, subdivision: int):
         subdivision = int(subdivision)
-        if subdivision <= 0:
+        if subdivision < 0:
             raise ValueError("Subdivision must be greater than 0!")
         self._subdivision = subdivision
 

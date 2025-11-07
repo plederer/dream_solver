@@ -101,7 +101,7 @@ class Constant(DynamicViscosity):
         .. math::
             \mu = k = 1
         """
-        return 1
+        return 1.0
 
 
 class Sutherland(DynamicViscosity):

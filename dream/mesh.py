@@ -31,6 +31,83 @@ def get_regions_from_pattern(regions, pattern) -> tuple[str]:
     return regions
 
 
+def get_nodal_points(n, distribution='uniform', **kwargs):
+    r""" Generate 1D nodal points in [0, 1] with various clustering distributions.
+
+    Parameters
+    ----------
+    n : int
+        Number of points.
+    distribution : str, optional
+        Type of nodal distribution. Options:
+        'uniform' (default), 'cosine', 'polynomial', 'tanh', 'exponential'.
+    **kwargs : dict, optional
+        Additional parameters for specific distributions:
+            - polynomial: p (default=2)
+            - tanh: beta (default=2.5)
+            - exponential: a (default=4)
+
+    Returns
+    -------
+    x : ndarray
+        Array of nodal points in [0, 1].
+    """
+    import numpy as np
+
+    def cosine_points(n):
+        i = np.arange(n)
+        return 0.5 * (1 - np.cos(np.pi * i / (n - 1)))
+
+    def polynomial_points(n, p=2):
+        x = np.linspace(0, 1, n)
+        return 0.5 * (1 - np.cos(np.pi * x**(1/p)))
+
+    def tanh_points(n, beta=2.5):
+        xi = np.linspace(0, 1, n)
+        return 0.5 * (1 + np.tanh(beta * (2*xi - 1)) / np.tanh(beta))
+
+    def exponential_points(n, a=4):
+        xi = np.linspace(0, 1, n//2)
+        left = (np.exp(a*xi) - 1)/(np.exp(a) - 1)
+        x = np.concatenate((0.5 - 0.5*left[::-1], 0.5 + 0.5*left))
+        if len(x) < n:  # if n is odd
+            x = np.insert(x, n//2, 0.5)
+        return x
+
+    distribution = distribution.lower()
+    if distribution == 'uniform':
+        x = np.linspace(0, 1, n)
+    elif distribution == 'cosine':
+        x = cosine_points(n)
+    elif distribution == 'polynomial':
+        x = polynomial_points(n, p=kwargs.get('p', 2))
+    elif distribution == 'tanh':
+        x = tanh_points(n, beta=kwargs.get('beta', 2.5))
+    elif distribution == 'exponential':
+        x = exponential_points(n, a=kwargs.get('a', 4))
+    else:
+        raise ValueError(f"Unknown distribution '{distribution}'")
+
+    return x
+
+
+def get_integration_points_physical_space(mesh: ngs.Mesh, element_type: ngs.ET, 
+                                          order: int, bonus: int = 0) -> list[tuple[float, float]]:
+    r""" Compute and return the integration points on each element in physical space.
+    """
+    import numpy as np
+
+    # Integration rule always assumes 2*order, as default.
+    qorder = 2*order + bonus 
+    ir = ngs.IntegrationRule(element_type, qorder) 
+    pts = mesh.MapToAllElements(ir, ngs.VOL)
+    return np.column_stack((ngs.x(pts)[:,0], ngs.y(pts)[:,0]))
+
+
+def get_local_meshsize_from_points(mesh: ngs.Mesh, x: list[float], y: list[float]) -> list[float]:
+    return ngs.specialcf.mesh_size( mesh(x=x, y=y) )
+
+
 class BufferCoord(ngs.CF):
     r""" One-dimensional coordinate used in buffer layers.
 
@@ -1049,13 +1126,14 @@ def get_cylinder_mesh(radius: float = 0.5,
     return ngs.Mesh(mesh)
 
 
-def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
+def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int, nodal_distribution: str = 'uniform'):
     """ Returns the coordinates of a NACA 4-digit airfoil.
 
         :param number: NACA 4-digit number
         :type number: str | int
         :param n: Number of coordinates
         :type n: int
+        :type nodal_distribution: str
 
         .. [1]: Thanks to Edoardo Bonetti for providing this routine.
     """
@@ -1077,7 +1155,7 @@ def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
     A3 = +0.2843
     A4 = -0.1036
 
-    x = np.linspace(0.0, 1.0, n+1)
+    x = get_nodal_points(n, distribution=nodal_distribution)
 
     yt = 5*t * (A0*np.sqrt(x) + A1*x + A2*np.power(x, 2) + A3*np.power(x, 3) + A4*np.power(x, 4))
     xl = x <= p
@@ -1114,7 +1192,8 @@ def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
 def get_chord_naca_4digit_series_coordinates(number: str | int,
                                              LE=(0, 0),
                                              chord: float = 1.0,
-                                             n: int = 600) -> list[tuple[float, float, 0]]:
+                                             n: int = 600,
+                                             nodal_distribution: str ='uniform') -> list[tuple[float, float, 0]]:
     """ Returns a 2D NACA airfoil profile with leading edge at position (0, 0).
 
         :param number: NACA digit number
@@ -1125,10 +1204,11 @@ def get_chord_naca_4digit_series_coordinates(number: str | int,
         :type chord: float, optional
         :param n: Number of coordinates, defaults to 600
         :type n: int, optional
+        :type nodal_distribution: str, defaults to 'uniform'
         :return: NACA airfoil points
         :rtype: list[tuple[float, float, 0]]
     """
-    xs, ys = get_unit_chord_naca_4digit_series_coordinates(number, n)
+    xs, ys = get_unit_chord_naca_4digit_series_coordinates(number, n, nodal_distribution=nodal_distribution)
     xs = chord * xs + LE[0]
     ys = chord * ys + LE[1]
     pnts = [(x, y, 0) for x, y in zip(xs, ys)]
