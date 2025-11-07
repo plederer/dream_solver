@@ -116,7 +116,12 @@ class PhysicalTimeStepController(TimeStepController):
         
         if iteration % self.rate == 0:
             dtmin = self.get_time_step_estimate(cfl=self.cfl)
-            logger.info( f"estimated min(dt), for CFL = {self.cfl} is: {dtmin:.5e}" ) 
+            ratio = self.root.time.timer.step.Get() / dtmin
+            time  = self.root.time.timer.t.Get()
+            msg = f"{self.root.fem.name} | {self.name} | t: {time}"
+            msg += f"\n   dtmin: {dtmin:.5e} | CFL: {self.cfl} | dt/dtmin: {ratio:.5e}" 
+            logger.info(msg)
+
 
 
 

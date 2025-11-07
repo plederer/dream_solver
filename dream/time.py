@@ -1,10 +1,10 @@
-# %%
-
 from __future__ import annotations
 import numpy as np
 import ngsolve as ngs
 import logging
 import typing
+from functools import wraps
+from time import time
 
 from dream.config import Integrals, Log, Configuration, dream_configuration
 
@@ -12,6 +12,29 @@ if typing.TYPE_CHECKING:
     from dream.solver import SolverConfiguration
 
 logger = logging.getLogger(__name__)
+
+
+def time_generator(label):
+
+    def decorator(generator):
+
+        @wraps(generator)
+        def wrap(self, *args, **kwargs):
+            cfg: SolverConfiguration = self.root
+
+            if not cfg.io.log.time_routines:
+                yield from generator(self, *args, **kwargs)
+                return
+
+            start = time()
+            yield from generator(self, *args, **kwargs)
+            end = time()
+
+            logger.info(f"Solve {label.format(*args, **kwargs)} runtime: {end - start:.6f}s")
+
+        return wrap
+
+    return decorator
 
 
 class Timer(Configuration):
@@ -144,7 +167,7 @@ class Scheme(Configuration, is_interface=True):
             for term, cf in terms.items():
 
                 logger.debug(f"  Adding {term} term for space {space} to {name}!")
-                
+
                 form += cf.Compile(**self.compile)
 
         logger.debug("Done.")
@@ -191,7 +214,8 @@ class Scheme(Configuration, is_interface=True):
                          for space, integral in integrals.items()}
 
         # Omit empty integrals
-        integrals = {space: {term: cf for term, cf in integral.items() if cf} for space, integral in integrals.items() if integral}
+        integrals = {space: {term: cf for term, cf in integral.items() if cf}
+                     for space, integral in integrals.items() if integral}
 
         if not integrals:
             raise ValueError("No integrals found after parsing! Check your include/exclude terms/spaces.")
@@ -212,7 +236,7 @@ class TimeSchemes(Scheme):
     @property
     def dt(self) -> ngs.Parameter:
         return self.root.time.timer.step
-    
+
     @property
     def t(self) -> ngs.Parameter:
         return self.root.time.timer.t
@@ -254,12 +278,15 @@ class TimeRoutine(Configuration, is_interface=True):
 
     def parse_routine_log(self,
                           it: int | None = None,
-                          error: float | None = None, **kwargs):
+                          error: float | None = None,
+                          cfg: SolverConfiguration = None, **kwargs):
         """ Parse the routine log and return a formatted string. """
 
-        fem = self.root.fem
+        root = cfg
+        if cfg is None:
+            root = self.root
 
-        msg = f"{self.name} | {fem.name} {fem.scheme.name}"
+        msg = f"{self.name} | {root.fem.name} {root.fem.scheme.name}"
         if it is not None:
             msg += f" | it: {it}"
         if error is not None:
@@ -286,8 +313,7 @@ class StationaryRoutine(TimeRoutine):
             for log in scheme.solve_stationary():
                 logger.info(self.parse_routine_log(**log))
 
-                is_diverged = log.get('is_diverged', False)
-                if is_diverged:
+                if "is_diverged" in log:
                     logger.error("Stationary routine diverged!")
                     break
 
@@ -356,12 +382,14 @@ class TransientRoutine(TimeRoutine):
 
                 for log in scheme.solve_current_time_level():
                     logger.info(self.parse_routine_log(t=t, **log))
-                    
-                    is_diverged = log.get('is_diverged', False)
-                    if is_diverged:
+
+
+                    if "is_diverged" in log:
                         break
 
-                if is_diverged:
+                print()
+
+                if "is_diverged" in log:
                     logger.error("Transient routine diverged!")
                     break
 
@@ -444,9 +472,8 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
             # Solution routine starts here
             for log in scheme.solve_current_time_level():
                 logger.info(self.parse_routine_log(**log))
-                    
-                is_diverged = log.get('is_diverged', False)
-                if is_diverged:
+
+                if "is_diverged" in log:
                     logger.error("Pseudo time stepping routine diverged!")
                     break
 
@@ -461,7 +488,6 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
         self.timer.step = dt
 
-
     def solver_iteration_update(self, it: int):
         old_time_step = self.timer.step.Get()
 
@@ -475,7 +501,6 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
                 self.timer.step = new_time_step
                 logger.info(f"Successfully updated time step at iteration {it}")
                 logger.info(f"Updated time step 𝚫t = {new_time_step}. Previous time step 𝚫t = {old_time_step}")
-
 
 
 class MultizoneIMEXTimeRoutine(TimeRoutine):
@@ -495,13 +520,13 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
         self.cfg_implicit = cfg_implicit
         self.cfg_explicit = cfg_explicit
 
-       
     # Function that checks whether the specified schemes form a viable IMEX pair.
+
     def is_valid_imex_schemes(self) -> bool:
 
         n_imp = self.cfg_implicit.fem.scheme.get_num_stages()
         n_exp = self.cfg_explicit.fem.scheme.get_num_stages()
-        
+
         if n_imp != n_exp:
             return False
 
@@ -515,7 +540,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
         # NOTE, all first stages are padded, since they start explicitly, i.e. cdt[0] = 0.
         if (n_imp != len(cdt_imp)-1) or (n_exp != len(cdt_exp)-1):
             return False
-        
+
         # Book-keep number of stages, including first (padded) stage.
         self.nStage = len(cdt_imp)
 
@@ -537,10 +562,11 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
     def parse_routine_log(self,
                           stage: int = None,
                           t: float = None,
+                          cfg: SolverConfiguration = None,
                           **kwargs):
         """ Parse the routine log and return a formatted string. """
 
-        msg = super().parse_routine_log(**kwargs)
+        msg = super().parse_routine_log(cfg=cfg, **kwargs)
 
         if stage is not None:
             msg += f" | stage: {stage}"
@@ -549,12 +575,11 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
         return msg
 
-    
-    def solve(self, reassemble: bool=True):
+    def solve(self, reassemble: bool = True):
 
         timer = self.timer
         timer.reset()
-        
+
         if reassemble:
             self.cfg_implicit.fem.scheme.assemble()
             self.cfg_explicit.fem.scheme.assemble()
@@ -568,37 +593,22 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
             io_exp.save_pre_time_routine(self.timer.t.Get())
 
             for rate, t in enumerate(self.timer()):
-                
-                # We loop over each stage and solve explicit regions first, then implicit ones.
-                for iStage in range(1, self.nStage):
-                    for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage):
-                        logger.info(self.parse_routine_log(t=t, **log_explicit))
-                        
-                        is_diverged = log_explicit.get('is_diverged', False)
-                        if is_diverged:
-                            logger.error("Explicit Multizone IMEX routine diverged!")
-                            break
-                        
-                    for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage):
-                        logger.info(self.parse_routine_log(t=t, **log_implicit))
 
-                        is_diverged = log_implicit.get('is_diverged', False)
-                        if is_diverged:
-                            logger.error("Implicit Multizone IMEX routine diverged!")
-                            break
-                        
+                is_diverged = self.solve_stages(t)
                 if is_diverged:
                     break
 
-                # Process any work in the time step controller.
-                self.cfg_explicit.timestep_controller.process_iteration(iteration=rate)
-                self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
+                # Process any work required in the time step controller.
+                if self.cfg_explicit.timestep_controller is not None:
+                    self.cfg_explicit.timestep_controller.process_iteration(iteration=rate)
+                if self.cfg_implicit.timestep_controller is not None:
+                    self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
                 
                 # These are needed in case the schemes aren't stiffly accurate.
                 self.cfg_explicit.fem.scheme.update_solution()
                 self.cfg_implicit.fem.scheme.update_solution()
                 
-                print(flush=True) # One empty line to rule them all and ruin Jan's day..
+                print(flush=True) # separate info for each stage. 
                 
                 self.cfg_explicit.fem.scheme.update_gridfunctions()
                 self.cfg_implicit.fem.scheme.update_gridfunctions()
@@ -613,12 +623,29 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
             io_exp.save_post_time_routine(t, rate)
             io_imp.save_post_time_routine(t, rate)
 
+    def solve_stages(self, t: float = None) -> bool:
 
+        imp_scheme = self.cfg_implicit.fem.scheme
+        exp_scheme = self.cfg_explicit.fem.scheme
 
+        imp_scheme.t0 = self.timer.t.Get() - self.timer.step.Get()
+        exp_scheme.t0 = imp_scheme.t0
 
+        # We loop over each stage and solve explicit regions first, then implicit ones.
+        for iStage in range(1, self.nStage):
+            for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage):
+                logger.info(self.parse_routine_log(t=t, cfg=self.cfg_explicit, **log_explicit))
 
+                if "is_diverged" in log_explicit:
+                    logger.error("Explicit Multizone IMEX routine diverged!")
+                    return True
 
+            for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage):
+                logger.info(self.parse_routine_log(t=t, cfg=self.cfg_implicit, **log_implicit))
 
+                if "is_diverged" in log_implicit:
+                    logger.error("Implicit Multizone IMEX routine diverged!")
+                    return True
 
-
+        return False
 

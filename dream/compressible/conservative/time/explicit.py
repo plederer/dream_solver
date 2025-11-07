@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import ngsolve as ngs
 import typing
-from dream.time import TimeSchemes
+from dream.time import TimeSchemes, time_generator
 from dream.config import Integrals, Log
 
 
@@ -63,6 +63,7 @@ class ExplicitSchemes(TimeSchemes):
     def is_diverged(self, vec) -> bool:
         return np.isnan(vec).any()
     
+    @time_generator("time level")
     def solve_current_time_level(self):
         self.t0 = self.t.Get() - self.dt.Get()
 
@@ -91,9 +92,10 @@ class ExplicitEuler(ExplicitSchemes):
     def get_stage_dt(self) -> list[float]:
         return [x * self.dt.Get() for x in [0.0, 1.0]] 
 
+    @time_generator(r"stage {0}")
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
 
-        log = {'stage': iStage, 'is_diverged': False}
+        log = {'stage': iStage}
 
         if iStage > 1:
             raise TypeError(f"Stage {iStage} does not exist.")
@@ -149,9 +151,10 @@ class RK_ARS22(ExplicitSchemes):
     def get_stage_dt(self) -> list[float]:
         return [x * self.dt.Get() for x in [self.c1, self.c2, self.c3]] 
 
+    @time_generator(r"stage {0}")
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
         
-        log = {'stage': iStage, 'is_diverged': False}
+        log = {'stage': iStage}
         
         if iStage == 1:
             
@@ -212,9 +215,10 @@ class RK_ARS33(ExplicitSchemes):
     def get_stage_dt(self) -> list[float]:
         return [ci * self.dt.Get() for ci in self.c] 
 
+    @time_generator(r"stage {0}")
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
 
-        log = {'stage': iStage, 'is_diverged': False}
+        log = {'stage': iStage}
 
         if iStage == 1:
             
@@ -298,9 +302,10 @@ class RK_ARS43(ExplicitSchemes):
     def get_stage_dt(self) -> list[float]:
         return [ci * self.dt.Get() for ci in self.c] 
 
+    @time_generator(r"stage {0}")
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
 
-        log = {'stage': iStage, 'is_diverged': False}
+        log = {'stage': iStage}
 
         if iStage == 1:
             
@@ -368,9 +373,10 @@ class SSPRK3(ExplicitSchemes):
         self.alpha32 = 2.0/3.0
         self.beta32 = 2.0/3.0
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
-        log = {'is_diverged': False}
+        log = {}
 
         # Extract the current solution.
         Un = self.root.fem.gfu
@@ -450,9 +456,10 @@ class CRK4(ExplicitSchemes):
         self.K4 = self.root.fem.gfu.vec.CreateVector()
         self.Us = self.root.fem.gfu.vec.CreateVector()
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
-        log = {'is_diverged': False}
+        log = {}
 
         # First stage.
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs) 

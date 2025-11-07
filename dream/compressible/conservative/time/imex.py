@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import ngsolve as ngs
 import typing
-from dream.time import TimeSchemes
+from dream.time import TimeSchemes, time_generator
 from dream.config import Integrals, Log
 
 
@@ -152,6 +152,7 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Initial vector: M*U^n.

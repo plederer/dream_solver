@@ -1,7 +1,7 @@
 """ Definitions of implicit time integration schemes for conservative methods. """
 from __future__ import annotations
 from dream.config import Integrals, Log
-from dream.time import TimeSchemes
+from dream.time import TimeSchemes, time_generator
 
 import ngsolve as ngs
 import typing
@@ -52,6 +52,7 @@ class ImplicitSchemes(TimeSchemes):
     def update_solution(self) -> None:
         pass
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
         yield from self.root.fem.solver.solve_nonlinear_system()
 
@@ -73,6 +74,7 @@ class ImplicitEuler(ImplicitSchemes):
     def get_stage_dt(self) -> float:
         return [x * self.dt.Get() for x in [0.0, 1.0]] 
 
+    @time_generator(r"stage {0}")
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
         
         if iStage != 1:
@@ -257,6 +259,7 @@ class DIRKSchemes(TimeSchemes):
         }
 
     # Generic function that solves a DIRK scheme.
+    @time_generator(r"stage {0}")
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
 
         # Extract the stage information, if possible.
@@ -291,6 +294,7 @@ class DIRKSchemes(TimeSchemes):
         for log in self.root.fem.solver.solve_nonlinear_system():
             yield {"stage": iStage, **log}
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
         self.t0 = self.t.Get() - self.dt.Get()
         for i in range(1, self.get_num_stages() + 1):
@@ -634,6 +638,7 @@ class SDIRK54(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         yield from self.solve_stage(1)
@@ -739,6 +744,7 @@ class DIRK43_WSO2(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         yield from self.solve_stage(1)
@@ -866,6 +872,7 @@ class DIRK34_LDD(DIRKSchemes):
         self.f_uhat.Assemble()
         self.root.fem.gfus['Uhat'].vec.data = self.minv_uhat * self.f_uhat.vec
 
+    @time_generator("time level")
     def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
 
         # Book-keep the solution at u^{n}.
