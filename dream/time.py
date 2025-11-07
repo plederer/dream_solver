@@ -691,12 +691,18 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 if is_diverged:
                     break
 
+                # Process any work required in the time step controller.
+                if self.cfg_explicit.timestep_controller is not None:
+                    self.cfg_explicit.timestep_controller.process_iteration(iteration=rate)
+                if self.cfg_implicit.timestep_controller is not None:
+                    self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
+                
                 # These are needed in case the schemes aren't stiffly accurate.
                 self.cfg_explicit.fem.scheme.update_solution()
                 self.cfg_implicit.fem.scheme.update_solution()
-
-                print()  # One empty line to rule them all and ruin Jan's day..
-
+                
+                print(flush=True) # separate info for each stage. 
+                
                 self.cfg_explicit.fem.scheme.update_gridfunctions()
                 self.cfg_implicit.fem.scheme.update_gridfunctions()
 

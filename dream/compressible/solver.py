@@ -15,6 +15,7 @@ from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
 from .config import flowfields, dimensionalfields, BCS, DCS
 from .conservative import ConservativeHDG, ConservativeDG, ConservativeDG_HDG
+from .timestep_controller import TimeStepController, PhysicalTimeStepController
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             "reynolds_number": 150,
             "prandtl_number": 0.72,
             "dimensional_fields": None,
+            "timestep_controller": None,
         }
         DEFAULT.update(default)
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
@@ -59,6 +61,20 @@ class CompressibleFlowSolver(SolverConfiguration):
         OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
         self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
 
+    @dream_configuration
+    def timestep_controller(self) -> PhysicalTimeStepController | None:
+        return self._timestep_controller
+
+    @timestep_controller.setter
+    def timestep_controller(self, value: str | PhysicalTimeStepController | None):
+        
+        if value is None:
+            self._timestep_controller = None
+            return
+
+        OPTIONS = [PhysicalTimeStepController]
+        self._timestep_controller = self._get_configuration_option(value, OPTIONS, TimeStepController)
+    
     @dream_configuration
     def mach_number(self) -> ngs.Parameter:
         r""" Sets the ratio of the farfield flow velocity to the farfield speed of sound.
@@ -315,6 +331,77 @@ class CompressibleFlowSolver(SolverConfiguration):
         mu = self.viscosity(U)
         return rho * ngs.sqrt(bla.inner(u, u)) / mu
 
+    def get_accurate_time_step_estimate(self, points: list[tuple[float, float]], he: list[float]) -> float:
+        
+        import numpy as np
+        
+        # Convert the list of tuples into a numpy ndarray with shape (n, 2).
+        pts = np.array(points)
+        
+        # Inverse of the effective length scale.
+        ovl = float(self.fem.order + 1) / he 
+
+        # Get a solution flowfield.
+        U = self.root.get_solution_fields()
+
+        # Explicitly extract x,y coordinates (integration points).
+        x = points[:,0]
+        y = points[:,1]
+
+        # Get the expression for the (common) variables needed.
+        func_rho = self.root.density(U)
+        func_u   = self.root.velocity(U)[0]
+        func_v   = self.root.velocity(U)[1]
+        func_a   = self.root.speed_of_sound(U)
+
+        # Evaluate the (common) variables at the input (integration) points.
+        rho  = func_rho( self.root.mesh(x=x, y=y) )
+        uabs = np.abs( func_u( self.root.mesh(x=x, y=y) ) ) 
+        vabs = np.abs( func_v( self.root.mesh(x=x, y=y) ) )
+        a    = func_a( self.root.mesh(x=x, y=y) )
+
+        # Estimate the spectral radius of the inviscid (EEs) part.
+        rad_ees = ngs.sqrt( (uabs + a)**2 + (vabs + a)**2 ) # units: m/s
+        rad_nse = 0.0 # default: inviscid.
+
+        # Account for diffusion, in case the NSE are solved.
+        if not self.root.dynamic_viscosity.is_inviscid:
+            
+            # Extract the viscosity.
+            func_mu = self.root.viscosity(U)
+            
+            # If the viscosity is not constant, evaluate it on the grid points.
+            if isinstance(self.root.dynamic_viscosity, Constant):
+                mu = float( func_mu )
+            else:
+                mu = func_mu( self.root.mesh(x=x, y=y) )
+                
+            # Get the relevant nondimensional numbers.
+            Re = self.root.scaling.reference_reynolds_number.Get()
+            Pr = self.root.prandtl_number.Get()
+            
+            # NOTE, we explicitly scale the viscosity with Re, 
+            # to obtain the correct nondimensionalization.
+            mu /= Re
+
+            # Get the nondimensionalized specific heat at constant volume.
+            func_cv = self.root.equation_of_state.specific_heat_cv
+            cv = func_cv( self.mesh(x=x[0],y=y[0]) )
+
+            # Estimate the spetral radius of the viscous part.
+            cshear = 4.0/3.0
+            ctherm = 1.0/(Pr*cv)
+            rad_nse = mu * np.max( [cshear, ctherm] ) / rho # units: m2/s
+
+        # Obtain the inverse of the effective time step.
+        ovdteff = ovl * ( rad_ees + ovl * rad_nse ) 
+
+        # Return an estimate for a stable dt.
+        return 1.0/np.max( ovdteff )
+
+
+
+
     def get_averaged_time_step_estimate(self, U: flowfields):
 
         # Effective length scale and its inverse.
@@ -380,33 +467,6 @@ class CompressibleFlowSolver(SolverConfiguration):
         logger.info(f"Minimum (averaged) time step estimate: {dtmin}")
         logger.info(f"Maximum (averaged) time step estimate: {dtmax}")
         logger.info(f"Ratio (averaged) dtmax/dtmin estimate: {ratio}")
-        
-
-        # FIXME 
-        # For nPoly=0, it seems the constraint for the inviscid part is good.
-        # However, for viscous terms, the estimate isn't good at all 
-        # (at least with explicit Euler). Why?
-        # ... uncomment the below to get a picture of the dtmin from inviscid and viscous terms.
-        # NOTE, currently, for nPoly=0, CFL = 0.9 and CFL = 0.6 are stable for an inviscid and 
-        #       viscous simulation, respectively -- where, dt = CFL * dtmin (explicit Euler).
-
-        ## Inviscid estimate.
-        #lf_ees = ngs.LinearForm(fes)
-        #lf_ees += ovl * ( rad_ees ) * v * ngs.dx
-        #lf_ees.Assemble()
-        #gfu.vec.data = fes.Mass(1).Inverse() * lf_ees.vec
-        #dtmin_ees = 1.0/max(gfu.vec)
-
-        ## Viscous estimate.
-        #dtmin_nse = 0.0
-        #if not self.root.dynamic_viscosity.is_inviscid:
-        #    lf_nse = ngs.LinearForm(fes)
-        #    lf_nse += ovl * ( ovl * rad_nse ) * v * ngs.dx
-        #    lf_nse.Assemble()
-        #    gfu.vec.data = fes.Mass(1).Inverse() * lf_nse.vec
-        #    dtmin_nse = 1.0/max(gfu.vec)
-
-        #logger.info(f"dtmin_ees: {dtmin_ees}, dtmin_nse: {dtmin_nse}")
         
         return dtmin
 

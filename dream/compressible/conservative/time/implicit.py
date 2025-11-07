@@ -25,11 +25,8 @@ class ImplicitSchemes(TimeSchemes):
 
         self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, rhs)
 
-        # NOTE
-        # Pehaps its better to avoid lf, since it is empty, and specify the 3nd. 
-        # argument in fem.solver.initialize_nonlinear_routine as "None". That way, we 
-        # guarantee avoiding additional unecessary memory. For example:
-        # self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.gfu, None)
+        if self.root.timestep_controller is not None:
+            self.root.timestep_controller.initialize()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
@@ -136,7 +133,7 @@ class BDF3(ImplicitSchemes):
     def get_current_level(self, space: str, normalized: bool = False) -> ngs.CF:
         gfus = self.gfus[space]
         if normalized:
-            return 18.0/11*gfus['n'] - 9.0/11 * gfus['n-1'] + 2.0/11 * gfus['n-2']
+            return 18.0/11.0 * gfus['n'] - 9.0/11.0 * gfus['n-1'] + 2.0/11.0 * gfus['n-2']
         return 18.0*gfus['n'] - 9.0 * gfus['n-1'] + 2.0 * gfus['n-2']
 
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
@@ -236,6 +233,9 @@ class DIRKSchemes(TimeSchemes):
         # Initialize the nonlinear solver here. Notice, it uses a reference to blf, rhs and gfu.
         self.root.fem.solver.initialize_nonlinear_routine(self.blf, self.root.fem.gfu, self.rhs)
 
+        if self.root.timestep_controller is not None:
+            self.root.timestep_controller.initialize()
+
     def get_num_stages(self) -> int:
         raise NotImplementedError()
     def get_stage_dt(self) -> list[float]:
@@ -259,7 +259,7 @@ class DIRKSchemes(TimeSchemes):
             for i, (apply_target, coeffs) in enumerate(stage_data)
         }
 
-    # Generic function that solves a (S-)DIRK scheme.
+    # Generic function that solves a DIRK scheme.
     @time_generator(r"stage {0}")
     def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
 
