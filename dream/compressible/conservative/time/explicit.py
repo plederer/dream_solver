@@ -64,11 +64,10 @@ class ExplicitSchemes(TimeSchemes):
         return np.isnan(vec).any()
     
     @time_generator("time level")
-    def solve_current_time_level(self):
-        self.t0 = self.t.Get() - self.dt.Get()
+    def solve_current_time_level(self, t0: float):
 
         for i in range(1, self.get_num_stages() + 1):
-            yield from self.solve_stage(i)
+            yield from self.solve_stage(i, t0)
 
         if self.is_diverged(self.root.fem.gfu.vec):
             yield {'is_diverged': True}
@@ -93,7 +92,7 @@ class ExplicitEuler(ExplicitSchemes):
         return [x * self.dt.Get() for x in [0.0, 1.0]] 
 
     @time_generator(r"stage {0}")
-    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+    def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
 
         log = {'stage': iStage}
 
@@ -152,7 +151,7 @@ class RK_ARS22(ExplicitSchemes):
         return [x * self.dt.Get() for x in [self.c1, self.c2, self.c3]] 
 
     @time_generator(r"stage {0}")
-    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+    def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
         
         log = {'stage': iStage}
         
@@ -216,7 +215,7 @@ class RK_ARS33(ExplicitSchemes):
         return [ci * self.dt.Get() for ci in self.c] 
 
     @time_generator(r"stage {0}")
-    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+    def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
 
         log = {'stage': iStage}
 
@@ -250,9 +249,9 @@ class RK_ARS33(ExplicitSchemes):
         self.root.fem.gfu.vec.data = self.U0 \
                 - self.minv * ( self.b2 * self.K2 + self.b3 * self.K3 + self.b4 * self.K1 )
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
 
-        yield from super().solve_current_time_level()
+        yield from super().solve_current_time_level(t0)
         # NOTE, must explicitly reconstruct the solution at u^{n+1}.
         self.update_solution()
 
@@ -303,7 +302,7 @@ class RK_ARS43(ExplicitSchemes):
         return [ci * self.dt.Get() for ci in self.c] 
 
     @time_generator(r"stage {0}")
-    def solve_stage(self, iStage) -> typing.Generator[Log, None, None]:
+    def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
 
         log = {'stage': iStage}
 
@@ -374,7 +373,7 @@ class SSPRK3(ExplicitSchemes):
         self.beta32 = 2.0/3.0
 
     @time_generator("time level")
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
 
         log = {}
 
@@ -457,7 +456,7 @@ class CRK4(ExplicitSchemes):
         self.Us = self.root.fem.gfu.vec.CreateVector()
 
     @time_generator("time level")
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
 
         log = {}
 

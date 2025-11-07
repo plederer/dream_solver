@@ -153,7 +153,7 @@ class IMEXRK_ARS443(IMEXRKSchemes):
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
     @time_generator("time level")
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
 
         # Initial vector: M*U^n.
         self.mu0.data = self.mass.mat * self.root.fem.gfu.vec

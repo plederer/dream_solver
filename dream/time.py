@@ -117,6 +117,7 @@ class Timer(Configuration):
         t0, end = self.interval
         step = self.step.Get()
 
+        self.t = t0
         for rate in range(round((end - t0)/(step))):
             tn = t0 + step
             yield rate, t0, tn
@@ -129,72 +130,6 @@ class Timer(Configuration):
     def _set_digit(self, step: float):
         digit = f"{step:.16f}".split(".")[1]
         self.digit = len(digit.rstrip("0"))
-
-class StageTimer(Configuration):
-
-    def __init__(self, mesh=None, root=None, **default):
-
-        DEFAULT = {
-            "interval": (0.0, 1.0),
-            "steps": (0.0, 1.0),
-        }
-        DEFAULT.update(default)
-
-        super().__init__(mesh, root, **DEFAULT)
-
-    @dream_configuration
-    def interval(self) -> tuple[float, float]:
-        return self._interval
-
-    @interval.setter
-    def interval(self, interval: tuple[float, float]):
-        self._interval = interval
-
-    @dream_configuration
-    def steps(self) -> tuple[float, ...]:
-        return self._steps
-    
-    @steps.setter
-    def steps(self, steps: tuple[float, ...]):
-        self._steps = steps
-        self._stage_steps = tuple(steps[i] - steps[i-1] for i in range(1, len(steps)))
-
-    @property
-    def t(self) -> ngs.Parameter:
-        return self.root.time.timer.t
-    
-    @property
-    def dt(self) -> ngs.Parameter:
-        return self.root.time.timer.step
-    
-    def implicit(self):
-        """ Return a generator that iterates over the stages of the time-stepping scheme,
-            updating the time and time step before return stages accordingly.
-        """
-
-        dT = self.dt.Get()
-        t0, t1 = self.interval
-
-        for stage, step in enumerate(self._stage_steps, 1):
-            self.dt.Set(step*dT)
-            self.t.Set(self.t.Get() + self.dt.Get())
-            yield stage
-
-        self.dt.Set(dT)
-        self.t.Set(t1)
-
-    def explicit(self):
-
-        dT = self.dt.Get()
-        t0, t1 = self.interval
-
-        for stage, step in enumerate(self.steps[1:], 1):
-            self.dt.Set(dT * step)
-            yield stage
-            self.t.Set(self.t.Get() + self.dt.Get())
-
-        self.dt.Set(dT)
-        self.t.Set(t1)
 
 
 class Scheme(Configuration, is_interface=True):
@@ -303,27 +238,6 @@ class Scheme(Configuration, is_interface=True):
 class TimeSchemes(Scheme):
 
     time_levels: tuple[str, ...]
-
-    def __init__(self, mesh, root=None, **default):
-
-        DEFAULT = {
-            "stage_timer": StageTimer(mesh, root)
-        }
-        DEFAULT.update(default)
-
-        super().__init__(mesh, root, **DEFAULT)
-
-    @dream_configuration
-    def stage_timer(self) -> StageTimer:
-        return self._stage_timer
-    
-    @stage_timer.setter
-    def stage_timer(self, stage_timer: StageTimer):
-        
-        if not isinstance(stage_timer, StageTimer):
-            raise TypeError(f"Stage timer must be of type {StageTimer}!")
-
-        self._stage_timer = stage_timer
 
     @property
     def dt(self) -> ngs.Parameter:
@@ -452,7 +366,7 @@ class TransientRoutine(TimeRoutine):
         if stage is not None:
             msg += f" | stage: {stage}"
         if t is not None:
-            msg += f" | t: {t:.{self.timer.digit}f}"
+            msg += f" | t: {t:.2e}"
 
         return msg
 
@@ -470,12 +384,10 @@ class TransientRoutine(TimeRoutine):
             io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
-            for rate, t0, t1 in self.timer():
+            for rate, tn, t1 in self.timer():
 
-                scheme.stage_timer.interval = (t0, t1)
-
-                for log in scheme.solve_current_time_level():
-                    logger.info(self.parse_routine_log(t=t1, **log))
+                for log in scheme.solve_current_time_level(tn):
+                    logger.info(self.parse_routine_log(**log))
 
                     if "is_diverged" in log:
                         break
@@ -664,7 +576,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
         if stage is not None:
             msg += f" | stage: {stage}"
         if t is not None:
-            msg += f" | t: {t:.{self.timer.digit}f}"
+            msg += f" | t: {t:.2e}"
 
         return msg
 
@@ -687,7 +599,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
             for rate, t0, t1 in timer():
 
-                is_diverged = self.solve_stages(t1)
+                is_diverged = self.solve_stages(t0)
                 if is_diverged:
                     break
 
@@ -716,25 +628,19 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
             io_exp.save_post_time_routine(t1, rate)
             io_imp.save_post_time_routine(t1, rate)
 
-    def solve_stages(self, t: float = None) -> bool:
-
-        imp_scheme = self.cfg_implicit.fem.scheme
-        exp_scheme = self.cfg_explicit.fem.scheme
-
-        imp_scheme.t0 = self.timer.t.Get() - self.timer.step.Get()
-        exp_scheme.t0 = imp_scheme.t0
+    def solve_stages(self, t0: float) -> bool:
 
         # We loop over each stage and solve explicit regions first, then implicit ones.
         for iStage in range(1, self.nStage):
-            for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage):
-                logger.info(self.parse_routine_log(t=t, cfg=self.cfg_explicit, **log_explicit))
+            for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage, t0):
+                logger.info(self.parse_routine_log(cfg=self.cfg_explicit, **log_explicit))
 
                 if "is_diverged" in log_explicit:
                     logger.error("Explicit Multizone IMEX routine diverged!")
                     return True
 
-            for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage):
-                logger.info(self.parse_routine_log(t=t, cfg=self.cfg_implicit, **log_implicit))
+            for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage, t0):
+                logger.info(self.parse_routine_log(cfg=self.cfg_implicit, **log_implicit))
 
                 if "is_diverged" in log_implicit:
                     logger.error("Implicit Multizone IMEX routine diverged!")
