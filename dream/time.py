@@ -265,6 +265,9 @@ class TimeSchemes(Scheme):
             for old in list(gfu.values())[:-1]:
                 old.vec.data = gfu['n+1'].vec
 
+    def set_stage_t(self, stage: int, t0: float) -> None:
+        self.t.Set(t0 + self.get_stage_dt()[stage])
+
     def update_gridfunctions(self):
         for gfu in self.gfus.values():
             for old, new in zip(self.time_levels[:-1], self.time_levels[1:]):
@@ -366,7 +369,7 @@ class TransientRoutine(TimeRoutine):
         if stage is not None:
             msg += f" | stage: {stage}"
         if t is not None:
-            msg += f" | t: {t:.2e}"
+            msg += f" | t: {t:.6e}"
 
         return msg
 
@@ -576,7 +579,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
         if stage is not None:
             msg += f" | stage: {stage}"
         if t is not None:
-            msg += f" | t: {t:.2e}"
+            msg += f" | t: {t:.6e}"
 
         return msg
 

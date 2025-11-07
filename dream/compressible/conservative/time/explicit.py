@@ -94,19 +94,19 @@ class ExplicitEuler(ExplicitSchemes):
     @time_generator(r"stage {0}")
     def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
 
-        log = {'stage': iStage}
-
         if iStage > 1:
             raise TypeError(f"Stage {iStage} does not exist.")
 
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
+        self.set_stage_t(iStage, t0)
 
         if self.lf is not None:
             self.rhs.data -= self.lf.vec
 
         self.root.fem.gfu.vec.data -= self.minv * self.rhs
 
-        yield log
+
+        yield {'t': self.t.Get(), 'stage': iStage}
 
 
 class RK_ARS22(ExplicitSchemes):
@@ -153,22 +153,23 @@ class RK_ARS22(ExplicitSchemes):
     @time_generator(r"stage {0}")
     def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
         
-        log = {'stage': iStage}
-        
         if iStage == 1:
             
             self.U0.data = self.root.fem.gfu.vec
             self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
+            self.set_stage_t(iStage, t0)
 
-            yield log
+
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         elif iStage == 2:
             
             self.blf.Apply(self.root.fem.gfu.vec, self.K2)
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
+            self.set_stage_t(iStage, t0)
 
-            yield log
+            yield {'t': self.t.Get(), 'stage': iStage}
    
         else:
             raise TypeError(f"Stage {iStage} does not exist.")
@@ -217,28 +218,29 @@ class RK_ARS33(ExplicitSchemes):
     @time_generator(r"stage {0}")
     def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
 
-        log = {'stage': iStage}
-
         if iStage == 1:
             
             self.U0.data = self.root.fem.gfu.vec
             self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
-            yield log
+            self.set_stage_t(iStage, t0)
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         elif iStage == 2:
             
             self.blf.Apply(self.root.fem.gfu.vec, self.K2)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
-            yield log
+            self.set_stage_t(iStage, t0)
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         elif iStage == 3:
 
             self.blf.Apply(self.root.fem.gfu.vec, self.K3)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a41 * self.K1 + self.a42 * self.K2 + self.a43 * self.K3 )
-            yield log
+            self.set_stage_t(iStage, t0)
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         else:
             raise TypeError(f"Stage {iStage} does not exist.")
@@ -304,28 +306,29 @@ class RK_ARS43(ExplicitSchemes):
     @time_generator(r"stage {0}")
     def solve_stage(self, iStage, t0) -> typing.Generator[Log, None, None]:
 
-        log = {'stage': iStage}
-
         if iStage == 1:
             
             self.U0.data = self.root.fem.gfu.vec
             self.blf.Apply(self.root.fem.gfu.vec, self.K1) 
             self.root.fem.gfu.vec.data = self.U0 - self.minv * ( self.a21 * self.K1 )
-            yield log
+            self.set_stage_t(iStage, t0)
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         elif iStage == 2:
             
             self.blf.Apply(self.root.fem.gfu.vec, self.K2)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a31 * self.K1 + self.a32 * self.K2 )
-            yield log
+            self.set_stage_t(iStage, t0)
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         elif iStage == 3:
 
             self.blf.Apply(self.root.fem.gfu.vec, self.K3)
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a41 * self.K1 + self.a42 * self.K2 + self.a43 * self.K3 )
-            yield log
+            self.set_stage_t(iStage, t0)
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         elif iStage == 4:
 
@@ -333,7 +336,8 @@ class RK_ARS43(ExplicitSchemes):
             self.root.fem.gfu.vec.data = self.U0 \
                     - self.minv * ( self.a51 * self.K1 + self.a52 * self.K2 \
                                   + self.a53 * self.K3 + self.a54 * self.K4 )
-            yield log
+            self.set_stage_t(iStage, t0)
+            yield {'t': self.t.Get(), 'stage': iStage}
 
         else:
             raise TypeError(f"Stage {iStage} does not exist.")

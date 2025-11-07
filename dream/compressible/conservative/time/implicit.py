@@ -83,7 +83,7 @@ class ImplicitEuler(ImplicitSchemes):
         if iStage != 1:
             raise TypeError(f"Stage {iStage} does not exist.")
         
-        self.t.Set(t0 + self.dt.Get())
+        self.set_stage_t(iStage, t0)
         for log in self.root.fem.solver.solve_nonlinear_system():
             yield {"t": self.t.Get(), "stage": iStage, **log}
 
@@ -286,14 +286,14 @@ class DIRKSchemes(TimeSchemes):
 
         # Compute previous-stage residuals, if the apply_target exists.
         if stage_info["apply_target"] is not None:
-            self.t.Set(t0 + self.get_stage_dt()[iStage - 1])
+            self.set_stage_t(iStage - 1, t0)
             self.blfs.Apply(self.root.fem.gfu.vec, stage_info["apply_target"])
            
         # Build the right-hand side, scaled with its respective coefficients.
         for aij, xj in stage_info["coeffs"]:
             self.rhs.data += aij * xj
     
-        self.t.Set(t0 + self.get_stage_dt()[iStage])
+        self.set_stage_t(iStage, t0)
         # Solve the resulting nonlinear system.
         for log in self.root.fem.solver.solve_nonlinear_system():
             yield {"t": self.t.Get(), "stage": iStage, **log}
