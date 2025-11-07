@@ -114,8 +114,13 @@ class Timer(Configuration):
 
     def __call__(self, **kwargs):
         self.update(**kwargs)
-        for t in self.start(stride=1):
-            yield t
+        t0, end = self.interval
+        step = self.step.Get()
+
+        for rate in range(round((end - t0)/(step))):
+            tn = t0 + step
+            yield rate, t0, tn
+            t0 = tn
 
     def __iter__(self):
         for t in self.start(False, stride=1):
@@ -378,11 +383,10 @@ class TransientRoutine(TimeRoutine):
             io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
-            for rate, t in enumerate(self.timer()):
+            for rate, t0, t1 in self.timer():
 
                 for log in scheme.solve_current_time_level():
-                    logger.info(self.parse_routine_log(t=t, **log))
-
+                    logger.info(self.parse_routine_log(t=t1, **log))
 
                     if "is_diverged" in log:
                         break
@@ -395,13 +399,13 @@ class TransientRoutine(TimeRoutine):
 
                 scheme.update_gridfunctions()
 
-                yield t
+                yield t1
 
-                io.save_in_time_routine(t, rate)
+                io.save_in_time_routine(t1, rate)
                 io.redraw(rate)
             # Solution routine ends here
 
-            io.save_post_time_routine(t, rate)
+            io.save_post_time_routine(t1, rate)
 
 
 class PseudoTimeSteppingRoutine(TimeRoutine):
@@ -592,9 +596,9 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
             io_imp.save_pre_time_routine(self.timer.t.Get())
             io_exp.save_pre_time_routine(self.timer.t.Get())
 
-            for rate, t in enumerate(self.timer()):
+            for rate, t0, t1 in timer():
 
-                is_diverged = self.solve_stages(t)
+                is_diverged = self.solve_stages(t1)
                 if is_diverged:
                     break
 
@@ -607,15 +611,15 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 self.cfg_explicit.fem.scheme.update_gridfunctions()
                 self.cfg_implicit.fem.scheme.update_gridfunctions()
 
-                io_exp.save_in_time_routine(t, rate)
-                io_imp.save_in_time_routine(t, rate)
+                io_exp.save_in_time_routine(t1, rate)
+                io_imp.save_in_time_routine(t1, rate)
 
                 # NOTE, currently, not possible to visualiza multizones in netgen.
                 # io_exp.redraw(rate)
                 # io_imp.redraw(rate)
 
-            io_exp.save_post_time_routine(t, rate)
-            io_imp.save_post_time_routine(t, rate)
+            io_exp.save_post_time_routine(t1, rate)
+            io_imp.save_post_time_routine(t1, rate)
 
     def solve_stages(self, t: float = None) -> bool:
 

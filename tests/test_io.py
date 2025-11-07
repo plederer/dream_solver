@@ -465,8 +465,8 @@ def test_sensorstream_save_transient_point_sensor(sensor_handler):
     cfg.time.timer.step = 0.1
     with cfg.io as io:
         io.save_pre_time_routine(0.0)
-        for it, t in enumerate(cfg.time.timer()):
-            t_ = round(t, 1)  # Ensure t is rounded to avoid floating point issues
+        for it, _, t1 in cfg.time.timer():
+            t_ = round(t1, 1)  # Ensure t is rounded to avoid floating point issues
             io.save_in_time_routine(t_, it)
         io.save_post_time_routine(t_, it)
     path = cfg.io.sensor.path.joinpath("point.csv")
@@ -495,9 +495,9 @@ def test_sensorstream_save_transient_domain_sensor(sensor_handler):
     cfg.io.sensor.add(domain)
     with cfg.io as io:
         io.save_pre_time_routine(0.0)
-        for it, t in enumerate(cfg.time.timer()):
-            io.save_in_time_routine(t, it)
-        io.save_post_time_routine(t, it)
+        for it, _, t1 in cfg.time.timer():
+            io.save_in_time_routine(t1, it)
+        io.save_post_time_routine(t1, it)
     path = handler.path.joinpath("domain.csv")
     assert path.exists()
     expected = [
@@ -527,9 +527,9 @@ def test_sensorstream_save_transient_domain_l2_sensor(sensor_handler):
     cfg.io.sensor.add(domain)
     with cfg.io as io:
         io.save_pre_time_routine(0.0)
-        for it, t in enumerate(cfg.time.timer()):
-            io.save_in_time_routine(t, it)
-        io.save_post_time_routine(t, it)
+        for it, _, t1 in cfg.time.timer():
+            io.save_in_time_routine(t1, it)
+        io.save_post_time_routine(t1, it)
     path = handler.path.joinpath("domainl2.csv")
     assert path.exists()
     expected = [
@@ -559,9 +559,9 @@ def test_sensorstream_save_transient_boundary_sensor(sensor_handler):
     cfg.io.sensor.add(boundary)
     with cfg.io as io:
         io.save_pre_time_routine(0.0)
-        for it, t in enumerate(cfg.time.timer()):
-            io.save_in_time_routine(t, it)
-        io.save_post_time_routine(t, it)
+        for it, _, t1 in cfg.time.timer():
+            io.save_in_time_routine(t1, it)
+        io.save_post_time_routine(t1, it)
     path = handler.path.joinpath("boundary.csv")
     assert path.exists()
     expected = [
@@ -591,9 +591,9 @@ def test_sensorstream_save_transient_boundary_l2_sensor(sensor_handler):
     cfg.io.sensor.add(boundary)
     with cfg.io as io:
         io.save_pre_time_routine(0.0)
-        for it, t in enumerate(cfg.time.timer()):
-            io.save_in_time_routine(t, it)
-        io.save_post_time_routine(t, it)
+        for it, _, t1 in cfg.time.timer():
+            io.save_in_time_routine(t1, it)
+        io.save_post_time_routine(t1, it)
     path = handler.path.joinpath("test.csv")
     assert path.exists()
     expected = [
