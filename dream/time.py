@@ -578,8 +578,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                         if is_diverged:
                             logger.error("Explicit Multizone IMEX routine diverged!")
                             break
-
-
+                        
                     for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage):
                         logger.info(self.parse_routine_log(t=t, **log_implicit))
 
@@ -587,15 +586,19 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                         if is_diverged:
                             logger.error("Implicit Multizone IMEX routine diverged!")
                             break
-
+                        
                 if is_diverged:
                     break
 
+                # Process any work in the time step controller.
+                self.cfg_explicit.timestep_controller.process_iteration(iteration=rate)
+                self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
+                
                 # These are needed in case the schemes aren't stiffly accurate.
                 self.cfg_explicit.fem.scheme.update_solution()
                 self.cfg_implicit.fem.scheme.update_solution()
                 
-                print() # One empty line to rule them all and ruin Jan's day..
+                print(flush=True) # One empty line to rule them all and ruin Jan's day..
                 
                 self.cfg_explicit.fem.scheme.update_gridfunctions()
                 self.cfg_implicit.fem.scheme.update_gridfunctions()
@@ -603,15 +606,12 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 io_exp.save_in_time_routine(t, rate)
                 io_imp.save_in_time_routine(t, rate)
                 
-                # NOTE, currently, not possible to visualiza multizones in netgen.
+                # NOTE, currently, not possible to visualize multizones in netgen.
                 #io_exp.redraw(rate)
                 #io_imp.redraw(rate)
                 
             io_exp.save_post_time_routine(t, rate)
             io_imp.save_post_time_routine(t, rate)
-
-
-
 
 
 

@@ -55,6 +55,9 @@ class CompressibleFiniteElementMethod(FiniteElementMethod):
     def add_domain_conditions(self, blf: Integrals, lf: Integrals):
         raise NotImplementedError("Overload this method in derived class!")
 
+    def get_max_bonus_integration(self) -> int:
+        return max(max(subdict.values()) for subdict in self.bonus_int_order.values())
+    
     def get_domain_boundary_mask(self) -> ngs.GridFunction:
         """ 
         Returns a Gridfunction that is 0 on the domain boundaries and 1 on the domain interior.

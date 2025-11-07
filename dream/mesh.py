@@ -31,9 +31,8 @@ def get_regions_from_pattern(regions, pattern) -> tuple[str]:
     return regions
 
 
-def nodal_points(n, distribution='uniform', **kwargs):
-    """
-    Generate 1D nodal points in [0, 1] with various clustering distributions.
+def get_nodal_points(n, distribution='uniform', **kwargs):
+    r""" Generate 1D nodal points in [0, 1] with various clustering distributions.
 
     Parameters
     ----------
@@ -90,6 +89,23 @@ def nodal_points(n, distribution='uniform', **kwargs):
         raise ValueError(f"Unknown distribution '{distribution}'")
 
     return x
+
+
+def get_integration_points_physical_space(mesh: ngs.Mesh, element_type: ngs.ET, 
+                                          order: int, bonus: int = 0) -> list[tuple[float, float]]:
+    r""" Compute and return the integration points on each element in physical space.
+    """
+    import numpy as np
+
+    # Integration rule always assumes 2*order, as default.
+    qorder = 2*order + bonus 
+    ir = ngs.IntegrationRule(element_type, qorder) 
+    pts = mesh.MapToAllElements(ir, ngs.VOL)
+    return np.column_stack((ngs.x(pts)[:,0], ngs.y(pts)[:,0]))
+
+
+def get_local_meshsize_from_points(mesh: ngs.Mesh, x: list[float], y: list[float]) -> list[float]:
+    return ngs.specialcf.mesh_size( mesh(x=x, y=y) )
 
 
 class BufferCoord(ngs.CF):
@@ -1139,7 +1155,7 @@ def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int, nod
     A3 = +0.2843
     A4 = -0.1036
 
-    x = nodal_points(n, distribution=nodal_distribution)
+    x = get_nodal_points(n, distribution=nodal_distribution)
 
     yt = 5*t * (A0*np.sqrt(x) + A1*x + A2*np.power(x, 2) + A3*np.power(x, 3) + A4*np.power(x, 4))
     xl = x <= p

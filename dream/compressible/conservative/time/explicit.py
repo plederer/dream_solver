@@ -41,6 +41,9 @@ class ExplicitSchemes(TimeSchemes):
         # Process all items in the relevant bilinear and linear forms.
         self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'explicit bilinear form')
 
+        if self.root.timestep_controller is not None:
+            self.root.timestep_controller.initialize()
+
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
         u, v = self.root.fem.TnT['U']
@@ -112,7 +115,6 @@ class RK_ARS22(ExplicitSchemes):
     name: str = "rk_ars22"
 
     def assemble(self) -> None:
-
         super().assemble()
 
         # Reserve space for the solution at the old time step (at t^n).
@@ -177,7 +179,6 @@ class RK_ARS33(ExplicitSchemes):
     name: str = "rk_ars33"
 
     def assemble(self) -> None:
-
         super().assemble()
 
         # Reserve space for the solution at the old time step (at t^n).
@@ -259,7 +260,6 @@ class RK_ARS43(ExplicitSchemes):
     name: str = "rk_ars43"
 
     def assemble(self) -> None:
-
         super().assemble()
 
         # Reserve space for the solution at the old time step (at t^n).
@@ -348,8 +348,6 @@ class SSPRK3(ExplicitSchemes):
     name: str = "ssprk3"
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
 
         # Reserve space for the solution at the old time step (at t^n).
@@ -427,8 +425,6 @@ class CRK4(ExplicitSchemes):
     name: str = "crk4"
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
 
         # Define the CRK4 coefficients.
