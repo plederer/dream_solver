@@ -326,23 +326,25 @@ class MMS:
             fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}.png"))
 
         elif 'dt' in df.index.names:
-            dt = df.index.get_level_values('dt').unique()
             schemes = df.index.get_level_values('scheme').unique()
-            mean = pd.DataFrame([df.loc[i, j].mean() for i in schemes for j in dt])
-            mean.index = pd.MultiIndex.from_product([schemes, dt])
 
-            for ax, field in zip(axes, labels):
+            for scheme in schemes:
+                scheme_ = df.xs(scheme, level='scheme')
+                dt = scheme_.index.get_level_values('dt').unique()
 
-                data = mean.xs(field, axis=1)
+                mean = pd.DataFrame([scheme_.loc[j].mean() for j in dt])
+                mean.index = dt
 
-                for scheme in schemes:
-                    error = data.loc[scheme]
-                    ax.loglog(dt/dt.max(), error, marker='o',  label=fr"{scheme}")
+                for ax, field in zip(axes, labels):
+
+                    error = mean.xs(field, axis=1)
+                    ax.loglog(dt, error, marker='o',  label=fr"{scheme}")
 
                     if scheme in SCHEME_ORDER:
                         order = SCHEME_ORDER[scheme]
-                        ax.loglog(dt/dt.max(), dt**order/dt[0]**order * error.iloc[0], ls='--', color='k')
+                        ax.loglog(dt, dt**order/dt[0]**order * error.iloc[0], ls='--', color='k')
 
+            for ax, field in zip(axes, labels):
                 ax.set_xlabel(r"$\Delta t_{ny}$")
                 ax.set_title(labels[field])
                 ax.legend()
@@ -524,7 +526,7 @@ def get_gassner_mms(mms: MMS, t: float = None) -> flowfields:
     return U
 
 
-def time_refinement_routine(mesh: ngs.Mesh, schemes: list, time_steps: list,  *simulations: MMS):
+def time_refinement_routine(mesh: ngs.Mesh, schemes: list, *simulations: MMS, levels: int = 1):
 
     for simulation in simulations:
 
@@ -538,6 +540,8 @@ def time_refinement_routine(mesh: ngs.Mesh, schemes: list, time_steps: list,  *s
         simulation.open_output_streams()
         for scheme in schemes:
             simulation.cfg.fem.scheme = scheme
+
+            time_steps = [schemes[scheme]/(2**i) for i in range(levels)]
 
             # Solve for different time integration schemes
             time_step_routine(simulation, time_steps, scheme=scheme)
@@ -616,8 +620,11 @@ def solution_routine(simulation: MMS, **log):
     # Solve the system
     with ngs.TaskManager():
 
-        for t in cfg.time.start_solution_routine():
+        for rate, t in enumerate(cfg.time.start_solution_routine()):
             simulation.write_to_streams(t, **log)
+
+            if cfg.timestep_controller is not None:
+                cfg.timestep_controller.process_iteration(rate)
 
 
 def test_configuration(expected: dict, result: CompressibleFlowSolver):
