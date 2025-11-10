@@ -297,7 +297,7 @@ class MMS:
         # L2 errors
         labels = {'rho': r"$\| \rho_h - \rho_e \|$", 'u': r"$\| \mathbf{u}_h - \mathbf{u}_e \|$",
                   'p': r"$\| p_h - p_e \|$", 'rho_u': r"$\| \rho \mathbf{u}_h - \rho \mathbf{u}_e \|$",
-                  'rho_E': r"$\| \rho E_h - \rho E_e \|$", 'U': r"$\| \bm{U}_h - \bm{U}_e \|$"}
+                  'rho_E': r"$\| \rho E_h - \rho E_e \|$", 'U': r"$\| \mathbf{U}_h - \mathbf{U}_e \|$"}
 
         fig, axes = plt.subplots(2, 3, figsize=(15, 10))
         axes = axes.flatten()
