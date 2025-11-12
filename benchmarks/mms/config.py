@@ -553,10 +553,13 @@ def time_refinement_routine(mesh: ngs.Mesh, schemes: list, *simulations: MMS, le
 
 def time_step_routine(simulation: MMS, time_steps: list, **log):
 
+    rate = simulation.cfg.io.gfu.rate
     for dt in time_steps:
         simulation.cfg.time.timer.step = dt
         solution_routine(simulation, **log, dt=dt)
 
+        simulation.cfg.io.gfu.rate *= 2
+    simulation.cfg.io.gfu.rate = rate
 
 def mesh_refinement_routine(*simulations: MMS,
                             levels=4,
