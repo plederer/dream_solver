@@ -319,7 +319,7 @@ def test_gridfunctionstream_save_pre_time_routine(gfu_handler):
     cfg.time = "transient"
     cfg.fem.initialize_time_scheme_gridfunctions()
     handler.save_pre_time_routine(0.0)
-    path = handler.path.joinpath("gfu_0.0.ngs")
+    path = handler.path.joinpath("gfu_0.000000e+00.ngs")
     assert path.exists()
 
 
@@ -363,7 +363,7 @@ def test_gridfunctionstream_save_post_time_routine_transient(gfu_handler):
     handler.rate = 3
     handler = handler.open()
     handler.save_post_time_routine(t=0.1, it=10)
-    path = handler.path.joinpath('gfu_0.1.ngs')
+    path = handler.path.joinpath('gfu_1.000000e-01.ngs')
     assert path.exists()
 
 
