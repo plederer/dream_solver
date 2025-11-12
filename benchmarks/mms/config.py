@@ -193,6 +193,17 @@ class MMS:
         Uh.T = self.cfg.temperature(Uh)
         self.Uh = Uh
 
+    def set_filenames(self, **log):
+        filename = self.filename
+        for key, value in log.items():
+            if isinstance(value, str):
+                filename += f"_{value}"
+            else:
+                filename += f"_{key}{value}"
+
+        self.cfg.io.vtk.filename = filename
+        self.cfg.io.gfu.filename = filename
+
     def write_to_streams(self, t: float = None, **log):
         self.log = log
 
@@ -225,15 +236,6 @@ class MMS:
         self.errors = {}
 
     def open_vtk_stream(self, **log):
-
-        filename = self.filename
-        for key, value in log.items():
-            if isinstance(value, str):
-                filename += f"_{value}"
-            else:
-                filename += f"_{key}{value}"
-
-        self.cfg.io.vtk.filename = filename
         export = ['density', 'velocity', 'pressure', 'temperature', 'Ma', 'energy']
         fields = {f"{key}_h": value for key, value in self.Uh.items() if key in export}
         fields.update({f"{key}_e": value for key, value in self.Ue.items() if key in export})
@@ -594,6 +596,9 @@ def polynomial_order_routine(simulation: MMS, orders=[1, 2, 3, 4, 5], **log):
 
 
 def solution_routine(simulation: MMS, **log):
+
+    # Set filenames for output
+    simulation.set_filenames(**log)
 
     cfg = simulation.cfg
 

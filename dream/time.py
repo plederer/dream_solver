@@ -250,7 +250,7 @@ class TimeSchemes(Scheme):
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
         raise NotImplementedError("Overload this method in derived class!")
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
         raise NotImplementedError("Overload this method in derived class!")
 
     def get_level_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
@@ -478,7 +478,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
             io.save_pre_time_routine()
 
             # Solution routine starts here
-            for log in scheme.solve_current_time_level():
+            for log in scheme.solve_current_time_level(0.0):
                 logger.info(self.parse_routine_log(**log))
 
                 if "is_diverged" in log:

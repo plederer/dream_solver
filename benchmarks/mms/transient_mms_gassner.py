@@ -47,6 +47,10 @@ GENERAL['fem.scheme.compile'] = False
 GENERAL['io.vtk.enable'] = False
 GENERAL['io.vtk.rate'] = 10
 GENERAL['io.vtk.subdivision'] = 2
+GENERAL['io.gfu.enable'] = False
+GENERAL['io.gfu.rate'] = 1
+GENERAL['io.gfu.time_level_rate'] = 10
+GENERAL['io.vtk.subdivision'] = 2
 GENERAL['io.path'] = f"transient_gassner_{simulation_type}/{filename}"
 if simulation_type == 'navier-stokes':
     GENERAL['fem.viscous_treatment'] = viscous
