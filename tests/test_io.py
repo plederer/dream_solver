@@ -330,7 +330,7 @@ def test_gridfunctionstream_save_in_time_routine(gfu_handler):
     handler = handler.open()
 
     handler.save_in_time_routine(t=0.0)
-    path = handler.path.joinpath("test_0.0.ngs")
+    path = handler.path.joinpath("test_0.000000e+00.ngs")
     assert path.exists()
 
     gfu = ngs.GridFunction(ngs.L2(cfg.mesh, order=0)**2)
@@ -346,7 +346,7 @@ def test_gridfunctionstream_saving_rate_in_time_routine(gfu_handler):
     for it, t in enumerate(range(10)):
         handler.save_in_time_routine(t, it)
     for t in range(0, 10, 2):
-        path = handler.path.joinpath(f"gfu_{t}.ngs")
+        path = handler.path.joinpath(f"gfu_{t:.6e}.ngs")
         assert path.exists()
 
 
@@ -405,7 +405,7 @@ def test_gridfunctionstream_save_and_load_gridfunction_levels(gfu_handler):
     handler.save_in_time_routine(0.0, it=0)
     for fes in cfg.fem.scheme.gfus:
         for level in cfg.fem.scheme.gfus[fes]:
-            assert handler.path.joinpath(f"test_0.0_{fes}_{level}.ngs").exists()
+            assert handler.path.joinpath(f"test_0.000000e+00_{fes}_{level}.ngs").exists()
     handler.load_time_levels(0.0)
     for fes in cfg.fem.scheme.gfus:
         for level in cfg.fem.scheme.gfus[fes]:
@@ -477,8 +477,7 @@ def test_sensorstream_save_transient_point_sensor(sensor_handler):
         ['component', '', 'x', 'y', '', 'x', 'y', '', 'x', 'y'],
         ['t', '', '', '', '', '', '', '', '', ''],
         ['0.0', '0.0', '0.0', '0.0', '1.0', '1.0', '0.0', '0.0', '0.0', '1.0'],
-        ['0.1', '0.0', '0.0', '0.0', '1.0', '1.0', '0.0', '0.0', '0.0', '1.0'],
-        ['0.6', '0.0', '0.0', '0.0', '1.0', '1.0', '0.0', '0.0', '0.0', '1.0'],
+        ['0.5', '0.0', '0.0', '0.0', '1.0', '1.0', '0.0', '0.0', '0.0', '1.0'],
         ['1.0', '0.0', '0.0', '0.0', '1.0', '1.0', '0.0', '0.0', '0.0', '1.0']
     ]
     with path.open('r') as file:
@@ -506,8 +505,7 @@ def test_sensorstream_save_transient_domain_sensor(sensor_handler):
         ['component', '', 'x', 'y'],
         ['t', '', '', ''],
         np.array([0.0, 1/2, 1/2, 1/2]),
-        np.array([0.1, 1/2, 1/2, 1/2]),
-        np.array([0.6, 1/2, 1/2, 1/2]),
+        np.array([0.5, 1/2, 1/2, 1/2]),
         np.array([1.0, 1/2, 1/2, 1/2])
     ]
     with path.open('r') as file:
@@ -538,8 +536,7 @@ def test_sensorstream_save_transient_domain_l2_sensor(sensor_handler):
         ['component', 'L2', 'L2'],
         ['t', '', ''],
         np.array([0.0, np.sqrt(1/3), np.sqrt(2/3)]),
-        np.array([0.1, np.sqrt(1/3), np.sqrt(2/3)]),
-        np.array([0.6, np.sqrt(1/3), np.sqrt(2/3)]),
+        np.array([0.5, np.sqrt(1/3), np.sqrt(2/3)]),
         np.array([1.0, np.sqrt(1/3), np.sqrt(2/3)])
     ]
     with path.open('r') as file:
@@ -570,8 +567,7 @@ def test_sensorstream_save_transient_boundary_sensor(sensor_handler):
         ['component', '', 'x', 'y'],
         ['t', '', '', ''],
         np.array([0.0, 0.5, 0.5, 0.5]),
-        np.array([0.1, 0.5, 0.5, 0.5]),
-        np.array([0.6, 0.5, 0.5, 0.5]),
+        np.array([0.5, 0.5, 0.5, 0.5]),
         np.array([1.0, 0.5, 0.5, 0.5])
     ]
     with path.open('r') as file:
@@ -602,8 +598,7 @@ def test_sensorstream_save_transient_boundary_l2_sensor(sensor_handler):
         ['component', 'L2', 'L2'],
         ['t', '', ''],
         np.array([0.0, np.sqrt(1/3), np.sqrt(2/3)]),
-        np.array([0.1, np.sqrt(1/3), np.sqrt(2/3)]),
-        np.array([0.6, np.sqrt(1/3), np.sqrt(2/3)]),
+        np.array([0.5, np.sqrt(1/3), np.sqrt(2/3)]),
         np.array([1.0, np.sqrt(1/3), np.sqrt(2/3)])
     ]
     with path.open('r') as file:

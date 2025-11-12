@@ -118,7 +118,7 @@ class Timer(Configuration):
         step = self.step.Get()
 
         self.t = t0
-        for rate in range(round((end - t0)/(step))):
+        for rate in range(1, round((end - t0)/(step))+1):
             tn = t0 + step
             yield rate, t0, tn
             t0 = tn
