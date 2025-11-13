@@ -671,14 +671,18 @@ class SensorStream(Stream):
         for sensor, data in self.measure():
 
             if self.to_csv:
-                self.csv[sensor.name][1].writerow([t, *data])
+                file, writer = self.csv[sensor.name]
+                writer.writerow([t, *data])
+                file.flush()
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
 
         for sensor, data in self.measure():
             if it % sensor.rate == 0:
                 if self.to_csv:
-                    self.csv[sensor.name][1].writerow([t, *data])
+                    file, writer = self.csv[sensor.name]
+                    writer.writerow([t, *data])
+                    file.flush()
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
 
@@ -688,7 +692,9 @@ class SensorStream(Stream):
         for sensor, data in self.measure():
             if self.to_csv:
                 if t == '' or not it % sensor.rate == 0:
-                    self.csv[sensor.name][1].writerow([t, *data])
+                    file, writer = self.csv[sensor.name]
+                    writer.writerow([t, *data])
+                    file.flush()
 
     def load_csv_as_dict(self, sensor: Sensor | str) -> tuple[np.ndarray, dict[tuple[str, str, str], np.ndarray]]:
         import csv
