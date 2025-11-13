@@ -179,6 +179,7 @@ class flowfields(ngsdict):
     grad_H = quantity('specific_enthalpy_gradient')
     grad_c = quantity('speed_of_sound_gradient')
     eps = quantity('strain_rate_tensor', r"\bm{\varepsilon}")
+    omega = quantity('vorticity', r"\bm{\omega}")
 
 
 class dimensionalfields(dict):
