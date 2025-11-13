@@ -57,6 +57,14 @@ def test_velocity(cfg):
         nptest.assert_almost_equal(cfg.velocity(U)(mip), (1, 1))
     run_equation_test(cfg, "velocity", throws=True, is_vector=True, extra=extra)
 
+def test_vorticity(cfg):
+    U = flowfields()
+    dU = flowfields(grad_u=ngs.CF((0, 2, 1, 0), dims=(2, 2)))
+    assert cfg.vorticity(U, dU)(mip) == -1
+
+    U = flowfields(rho = 1, rho_u = (2*ngs.y, ngs.x), )
+    dU = flowfields(grad_rho = (0,0), grad_rho_u = ngs.CF((0, 2, 1, 0), dims=(2, 2)),)
+    assert cfg.vorticity(U, dU)(mip) == -1
 
 def test_momentum(cfg):
     def extra(cfg, name):
