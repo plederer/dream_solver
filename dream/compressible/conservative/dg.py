@@ -434,7 +434,8 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         Ui = self.get_conservative_fields(U)
         U_infty = self.viscous_treatment.get_adiabatic_boundary_state(Ui)
         Uj = self.get_conservative_fields(U_infty)
-        
+        Ui.U = U; Uj.U = U_infty
+
         # We use the Riemann solver, to impose the BC weakly.
         Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
         blf['U'][f"{bc.name}_{bnd}_conv"] = ngs.InnerProduct(Fn, V) * dS

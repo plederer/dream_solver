@@ -362,22 +362,6 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         if self.viscous_treatment is None:
             raise TypeError(f"Adiabatic wall requires viscous treatment.")
 
-        # In case an IP treatment is selected, we need to enforce the convective part as well.
-        if isinstance(self.viscous_treatment, InteriorPenaltyHDG):
-            U, _ = self.TnT['U']
-            Uhat, Vhat = self.TnT['Uhat']
-            bonus = self.bonus_int_order['convection']
-            dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
-
-            U = self.get_conservative_fields(U)
-            U_infty = self.viscous_treatment.get_adiabatic_boundary_state(U)
-            Uhat = self.get_conservative_fields(Uhat)
-            U0 = self.get_conservative_fields(U_infty)
-            # Force the internal (numerical) flux to the adiabatic boundary flux.
-            FnI = self.get_convective_numerical_flux(U, Uhat, self.mesh.normal)
-            FnJ = self.root.get_convective_flux(U0) * self.mesh.normal
-            blf['Uhat'][f"{bc.name}_{bnd}_conv"] = ngs.InnerProduct(FnI - FnJ, Vhat) * dS
-
         self.viscous_treatment.add_adiabatic_wall_formulation(blf, lf, bc, bnd)
 
     def add_interface_formulation(self, blf: Integrals, lf: Integrals, bc: InterfaceBC, bnd: str):

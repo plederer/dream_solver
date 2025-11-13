@@ -60,21 +60,7 @@ class CompressibleFlowSolver(SolverConfiguration):
     def fem(self, fem):
         OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
         self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
-
-    @dream_configuration
-    def timestep_controller(self) -> PhysicalTimeStepController | None:
-        return self._timestep_controller
-
-    @timestep_controller.setter
-    def timestep_controller(self, value: str | PhysicalTimeStepController | None):
-        
-        if value is None:
-            self._timestep_controller = None
-            return
-
-        OPTIONS = [PhysicalTimeStepController]
-        self._timestep_controller = self._get_configuration_option(value, OPTIONS, TimeStepController)
-    
+   
     @dream_configuration
     def mach_number(self) -> ngs.Parameter:
         r""" Sets the ratio of the farfield flow velocity to the farfield speed of sound.
@@ -223,6 +209,20 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         self._dim_fields = dim_fields
         self._dim_fields.t = self.scaling.reference_time_scale
+
+    @dream_configuration
+    def timestep_controller(self) -> PhysicalTimeStepController | None:
+        return self._timestep_controller
+
+    @timestep_controller.setter
+    def timestep_controller(self, value: str | PhysicalTimeStepController | None):
+        
+        if value is None:
+            self._timestep_controller = None
+            return
+
+        OPTIONS = [PhysicalTimeStepController]
+        self._timestep_controller = self._get_configuration_option(value, OPTIONS, TimeStepController)
 
     def get_solution_fields(self, *fields: str, default_fields: bool = True) -> flowfields:
         """ Returns the solution fields depending on the underlying finite element method.
