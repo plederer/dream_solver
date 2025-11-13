@@ -710,6 +710,21 @@ class CompressibleFlowSolver(SolverConfiguration):
             return dU.grad_rho_u/U.rho - bla.outer(U.rho_u, dU.grad_rho)/U.rho**2
 
     @equation
+    def vorticity(self, U: flowfields, dU: flowfields) -> ngs.CF:
+        grad_u = dU.grad_u
+        if grad_u is None:
+            grad_u = self.velocity_gradient(U, dU)
+
+        if self.mesh.dim == 2:
+            return grad_u[1, 0] - grad_u[0, 1]
+        elif self.mesh.dim == 3:
+            return bla.as_vector((
+                grad_u[2, 1] - grad_u[1, 2],
+                grad_u[0, 2] - grad_u[2, 0],
+                grad_u[1, 0] - grad_u[0, 1]
+            ))
+        
+    @equation
     def momentum_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_u is not None:
             return dU.grad_rho_u
