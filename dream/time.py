@@ -114,8 +114,14 @@ class Timer(Configuration):
 
     def __call__(self, **kwargs):
         self.update(**kwargs)
-        for t in self.start(stride=1):
-            yield t
+        t0, end = self.interval
+        step = self.step.Get()
+
+        self.t = t0
+        for rate in range(1, round((end - t0)/(step))+1):
+            tn = t0 + step
+            yield rate, t0, tn
+            t0 = tn
 
     def __iter__(self):
         for t in self.start(False, stride=1):
@@ -244,7 +250,7 @@ class TimeSchemes(Scheme):
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
         raise NotImplementedError("Overload this method in derived class!")
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
         raise NotImplementedError("Overload this method in derived class!")
 
     def get_level_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
@@ -258,6 +264,9 @@ class TimeSchemes(Scheme):
         for gfu in self.gfus.values():
             for old in list(gfu.values())[:-1]:
                 old.vec.data = gfu['n+1'].vec
+
+    def set_stage_t(self, stage: int, t0: float) -> None:
+        self.t.Set(t0 + self.get_stage_dt()[stage])
 
     def update_gridfunctions(self):
         for gfu in self.gfus.values():
@@ -360,7 +369,7 @@ class TransientRoutine(TimeRoutine):
         if stage is not None:
             msg += f" | stage: {stage}"
         if t is not None:
-            msg += f" | t: {t:.{self.timer.digit}f}"
+            msg += f" | t: {t:.6e}"
 
         return msg
 
@@ -378,16 +387,15 @@ class TransientRoutine(TimeRoutine):
             io.save_pre_time_routine(self.timer.t.Get())
 
             # Solution routine starts here
-            for rate, t in enumerate(self.timer()):
+            for rate, tn, t1 in self.timer():
 
-                for log in scheme.solve_current_time_level():
-                    logger.info(self.parse_routine_log(t=t, **log))
-
+                for log in scheme.solve_current_time_level(tn):
+                    logger.info(self.parse_routine_log(**log))
 
                     if "is_diverged" in log:
                         break
 
-                print()
+                print(flush=True)
 
                 if "is_diverged" in log:
                     logger.error("Transient routine diverged!")
@@ -395,13 +403,13 @@ class TransientRoutine(TimeRoutine):
 
                 scheme.update_gridfunctions()
 
-                yield t
+                yield t1
 
-                io.save_in_time_routine(t, rate)
+                io.save_in_time_routine(t1, rate)
                 io.redraw(rate)
             # Solution routine ends here
 
-            io.save_post_time_routine(t, rate)
+            io.save_post_time_routine(t1, rate)
 
 
 class PseudoTimeSteppingRoutine(TimeRoutine):
@@ -470,7 +478,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
             io.save_pre_time_routine()
 
             # Solution routine starts here
-            for log in scheme.solve_current_time_level():
+            for log in scheme.solve_current_time_level(0.0):
                 logger.info(self.parse_routine_log(**log))
 
                 if "is_diverged" in log:
@@ -571,7 +579,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
         if stage is not None:
             msg += f" | stage: {stage}"
         if t is not None:
-            msg += f" | t: {t:.{self.timer.digit}f}"
+            msg += f" | t: {t:.6e}"
 
         return msg
 
@@ -592,9 +600,9 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
             io_imp.save_pre_time_routine(self.timer.t.Get())
             io_exp.save_pre_time_routine(self.timer.t.Get())
 
-            for rate, t in enumerate(self.timer()):
+            for rate, t0, t1 in timer():
 
-                is_diverged = self.solve_stages(t)
+                is_diverged = self.solve_stages(t0)
                 if is_diverged:
                     break
 
@@ -613,35 +621,29 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 self.cfg_explicit.fem.scheme.update_gridfunctions()
                 self.cfg_implicit.fem.scheme.update_gridfunctions()
 
-                io_exp.save_in_time_routine(t, rate)
-                io_imp.save_in_time_routine(t, rate)
-                
+                io_exp.save_in_time_routine(t1, rate)
+                io_imp.save_in_time_routine(t1, rate)
+
                 # NOTE, currently, not possible to visualize multizones in netgen.
-                #io_exp.redraw(rate)
-                #io_imp.redraw(rate)
-                
-            io_exp.save_post_time_routine(t, rate)
-            io_imp.save_post_time_routine(t, rate)
+                # io_exp.redraw(rate)
+                # io_imp.redraw(rate)
 
-    def solve_stages(self, t: float = None) -> bool:
+            io_exp.save_post_time_routine(t1, rate)
+            io_imp.save_post_time_routine(t1, rate)
 
-        imp_scheme = self.cfg_implicit.fem.scheme
-        exp_scheme = self.cfg_explicit.fem.scheme
-
-        imp_scheme.t0 = self.timer.t.Get() - self.timer.step.Get()
-        exp_scheme.t0 = imp_scheme.t0
+    def solve_stages(self, t0: float) -> bool:
 
         # We loop over each stage and solve explicit regions first, then implicit ones.
         for iStage in range(1, self.nStage):
-            for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage):
-                logger.info(self.parse_routine_log(t=t, cfg=self.cfg_explicit, **log_explicit))
+            for log_explicit in self.cfg_explicit.fem.scheme.solve_stage(iStage, t0):
+                logger.info(self.parse_routine_log(cfg=self.cfg_explicit, **log_explicit))
 
                 if "is_diverged" in log_explicit:
                     logger.error("Explicit Multizone IMEX routine diverged!")
                     return True
 
-            for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage):
-                logger.info(self.parse_routine_log(t=t, cfg=self.cfg_implicit, **log_implicit))
+            for log_implicit in self.cfg_implicit.fem.scheme.solve_stage(iStage, t0):
+                logger.info(self.parse_routine_log(cfg=self.cfg_implicit, **log_implicit))
 
                 if "is_diverged" in log_implicit:
                     logger.error("Implicit Multizone IMEX routine diverged!")

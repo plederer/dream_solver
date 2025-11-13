@@ -47,6 +47,10 @@ GENERAL['fem.scheme.compile'] = False
 GENERAL['io.vtk.enable'] = False
 GENERAL['io.vtk.rate'] = 10
 GENERAL['io.vtk.subdivision'] = 2
+GENERAL['io.gfu.enable'] = False
+GENERAL['io.gfu.rate'] = 1
+GENERAL['io.gfu.time_level_rate'] = 10
+GENERAL['io.vtk.subdivision'] = 2
 GENERAL['io.path'] = f"transient_gassner_{simulation_type}/{filename}"
 if simulation_type == 'navier-stokes':
     GENERAL['fem.viscous_treatment'] = viscous
@@ -60,16 +64,27 @@ HDG['fem'] = 'conservative_hdg'
 
 # DG Navier-Stokes setting
 DG = GENERAL.copy()
+#DG['timestep_controller'] = 'physical_controller'
+#DG['timestep_controller.cfl'] = 1
+#DG['timestep_controller.rate'] = 100
 DG['fem'] = 'conservative_dg'
+
+f_ny = periods/(time_interval[1] - time_interval[0])
+dt_min = 1/(2*f_ny)
 
 if fem == 'hdg':
     CFG = HDG
-    schemes = ['implicit_euler', 'bdf2', 'sdirk22', 'sdirk33']
-    schemes = ['bdf3', 'bdf2']
-    schemes = ['sdirk22', 'sdirk33', 'bdf3']
+    schemes = {'implicit_euler': dt_min * 0.25,
+               'sdirk22': dt_min * 0.5, 
+               'sdirk33': dt_min * 0.75, 
+               'sdirk43': dt_min}
+    
 elif fem == 'dg':
     CFG = DG
-    schemes = ['explicit_euler']
+    schemes = {"explicit_euler" : 0.00025,
+               "rk_ars22": 0.0005, 
+               "rk_ars33": 0.00075, 
+               "rk_ars43": 0.001}
 
 if simulation_type == 'navier-stokes':
     FEM = NavierStokesMMS(CFG, get_gassner_mms, filename=filename, periods=periods, is_periodic=True)
@@ -81,10 +96,6 @@ mesh = ngs.Mesh(get_geometry(FEM.is_periodic).GenerateMesh(maxh=0.5, quad_domina
 for i in range(2): # 8x8
     mesh.Refine()
 
-f_ny = periods/(time_interval[1] - time_interval[0])
-dt_min = 1/(2*f_ny)
-dt = [dt_min/(2**i) for i in range(1,5)]
-
 if __name__ == "__main__":
     # Start Routine
-    time_refinement_routine(mesh, schemes, dt, FEM)
+    time_refinement_routine(mesh, schemes, FEM, levels=4)

@@ -60,7 +60,7 @@ class CompressibleFlowSolver(SolverConfiguration):
     def fem(self, fem):
         OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
         self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
-   
+
     @dream_configuration
     def mach_number(self) -> ngs.Parameter:
         r""" Sets the ratio of the farfield flow velocity to the farfield speed of sound.
@@ -709,6 +709,21 @@ class CompressibleFlowSolver(SolverConfiguration):
             logger.debug("Returning velocity gradient from density and momentum.")
             return dU.grad_rho_u/U.rho - bla.outer(U.rho_u, dU.grad_rho)/U.rho**2
 
+    @equation
+    def vorticity(self, U: flowfields, dU: flowfields) -> ngs.CF:
+        grad_u = dU.grad_u
+        if grad_u is None:
+            grad_u = self.velocity_gradient(U, dU)
+
+        if self.mesh.dim == 2:
+            return grad_u[1, 0] - grad_u[0, 1]
+        elif self.mesh.dim == 3:
+            return bla.as_vector((
+                grad_u[2, 1] - grad_u[1, 2],
+                grad_u[0, 2] - grad_u[2, 0],
+                grad_u[1, 0] - grad_u[0, 1]
+            ))
+        
     @equation
     def momentum_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_u is not None:

@@ -302,6 +302,7 @@ class GridfunctionStream(Stream):
         DEFAULT = {
             "rate": 1,
             "time_level_rate": 0,
+            "time_format": ".6e",
         }
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
@@ -328,6 +329,16 @@ class GridfunctionStream(Stream):
             raise ValueError("Saving rate must be greater equal than 0!")
         self._time_level_rate = time_level_rate
 
+    @dream_configuration
+    def time_format(self) -> str:
+        return self._format_specifier
+    
+    @time_format.setter
+    def time_format(self, t_format: str):
+        if not isinstance(t_format, str):
+            raise ValueError("Format specifier must be a string!")
+        self._format_specifier = t_format
+
     def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
         if filename is None:
@@ -341,7 +352,7 @@ class GridfunctionStream(Stream):
 
         filename = self.filename
         if t is not None:
-            filename = f"{filename}_{t}"
+            filename = f"{filename}_{t:{self.time_format}}"
 
         self.load_gridfunction(self.root.fem.gfu, filename)
 
@@ -357,7 +368,7 @@ class GridfunctionStream(Stream):
         with self.root.io as io:
 
             for it, t in enumerate(self.root.time.timer.start(stride=self.rate)):
-                logger.info(f"file: {self.filename} | t: {t}")
+                logger.info(f"file: {self.filename} | t: {t:{self.time_format}} ")
 
                 self.load_routine(t)
                 io.redraw()
@@ -376,7 +387,7 @@ class GridfunctionStream(Stream):
 
             for level, gfu in gfu.items():
 
-                self.load_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
+                self.load_gridfunction(gfu, f"{self.filename}_{t:{self.time_format}}_{fes}_{level}")
 
     def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
 
@@ -389,7 +400,7 @@ class GridfunctionStream(Stream):
 
     def save_in_time_routine(self, t: float, it: int = 0):
 
-        filename = f"{self.filename}_{t}"
+        filename = f"{self.filename}_{t:{self.time_format}}"
 
         if self.rate:
             self._save_routine_gridfunction(filename, it % self.rate == 0)
@@ -405,7 +416,7 @@ class GridfunctionStream(Stream):
             self._save_routine_gridfunction(filename, True)
         else:
             # Transient case
-            filename = f"{filename}_{t}"
+            filename = f"{filename}_{t:{self.time_format}}"
             self._save_routine_gridfunction(filename, True)
             self._save_routine_gridfunction_level(filename, True)
 
@@ -417,7 +428,7 @@ class GridfunctionStream(Stream):
             self._save_routine_gridfunction(filename, True)
         else:
             # Transient case
-            filename = f"{filename}_{t}"
+            filename = f"{filename}_{t:{self.time_format}}"
 
             self._save_routine_gridfunction(filename, True)
             self._save_routine_gridfunction_level(filename, True)
@@ -660,14 +671,18 @@ class SensorStream(Stream):
         for sensor, data in self.measure():
 
             if self.to_csv:
-                self.csv[sensor.name][1].writerow([t, *data])
+                file, writer = self.csv[sensor.name]
+                writer.writerow([t, *data])
+                file.flush()
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
 
         for sensor, data in self.measure():
             if it % sensor.rate == 0:
                 if self.to_csv:
-                    self.csv[sensor.name][1].writerow([t, *data])
+                    file, writer = self.csv[sensor.name]
+                    writer.writerow([t, *data])
+                    file.flush()
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
 
@@ -677,7 +692,9 @@ class SensorStream(Stream):
         for sensor, data in self.measure():
             if self.to_csv:
                 if t == '' or not it % sensor.rate == 0:
-                    self.csv[sensor.name][1].writerow([t, *data])
+                    file, writer = self.csv[sensor.name]
+                    writer.writerow([t, *data])
+                    file.flush()
 
     def load_csv_as_dict(self, sensor: Sensor | str) -> tuple[np.ndarray, dict[tuple[str, str, str], np.ndarray]]:
         import csv
