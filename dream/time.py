@@ -583,7 +583,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
         return msg
 
-    def solve(self, reassemble: bool = True):
+    def start_solution_routine(self, reassemble = True):
 
         timer = self.timer
         timer.reset()
@@ -617,6 +617,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 self.cfg_implicit.fem.scheme.update_solution()
                 
                 print(flush=True) # separate info for each stage. 
+                yield t1
                 
                 self.cfg_explicit.fem.scheme.update_gridfunctions()
                 self.cfg_implicit.fem.scheme.update_gridfunctions()
@@ -651,3 +652,6 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
         return False
 
+    def solve(self, reassemble: bool = True):
+        for t in self.start_solution_routine(reassemble):
+            pass
