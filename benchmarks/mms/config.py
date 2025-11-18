@@ -30,6 +30,28 @@ def get_geometry(periodic: bool = False, imex: bool = False):
 
     return occ.OCCGeometry(face, dim=2)
 
+def get_hp_geometry():
+
+    wp = occ.WorkPlane()
+    face = occ.Glue([wp.MoveTo(i, j).Rectangle(0.5, 0.5).Face() for j in (0, 0.5) for i in (0, 0.5)])
+
+    for i in range(2):
+        face.faces[i].name = "implicit"
+        face.faces[i].edges[0].hpref = 1
+    for j in range(2, 4):
+        face.faces[j].name = "explicit"
+
+    for edge, name in zip(face.faces[0].edges, ('bottom', 'default', 'interface', 'left')):
+        edge.name = name
+    for edge, name in zip(face.faces[1].edges, ('bottom', 'right', 'interface', 'default')):
+        edge.name = name
+    for edge, name in zip(face.faces[2].edges, ('interface', 'default', 'top', 'left')):
+        edge.name = name
+    for edge, name in zip(face.faces[3].edges, ('interface', 'right', 'top', 'default')):
+        edge.name = name
+
+    return occ.OCCGeometry(face, dim=2).GenerateMesh(maxh=0.5, quad_dominated=True)
+
 
 def div(F):
     return ngs.CF(tuple(F[i, 0].Diff(ngs.x) + F[i, 1].Diff(ngs.y) for i in range(F.dims[0])))
