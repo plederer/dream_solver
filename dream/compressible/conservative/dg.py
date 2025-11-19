@@ -9,6 +9,7 @@ from dream.time import (TimeSchemes,
                         PseudoTimeSteppingRoutine,
                         MultizoneIMEXTimeRoutine)
 from dream.config import dream_configuration, Integrals
+from dream.mesh import SpongeLayer
 from dream.compressible.config import (flowfields,
                                        ConservativeFiniteElementMethod,
                                        FarField,
@@ -156,12 +157,27 @@ class ConservativeDG(ConservativeFiniteElementMethod):
 
             if isinstance(dc, Initial):
                 continue
+            
+            if isinstance(dc, SpongeLayer):
+                self.add_sponge_layer_formulation(blf, lf, dc, dom)
 
             elif isinstance(dc, Force):
                 self.add_forcing_formulation(blf, lf, dc, dom)
 
             else:
                 raise TypeError(f"Domain condition {dc} not implemented in {self}!")
+
+    def add_sponge_layer_formulation(self, blf: Integrals, lf: Integrals, dc: SpongeLayer, dom: str):
+
+        dV = ngs.dx(definedon=self.mesh.Materials(dom), bonus_intorder=dc.order)
+
+        U, V = self.TnT['U']
+        U_target = ngs.CF(
+            (self.root.density(dc.target_state),
+             self.root.momentum(dc.target_state),
+             self.root.energy(dc.target_state)))
+
+        blf['U'][f"{dc.name}_{dom}"] = dc.function * (U - U_target) * V * dV
 
     def get_unique_farfield_state(self, Ui: flowfields, Uinf: flowfields):
 
