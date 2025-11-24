@@ -288,6 +288,8 @@ class TimeRoutine(Configuration, is_interface=True):
     def parse_routine_log(self,
                           it: int | None = None,
                           error: float | None = None,
+                          t: float | None = None,
+                          stage: int | None = None,
                           cfg: SolverConfiguration = None, **kwargs):
         """ Parse the routine log and return a formatted string. """
 
@@ -300,6 +302,10 @@ class TimeRoutine(Configuration, is_interface=True):
             msg += f" | it: {it}"
         if error is not None:
             msg += f" | error: {error:8e}"
+        if stage is not None:
+            msg += f" | stage: {stage}"
+        if t is not None:
+            msg += f" | t: {t:.6e}"
 
         return msg
 
@@ -357,21 +363,6 @@ class TransientRoutine(TimeRoutine):
             raise TypeError(f"Timer must be of type {Timer}!")
 
         self._timer = timer
-
-    def parse_routine_log(self,
-                          stage: int = None,
-                          t: float = None,
-                          **kwargs):
-        """ Parse the routine log and return a formatted string. """
-
-        msg = super().parse_routine_log(**kwargs)
-
-        if stage is not None:
-            msg += f" | stage: {stage}"
-        if t is not None:
-            msg += f" | t: {t:.6e}"
-
-        return msg
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
@@ -567,22 +558,6 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
         self._timer = timer
 
-    def parse_routine_log(self,
-                          stage: int = None,
-                          t: float = None,
-                          cfg: SolverConfiguration = None,
-                          **kwargs):
-        """ Parse the routine log and return a formatted string. """
-
-        msg = super().parse_routine_log(cfg=cfg, **kwargs)
-
-        if stage is not None:
-            msg += f" | stage: {stage}"
-        if t is not None:
-            msg += f" | t: {t:.6e}"
-
-        return msg
-
     def start_solution_routine(self, reassemble = True):
 
         timer = self.timer
@@ -651,6 +626,85 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                     return True
 
         return False
+
+    def solve(self, reassemble: bool = True):
+        for t in self.start_solution_routine(reassemble):
+            pass
+
+class LocalTimeIMEXRoutine(TimeRoutine):
+
+    name: str = "local_imex_transient"
+
+    def __init__(self, cfg_implicit=None, cfg_explicit=None, root=None, **default):
+        super().__init__(root, **default)
+
+        # Keep references for the configurations.
+        self.cfg_implicit = cfg_implicit
+        self.cfg_explicit = cfg_explicit
+
+    # Function that checks whether the specified schemes form a viable IMEX pair.
+    def start_solution_routine(self, reassemble = True):
+
+        ltimer = self.cfg_explicit.time.timer
+        gtimer = self.cfg_implicit.time.timer
+        ltimer.reset()
+        gtimer.reset()
+
+        exp_scheme = self.cfg_explicit.fem.scheme
+        imp_scheme = self.cfg_implicit.fem.scheme
+
+        if reassemble:
+            self.cfg_implicit.fem.scheme.assemble()
+            self.cfg_explicit.fem.scheme.assemble()
+
+        with self.cfg_implicit.io as io_imp, self.cfg_explicit.io as io_exp:
+
+            io_imp.save_pre_time_routine(gtimer.t.Get())
+            io_exp.save_pre_time_routine(gtimer.t.Get())
+
+            for rate, t0, t1 in gtimer():
+
+                for lrate, t0l, _ in ltimer(interval=(t0, t1)):
+
+                    for log in exp_scheme.solve_current_time_level(t0l):
+                        logger.info(self.parse_routine_log(**log, cfg=self.cfg_explicit))
+
+                        if "is_diverged" in log:
+                            break
+
+                        if self.cfg_explicit.timestep_controller is not None:
+                            self.cfg_explicit.timestep_controller.process_iteration(iteration=lrate)
+
+                        self.cfg_explicit.fem.scheme.update_solution()
+                        self.cfg_explicit.fem.scheme.update_gridfunctions()
+
+                    if "is_diverged" in log:
+                        break
+
+                for log in imp_scheme.solve_current_time_level(t0):
+                    logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
+
+                if "is_diverged" in log:
+                    break
+
+                # Process any work required in the time step controller.
+                if self.cfg_implicit.timestep_controller is not None:
+                    self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
+                
+                # These are needed in case the schemes aren't stiffly accurate.
+                self.cfg_implicit.fem.scheme.update_solution()
+                
+                print(flush=True) # separate info for each stage. 
+                yield t1
+                
+                self.cfg_implicit.fem.scheme.update_gridfunctions()
+
+                io_exp.save_in_time_routine(t1, rate)
+                io_imp.save_in_time_routine(t1, rate)
+
+            io_exp.save_post_time_routine(t1, rate)
+            io_imp.save_post_time_routine(t1, rate)
+
 
     def solve(self, reassemble: bool = True):
         for t in self.start_solution_routine(reassemble):

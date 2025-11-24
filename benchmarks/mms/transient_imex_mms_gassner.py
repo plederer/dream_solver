@@ -1,7 +1,7 @@
 # Import modules
 import argparse
 import ngsolve as ngs
-from config import TRANSIENT_CFG, imex_time_refinement_routine, EulerMMS, NavierStokesMMS, get_gassner_mms, get_geometry
+from config import TRANSIENT_CFG, multizone_imex_time_refinement_routine, EulerMMS, NavierStokesMMS, get_gassner_mms, get_geometry
 ngs.SetNumThreads(8)
 
 import argparse
@@ -92,4 +92,4 @@ for i in range(2):  # 8x8
     implicit_mesh.Refine()
 
 if __name__ == "__main__":
-    imex_time_refinement_routine(explicit_mesh, implicit_mesh, DG, HDG, PAIRS[PAIR], levels=5)
+    multizone_imex_time_refinement_routine(explicit_mesh, implicit_mesh, DG, HDG, PAIRS[PAIR], levels=5)

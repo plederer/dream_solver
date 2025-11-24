@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from dream.compressible import CompressibleFlowSolver, Force, FarField, Initial, flowfields,  Dirichlet, InterfaceBC
-from dream.time import TransientRoutine, MultizoneIMEXTimeRoutine
+from dream.time import TransientRoutine, MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine
 
 
 def get_geometry(periodic: bool = False, imex: bool = False):
@@ -588,7 +588,7 @@ def time_refinement_routine(mesh: ngs.Mesh, schemes: list, *simulations: MMS, le
         simulation.close_output_streams()
 
 
-def imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh, 
+def multizone_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh, 
                                  explicit_sim: MMS, implicit_sim: MMS, 
                                  pair_schemes: list, levels: int = 1):
 
@@ -637,6 +637,95 @@ def imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mes
         rate_exp = EXP.io.gfu.rate
         for dt in time_steps:
             time.timer.step = dt
+
+            # Set filenames for output
+            explicit_sim.set_filenames(scheme=f"{explicit_scheme}", dt=dt)
+            implicit_sim.set_filenames(scheme=f"{implicit_scheme}", dt=dt)
+
+            EXP.fem.set_boundary_conditions()
+            EXP.fem.set_initial_conditions()
+            EXP.fem.initialize_symbolic_forms()
+
+            IMP.fem.set_boundary_conditions()
+            IMP.fem.set_initial_conditions()
+            IMP.fem.initialize_symbolic_forms()
+
+            if IMP.io.vtk.enable:
+                explicit_sim.open_vtk_stream()
+                implicit_sim.open_vtk_stream()
+
+            explicit_sim.write_to_streams(0.0, scheme=f"{explicit_scheme}", dt=dt)
+            implicit_sim.write_to_streams(0.0, scheme=f"{implicit_scheme}", dt=dt)
+
+            # Solve the system
+            with ngs.TaskManager():
+
+                for t in time.start_solution_routine():
+                    explicit_sim.write_to_streams(t, scheme=f"{explicit_scheme}", dt=dt)
+                    implicit_sim.write_to_streams(t, scheme=f"{implicit_scheme}", dt=dt)
+
+            IMP.io.gfu.rate *= 2
+            EXP.io.gfu.rate *= 2
+
+        IMP.io.gfu.rate = rate_imp
+        EXP.io.gfu.rate = rate_exp
+
+    explicit_sim.close_output_streams()
+    implicit_sim.close_output_streams()
+
+
+def local_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh, 
+                                 explicit_sim: MMS, implicit_sim: MMS,
+                                 pair_schemes: list, levels: int = 1):
+
+    # Define common solver configuration
+    EXP = CompressibleFlowSolver(explicit_mesh)
+    IMP = CompressibleFlowSolver(implicit_mesh)
+
+    time = LocalTimeIMEXRoutine(IMP, EXP)
+    explicit_sim.set_conditions(EXP, time="transient")
+    implicit_sim.set_conditions(IMP, time="transient")
+
+    imp_bc = InterfaceBC(fields=None)
+    exp_bc = InterfaceBC(fields=None)
+
+    IMP.bcs['interface'] = imp_bc
+    EXP.bcs['interface'] = exp_bc
+
+    explicit_sim.open_output_streams()
+    implicit_sim.open_output_streams()
+    for scheme in pair_schemes:
+        implicit_scheme, explicit_scheme = scheme
+        IMP.fem.scheme = implicit_scheme
+        EXP.fem.scheme = explicit_scheme
+
+        ratio, dt_max = pair_schemes[scheme]
+
+        time_steps = [dt_max/(2**i) for i in range(levels)]
+
+        EXP.fem.initialize_finite_element_spaces()
+        EXP.fem.initialize_trial_and_test_functions()
+        EXP.fem.initialize_gridfunctions()
+        EXP.fem.initialize_time_scheme_gridfunctions()
+
+        Uh_exp = EXP.get_all_solution_fields()
+        explicit_sim.set_solution_fields(Uh_exp)
+        imp_bc.fields = Uh_exp
+
+        IMP.fem.initialize_finite_element_spaces()
+        IMP.fem.initialize_trial_and_test_functions()
+        IMP.fem.initialize_gridfunctions()
+        IMP.fem.initialize_time_scheme_gridfunctions()
+
+        Uh_imp = IMP.get_all_solution_fields()
+        implicit_sim.set_solution_fields(Uh_imp)
+        exp_bc.fields = Uh_imp
+
+        rate_imp = IMP.io.gfu.rate
+        rate_exp = EXP.io.gfu.rate
+        for dt in time_steps:
+            EXP.time.timer.step = dt
+            IMP.time.timer.step = ratio * dt
 
             # Set filenames for output
             explicit_sim.set_filenames(scheme=f"{explicit_scheme}", dt=dt)

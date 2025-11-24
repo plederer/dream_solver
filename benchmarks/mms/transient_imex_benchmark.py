@@ -1,11 +1,19 @@
 # Import modules
 import argparse
 import ngsolve as ngs
-from config import TRANSIENT_CFG, imex_time_refinement_routine, time_refinement_routine, NavierStokesMMS, get_gassner_mms, get_hp_geometry
+from config import (TRANSIENT_CFG, 
+                    multizone_imex_time_refinement_routine, 
+                    local_imex_time_refinement_routine, 
+                    time_refinement_routine, 
+                    NavierStokesMMS, 
+                    EulerMMS,
+                    get_gassner_mms, 
+                    get_hp_geometry)
 ngs.SetNumThreads(8)
 
 parser = argparse.ArgumentParser(description='Transient MMS Gassner benchmark')
-parser.add_argument('simulation', type=str, help='Implicit, Explicit  or Imex', choices=['implicit', 'explicit', 'imex'])
+parser.add_argument('simulation', type=str, help='Implicit, Explicit  or Imex', choices=['implicit', 'explicit', 'imex', 'local_imex'])
+parser.add_argument('--ratio', type=int, help='ratio', default=1)
 parser.add_argument('--order', type=int, help='order', default=3)
 parser.add_argument('--periods', type=int, help='Temporal periods', default=1)
 parser.add_argument('--viscous', type=str, help='Viscous treatment', default='interior_penalty')
@@ -13,6 +21,7 @@ parser.add_argument('--IP', type=float, help='Interior penalty coefficient', def
 OPTIONS = vars(parser.parse_args())
 
 simulation_type = OPTIONS['simulation']
+ratio = OPTIONS['ratio']
 order = OPTIONS['order']
 periods = OPTIONS['periods']
 viscous = OPTIONS['viscous']
@@ -21,6 +30,8 @@ IP = OPTIONS['IP']
 filename = f"{simulation_type}_order{order}_{viscous}"
 if viscous == 'interior_penalty':
     filename += f"_IP{IP}"
+if simulation_type == "local_imex":
+    filename += f"_{ratio}"
 
 time_interval = [0.0, 1.0]
 
@@ -79,6 +90,12 @@ IMEX_PAIRS = {("implicit_euler", "explicit_euler"): 0.001,
     ("sdirk33", "rk_ars33"): 0.002
 }
 
+LOCAL_IMEX_PAIRS = {
+    ("implicit_euler", "explicit_euler"): (ratio, 0.001),
+    ("sdirk22", "rk_ars22"): (ratio, 0.001),
+    ("sdirk33", "rk_ars33"): (ratio, 0.001)
+}
+
 EXPLICIT_PAIRS = {"explicit_euler": 1e-5,
                   "rk_ars22": 2e-5,
                   "rk_ars33": 4e-5,
@@ -106,5 +123,9 @@ if __name__ == "__main__":
     elif simulation_type == 'imex':
         HDG = NavierStokesMMS(HDG, get_gassner_mms, filename=f"hdg_{filename}", periods=periods, domain="implicit", bnds="bottom|left|right")
         DG = NavierStokesMMS(DG, get_gassner_mms, filename=f"dg_{filename}", periods=periods, domain="explicit", bnds="right|top|left")
-        imex_time_refinement_routine(explicit_mesh, implicit_mesh, DG, HDG, IMEX_PAIRS, levels=5)
+        multizone_imex_time_refinement_routine(explicit_mesh, implicit_mesh, DG, HDG, IMEX_PAIRS, levels=5)
+    elif simulation_type == 'local_imex':
+        HDG = EulerMMS(HDG, get_gassner_mms, filename=f"hdg_{filename}", periods=periods, domain="implicit", bnds="bottom|left|right")
+        DG = EulerMMS(DG, get_gassner_mms, filename=f"dg_{filename}", periods=periods, domain="explicit", bnds="right|top|left")
+        local_imex_time_refinement_routine(explicit_mesh, implicit_mesh, DG, HDG, LOCAL_IMEX_PAIRS, levels=5)
 
