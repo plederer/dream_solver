@@ -486,10 +486,11 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
 
     def set_initial_conditions(self):
 
-        U = self.mesh.MaterialCF({dom: ngs.CF(
+        U0 = self.mesh.MaterialCF({dom: ngs.CF(
             (self.root.density(dc.fields),
                 self.root.momentum(dc.fields),
                 self.root.energy(dc.fields))) for dom, dc in self.root.dcs.items(Initial)})
+        bonus_int_order = max([dc.bonus_int_order for _, dc in self.root.dcs.items(Initial)])
 
         gfu = self.gfus['Uhat']
         fes = self.gfus['Uhat'].space
@@ -499,7 +500,7 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
         blf += u * v * ngs.dx(element_boundary=True)
 
         f = ngs.LinearForm(fes)
-        f += U * v * ngs.dx(element_boundary=True)
+        f += U0 * v * ngs.dx(element_boundary=True, bonus_intorder=bonus_int_order)
 
         with ngs.TaskManager():
             blf.Assemble()

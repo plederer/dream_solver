@@ -128,12 +128,14 @@ class ConservativeFiniteElementMethod(CompressibleFiniteElementMethod):
 
     def set_initial_conditions(self):
 
-        U = self.mesh.MaterialCF({dom: ngs.CF(
+        U0 = self.mesh.MaterialCF({dom: ngs.CF(
             (self.root.density(dc.fields),
                 self.root.momentum(dc.fields),
                 self.root.energy(dc.fields))) for dom, dc in self.root.dcs.items(Initial)})
+        
+        bonus_int_order = max([dc.bonus_int_order for _, dc in self.root.dcs.items(Initial)])
 
-        self.gfus['U'].Set(U)
+        self.gfus['U'].Set(U0, bonus_intorder=bonus_int_order)
 
         super().set_initial_conditions()
 
