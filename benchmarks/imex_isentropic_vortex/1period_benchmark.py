@@ -34,7 +34,7 @@ time_interval = [0.0, 2.0]
 
 GENERAL = TRANSIENT_CFG.copy()
 GENERAL['equation_of_state.heat_capacity_ratio'] = 1.4
-GENERAL['riemann_solver'] = 'lax_friedrich'
+GENERAL['riemann_solver'] = 'upwind'
 GENERAL['time.timer.interval'] = time_interval
 GENERAL['fem'] = ...  # to be set later
 GENERAL['fem.solver'] = 'direct'
@@ -43,7 +43,7 @@ GENERAL['fem.solver.method'] = 'newton'
 GENERAL['fem.solver.method.max_iterations'] = 5
 GENERAL['fem.solver.method.convergence_criterion'] = 1e-20
 GENERAL['fem.solver.method.damping_factor'] = 1.0
-GENERAL['fem.bonus_int_order'] = 10
+GENERAL['fem.bonus_int_order'] = 6
 GENERAL['fem.scheme.compile'] = False
 GENERAL['io.vtk.enable'] = True
 GENERAL['io.vtk.rate'] = 10
@@ -83,7 +83,7 @@ EXPLICIT_PAIRS = {"explicit_euler": 0.001,
                   "rk_ars33": 0.001,
                   }
 
-mesh, implicit_mesh, explicit_mesh = get_meshes()
+mesh, implicit_mesh, explicit_mesh = get_meshes(32, 32)
 
 if vortex == 'fast':
     VORTEX = FastVortex

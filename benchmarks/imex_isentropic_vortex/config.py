@@ -1,14 +1,13 @@
 # %%
 import numpy as np
 import ngsolve as ngs
-from netgen import occ
 from dream.compressible import CompressibleFlowSolver, flowfields, Initial, InterfaceBC
 from dream.time import MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine
 from dream.mesh import get_rectangular_mesh
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def get_meshes(Nx = 5, Ny = 10, Nl = 4, quads: bool = True) -> ngs.Mesh:
+def get_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bool = True) -> ngs.Mesh:
 
     def union(*args):
         x_ = args[0]
@@ -22,12 +21,22 @@ def get_meshes(Nx = 5, Ny = 10, Nl = 4, quads: bool = True) -> ngs.Mesh:
     def ibegin(*args):
         return sum([arg.size for arg in args]) - len(args)
     
-    xl = np.linspace(-0.25, 0.25, Nx+1)
-    xm = union(np.linspace(0.25, 0.75, Nx+1))#, np.linspace(0.45, 0.55, Nl+1))
-    xr = np.linspace(0.75, 1.25, Nx+1)
+    xl = np.linspace(-0.5, -0.25, Nx//4+1)
+    xm = np.linspace(-0.25, 0.25, Nx//2+1)
+    if refine_x:
+        xm = union(xm,
+                np.linspace(-0.05, 0.05, 4+1), 
+                np.linspace(-0.0875, 0.0875, 2+1),
+                np.linspace(-0.175, 0.175, 2+1))
+    xr = np.linspace(0.25, 0.5, Nx//4+1)
 
     x = union(xl, xm, xr)
-    y = union(np.linspace(-0.5, 0.5, Ny+1), np.linspace(-0.05, 0.05, Nl+1))
+    y = np.linspace(-0.5, 0.5, Ny+1)
+    if refine_y:
+        y = union(y,
+            np.linspace(-0.05, 0.05, 4+1), 
+            np.linspace(-0.0875, 0.0875, 2+1),
+            np.linspace(-0.175, 0.175, 2+1))
 
     ys = slice(0, iend(y))
 
@@ -70,30 +79,6 @@ def get_meshes(Nx = 5, Ny = 10, Nl = 4, quads: bool = True) -> ngs.Mesh:
 
     implicit_mesh = get_rectangular_mesh(x, y, domains, boundaries, quads, False, True)
     return mesh, implicit_mesh, explicit_mesh
-
-
-def get_geometry():
-
-    wp = occ.WorkPlane()
-    centers = [0.0, 1.0, 2.0]
-    faces = [wp.MoveTo(x_, 0).RectangleC(1, 1).Face() for x_ in centers]
-
-    def assign_meta(face, name: str, left: str, right: str, maxh: float = 1.0):
-        face.name = name
-        for edge, name in zip(face.edges, ('bottom', right, 'top', left)):
-            edge.name = name
-        face.maxh = maxh
-
-        face.edges[0].Identify(face.edges[2], f"periodic_y_{name}", occ.IdentificationType.PERIODIC)
-
-    assign_meta(faces[0], 'explicit_left', 'left', 'interface')
-    assign_meta(faces[1], 'implicit', 'interface', 'interface')
-    assign_meta(faces[2], 'explicit_right', 'interface', 'right')
-
-    faces[0].edges[3].Identify(faces[2].edges[1], f"periodic_x", occ.IdentificationType.PERIODIC)
-
-    face = occ.Glue(faces)
-    return occ.OCCGeometry(face, dim=2)
 
 
 TRANSIENT_CFG = {
@@ -167,6 +152,7 @@ class Vortex:
         U.p = self.cfg.pressure(U)
         U.T = self.cfg.temperature(U)
         U.rho_E = self.cfg.energy(U)
+        U['entropy'] = self.cfg.specific_entropy(U)
 
     def get_exact_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
         # Construct dimensionless fields
@@ -216,7 +202,7 @@ class Vortex:
         self.Ue = self.get_exact_fields(cfg)
         self.U0 = self.get_initial_fields(cfg)
 
-        cfg.dcs[self.domain] = Initial(fields=self.U0, bonus_int_order=0)
+        cfg.dcs[self.domain] = Initial(fields=self.U0, bonus_int_order=10)
         cfg.bcs[self.periodic] = "periodic"
 
     def set_solution_fields(self, Uh: flowfields):
@@ -606,7 +592,7 @@ def time_refinement_routine(mesh: ngs.Mesh, schemes: list, simulation: Vortex, l
 
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
-    mesh, implicit_mesh, explicit_mesh = get_meshes()
+    mesh, implicit_mesh, explicit_mesh = get_meshes(32, 32)
     Draw(mesh)
     Draw(implicit_mesh)
     Draw(explicit_mesh)
