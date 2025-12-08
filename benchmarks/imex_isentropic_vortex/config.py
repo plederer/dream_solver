@@ -2,10 +2,11 @@
 import numpy as np
 import ngsolve as ngs
 from dream.compressible import CompressibleFlowSolver, flowfields, Initial, InterfaceBC
-from dream.time import MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine
+from dream.time import MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine, Timer, time
 from dream.mesh import get_rectangular_mesh
 import matplotlib.pyplot as plt
 import pandas as pd
+from time import time as clock
 
 def get_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bool = True) -> ngs.Mesh:
 
@@ -154,10 +155,9 @@ class Vortex:
         U.rho_E = self.cfg.energy(U)
         U['entropy'] = self.cfg.specific_entropy(U)
 
-    def get_exact_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
+    def get_exact_fields(self, t: float) -> flowfields:
         # Construct dimensionless fields
 
-        t = cfg.time.timer.t
         U = self(t)
         self._set_fields(U)
 
@@ -165,25 +165,8 @@ class Vortex:
         U.grad_p = ngs.CF((U.p.Diff(ngs.x), U.p.Diff(ngs.y)))
         U.grad_u = ngs.CF((U.u[0].Diff(ngs.x), U.u[0].Diff(ngs.y),
                            U.u[1].Diff(ngs.x), U.u[1].Diff(ngs.y)), dims=(2, 2))
-        U.grad_T = cfg.temperature_gradient(U, U)
-        U['Ma'] = cfg.get_local_mach_number(U)
-
-        return U
-
-    def get_initial_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
-        # Construct dimensionless initial fields from constant terms only
-
-        U = self(t=0.0)
-        U.rho_Ek = cfg.kinetic_energy(U)
-        U.rho_Ei = cfg.inner_energy(U)
-        U.p = cfg.pressure(U)
-        U.u = cfg.velocity(U)
-
-        U.grad_rho = ngs.CF((U.rho.Diff(ngs.x), U.rho.Diff(ngs.y)))
-        U.grad_p = ngs.CF((U.p.Diff(ngs.x), U.p.Diff(ngs.y)))
-        U.grad_u = ngs.CF((U.u[0].Diff(ngs.x), U.u[0].Diff(ngs.y),
-                           U.u[1].Diff(ngs.x), U.u[1].Diff(ngs.y)), dims=(2, 2))
-        U.grad_T = cfg.temperature_gradient(U, U)
+        U.grad_T = self.cfg.temperature_gradient(U, U)
+        U['Ma'] = self.cfg.get_local_mach_number(U)
 
         return U
 
@@ -199,8 +182,10 @@ class Vortex:
         cfg.bcs.clear()
         cfg.dcs.clear()
 
-        self.Ue = self.get_exact_fields(cfg)
-        self.U0 = self.get_initial_fields(cfg)
+        self.ptimer = Timer()
+        self.ptimer.t = cfg.time.timer.t.Get()
+        self.Ue = self.get_exact_fields(self.ptimer.t)
+        self.U0 = self.get_exact_fields(0.0)
 
         cfg.dcs[self.domain] = Initial(fields=self.U0, bonus_int_order=10)
         cfg.bcs[self.periodic] = "periodic"
@@ -223,6 +208,8 @@ class Vortex:
 
     def write_to_streams(self, t: float = None, **log):
         self.log = log
+
+        self.update_timer(t)
 
         Ue = self.Ue
         Uh = self.Uh
@@ -316,23 +303,38 @@ class Vortex:
         M = self.cfg.mach_number
         gamma = self.cfg.equation_of_state.heat_capacity_ratio
 
-        x = ngs.x - M * t
-        y = ngs.y
-        alpha = 0 * ngs.pi/360
+        def x(xc):
+            return (ngs.x - xc) - M * t
+        
+        def y(yc):
+            return (ngs.y - yc)
 
-        f = -1/2 * ((x**2 + y**2)/R**2)
-        Omega = beta * ngs.exp(f)
+        rho = 1
+        u = ngs.CF((M, 0))
+        p = 1
 
-        dT = -(gamma - 1)/2 * Omega**2
-        du = -y/R * Omega
-        dv = x/R * Omega
+        for xc in [-2, -1, 0, 1]:
+            for yc in [-1, 0, 1]:
+                f = -1/2 * ((x(xc)**2 + y(yc)**2)/R**2)
+                Omega = beta * ngs.exp(f)
+
+                dT = -(gamma - 1)/2 * Omega**2
+                du = -y(yc)/R * Omega
+                dv = x(xc)/R * Omega
+
+                rho += dT
+                u += ngs.CF((du, dv))
+                p += dT
 
         U = flowfields()
-        U.rho = (1 + dT)**(1/(gamma - 1))
-        U.u = M*ngs.CF((ngs.cos(alpha), ngs.sin(alpha))) + ngs.CF((du, dv))
-        U.p = 1/gamma * (1 + dT)**(gamma/(gamma - 1))
+        U.rho = rho**(1/(gamma - 1))
+        U.u = u
+        U.p = 1/gamma * p**(gamma/(gamma - 1))
 
         return U
+    
+    def update_timer(self, t):
+        raise NotImplementedError()
 
     def __str__(self):
         return self.__class__.__name__
@@ -344,6 +346,9 @@ class FastVortex(Vortex):
 
         cfgs['mach_number'] = 0.5
         super().set_conditions(cfg, **cfgs)
+
+    def update_timer(self, t: float):
+        self.ptimer.t = t % 2.0
 
     def __call__(self, t: float) -> flowfields:
         return super().__call__(1/5, 0.1, t)
@@ -380,6 +385,8 @@ def multizone_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mes
 
     explicit_sim.open_output_streams()
     implicit_sim.open_output_streams()
+
+    runtimes = {}
     for scheme in pair_schemes:
         implicit_scheme, explicit_scheme = scheme
         IMP.fem.scheme = implicit_scheme
@@ -431,11 +438,14 @@ def multizone_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mes
             implicit_sim.write_to_streams(0.0, scheme=f"{implicit_scheme}", dt=dt)
 
             # Solve the system
+            start = clock()
             with ngs.TaskManager():
 
                 for t in time.start_solution_routine():
                     explicit_sim.write_to_streams(t, scheme=f"{explicit_scheme}", dt=dt)
                     implicit_sim.write_to_streams(t, scheme=f"{implicit_scheme}", dt=dt)
+            end = clock()
+            runtimes[f'{implicit_scheme}_{explicit_scheme}_{dt}'] = end - start
 
             IMP.io.gfu.rate *= 2
             EXP.io.gfu.rate *= 2
@@ -445,6 +455,8 @@ def multizone_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mes
 
     explicit_sim.close_output_streams()
     implicit_sim.close_output_streams()
+
+    return runtimes
 
 
 def local_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh,
@@ -467,6 +479,8 @@ def local_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: n
 
     explicit_sim.open_output_streams()
     implicit_sim.open_output_streams()
+
+    runtimes = {}
     for scheme in pair_schemes:
         implicit_scheme, explicit_scheme = scheme
         IMP.fem.scheme = implicit_scheme
@@ -524,11 +538,14 @@ def local_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: n
             implicit_sim.write_to_streams(0.0, scheme=f"{implicit_scheme}", dt=dt)
 
             # Solve the system
+            start = clock()
             with ngs.TaskManager():
 
                 for t in time.start_solution_routine():
                     explicit_sim.write_to_streams(t, scheme=f"{explicit_scheme}", dt=dt)
                     implicit_sim.write_to_streams(t, scheme=f"{implicit_scheme}", dt=dt)
+            end = clock()
+            runtimes[f'{implicit_scheme}_{explicit_scheme}_{dt}'] = end - start
 
             IMP.io.gfu.rate *= 2
             EXP.io.gfu.rate *= 2
@@ -543,6 +560,8 @@ def local_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: n
     explicit_sim.close_output_streams()
     implicit_sim.close_output_streams()
 
+    return runtimes
+
 
 def time_refinement_routine(mesh: ngs.Mesh, schemes: list, simulation: Vortex, levels: int = 1):
 
@@ -551,6 +570,7 @@ def time_refinement_routine(mesh: ngs.Mesh, schemes: list, simulation: Vortex, l
     simulation.set_conditions(cfg)
 
     simulation.open_output_streams()
+    runtimes = {}
     for scheme in schemes:
         cfg.fem.scheme = scheme
 
@@ -579,15 +599,20 @@ def time_refinement_routine(mesh: ngs.Mesh, schemes: list, simulation: Vortex, l
             simulation.write_to_streams(0.0, scheme=scheme, dt=dt)
 
             # Solve the system
+            start = clock()
             with ngs.TaskManager():
 
                 for rate, t in enumerate(cfg.time.start_solution_routine()):
                     simulation.write_to_streams(t, scheme=scheme, dt=dt)
+            end = clock()
+            runtimes[f'{scheme}_{dt}'] = end - start
 
             simulation.cfg.io.gfu.rate *= 2
         simulation.cfg.io.gfu.rate = rate
 
     simulation.close_output_streams()
+
+    return runtimes
 
 
 if __name__ == "__main__":
