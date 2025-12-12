@@ -686,8 +686,8 @@ class InteriorPenalty(ViscousTreatment, is_interface=True):
         # We're done.
         return KU11, KU12, KU21, KU22
 
-    def get_frozen_diffusion_matrices_conservative_transposed(self, U: flowfields):
-        KU11, KU12, KU21, KU22 = self.get_frozen_diffusion_matrices_conservative(U)
+    def get_frozen_diffusion_matrices_conservative_transposed(self, U: flowfields, is_adiabatic: bool=False):
+        KU11, KU12, KU21, KU22 = self.get_frozen_diffusion_matrices_conservative(U, is_adiabatic)
         return KU11.trans, KU12.trans, KU21.trans, KU22.trans
 
     def get_adiabatic_boundary_state(self, U: flowfields) -> ngs.CF:
@@ -853,41 +853,67 @@ class InteriorPenaltyHDG(InteriorPenalty):
 
         bonus = self.fem.bonus_int_order['diffusion']
         dS = ngs.ds(skeleton=True, definedon=self.mesh.Boundaries(bnd), bonus_intorder=bonus['bnd'])
-
-        U, _ = self.TnT['U']
+        U, V = self.TnT['U']
         Uhat, Vhat = self.TnT['Uhat']
         
+        # Get the gradient of the test functions and decompose it in x and y-directions.
+        gradV = ngs.grad(V)
+        gradU = ngs.grad(U)
+        dVdx_ = gradV[:, 0]
+        dVdy_ = gradV[:, 1]
+
+        # Modify the gradients of the test functions, such that only the energy contribution is retained.
+        dVdx = ngs.CF( (0, 0, 0, dVdx_[3]) )
+        dVdy = ngs.CF( (0, 0, 0, dVdy_[3]) )
+
         # Extract the components of the unit normal vector.
         nx = self.mesh.normal[0]
         ny = self.mesh.normal[1]
-        gradU = ngs.grad(U)
 
+        # Define the jump of the solution.
+        jumpU = U - Uhat
+
+        # Get a flowfield for the local solution and estimate the boundary wall state.
         U = self.fem.get_conservative_fields(U)
         U_infty = self.get_adiabatic_boundary_state(U)
-
-        # Jump of the solution.
-        jumpU = U_infty - Uhat
         
-        # Convert variables to flowfields.
-        Uhat = self.fem.get_conservative_fields(Uhat)
-        U0 = self.fem.get_conservative_fields(U_infty)
+        # Set the boundary value (Uhat) to a standard (adiabatic) wall.
+        blf['Uhat'][f"{bc.name}_{bnd}"] = ngs.InnerProduct(Uhat - U_infty, Vhat) * dS
 
-        # Force the internal viscous flux to the adiabatic boundary flux.
-        GnI = self.get_surface_viscous_flux_from_linearized_state( Uhat, gradU)
-        GnJ = self.get_surface_viscous_flux_from_linearized_state( U0, gradU, is_adiabatic=True )
-        surf = GnI - GnJ
-        blf['Uhat'][f"{bc.name}_{bnd}_surf"] = -ngs.InnerProduct(surf, Vhat) * dS
+        # Get a flowfield for the facet variables. 
+        Uhat = self.fem.get_conservative_fields(Uhat)
+        
+        # Compute the usual viscous flux.
+        Gn = self.get_surface_viscous_flux_from_linearized_state( Uhat, gradU)
+        surf = Gn[3] # extract only the energy contribution
+        
+        # Add the heat flux contribution with an opposite sign, such that it cancels its value in the surface term.
+        blf['U'][f"{bc.name}_{bnd}_surf"] = ngs.InnerProduct(surf, V[3]) * dS
+
+        # Form the term: G^T * grad(V). Notice, G is evaluated at Uhat, ie. G=G(Uhat).
+        KU11T, KU12T, KU21T, KU22T = self.get_frozen_diffusion_matrices_conservative_transposed(Uhat)
+        
+        # Form the symmetrizing term, which depends on only energy contributions -- see definition of dVdx, dVdy.
+        symm = nx * (KU11T*dVdx + KU21T*dVdy) + ny * (KU12T*dVdx + KU22T*dVdy) 
+        
+        # Add the heat flux contribution with an opposite sign, such that it cancels its value in the symmetric term.
+        blf['U'][f"{bc.name}_{bnd}_symm"] = ngs.InnerProduct(symm, jumpU) * dS
 
         # Interior penalty coefficient.
         tau = self.get_scaled_penalty_coefficient() 
 
         # Get the diffusion matrices, based on the conservative gradients.
-        KU11, KU12, KU21, KU22 = self.get_frozen_diffusion_matrices_conservative(U0, is_adiabatic=True)
-
+        KU11, KU12, KU21, KU22 = self.get_frozen_diffusion_matrices_conservative(Uhat)
+        
         # Form the penalty term, which is based on the contraction of the diffusion matrices.
         KUij = nx * (KU11*nx + KU12*ny) + ny * (KU21*nx + KU22*ny)
         penn = tau * KUij * jumpU
-        blf['Uhat'][f"{bc.name}_{bnd}_penn"] = ngs.InnerProduct(penn, Vhat) * dS
+        penn = penn[3] # extract only the energy contribution
+
+        # Add the heat flux contribution with an opposite sign, such that it cancels its value in the penalty terms.
+        blf['U'][f"{bc.name}_{bnd}_penn"] = -ngs.InnerProduct(penn, V[3]) * dS
+
+
 
 
 
@@ -1179,7 +1205,7 @@ class InteriorPenaltySDG(InteriorPenalty):
         blf['U'][f"{bc.name}_{bnd}_surf"] = -ngs.InnerProduct(surf, V) * dS 
         
         # Get the diffusion matrices transposed, based on the conservative gradients.
-        KU11T, KU12T, KU21T, KU22T = self.get_frozen_diffusion_matrices_conservative_transposed( Ui )
+        KU11T, KU12T, KU21T, KU22T = self.get_frozen_diffusion_matrices_conservative_transposed( Ui, is_adiabatic=True )
 
         # Form the term: {G^T * grad(V)}, for the local solution.
         symm = nx * (KU11T*dVdx + KU21T*dVdy) + ny * (KU12T*dVdx + KU22T*dVdy) 

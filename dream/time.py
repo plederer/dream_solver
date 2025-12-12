@@ -386,7 +386,7 @@ class TransientRoutine(TimeRoutine):
                     if "is_diverged" in log:
                         break
 
-                print()
+                print(flush=True)
 
                 if "is_diverged" in log:
                     logger.error("Transient routine diverged!")
@@ -600,7 +600,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                 io_exp.save_in_time_routine(t1, rate)
                 io_imp.save_in_time_routine(t1, rate)
 
-                # NOTE, currently, not possible to visualiza multizones in netgen.
+                # NOTE, currently, not possible to visualize multizones in netgen.
                 # io_exp.redraw(rate)
                 # io_imp.redraw(rate)
 
