@@ -2,6 +2,8 @@ from __future__ import annotations
 import logging
 import ngsolve as ngs
 import netgen.occ as occ
+import numpy as np
+
 
 from typing import Callable, Sequence, Generator
 
@@ -347,9 +349,10 @@ class Periodic(Condition):
 
 class Initial(Condition):
 
-    def __init__(self, fields: ngsdict | None = None):
+    def __init__(self, fields: ngsdict | None = None, bonus_int_order: int = 0):
         super().__init__()
         self.fields = fields
+        self.bonus_int_order = bonus_int_order
 
     @dream_configuration
     def fields(self) -> ngsdict:
@@ -1137,7 +1140,6 @@ def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int, nod
 
         .. [1]: Thanks to Edoardo Bonetti for providing this routine.
     """
-    import numpy as np
 
     if isinstance(number, int):
         number = str(number)
@@ -1274,3 +1276,59 @@ def get_3d_naca_occ_profile(number: str | int, depth: float,
         wing.faces.Max(occ.Z).Identify(wing.faces.Min(occ.Z), "periodic", occ.IdentificationType.PERIODIC)
 
     return wing
+
+def get_rectangular_mesh(x: np.ndarray, y: np.ndarray,
+                         domains: dict[str, np.ndarray],
+                         boundaries: dict[str, np.ndarray],
+                         quads: bool = True,
+                         periodic_x: bool = False,
+                         periodic_y: bool = False) -> ngs.Mesh:
+    from netgen.meshing import Mesh, MeshPoint, Pnt, Element1D, Element2D, IdentificationType
+    
+    mesh = Mesh()
+    mesh.dim = 2
+
+    meshpoints = np.zeros((x.size, y.size), dtype=object)
+    for i in range(x.size):
+        for j in range(y.size):
+            point = mesh.Add(MeshPoint(Pnt(x[i], y[j], 0)))
+            meshpoints[i, j] = point
+
+    # Periodic x-direction
+    if periodic_x:
+        for slave, master in zip(meshpoints[0, :], meshpoints[-1, :]):
+            mesh.AddPointIdentification(master, slave, identnr=1, type=IdentificationType.PERIODIC)
+
+    # Periodic y-direction
+    if periodic_y:
+        for slave, master in zip(meshpoints[:, 0], meshpoints[:, -1]):
+            mesh.AddPointIdentification(master, slave, identnr=2, type=IdentificationType.PERIODIC)
+
+    for name, mask in domains.items():
+        region = mesh.AddRegion(name, dim=2)
+
+        for slices in mask:
+            x_, y_ = slices
+
+            for i in range(x_.start, x_.stop - 1):
+                for j in range(y_.start, y_.stop - 1):
+
+                    pids = meshpoints[i:i+2, j:j+2]
+                    if quads:
+                        mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[1, 1], pids[0, 1]]))
+                    else:
+                        mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[0, 1]]))
+                        mesh.Add(Element2D(region, [pids[1, 0], pids[1, 1], pids[0, 1]]))
+                    
+
+    for name, mask in boundaries.items():
+        region = mesh.AddRegion(name, dim=1)
+
+        for slices in mask:
+            pids = meshpoints[*slices]
+
+            for begin, end in zip(pids[:-1], pids[1:]):
+                mesh.Add(Element1D([begin, end], index=region))
+
+    mesh.Compress()
+    return ngs.Mesh(mesh)

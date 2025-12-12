@@ -5,21 +5,52 @@ import netgen.occ as occ
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from dream.compressible import CompressibleFlowSolver, Force, FarField, Initial, flowfields,  Dirichlet
-from dream.time import TransientRoutine
+from dream.compressible import CompressibleFlowSolver, Force, FarField, Initial, flowfields,  Dirichlet, InterfaceBC
+from dream.time import TransientRoutine, MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine
 
 
-def get_geometry(periodic: bool = False):
+def get_geometry(periodic: bool = False, imex: bool = False):
 
     face = occ.WorkPlane().Rectangle(1, 1).Face()
-    for edge, name in zip(face.edges, ('bottom', 'right', 'top', 'left')):
-        edge.name = name
 
     if periodic:
         face.edges[0].Identify(face.edges[2], "periodic_x", occ.IdentificationType.PERIODIC)
         face.edges[1].Identify(face.edges[3], "periodic_y", occ.IdentificationType.PERIODIC)
 
+    if not imex:
+        for edge, name in zip(face.edges, ('bottom', 'right', 'top', 'left')):
+            edge.name = name
+        return occ.OCCGeometry(face, dim=2)
+
+    face = occ.Glue([face, occ.WorkPlane().MoveTo(1, 0).Rectangle(1, 1).Face()])
+    for edge, name in zip(face.edges, ('bottom', 'interface', 'top', 'left', 'bottom', 'right', 'top')):
+        edge.name = name
+    face.faces[0].name = "explicit"
+    face.faces[1].name = "implicit"
+
     return occ.OCCGeometry(face, dim=2)
+
+def get_hp_geometry():
+
+    wp = occ.WorkPlane()
+    face = occ.Glue([wp.MoveTo(i, j).Rectangle(0.5, 0.5).Face() for j in (0, 0.5) for i in (0, 0.5)])
+
+    for i in range(2):
+        face.faces[i].name = "implicit"
+        face.faces[i].edges[0].hpref = 1
+    for j in range(2, 4):
+        face.faces[j].name = "explicit"
+
+    for edge, name in zip(face.faces[0].edges, ('bottom', 'default', 'interface', 'left')):
+        edge.name = name
+    for edge, name in zip(face.faces[1].edges, ('bottom', 'right', 'interface', 'default')):
+        edge.name = name
+    for edge, name in zip(face.faces[2].edges, ('interface', 'default', 'top', 'left')):
+        edge.name = name
+    for edge, name in zip(face.faces[3].edges, ('interface', 'right', 'top', 'default')):
+        edge.name = name
+
+    return occ.OCCGeometry(face, dim=2).GenerateMesh(maxh=0.5, quad_dominated=True)
 
 
 def div(F):
@@ -33,6 +64,7 @@ SCHEME_ORDER = {
     'bdf3': 3,
     'rk_ars22': 2,
     'rk_ars33': 3,
+    'rk_ars43': 3,
     'crk4': 4,
     'sdirk22': 2,
     'sdirk33': 3,
@@ -107,6 +139,8 @@ class MMS:
                  periods: int = 5,
                  init_exact: bool = False,
                  is_periodic: bool = False,
+                 domain: str = "default",
+                 bnds: str = "left|right|top|bottom",
                  **export):
 
         if filename is None:
@@ -123,12 +157,14 @@ class MMS:
         self.filename = filename
         self.is_periodic = is_periodic
         self.init_exact = init_exact
+        self.domain = domain
+        self.bnds = bnds
         self.export = {'to_fig': True, 'to_csv': True, 'to_dat': True}
         self.export.update(export)
 
     @property
     def is_transient(self) -> bool:
-        return isinstance(self.cfg.time, TransientRoutine)
+        return isinstance(self.cfg.time, (TransientRoutine, MultizoneIMEXTimeRoutine))
 
     def get_exact_fields(self, cfg: CompressibleFlowSolver) -> flowfields:
         # Construct dimensionless fields
@@ -176,8 +212,9 @@ class MMS:
 
         return U
 
-    def set_conditions(self, cfg: CompressibleFlowSolver):
+    def set_conditions(self, cfg: CompressibleFlowSolver, **cfgs):
         self.cfg = cfg
+        self._cfg.update(**cfgs)
         cfg.update(self._cfg)
 
         cfg.bcs.clear()
@@ -235,7 +272,7 @@ class MMS:
 
         self.errors = {}
 
-    def open_vtk_stream(self, **log):
+    def open_vtk_stream(self):
         export = ['density', 'velocity', 'pressure', 'temperature', 'Ma', 'energy']
         fields = {f"{key}_h": value for key, value in self.Uh.items() if key in export}
         fields.update({f"{key}_e": value for key, value in self.Ue.items() if key in export})
@@ -368,24 +405,24 @@ class MMS:
 
 class EulerMMS(MMS):
 
-    def set_conditions(self, cfg: CompressibleFlowSolver):
+    def set_conditions(self, cfg: CompressibleFlowSolver, **cfgs):
 
         cfg.dynamic_viscosity = "inviscid"
 
-        super().set_conditions(cfg)
+        super().set_conditions(cfg, **cfgs)
 
         F = div(cfg.get_convective_flux(self.Ue))
         if self.is_transient:
             t = cfg.time.timer.t
             F += ngs.CF((self.Ue.rho.Diff(t), self.Ue.rho_u.Diff(t), self.Ue.rho_E.Diff(t)))
 
-        cfg.dcs['default'] = Initial(fields=self.U0)
-        cfg.dcs['default'] = Force(F[0], F[1:3], F[3], order=10, is_constant=not self.is_transient)
+        cfg.dcs[self.domain] = Initial(fields=self.U0)
+        cfg.dcs[self.domain] = Force(F[0], F[1:3], F[3], order=10, is_constant=not self.is_transient)
 
         if self.is_periodic:
-            cfg.bcs['left|right|top|bottom'] = "periodic"
+            cfg.bcs[self.bnds] = "periodic"
         else:
-            cfg.bcs['left|right|top|bottom'] = FarField(fields=self.Ue)
+            cfg.bcs[self.bnds] = FarField(fields=self.Ue)
 
     def __str__(self):
         return "EE"
@@ -393,24 +430,24 @@ class EulerMMS(MMS):
 
 class NavierStokesMMS(MMS):
 
-    def set_conditions(self, cfg: CompressibleFlowSolver):
+    def set_conditions(self, cfg: CompressibleFlowSolver, **cfgs):
 
         cfg.dynamic_viscosity = "constant"
 
-        super().set_conditions(cfg)
+        super().set_conditions(cfg, **cfgs)
 
         F = div(cfg.get_convective_flux(self.Ue) - cfg.get_diffusive_flux(self.Ue, self.Ue))
         if self.is_transient:
             t = cfg.time.timer.t
             F += ngs.CF((self.Ue.rho.Diff(t), self.Ue.rho_u.Diff(t), self.Ue.rho_E.Diff(t)))
 
-        cfg.dcs['default'] = Initial(fields=self.U0)
-        cfg.dcs['default'] = Force(F[0], F[1:3], F[3], order=10, is_constant=not self.is_transient)
+        cfg.dcs[self.domain] = Initial(fields=self.U0)
+        cfg.dcs[self.domain] = Force(F[0], F[1:3], F[3], order=10, is_constant=not self.is_transient)
 
         if self.is_periodic:
-            cfg.bcs['left|right|top|bottom'] = "periodic"
+            cfg.bcs[self.bnds] = "periodic"
         else:
-            cfg.bcs['left|right|top|bottom'] = Dirichlet(fields=self.Ue)
+            cfg.bcs[self.bnds] = Dirichlet(fields=self.Ue)
 
     def __str__(self):
         return "NS"
@@ -551,6 +588,181 @@ def time_refinement_routine(mesh: ngs.Mesh, schemes: list, *simulations: MMS, le
         simulation.close_output_streams()
 
 
+def multizone_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh, 
+                                 explicit_sim: MMS, implicit_sim: MMS, 
+                                 pair_schemes: list, levels: int = 1):
+
+    # Define common solver configuration
+    EXP = CompressibleFlowSolver(explicit_mesh)
+    IMP = CompressibleFlowSolver(implicit_mesh)
+
+    time = MultizoneIMEXTimeRoutine(IMP, EXP)
+    explicit_sim.set_conditions(EXP, time=time)
+    implicit_sim.set_conditions(IMP, time=time)
+
+    imp_bc = InterfaceBC(fields=None)
+    exp_bc = InterfaceBC(fields=None)
+
+    IMP.bcs['interface'] = imp_bc
+    EXP.bcs['interface'] = exp_bc
+
+    explicit_sim.open_output_streams()
+    implicit_sim.open_output_streams()
+    for scheme in pair_schemes:
+        implicit_scheme, explicit_scheme = scheme
+        IMP.fem.scheme = implicit_scheme
+        EXP.fem.scheme = explicit_scheme
+
+        time_steps = [pair_schemes[scheme]/(2**i) for i in range(levels)]
+
+        EXP.fem.initialize_finite_element_spaces()
+        EXP.fem.initialize_trial_and_test_functions()
+        EXP.fem.initialize_gridfunctions()
+        EXP.fem.initialize_time_scheme_gridfunctions()
+
+        Uh_exp = EXP.get_all_solution_fields()
+        explicit_sim.set_solution_fields(Uh_exp)
+        imp_bc.fields = Uh_exp
+
+        IMP.fem.initialize_finite_element_spaces()
+        IMP.fem.initialize_trial_and_test_functions()
+        IMP.fem.initialize_gridfunctions()
+        IMP.fem.initialize_time_scheme_gridfunctions()
+
+        Uh_imp = IMP.get_all_solution_fields()
+        implicit_sim.set_solution_fields(Uh_imp)
+        exp_bc.fields = Uh_imp
+
+        rate_imp = IMP.io.gfu.rate
+        rate_exp = EXP.io.gfu.rate
+        for dt in time_steps:
+            time.timer.step = dt
+
+            # Set filenames for output
+            explicit_sim.set_filenames(scheme=f"{explicit_scheme}", dt=dt)
+            implicit_sim.set_filenames(scheme=f"{implicit_scheme}", dt=dt)
+
+            EXP.fem.set_boundary_conditions()
+            EXP.fem.set_initial_conditions()
+            EXP.fem.initialize_symbolic_forms()
+
+            IMP.fem.set_boundary_conditions()
+            IMP.fem.set_initial_conditions()
+            IMP.fem.initialize_symbolic_forms()
+
+            if IMP.io.vtk.enable:
+                explicit_sim.open_vtk_stream()
+                implicit_sim.open_vtk_stream()
+
+            explicit_sim.write_to_streams(0.0, scheme=f"{explicit_scheme}", dt=dt)
+            implicit_sim.write_to_streams(0.0, scheme=f"{implicit_scheme}", dt=dt)
+
+            # Solve the system
+            with ngs.TaskManager():
+
+                for t in time.start_solution_routine():
+                    explicit_sim.write_to_streams(t, scheme=f"{explicit_scheme}", dt=dt)
+                    implicit_sim.write_to_streams(t, scheme=f"{implicit_scheme}", dt=dt)
+
+            IMP.io.gfu.rate *= 2
+            EXP.io.gfu.rate *= 2
+
+        IMP.io.gfu.rate = rate_imp
+        EXP.io.gfu.rate = rate_exp
+
+    explicit_sim.close_output_streams()
+    implicit_sim.close_output_streams()
+
+
+def local_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh, 
+                                 explicit_sim: MMS, implicit_sim: MMS,
+                                 pair_schemes: list, levels: int = 1):
+
+    # Define common solver configuration
+    EXP = CompressibleFlowSolver(explicit_mesh)
+    IMP = CompressibleFlowSolver(implicit_mesh)
+
+    time = LocalTimeIMEXRoutine(IMP, EXP)
+    explicit_sim.set_conditions(EXP, time="transient")
+    implicit_sim.set_conditions(IMP, time="transient")
+
+    imp_bc = InterfaceBC(fields=None)
+    exp_bc = InterfaceBC(fields=None)
+
+    IMP.bcs['interface'] = imp_bc
+    EXP.bcs['interface'] = exp_bc
+
+    explicit_sim.open_output_streams()
+    implicit_sim.open_output_streams()
+    for scheme in pair_schemes:
+        implicit_scheme, explicit_scheme = scheme
+        IMP.fem.scheme = implicit_scheme
+        EXP.fem.scheme = explicit_scheme
+
+        ratio, dt_max = pair_schemes[scheme]
+
+        time_steps = [dt_max/(2**i) for i in range(levels)]
+
+        EXP.fem.initialize_finite_element_spaces()
+        EXP.fem.initialize_trial_and_test_functions()
+        EXP.fem.initialize_gridfunctions()
+        EXP.fem.initialize_time_scheme_gridfunctions()
+
+        Uh_exp = EXP.get_all_solution_fields()
+        explicit_sim.set_solution_fields(Uh_exp)
+        imp_bc.fields = Uh_exp
+
+        IMP.fem.initialize_finite_element_spaces()
+        IMP.fem.initialize_trial_and_test_functions()
+        IMP.fem.initialize_gridfunctions()
+        IMP.fem.initialize_time_scheme_gridfunctions()
+
+        Uh_imp = IMP.get_all_solution_fields()
+        implicit_sim.set_solution_fields(Uh_imp)
+        exp_bc.fields = Uh_imp
+
+        rate_imp = IMP.io.gfu.rate
+        rate_exp = EXP.io.gfu.rate
+        for dt in time_steps:
+            EXP.time.timer.step = dt
+            IMP.time.timer.step = ratio * dt
+
+            # Set filenames for output
+            explicit_sim.set_filenames(scheme=f"{explicit_scheme}", dt=dt)
+            implicit_sim.set_filenames(scheme=f"{implicit_scheme}", dt=dt)
+
+            EXP.fem.set_boundary_conditions()
+            EXP.fem.set_initial_conditions()
+            EXP.fem.initialize_symbolic_forms()
+
+            IMP.fem.set_boundary_conditions()
+            IMP.fem.set_initial_conditions()
+            IMP.fem.initialize_symbolic_forms()
+
+            if IMP.io.vtk.enable:
+                explicit_sim.open_vtk_stream()
+                implicit_sim.open_vtk_stream()
+
+            explicit_sim.write_to_streams(0.0, scheme=f"{explicit_scheme}", dt=dt)
+            implicit_sim.write_to_streams(0.0, scheme=f"{implicit_scheme}", dt=dt)
+
+            # Solve the system
+            with ngs.TaskManager():
+
+                for t in time.start_solution_routine():
+                    explicit_sim.write_to_streams(t, scheme=f"{explicit_scheme}", dt=dt)
+                    implicit_sim.write_to_streams(t, scheme=f"{implicit_scheme}", dt=dt)
+
+            IMP.io.gfu.rate *= 2
+            EXP.io.gfu.rate *= 2
+
+        IMP.io.gfu.rate = rate_imp
+        EXP.io.gfu.rate = rate_exp
+
+    explicit_sim.close_output_streams()
+    implicit_sim.close_output_streams()
+
+
 def time_step_routine(simulation: MMS, time_steps: list, **log):
 
     rate = simulation.cfg.io.gfu.rate
@@ -560,6 +772,7 @@ def time_step_routine(simulation: MMS, time_steps: list, **log):
 
         simulation.cfg.io.gfu.rate *= 2
     simulation.cfg.io.gfu.rate = rate
+
 
 def mesh_refinement_routine(*simulations: MMS,
                             levels=4,
@@ -613,7 +826,7 @@ def solution_routine(simulation: MMS, **log):
     simulation.set_solution_fields(Uh)
 
     if cfg.io.vtk.enable:
-        simulation.open_vtk_stream(**log)
+        simulation.open_vtk_stream()
 
     if simulation.is_transient:
         simulation.write_to_streams(0.0, **log)
@@ -623,7 +836,6 @@ def solution_routine(simulation: MMS, **log):
             for i, n in enumerate(old[cfg.fem.scheme.name], 1):
                 Uold = simulation(t=-i*cfg.time.timer.step.Get())
                 cfg.fem.scheme.gfus['U'][n].Set(ngs.CF((Uold.rho, Uold.rho_u, Uold.rho_E)))
-
 
     # Solve the system
     with ngs.TaskManager():
@@ -646,7 +858,7 @@ def test_configuration(expected: dict, result: CompressibleFlowSolver):
 
 
 def test_exact_solution(cfg):
-    sim = EulerMMS(PSEUDO_STATIONARY_CFG, filename='test')
+    sim = EulerMMS(PSEUDO_STATIONARY_CFG, get_constant_mach_mms, filename='test')
 
     # Define initial mesh size
     maxh = 0.5
@@ -680,7 +892,7 @@ def test_exact_solution(cfg):
             Uh.rho_u = cfg.momentum(Uh)
 
             sim.set_solution_fields(Uh)
-            sim.open_vtk_stream(level=level, order=order)
+            sim.open_vtk_stream()
             sim.write_to_streams(level=level, h=maxh, order=order)
 
     sim.export_errors_to_fig()
