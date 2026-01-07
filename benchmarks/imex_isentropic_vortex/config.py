@@ -2,7 +2,7 @@
 import numpy as np
 import ngsolve as ngs
 from dream.compressible import CompressibleFlowSolver, flowfields, Initial, InterfaceBC
-from dream.time import MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine, Timer
+from dream.time import IMEXTimeRoutine, Timer
 from dream.mesh import get_rectangular_mesh
 from dream.io import DomainL2Sensor
 from time import time as clock
@@ -338,7 +338,7 @@ def single_transient_routine(simulation: Vortex):
         file.write(f"{cfg.fem.scheme.name}_{cfg.time.timer.step.Get()}: {end - start}\n")
 
 
-def imex_transient_routine(routine, *simulations: Vortex):
+def imex_transient_routine(routine: IMEXTimeRoutine, *simulations: Vortex):
 
     SIMP, SEXP = simulations
     IMP, EXP = tuple(sim.cfg for sim in simulations)
