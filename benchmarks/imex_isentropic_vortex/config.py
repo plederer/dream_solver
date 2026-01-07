@@ -8,7 +8,7 @@ from dream.io import DomainL2Sensor
 from time import time as clock
 
 
-def get_uniform_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bool = True) -> ngs.Mesh:
+def get_uniform_meshes(Nx, Ny, quads: bool = True) -> ngs.Mesh:
 
     def union(*args):
         x_ = args[0]
@@ -24,20 +24,10 @@ def get_uniform_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, q
 
     xl = np.linspace(-0.5, -0.25, Nx//4+1)
     xm = np.linspace(-0.25, 0.25, Nx//2+1)
-    if refine_x:
-        xm = union(xm,
-                   np.linspace(-0.05, 0.05, 4+1),
-                   np.linspace(-0.0875, 0.0875, 2+1),
-                   np.linspace(-0.175, 0.175, 2+1))
     xr = np.linspace(0.25, 0.5, Nx//4+1)
 
     x = union(xl, xm, xr)
     y = np.linspace(-0.5, 0.5, Ny+1)
-    if refine_y:
-        y = union(y,
-                  np.linspace(-0.05, 0.05, 4+1),
-                  np.linspace(-0.0875, 0.0875, 2+1),
-                  np.linspace(-0.175, 0.175, 2+1))
 
     ys = slice(0, iend(y))
 
@@ -82,8 +72,74 @@ def get_uniform_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, q
     return mesh, implicit_mesh, explicit_mesh
 
 
-def get_squashed_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bool = True) -> ngs.Mesh:
-    raise NotImplementedError("Squashed mesh generation not implemented yet.")
+def get_squashed_meshes(Nx, Ny, quads: bool = True) -> ngs.Mesh:
+
+    def union(*args):
+        x_ = args[0]
+        for arg in args[1:]:
+            x_ = np.union1d(x_, arg)
+        return x_
+
+    def iend(*args):
+        return sum([arg.size for arg in args]) + 1 - len(args)
+
+    def ibegin(*args):
+        return sum([arg.size for arg in args]) - len(args)
+
+    xl = np.linspace(-0.5, -0.0625, Nx//2 - Nx//16 + 1)
+
+    xm = [0.0]
+    for i in [12, 6, 4, 2]:
+        xm.append(xm[-1] + 0.0625/i)
+    xm = np.array(xm)
+    xm = union(-xm[::-1], xm)
+    xr = np.linspace(0.0625, 0.5, Nx//2 - Nx//16 + 1)
+
+    x = union(xl, xm, xr)
+    y = np.linspace(-0.5, 0.5, Ny+1)
+
+    ys = slice(0, iend(y))
+
+    # Full mesh
+    domains = {'explicit_left': [(slice(0, iend(xl)), ys)],
+               'implicit': [(slice(ibegin(xl), iend(xl, xm)), ys)],
+               'explicit_right': [(slice(ibegin(xl, xm), iend(x)), ys)]
+               }
+
+    boundaries = {'bottom': [(slice(0, iend(x)), 0)],
+                  'right': [(ibegin(x), ys)],
+                  'top': [(slice(0, iend(x)), ibegin(y))],  # , (slice(ibegin(xl, xm), iend(x)), ibegin(y)) ],
+                  'left': [(0, slice(0, iend(y)))],
+                  'interface': [(i-1, slice(y.size)) for i in [iend(xl), iend(xl, xm)]]
+                  }
+
+    mesh = get_rectangular_mesh(x, y, domains, boundaries, quads, True, True)
+
+    # Explicit mesh
+    domains = {'explicit_left': [(slice(0, iend(xl)), ys)],
+               'explicit_right': [(slice(ibegin(xl, xm), iend(x)), ys)]
+               }
+
+    boundaries = {'bottom': [(slice(*i), 0) for i in [(0, iend(xl)), (ibegin(xl, xm), iend(x))]],
+                  'right': [(ibegin(x), ys)],
+                  'top': [(slice(*i), ibegin(y)) for i in [(0, iend(xl)), (ibegin(xl, xm), iend(x))]],
+                  'left': [(0, slice(0, iend(y)))],
+                  'interface': [(i, slice(y.size)) for i in [ibegin(xl), ibegin(xl, xm)]]
+                  }
+
+    explicit_mesh = get_rectangular_mesh(x, y, domains, boundaries, quads, True, True)
+
+    # Implicit mesh
+    domains = {'implicit': [(slice(ibegin(xl), iend(xl, xm)), ys)]}
+
+    boundaries = {'bottom': [(slice(*i), 0) for i in [(ibegin(xl), iend(xl, xm))]],
+                  'top': [(slice(*i), ibegin(y)) for i in [(ibegin(xl), iend(xl, xm))]],
+                  'interface': [(i, slice(y.size)) for i in [ibegin(xl), ibegin(xl, xm)]]
+                  }
+
+    implicit_mesh = get_rectangular_mesh(x, y, domains, boundaries, quads, False, True)
+    return mesh, implicit_mesh, explicit_mesh
+
 
 
 TRANSIENT_CFG = {
@@ -401,7 +457,9 @@ def imex_transient_routine(routine: IMEXTimeRoutine, *simulations: Vortex):
 
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
-    mesh, implicit_mesh, explicit_mesh = get_uniform_meshes(32, 32)
+    mesh, implicit_mesh, explicit_mesh = get_squashed_meshes(32, 32)
     Draw(mesh)
     Draw(implicit_mesh)
     Draw(explicit_mesh)
+
+# %%
