@@ -197,8 +197,7 @@ class Vortex:
                  cfg: dict,
                  filename: str | None = None,
                  domain: str = "explicit_left|implicit|explicit_right",
-                 periodic: str = "bottom|top|left|right",
-                 **export):
+                 periodic: str = "bottom|top|left|right"):
 
         if filename is None:
             filename = f"{str(self)}"
@@ -207,8 +206,6 @@ class Vortex:
         self.filename = filename
         self.domain = domain
         self.periodic = periodic
-        self.export = {'to_fig': True, 'to_csv': True, 'to_dat': True}
-        self.export.update(export)
 
     def _set_fields(self, U):
         U.rho = self.cfg.density(U)
@@ -220,6 +217,7 @@ class Vortex:
         U.T = self.cfg.temperature(U)
         U.rho_E = self.cfg.energy(U)
         U['entropy'] = self.cfg.specific_entropy(U)
+        U['thermodynamic_entropy'] = self.cfg.thermodynamic_entropy(U)
 
     def get_exact_fields(self, t: float) -> flowfields:
         # Construct dimensionless fields
@@ -283,14 +281,15 @@ class Vortex:
         Uh_ = ngs.CF((Uh.rho, Uh.rho_u, Uh.rho_E))
 
         fields = {'rho': Uh.rho - Ue.rho, 'u': Uh.u - Ue.u, 'p': Uh.p - Ue.p,
-                  'rho_u': Uh.rho_u - Ue.rho_u, 'rho_E': Uh.rho_E - Ue.rho_E, 'U': Uh_ - Ue_}
+                  'rho_u': Uh.rho_u - Ue.rho_u, 'rho_E': Uh.rho_E - Ue.rho_E, 'U': Uh_ - Ue_,
+                  'thermodynamic_entropy': Uh['thermodynamic_entropy'] - Ue['thermodynamic_entropy']}
         sensor = DomainL2Sensor(fields, self.cfg.mesh, self.domain, name=f"L2_{self.filename}",
                                 integration_order=order + 10)
 
         self.cfg.io.sensor.add(sensor)
 
     def set_vtk_stream(self):
-        export = ['density', 'velocity', 'pressure', 'temperature', 'Ma', 'energy']
+        export = ['density', 'velocity', 'pressure', 'temperature', 'Ma', 'energy', 'thermodynamic_entropy']
         fields = {f"{key}_h": value for key, value in self.Uh.items() if key in export}
         fields.update({f"{key}_e": value for key, value in self.Ue.items() if key in export})
         self.cfg.io.vtk.fields = fields

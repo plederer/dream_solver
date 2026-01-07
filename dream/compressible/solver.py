@@ -696,6 +696,10 @@ class CompressibleFlowSolver(SolverConfiguration):
     @equation
     def specific_entropy(self, U: flowfields):
         return self.equation_of_state.specific_entropy(U)
+    
+    @equation
+    def thermodynamic_entropy(self, U: flowfields):
+        return self.equation_of_state.thermodynamic_entropy(U)
 
     @equation
     def density_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:

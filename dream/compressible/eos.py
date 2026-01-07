@@ -294,6 +294,18 @@ class IdealGas(EquationOfState):
             return U.p/U.rho**self.heat_capacity_ratio
 
         return None
+    
+    def thermodynamic_entropy(self, U: flowfields) -> ngs.CF:
+        r""" Returns the thermodynamic entropy from given fields 
+
+            .. math::
+                s = - \frac{1}{\gamma - 1} \ln{\left( \frac{p}{\rho^{\gamma}} \right)}.
+        """
+        s = self.specific_entropy(U)
+        if all((U.rho, s)):
+            return -U.rho * ngs.log(s)/(self.heat_capacity_ratio - 1)
+        
+        return None
 
     def density_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         r"""Returns the density gradient from given fields

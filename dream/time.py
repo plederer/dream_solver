@@ -659,12 +659,21 @@ class IMEXTimeRoutine(TimeRoutine, is_interface=True):
             logger.info("Solving implicit stage...")
             yield self.solve_implicit_stage(stage, t0)
 
+        self.update_final_stage_solution()
+
     def solve(self, reassemble: bool = True):
         for t in self.start_solution_routine(reassemble):
             pass
 
     def update_imex_step_gridfunctions(self):
         self.gscheme.update_step_gridfunctions()
+
+    def update_final_stage_solution(self) -> None:
+        """ Updates the final stage solution 
+
+            This method is needed in case the time scheme is not stiffly accurate.
+        """
+        pass
 
 
 class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
@@ -685,9 +694,6 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         for log in self.lscheme.solve_stage(stage, t0):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_explicit))
 
-        if stage == self.lscheme.number_of_stages:
-            self.lscheme.update_final_stage_solution()
-
         return log
 
     def solve_implicit_stage(self, stage: int, t0: float):
@@ -695,15 +701,15 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         for log in self.gscheme.solve_stage(stage, t0):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
 
-        if stage == self.gscheme.number_of_stages:
-            self.gscheme.update_final_stage_solution()
-
         return log
 
     def update_imex_step_gridfunctions(self):
         self.lscheme.update_step_gridfunctions()
-        super().update_imex_step_gridfunctions()
+        self.gscheme.update_step_gridfunctions()
 
+    def update_final_stage_solution(self):
+        self.lscheme.update_final_stage_solution()
+        self.gscheme.update_final_stage_solution()
 
 class PCIMEXTimeRoutine(IMEXTimeRoutine):
     """ IMEX Predictor-Corrector routine with frozen interface values during the predictor stage. 
@@ -727,10 +733,10 @@ class PCIMEXTimeRoutine(IMEXTimeRoutine):
         logger.info(f"Local stage time steps: {self.lstage_dt}")
 
     def set_predictor_solution(self):
-        ...
+        pass
 
     def solve_predictor_stage(self, stage: int, t0: float):
-        ...
+        pass
 
     def solve_explicit_stage(self, stage: int, t0: float):
 
@@ -747,15 +753,12 @@ class PCIMEXTimeRoutine(IMEXTimeRoutine):
 
         for _, lt0, _ in self.ltimer():
 
-            self.set_predictor_solution()
+            for lstage in range(1, self.lscheme.number_of_stages + 1):
+                for log in self.lscheme.solve_stage(lstage, lt0):
+                    logger.info(self.parse_routine_log(**log, cfg=self.cfg_explicit))
+                self.set_predictor_solution()
 
-            # Update a explicit time step until stage.
-            for log in self.lscheme.solve_current_time_level(lt0):
-                logger.info(self.parse_routine_log(**log, cfg=self.cfg_explicit))
-
-                if "is_diverged" in log:
-                    break
-
+            self.lscheme.update_final_stage_solution()
             self.lscheme.update_step_gridfunctions()
 
         return log
@@ -765,10 +768,10 @@ class PCIMEXTimeRoutine(IMEXTimeRoutine):
         for log in self.gscheme.solve_stage(stage, t0):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
 
-        if stage == self.gscheme.number_of_stages:
-            self.gscheme.update_final_stage_solution()
-
         return log
+    
+    def update_final_stage_solution(self):
+        self.gscheme.update_final_stage_solution()
 
 
 class LinearPCIMEXTimeRoutine(PCIMEXTimeRoutine):
@@ -795,7 +798,7 @@ class LinearPCIMEXTimeRoutine(PCIMEXTimeRoutine):
 
     def solve_predictor_stage(self, stage: int, t0: float):
 
-        # First, we set the predictor time step
+        # First, we copy the solution at start of the predictor stage.
         self.y1.data = self.cfg_implicit.fem.gfu.vec
 
         # Second, we solve for the predicted solution.
@@ -805,8 +808,9 @@ class LinearPCIMEXTimeRoutine(PCIMEXTimeRoutine):
         if stage == self.gscheme.number_of_stages:
             self.gscheme.update_final_stage_solution()
 
-        # Third, we reset the time step back to the corrector time step.
+        # Third, we copy the solution at the end of the predictor stage.
         self.y2.data = self.cfg_implicit.fem.gfu.vec
+        self.cfg_implicit.fem.gfu.vec.data = self.y1
 
         return log
 
@@ -818,8 +822,5 @@ class LinearPCIMEXTimeRoutine(PCIMEXTimeRoutine):
         # Finally, solve for the corrected solution.
         for log in self.gscheme.solve_stage(stage, t0):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
-
-        if stage == self.gscheme.number_of_stages:
-            self.gscheme.update_final_stage_solution()
 
         return log
