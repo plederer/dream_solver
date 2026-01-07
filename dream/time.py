@@ -237,7 +237,9 @@ class Scheme(Configuration, is_interface=True):
 
 class TimeSchemes(Scheme):
 
-    time_levels: tuple[str, ...]
+    number_of_steps: int = 1
+    number_of_stages: int = 1
+    time_of_stages: tuple[float, ...]
 
     @property
     def dt(self) -> ngs.Parameter:
@@ -253,25 +255,62 @@ class TimeSchemes(Scheme):
     def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
         raise NotImplementedError("Overload this method in derived class!")
 
-    def get_level_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
-        gfus = [ngs.GridFunction(gfu.space) for _ in self.time_levels[:-1]] + [gfu]
-        return {level: gfu for level, gfu in zip(self.time_levels, gfus)}
+    def solve_stage(self, stage: int, t0: float) -> typing.Generator[Log, None, None]:
+        raise NotImplementedError("Overload this method in derived class!")
 
-    def initialize_gridfunctions(self, gfus: dict[str, ngs.GridFunction]) -> None:
-        self.gfus = {space: self.get_level_gridfunctions(gfu) for space, gfu in gfus.items()}
+    def get_step_key(self, step: int):
+        if step == 0:
+            return 'n'
+        return f"n{step:+d}"
+
+    def get_step_gridfunctions(self, gfu: ngs.GridFunction) -> dict[str, ngs.GridFunction]:
+        gfus = [gfu] + [ngs.GridFunction(gfu.space) for _ in range(self.number_of_steps-1)]
+        return {self.get_step_key(step): gfu for step, gfu in zip(range(1, 1-self.number_of_steps, -1), gfus)}
+
+    def get_stage_time_steps(self, scaling: float = None, padded: bool = True) -> tuple[float, ...]:
+
+        if scaling is None:
+            scaling = self.dt.Get()
+
+        dts = tuple(scaling * (tn - t0) for t0, tn in zip(self.time_of_stages[:-1], self.time_of_stages[1:]))
+
+        if padded:
+            return (0.0,) + dts
+
+        return dts
+
+    def get_stage_times(self, scaling: float = None) -> tuple[float, ...]:
+
+        if scaling is None:
+            scaling = self.dt.Get()
+
+        return tuple(scaling * t for t in self.time_of_stages)
+
+    def initialize_step_gridfunctions(self, gfus: dict[str, ngs.GridFunction]) -> None:
+        self.gfus = {space: self.get_step_gridfunctions(gfu) for space, gfu in gfus.items()}
 
     def set_initial_conditions(self):
         for gfu in self.gfus.values():
-            for old in list(gfu.values())[:-1]:
+            for old in list(gfu.values())[1:]:
                 old.vec.data = gfu['n+1'].vec
 
-    def set_stage_t(self, stage: int, t0: float) -> None:
-        self.t.Set(t0 + self.get_stage_dt()[stage])
+    def set_stage_time(self, stage: int, t0: float) -> None:
+        self.t.Set(t0 + self.dt.Get() * self.time_of_stages[stage])
 
-    def update_gridfunctions(self):
+    def update_step_gridfunctions(self):
         for gfu in self.gfus.values():
-            for old, new in zip(self.time_levels[:-1], self.time_levels[1:]):
-                gfu[old].vec.data = gfu[new].vec
+
+            for step in range(2-self.number_of_steps, 1, 1):
+                old_step = self.get_step_key(step)
+                new_step = self.get_step_key(step+1)
+                gfu[old_step].vec.data = gfu[new_step].vec
+
+    def update_final_stage_solution(self) -> None:
+        """ Updates the final stage solution 
+
+            This method is needed in case the time scheme is not stiffly accurate.
+        """
+        pass
 
 
 class TimeRoutine(Configuration, is_interface=True):
@@ -392,7 +431,7 @@ class TransientRoutine(TimeRoutine):
                     logger.error("Transient routine diverged!")
                     break
 
-                scheme.update_gridfunctions()
+                scheme.update_step_gridfunctions()
 
                 yield t1
 
@@ -476,7 +515,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
                     logger.error("Pseudo time stepping routine diverged!")
                     break
 
-                scheme.update_gridfunctions()
+                scheme.update_step_gridfunctions()
                 self.solver_iteration_update(log['it'])
                 io.redraw()
 
@@ -506,7 +545,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
     name: str = "multizone_imex_transient"
 
-    def __init__(self, cfg_implicit=None, cfg_explicit=None, root=None, **default):
+    def __init__(self, cfg_implicit: SolverConfiguration = None, cfg_explicit: SolverConfiguration = None, root=None, **default):
 
         DEFAULT = {
             "timer": Timer(root)
@@ -523,14 +562,14 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
     def is_valid_imex_schemes(self) -> bool:
 
-        n_imp = self.cfg_implicit.fem.scheme.get_num_stages()
-        n_exp = self.cfg_explicit.fem.scheme.get_num_stages()
+        n_imp = self.cfg_implicit.fem.scheme.number_of_stages
+        n_exp = self.cfg_explicit.fem.scheme.number_of_stages
 
         if n_imp != n_exp:
             return False
 
-        cdt_imp = self.cfg_implicit.fem.scheme.get_stage_dt()
-        cdt_exp = self.cfg_explicit.fem.scheme.get_stage_dt()
+        cdt_imp = self.cfg_implicit.fem.scheme.get_stage_time_steps()
+        cdt_exp = self.cfg_explicit.fem.scheme.get_stage_time_steps()
 
         # NOTE, if AIMEX schemes are used, this condition probably will fail.
         if not np.allclose(cdt_imp, cdt_exp, rtol=1e-10, atol=1e-10):
@@ -558,7 +597,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
 
         self._timer = timer
 
-    def start_solution_routine(self, reassemble = True):
+    def start_solution_routine(self, reassemble=True):
 
         timer = self.timer
         timer.reset()
@@ -586,16 +625,16 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
                     self.cfg_explicit.timestep_controller.process_iteration(iteration=rate)
                 if self.cfg_implicit.timestep_controller is not None:
                     self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
-                
+
                 # These are needed in case the schemes aren't stiffly accurate.
-                self.cfg_explicit.fem.scheme.update_solution()
-                self.cfg_implicit.fem.scheme.update_solution()
-                
-                print(flush=True) # separate info for each stage. 
+                self.cfg_explicit.fem.scheme.update_final_stage_solution()
+                self.cfg_implicit.fem.scheme.update_final_stage_solution()
+
+                print(flush=True)  # separate info for each stage.
                 yield t1
-                
-                self.cfg_explicit.fem.scheme.update_gridfunctions()
-                self.cfg_implicit.fem.scheme.update_gridfunctions()
+
+                self.cfg_explicit.fem.scheme.update_step_gridfunctions()
+                self.cfg_implicit.fem.scheme.update_step_gridfunctions()
 
                 io_exp.save_in_time_routine(t1, rate)
                 io_imp.save_in_time_routine(t1, rate)
@@ -631,6 +670,7 @@ class MultizoneIMEXTimeRoutine(TimeRoutine):
         for t in self.start_solution_routine(reassemble):
             pass
 
+
 class LocalTimeIMEXRoutine(TimeRoutine):
 
     name: str = "local_imex_transient"
@@ -643,7 +683,7 @@ class LocalTimeIMEXRoutine(TimeRoutine):
         self.cfg_explicit = cfg_explicit
 
     # Function that checks whether the specified schemes form a viable IMEX pair.
-    def start_solution_routine(self, reassemble = True):
+    def start_solution_routine(self, reassemble=True):
 
         ltimer = self.cfg_explicit.time.timer
         gtimer = self.cfg_implicit.time.timer
@@ -675,8 +715,8 @@ class LocalTimeIMEXRoutine(TimeRoutine):
                         if self.cfg_explicit.timestep_controller is not None:
                             self.cfg_explicit.timestep_controller.process_iteration(iteration=lrate)
 
-                        self.cfg_explicit.fem.scheme.update_solution()
-                        self.cfg_explicit.fem.scheme.update_gridfunctions()
+                        self.cfg_explicit.fem.scheme.update_stage_solution()
+                        self.cfg_explicit.fem.scheme.update_step_gridfunctions()
 
                     if "is_diverged" in log:
                         break
@@ -690,14 +730,14 @@ class LocalTimeIMEXRoutine(TimeRoutine):
                 # Process any work required in the time step controller.
                 if self.cfg_implicit.timestep_controller is not None:
                     self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
-                
+
                 # These are needed in case the schemes aren't stiffly accurate.
-                self.cfg_implicit.fem.scheme.update_solution()
-                
-                print(flush=True) # separate info for each stage. 
+                self.cfg_implicit.fem.scheme.update_stage_solution()
+
+                print(flush=True)  # separate info for each stage.
                 yield t1
-                
-                self.cfg_implicit.fem.scheme.update_gridfunctions()
+
+                self.cfg_implicit.fem.scheme.update_step_gridfunctions()
 
                 io_exp.save_in_time_routine(t1, rate)
                 io_imp.save_in_time_routine(t1, rate)
@@ -705,218 +745,348 @@ class LocalTimeIMEXRoutine(TimeRoutine):
             io_exp.save_post_time_routine(t1, rate)
             io_imp.save_post_time_routine(t1, rate)
 
-
     def solve(self, reassemble: bool = True):
         for t in self.start_solution_routine(reassemble):
             pass
-
-
-
-
 
 
 # # # # # # # # #
 # TESTING
 # # # # # # # # #
 
+class IMEXTimeRoutine(TimeRoutine, is_interface=True):
 
+    def __init__(self, cfg_implicit: SolverConfiguration, cfg_explicit: SolverConfiguration, **default):
+        super().__init__(None, None, **default)
 
-class PredictorCorrectorIMEXRoutine(TimeRoutine):
-
-    name: str = "predictor_corrector_imex_transient"
-
-    def __init__(self, cfg_implicit=None, cfg_explicit=None, nsteps=1, is_frozen_interface=False, root=None, **default):
-        
-        DEFAULT = {
-            "timer": Timer(root)
-        }
-        DEFAULT.update(default)
-
-        super().__init__(root, **DEFAULT)
-
-        # Keep references for the configurations.
         self.cfg_implicit = cfg_implicit
         self.cfg_explicit = cfg_explicit
 
-        # Number of substeps.
-        self.m = nsteps
+    @property
+    def gtimer(self) -> Timer:
+        """ Global timer for the implicit scheme. """
+        return self.cfg_implicit.time.timer
 
-        # Book-keep the flag for a frozen interface.
-        self.is_frozen_interface = is_frozen_interface
+    @property
+    def ltimer(self) -> Timer:
+        """ Local timer for the explicit scheme. """
+        return self.cfg_explicit.time.timer
 
-    @dream_configuration
-    def timer(self) -> Timer:
-        return self._timer
+    @property
+    def gscheme(self) -> TimeSchemes:
+        """ Global implicit scheme. """
+        return self.cfg_implicit.fem.scheme
 
-    @timer.setter
-    def timer(self, timer: Timer):
+    @property
+    def lscheme(self) -> TimeSchemes:
+        """ Local explicit scheme. """
+        return self.cfg_explicit.fem.scheme
 
-        if not isinstance(timer, Timer):
-            raise TypeError(f"Timer must be of type {Timer}!")
+    def initialize(self, reassemble: bool):
 
-        self._timer = timer
+        if not isinstance(self.cfg_implicit.time, TransientRoutine):
+            raise TypeError("Implicit configuration must use a transient time routine!")
 
-    def initialize_predictor_corrector(self) -> tuple[Timer, bool]:
+        if not isinstance(self.cfg_explicit.time, TransientRoutine):
+            raise TypeError("Explicit configuration must use a transient time routine!")
 
-        # Setup the global timer.
-        gtimer = Timer()
-        gtimer.interval = self.timer.interval
-        gtimer.step = self.timer.step.Get() * self.m
-        gtimer._t = self.timer._t # keep reference to the same parameter.
-        
-        # Deduce the explicit, and implicit predictor and corrector time steps.
-        self.dte = self.timer.step.Get()
-        self.dtc = self.dte * self.m
-        self.dtp = self.dtc - self.dte
-        
-        # Some sanity checks.
-        if self.dte > self.dtc:
-            raise ValueError(f"Explicit time step {self.dte} must be smaller than the implicit time step {self.dtc}.")
-        
-        if self.m < 1:
-            raise ValueError(f"Number of sub-steps m: {self.m} must be greater than zero.")
+        if reassemble:
+            self.cfg_implicit.fem.scheme.assemble()
+            self.cfg_explicit.fem.scheme.assemble()
 
-        from .compressible.conservative.time import ExplicitEuler, ImplicitEuler
-        if not isinstance(self.cfg_implicit.fem.scheme, ImplicitEuler):
-            raise ValueError(f"Implicit scheme must use an implicit Euler for now.") 
-        
-        if not isinstance(self.cfg_explicit.fem.scheme, ExplicitEuler):
-            raise ValueError(f"Explicit scheme must use an explicit Euler for now.")
-        
-        # No need for predictor if interface is frozen or m = 1.
-        is_predictor_enabled = not (self.is_frozen_interface or self.m == 1)
-        
-        # Create the prediction endpoints.
-        if is_predictor_enabled:
+        self.gtimer.reset()
+        self.ltimer.reset()
+
+        self.gdt = self.gtimer.step.Get()
+        self.ldt = self.ltimer.step.Get()
+
+        if self.gdt < self.ldt:
+            raise ValueError(f"Global time step {self.gdt} must be greater than local time step {self.ldt}.")
+
+        if self.gscheme.number_of_stages != self.lscheme.number_of_stages:
+            raise ValueError(
+                f"""Global scheme stages {self.gscheme.number_of_stages}  must be equal to local scheme stages
+                {self.lscheme.number_of_stages}.""")
+
+    def finalize(self):
+        self.gtimer.step = self.gdt
+        self.ltimer.step = self.ldt
+
+    def solve_explicit_stage(self, stage: int, t0: float):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def solve_implicit_stage(self, stage: int, t0: float):
+        raise NotImplementedError("Overload this method in derived class!")
+
+    def start_solution_routine(self, reassemble=True):
+
+        # Initialize predictor corrector routines.
+        self.initialize(reassemble)
+
+        # Open IO streams.
+        with self.cfg_implicit.io as io_imp, self.cfg_explicit.io as io_exp:
+
+            io_imp.save_pre_time_routine(self.gtimer.t.Get())
+            io_exp.save_pre_time_routine(self.ltimer.t.Get())
+
+            # Start the global time-stepping loop.
+            for grate, gt0, gt1 in self.gtimer():
+
+                # Sync timers
+                self.ltimer.t = self.gtimer.t.Get()
+                self.ltimer.interval = (gt0, gt1)
+
+                # Solve all stages.
+                for log in self.solve_stages(gt0):
+                    if "is_diverged" in log:
+                        break
+
+                if "is_diverged" in log:
+                    logger.error("IMEX Time routine diverged!")
+                    break
+
+                logger.info("Completed all stages for current global time step.\n")
+
+                yield gt1
+
+                self.update_imex_step_gridfunctions()
+
+                io_exp.save_in_time_routine(gt1, grate)
+                io_imp.save_in_time_routine(gt1, grate)
+
+            io_exp.save_post_time_routine(gt1, grate)
+            io_imp.save_post_time_routine(gt1, grate)
+
+        self.finalize()
+
+    def solve_stages(self, t0: float) -> typing.Generator[Log, None, None]:
+
+        # We loop over each stage and solve explicit regions first, then implicit ones.
+        for stage in range(1, self.gscheme.number_of_stages + 1):
+
+            # Step 1: Solve explicit stage.
+            logger.info("Solving explicit stage...")
+            yield self.solve_explicit_stage(stage, t0)
+
+            # Step 2: Solve the implicit stage.
+            logger.info("Solving implicit stage...")
+            yield self.solve_implicit_stage(stage, t0)
+
+    def solve(self, reassemble: bool = True):
+        for t in self.start_solution_routine(reassemble):
+            pass
+
+    def update_imex_step_gridfunctions(self):
+        self.gscheme.update_step_gridfunctions()
+
+
+class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
+    """ IMEX Synchronized routine where global and local time steps are equal and stage times are synchronized. """
+
+    def initialize(self, reassemble):
+        super().initialize(reassemble)
+
+        if not np.isclose(self.gdt, self.ldt, rtol=1e-10, atol=1e-10):
+            raise ValueError(f"Global time step {self.gdt} and local time step {self.ldt} must be equal.")
+
+        if not np.isclose(self.gscheme.time_of_stages, self.lscheme.time_of_stages, rtol=1e-10, atol=1e-10).all():
+            raise ValueError(f"Global scheme stage times and local scheme stage times must be equal.")
+
+    def solve_explicit_stage(self, stage: int, t0: float):
+
+        # Solve explicit stage.
+        for log in self.lscheme.solve_stage(stage, t0):
+            logger.info(self.parse_routine_log(**log, cfg=self.cfg_explicit))
+
+        if stage == self.lscheme.number_of_stages:
+            self.lscheme.update_final_stage_solution()
+
+        return log
+
+    def solve_implicit_stage(self, stage: int, t0: float):
+
+        for log in self.gscheme.solve_stage(stage, t0):
+            logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
+
+        if stage == self.gscheme.number_of_stages:
+            self.gscheme.update_final_stage_solution()
+
+        return log
+
+    def update_imex_step_gridfunctions(self):
+        self.lscheme.update_step_gridfunctions()
+        super().update_imex_step_gridfunctions()
+
+
+class PCIMEXTimeRoutine(IMEXTimeRoutine):
+    """ IMEX Predictor-Corrector routine with frozen interface values during the predictor stage. 
+
+        The explicit scheme uses the solution of the implicit scheme at Un for all explicit sub-steps.
+    """
+
+    def initialize(self, reassemble):
+        super().initialize(reassemble)
+
+        if not np.isclose(self.gdt / self.ldt, round(self.gdt / self.ldt), rtol=1e-10, atol=1e-10):
+            raise ValueError(f"Global time step {self.gdt} must be an integer multiple of local time step {self.ldt}.")
+
+        # Compute local stage time steps based on global ones.
+        gstage_dt = self.gscheme.get_stage_time_steps()
+        self.lstage_dt = (0.0,) + tuple(stage_dt/np.ceil(stage_dt/self.ldt) for stage_dt in gstage_dt[1:])
+        self.gstage_t = self.gscheme.get_stage_times()
+
+        logger.info(f"Global time step: {self.gdt}, Local time step: {self.ldt}")
+        logger.info(f"Global stage time steps: {gstage_dt}, Global stage times: {self.gstage_t}")
+        logger.info(f"Local stage time steps: {self.lstage_dt}")
+
+    def set_predictor_solution(self):
+        ...
+
+    def solve_predictor_stage(self, stage: int, t0: float):
+        ...
+
+    def solve_explicit_stage(self, stage: int, t0: float):
+
+        # Solve predictor stage.
+        logger.info("Solving predictor stage...")
+        self.solve_predictor_stage(stage, t0)
+
+        # Reset stage time in the global scheme.
+        self.gscheme.set_stage_time(stage-1, t0)
+
+        # Set local time step for the current stage.
+        self.ltimer.step = self.lstage_dt[stage]
+        self.ltimer.interval = (t0 + self.gstage_t[stage-1], t0 + self.gstage_t[stage])
+
+        for _, lt0, _ in self.ltimer():
+
+            self.set_predictor_solution()
+
+            # Update a explicit time step until stage.
+            for log in self.lscheme.solve_current_time_level(lt0):
+                logger.info(self.parse_routine_log(**log, cfg=self.cfg_explicit))
+
+                if "is_diverged" in log:
+                    break
+
+            self.lscheme.update_step_gridfunctions()
+
+        return log
+
+    def solve_implicit_stage(self, stage: int, t0: float):
+
+        for log in self.gscheme.solve_stage(stage, t0):
+            logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
+
+        if stage == self.gscheme.number_of_stages:
+            self.gscheme.update_final_stage_solution()
+
+        return log
+
+
+class LinearPCIMEXTimeRoutine(PCIMEXTimeRoutine):
+    """ IMEX Predictor-Corrector routine with linear interpolation of interface values during the predictor step. 
+
+        The explicit scheme uses linearly interpolated values between Un and U^{n+1} for all explicit sub-steps.
+    """
+
+    def initialize(self, reassemble):
+        super().initialize(reassemble)
+
+        if reassemble:
             self.y1 = self.cfg_implicit.fem.gfu.vec.CreateVector()
             self.y2 = self.cfg_implicit.fem.gfu.vec.CreateVector()
-        
-        return gtimer, is_predictor_enabled
+
+    def set_predictor_solution(self):
+
+        # Get normalized time within the predictor interval.
+        t0, tn = self.ltimer.interval
+        t_ = (self.ltimer.t.Get() - t0)/(tn - t0)
+
+        # Set the interpolated value in the implicit gfu at the interface.
+        self.cfg_implicit.fem.gfu.vec.data = (1.0 - t_) * self.y1 + t_ * self.y2
+
+    def solve_predictor_stage(self, stage: int, t0: float):
+
+        # First, we set the predictor time step
+        self.y1.data = self.cfg_implicit.fem.gfu.vec
+
+        # Second, we solve for the predicted solution.
+        for log in self.gscheme.solve_stage(stage, t0):
+            logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
+
+        if stage == self.gscheme.number_of_stages:
+            self.gscheme.update_final_stage_solution()
+
+        # Third, we reset the time step back to the corrector time step.
+        self.y2.data = self.cfg_implicit.fem.gfu.vec
+
+        return log
+
+    def solve_implicit_stage(self, stage: int, t0: float):
+
+        # Reset the implicit gfu to the initial stage value u^{s}.
+        self.cfg_implicit.fem.gfu.vec.data = self.y1
+
+        # Finally, solve for the corrected solution.
+        for log in self.gscheme.solve_stage(stage, t0):
+            logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
+
+        if stage == self.gscheme.number_of_stages:
+            self.gscheme.update_final_stage_solution()
+
+        return log
+
+
+class IMEXLinearPredictorCorrectorRoutine(IMEXTimeRoutine):
+    """ IMEX Predictor-Corrector routine with linear interpolation of interface values during the predictor step. 
+
+        The explicit scheme uses linearly interpolated values between Un and U^{n+1} for all explicit sub-steps.
+    """
+
+    def initialize(self, reassemble):
+        super().initialize(reassemble)
+
+        self.dtc = self.gtimer.step.Get()
+        self.dte = self.ltimer.step.Get()
+        self.dtp = self.dtc - self.dte
+
+        if reassemble:
+            self.y1 = self.cfg_implicit.fem.gfu.vec.CreateVector()
+            self.y2 = self.cfg_implicit.fem.gfu.vec.CreateVector()
+
+    def set_predictor_value(self):
+
+        # Get normalized time within the predictor interval.
+        t0, _ = self.ltimer.interval
+        t_ = (self.ltimer.t.Get() - t0)/self.dtp
+
+        # Set the interpolated value in the implicit gfu at the interface.
+        self.cfg_implicit.fem.gfu.vec.data = (1.0 - t_) * self.y1 + t_ * self.y2
 
     def solve_predictor_step(self, t0):
 
-        # First, we set the predictor time step in the implicit blf.
-        self.cfg_implicit.time.timer.step.Set( self.dtp )
-
-        # and we copy the current DOF to y1, which is u^{n}.
+        # First, we set the preditctor time step
+        self.gtimer.step = self.dtp
         self.y1.data = self.cfg_implicit.fem.gfu.vec
 
         # Second, we solve for the predicted solution.
         for log in self.cfg_implicit.fem.scheme.solve_current_time_level(t0):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
 
-        # Third, we copy the last DOF of the predicted solution.
-        self.y2.data = self.cfg_implicit.fem.gfu.vec 
-        
-    def solve_corrector_step(self, t0):
+        # Third, we reset the time step back to the corrector time step.
+        self.gtimer.step = self.dtc
+        self.y2.data = self.cfg_implicit.fem.gfu.vec
 
-        # First, we reset the time step back to the corrector time step.
-        self.timer.step.Set( self.dtc )
-        
+        return log
+
+    def solve_implicit_stage(self, t0):
+
+        # Reset the implicit gfu to the initial value u^{n}.
+        self.cfg_implicit.fem.gfu.vec.data = self.y1
+
         # Finally, solve for the corrected solution.
         for log in self.cfg_implicit.fem.scheme.solve_current_time_level(t0):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
 
-    def set_predictor_value(self, j):
-        
-        if j < 0:
-            raise ValueError(f"Sub-steps j: {j} must be positive.")
-        
-        # Linear interpolation weight between y1 and y2.
-        weight = j/(self.m - 1)
-
-        # Set the interpolated value in the implicit gfu at the interface.
-        self.cfg_implicit.fem.gfu.vec.data = (1.0 - weight) * self.y1 + weight * self.y2
-
-    def start_solution_routine(self, reassemble = True):
-
-        exp_scheme = self.cfg_explicit.fem.scheme
-        imp_scheme = self.cfg_implicit.fem.scheme
-
-        if reassemble:
-            self.cfg_implicit.fem.scheme.assemble()
-            self.cfg_explicit.fem.scheme.assemble()
-        
-        # Initialize the global timer. This is only needed to step through the global time steps.
-        gtimer, is_predictor_enabled = self.initialize_predictor_corrector()
-        gtimer.reset()
-
-        with self.cfg_implicit.io as io_imp, self.cfg_explicit.io as io_exp:
-
-            io_imp.save_pre_time_routine(gtimer.t.Get())
-            io_exp.save_pre_time_routine(gtimer.t.Get())
-
-            # Intervals of dt_imp, which are global time steps.
-            for rate, t0, t1 in gtimer():
-
-                # Initialize the prediction endpoints: y1 and y2.
-                if is_predictor_enabled:
-                    self.solve_predictor_step(t0)
-
-                # Reset global timer.
-                gtimer.t.Set(t0)
-
-                # Set the explicit time-step, since it's shared with the implicit cfg.
-                self.timer.step.Set( self.dte )
-                
-                # Intervals of dt_exp, which are local time steps.
-                for lrate in range(self.m):
-
-                    # Update the predicted value, needed for the interface in the explicit scheme.
-                    # NOTE: cfg_implicit is the gfu specified at the interface in cfg_explicit.
-
-                    if is_predictor_enabled:
-                        self.set_predictor_value(lrate)
-
-                    # Update a single explicit time step.
-                    for log in exp_scheme.solve_current_time_level(gtimer.t.Get()):
-                        logger.info(self.parse_routine_log(**log, cfg=self.cfg_explicit))
-
-                        if "is_diverged" in log:
-                            break
-
-                        if self.cfg_explicit.timestep_controller is not None:
-                            self.cfg_explicit.timestep_controller.process_iteration(iteration=lrate)
-
-                        self.cfg_explicit.fem.scheme.update_solution()
-                        self.cfg_explicit.fem.scheme.update_gridfunctions()
-
-                    if "is_diverged" in log:
-                        break
-
-
-                # Reset the predictor back to y1, which is u^{n}.
-                if is_predictor_enabled:
-                    self.cfg_implicit.fem.gfu.vec.data = self.y1
-
-                # Update the implicit scheme, which is the corrector.
-                self.solve_corrector_step(t0)
-
-                if "is_diverged" in log:
-                    break
-
-                # Process any work required in the time step controller.
-                if self.cfg_implicit.timestep_controller is not None:
-                    self.cfg_implicit.timestep_controller.process_iteration(iteration=rate)
-                
-                # These are needed in case the schemes aren't stiffly accurate.
-                self.cfg_implicit.fem.scheme.update_solution()
-                
-                print(flush=True) # separate info for each stage. 
-                yield t1
-                
-                self.cfg_implicit.fem.scheme.update_gridfunctions()
-
-                io_exp.save_in_time_routine(t1, rate)
-                io_imp.save_in_time_routine(t1, rate)
-
-            io_exp.save_post_time_routine(t1, rate)
-            io_imp.save_post_time_routine(t1, rate)
-
-        # Reset the time step back to the explicit time step.   
-        self.timer.step.Set( self.dte )
-
-    def solve(self, reassemble: bool = True):
-        for t in self.start_solution_routine(reassemble):
-            pass
-
+        return log

@@ -363,7 +363,7 @@ class FiniteElementMethod(Configuration, is_interface=True):
     def initialize_time_scheme_gridfunctions(self, *spaces: str) -> None:
         if isinstance(self.scheme, TimeSchemes):
             gfus = {space: gfu for space, gfu in self.gfus.items() if space in spaces}
-            self.scheme.initialize_gridfunctions(gfus)
+            self.scheme.initialize_step_gridfunctions(gfus)
 
     def initialize_symbolic_forms(self) -> None:
         self.blf: Integrals = {label: {} for label in self.spaces}

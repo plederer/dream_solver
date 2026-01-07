@@ -45,13 +45,6 @@ class ImplicitSchemes(TimeSchemes):
     def get_time_step(self, normalized: bool = False) -> ngs.CF:
         raise NotImplementedError()
 
-    def get_num_stages(self) -> int:
-        raise NotImplementedError()
-    def get_stage_dt(self) -> list[float]:
-        raise NotImplementedError()
-    def update_solution(self) -> None:
-        pass
-
     @time_generator("time level")
     def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
         self.t.Set(t0 + self.dt.Get())
@@ -69,23 +62,19 @@ class ImplicitEuler(ImplicitSchemes):
     where :math:`\widetilde{\bm{M}} = \bm{M} / \delta t` is the weighted mass matrix, :math:`\bm{M}` is the mass matrix and :math:`\bm{f}` and :math:`\bm{g}` arise from the spatial discretization of the PDE on the physical elements and the AE on the facets, respectively.
     """
     name: str = "implicit_euler"
-    aliases = ("ie", )
-    time_levels = ('n', 'n+1')
-
-    def get_num_stages(self) -> int:
-        return 1
-    def get_stage_dt(self) -> float:
-        return [x * self.dt.Get() for x in [0.0, 1.0]] 
+    number_of_steps: int = 2
+    number_of_stages: int = 1
+    time_of_stages: tuple[float] = (0.0, 1.0)
 
     @time_generator(r"stage {0}")
-    def solve_stage(self, iStage, t0: float) -> typing.Generator[Log, None, None]:
+    def solve_stage(self, stage: int, t0: float) -> typing.Generator[Log, None, None]:
         
-        if iStage != 1:
-            raise TypeError(f"Stage {iStage} does not exist.")
+        if stage != 1:
+            raise TypeError(f"Stage {stage} does not exist.")
         
-        self.set_stage_t(iStage, t0)
+        self.set_stage_time(stage, t0)
         for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {"t": self.t.Get(), "stage": iStage, **log}
+            yield {"t": self.t.Get(), "stage": stage, **log}
 
     def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return (gfus['n+1'] - gfus['n'])/self.dt
@@ -109,7 +98,9 @@ class BDF2(ImplicitSchemes):
     """
 
     name: str = "bdf2"
-    time_levels = ('n-1', 'n', 'n+1')
+    number_of_steps: int = 3
+    number_of_stages: int = 1
+    time_of_stages: tuple[float] = (0.0, 1.0)
 
     def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return (3.0*gfus['n+1'] - 4.0*gfus['n'] + gfus['n-1'])/(2.0*self.dt)
@@ -128,7 +119,9 @@ class BDF2(ImplicitSchemes):
 class BDF3(ImplicitSchemes):
 
     name: str = "bdf3"
-    time_levels = ('n-2', 'n-1', 'n', 'n+1')
+    number_of_steps: int = 4
+    number_of_stages: int = 1
+    time_of_stages: tuple[float] = (0.0, 1.0)
 
     def get_time_derivative(self, gfus: dict[str, ngs.GridFunction]) -> ngs.CF:
         return (11.0*gfus['n+1'] - 18.0*gfus['n'] + 9.0 * gfus['n-1']- 2.0 * gfus['n-2'])/(6.0*self.dt)
@@ -203,7 +196,6 @@ class DIRKSchemes(TimeSchemes):
                                                       \bm{0}
         \end{pmatrix}.
     """
-    time_levels = ('n+1',)
     
     def assemble(self) -> None:
 
@@ -239,13 +231,6 @@ class DIRKSchemes(TimeSchemes):
         if self.root.timestep_controller is not None:
             self.root.timestep_controller.initialize()
 
-    def get_num_stages(self) -> int:
-        raise NotImplementedError()
-    def get_stage_dt(self) -> list[float]:
-        raise NotImplementedError()
-    def update_solution(self) -> None:
-        pass
-
     # Generic function to store (S-)DIRK coefficient, vector pairs.
     def setup_stage_definitions(self, 
                                 stage_data: list[tuple[typing.Any, list[tuple[float, typing.Any]]]]
@@ -264,43 +249,43 @@ class DIRKSchemes(TimeSchemes):
 
     # Generic function that solves a DIRK scheme.
     @time_generator(r"stage {0}")
-    def solve_stage(self, iStage, t0: float) -> typing.Generator[Log, None, None]:
+    def solve_stage(self, stage: int, t0: float) -> typing.Generator[Log, None, None]:
 
         # Extract the stage information, if possible.
         try:
-            stage_info = self.stage_definitions[iStage]
+            stage_info = self.stage_definitions[stage]
         except KeyError:
-            raise TypeError(f"Stage {iStage} does not exist.")
+            raise TypeError(f"Stage {stage} does not exist.")
     
         # Stage 1 is a special case, we handle it separately.
-        if iStage == 1:
+        if stage == 1:
             self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
  
         # Distinguish between singly-diagonal (SDIRK) and variable (DIRK) coefficients.
         if self.variable_aii is not None:
-            self.aii.Set( self.variable_aii[iStage] ) # should be set before the solving routine.
-            ovaii = 1.0/self.variable_aii[iStage]
+            self.aii.Set( self.variable_aii[stage] ) # should be set before the solving routine.
+            ovaii = 1.0/self.variable_aii[stage]
             self.rhs.data = ovaii * self.mu0
         else:
             self.rhs.data = self.mu0
 
         # Compute previous-stage residuals, if the apply_target exists.
         if stage_info["apply_target"] is not None:
-            self.set_stage_t(iStage - 1, t0)
+            self.set_stage_time(stage - 1, t0)
             self.blfs.Apply(self.root.fem.gfu.vec, stage_info["apply_target"])
            
         # Build the right-hand side, scaled with its respective coefficients.
         for aij, xj in stage_info["coeffs"]:
             self.rhs.data += aij * xj
     
-        self.set_stage_t(iStage, t0)
+        self.set_stage_time(stage, t0)
         # Solve the resulting nonlinear system.
         for log in self.root.fem.solver.solve_nonlinear_system():
-            yield {"t": self.t.Get(), "stage": iStage, **log}
+            yield {"t": self.t.Get(), "stage": stage, **log}
 
     @time_generator("time level")
     def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
-        for i in range(1, self.get_num_stages() + 1):
+        for i in range(1, self.number_of_stages + 1):
             yield from self.solve_stage(i, t0)
 
 class SDIRK22(DIRKSchemes):
@@ -319,6 +304,8 @@ class SDIRK22(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{2}`.
     """
     name: str = "sdirk22" 
+    number_of_stages: int = 2
+    time_of_stages: tuple[float] = (0.0, 1.0 - ngs.sqrt(2.0)/2.0, 1.0)
 
     def initialize_butcher_tableau(self):
         
@@ -333,11 +320,6 @@ class SDIRK22(DIRKSchemes):
         # This is possible, because the method is stiffly-accurate.
         self.b1 = self.a21
         self.b2 = self.aii
-
-    def get_num_stages(self) -> int:
-        return 2
-    def get_stage_dt(self) -> list[float]:
-        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
 
     def configure_scheme(self) -> None:
         
@@ -391,6 +373,8 @@ class SDIRK33(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{3}`.
     """
     name: str = "sdirk33"
+    number_of_stages: int = 3
+    time_of_stages: tuple[float] = (0.0, 0.4358665215, 0.7179332608, 1.0)
 
     def initialize_butcher_tableau(self):
 
@@ -406,11 +390,6 @@ class SDIRK33(DIRKSchemes):
         self.b1 = self.a31
         self.b2 = self.a32
         self.b3 = self.aii
-        
-    def get_num_stages(self) -> int:
-        return 3
-    def get_stage_dt(self) -> list[float]:
-        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
 
     def configure_scheme(self) -> None:
         
@@ -472,6 +451,8 @@ class SDIRK43(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{2}`.
     """
     name: str = "sdirk43"
+    number_of_stages: int = 4
+    time_of_stages: tuple[float] = (0.0, 1.0/2.0, 2.0/3.0, 1.0/2.0, 1.0)
 
     def initialize_butcher_tableau(self):
 
@@ -491,11 +472,6 @@ class SDIRK43(DIRKSchemes):
         self.b2 = self.a42
         self.b3 = self.a43
         self.b4 = self.aii
-
-    def get_num_stages(self) -> int:
-        return 4
-    def get_stage_dt(self) -> list[float]:
-        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
 
     def configure_scheme(self) -> None:
         
@@ -560,6 +536,8 @@ class SDIRK54(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{5}`.
     """
     name: str = "sdirk54"
+    number_of_stages: int = 5
+    time_of_stages: tuple[float] = (0.0, 1.0/4.0, 3.0/4.0, 11.0/20.0, 1.0/2.0, 1.0)
 
     def initialize_butcher_tableau(self):
 
@@ -584,11 +562,6 @@ class SDIRK54(DIRKSchemes):
         self.b3 = self.a53
         self.b4 = self.a54
         self.b5 = self.aii
-
-    def get_num_stages(self) -> int:
-        return 5
-    def get_stage_dt(self) -> list[float]:
-        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
 
     def configure_scheme(self) -> None:
         
@@ -667,6 +640,8 @@ class DIRK43_WSO2(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{U}^{n+1} = \bm{y}_{4}`.
     """
     name: str = "dirk43_wso2"
+    number_of_stages: int = 4
+    time_of_stages: tuple[float] = (0.0, 0.01900072890, 0.78870323114, 0.41643499339, 1.0)
 
     def initialize_butcher_tableau(self):
 
@@ -692,11 +667,6 @@ class DIRK43_WSO2(DIRKSchemes):
         self.b2 = self.a42
         self.b3 = self.a43
         self.b4 = self.a44
-
-    def get_num_stages(self) -> int:
-        return 4
-    def get_stage_dt(self) -> list[float]:
-        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
 
     def configure_scheme(self) -> None:
         
@@ -770,6 +740,8 @@ class DIRK34_LDD(DIRKSchemes):
     """
 
     name: str = "dirk34_ldd"
+    number_of_stages: int = 3
+    time_of_stages: tuple[float] = (0.0, 0.257820901066211, 0.434296446908075, 0.758519768667167)
 
     def initialize_butcher_tableau(self):
 
@@ -787,11 +759,6 @@ class DIRK34_LDD(DIRKSchemes):
         self.b1 =  0.750869573741408
         self.b2 = -0.362218781852651
         self.b3 =  0.611349208111243
-
-    def get_num_stages(self) -> int:
-        return 3
-    def get_stage_dt(self) -> list[float]:
-        return [x * self.dt.Get() for x in ([0.0] + self.c)] # 1st stage is padded. 
 
     def configure_scheme(self) -> None:
         
@@ -862,7 +829,7 @@ class DIRK34_LDD(DIRKSchemes):
         # Add the scaled mass matrix.
         blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
-    def update_solution(self) -> None:
+    def update_final_stage_solution(self) -> None:
         
         # Spatial term evaluated at the final stage: 3.
         self.blfs.Apply(self.root.fem.gfu.vec, self.x3)
@@ -886,6 +853,6 @@ class DIRK34_LDD(DIRKSchemes):
         yield from self.solve_stage(3, t0)
 
         # NOTE, must explicitly reconstruct the solution at u^{n+1}.
-        self.update_solution()
+        self.update_final_stage_solution()
 
 

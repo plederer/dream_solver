@@ -77,7 +77,7 @@ class IMEXRKSchemes(TimeSchemes):
 class IMEXRK_ARS443(IMEXRKSchemes):
 
     name: str = "imex_rk_ars443"
-    time_levels = ('n', 'n+1')
+    number_of_steps: int = 2
 
     def initialize_butcher_tableau(self):
 
