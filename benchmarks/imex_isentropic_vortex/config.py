@@ -2,13 +2,13 @@
 import numpy as np
 import ngsolve as ngs
 from dream.compressible import CompressibleFlowSolver, flowfields, Initial, InterfaceBC
-from dream.time import MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine, Timer, time
+from dream.time import MultizoneIMEXTimeRoutine, LocalTimeIMEXRoutine, Timer
 from dream.mesh import get_rectangular_mesh
-import matplotlib.pyplot as plt
-import pandas as pd
+from dream.io import DomainL2Sensor
 from time import time as clock
 
-def get_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bool = True) -> ngs.Mesh:
+
+def get_uniform_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bool = True) -> ngs.Mesh:
 
     def union(*args):
         x_ = args[0]
@@ -21,23 +21,23 @@ def get_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bo
 
     def ibegin(*args):
         return sum([arg.size for arg in args]) - len(args)
-    
+
     xl = np.linspace(-0.5, -0.25, Nx//4+1)
     xm = np.linspace(-0.25, 0.25, Nx//2+1)
     if refine_x:
         xm = union(xm,
-                np.linspace(-0.05, 0.05, 4+1), 
-                np.linspace(-0.0875, 0.0875, 2+1),
-                np.linspace(-0.175, 0.175, 2+1))
+                   np.linspace(-0.05, 0.05, 4+1),
+                   np.linspace(-0.0875, 0.0875, 2+1),
+                   np.linspace(-0.175, 0.175, 2+1))
     xr = np.linspace(0.25, 0.5, Nx//4+1)
 
     x = union(xl, xm, xr)
     y = np.linspace(-0.5, 0.5, Ny+1)
     if refine_y:
         y = union(y,
-            np.linspace(-0.05, 0.05, 4+1), 
-            np.linspace(-0.0875, 0.0875, 2+1),
-            np.linspace(-0.175, 0.175, 2+1))
+                  np.linspace(-0.05, 0.05, 4+1),
+                  np.linspace(-0.0875, 0.0875, 2+1),
+                  np.linspace(-0.175, 0.175, 2+1))
 
     ys = slice(0, iend(y))
 
@@ -49,11 +49,11 @@ def get_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bo
 
     boundaries = {'bottom': [(slice(0, iend(x)), 0)],
                   'right': [(ibegin(x), ys)],
-                  'top': [(slice(0, iend(x)), ibegin(y))],#, (slice(ibegin(xl, xm), iend(x)), ibegin(y)) ],
+                  'top': [(slice(0, iend(x)), ibegin(y))],  # , (slice(ibegin(xl, xm), iend(x)), ibegin(y)) ],
                   'left': [(0, slice(0, iend(y)))],
                   'interface': [(i-1, slice(y.size)) for i in [iend(xl), iend(xl, xm)]]
                   }
-    
+
     mesh = get_rectangular_mesh(x, y, domains, boundaries, quads, True, True)
 
     # Explicit mesh
@@ -80,6 +80,10 @@ def get_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bo
 
     implicit_mesh = get_rectangular_mesh(x, y, domains, boundaries, quads, False, True)
     return mesh, implicit_mesh, explicit_mesh
+
+
+def get_squashed_meshes(Nx, Ny, refine_x: bool = False, refine_y: bool = False, quads: bool = True) -> ngs.Mesh:
+    raise NotImplementedError("Squashed mesh generation not implemented yet.")
 
 
 TRANSIENT_CFG = {
@@ -122,6 +126,12 @@ SCHEME_ORDER = {
     'sdirk33': 3,
     'sdirk43': 3,
     'sdirk54': 4
+}
+
+STAGE_TO_SCHEME = {
+    1: ('implicit_euler', 'explicit_euler'),
+    2: ('sdirk22', 'rk_ars22'),
+    3: ('sdirk33', 'rk_ars33'),
 }
 
 
@@ -206,97 +216,31 @@ class Vortex:
         self.cfg.io.vtk.filename = filename
         self.cfg.io.gfu.filename = filename
 
-    def write_to_streams(self, t: float = None, **log):
-        self.log = log
+    def set_sensor_stream(self):
 
-        self.update_timer(t)
+        order = self.cfg.fem.order
 
         Ue = self.Ue
         Uh = self.Uh
 
-        order = self.cfg.fem.order
-
-        key = tuple(log.values())
-        if t is not None:
-            key = key + (t,)
-            self.log['t'] = t
-
         Ue_ = ngs.CF((Ue.rho, Ue.rho_u, Ue.rho_E))
         Uh_ = ngs.CF((Uh.rho, Uh.rho_u, Uh.rho_E))
 
-        self.errors[key] = {
-            'rho': ngs.sqrt(ngs.Integrate((Uh.rho - Ue.rho) ** 2, self.cfg.mesh, order=order + 10)),
-            'u': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh.u - Ue.u, Uh.u - Ue.u), self.cfg.mesh, order=order + 10)),
-            'p': ngs.sqrt(ngs.Integrate((Uh.p - Ue.p) ** 2, self.cfg.mesh, order=order + 10)),
-            'rho_u': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh.rho_u - Ue.rho_u, Uh.rho_u - Ue.rho_u), self.cfg.mesh, order=order + 10)),
-            'rho_E': ngs.sqrt(ngs.Integrate((Uh.rho_E - Ue.rho_E) ** 2, self.cfg.mesh, order=order + 10)),
-            'U': ngs.sqrt(ngs.Integrate(ngs.InnerProduct(Uh_ - Ue_, Uh_ - Ue_), self.cfg.mesh, order=order + 10)),
-        }
+        fields = {'rho': Uh.rho - Ue.rho, 'u': Uh.u - Ue.u, 'p': Uh.p - Ue.p,
+                  'rho_u': Uh.rho_u - Ue.rho_u, 'rho_E': Uh.rho_E - Ue.rho_E, 'U': Uh_ - Ue_}
+        sensor = DomainL2Sensor(fields, self.cfg.mesh, self.domain, name=f"L2_{self.filename}",
+                                integration_order=order + 10)
 
-    def open_output_streams(self):
-        if any(self.export.values()):
-            self.cfg.io.path.mkdir(parents=True, exist_ok=True)
+        self.cfg.io.sensor.add(sensor)
 
-        self.errors = {}
-
-    def open_vtk_stream(self):
+    def set_vtk_stream(self):
         export = ['density', 'velocity', 'pressure', 'temperature', 'Ma', 'energy']
         fields = {f"{key}_h": value for key, value in self.Uh.items() if key in export}
         fields.update({f"{key}_e": value for key, value in self.Ue.items() if key in export})
         self.cfg.io.vtk.fields = fields
 
-    def close_output_streams(self):
-
-        if self.export['to_fig']:
-            self.export_errors_to_fig()
-
-        if self.export['to_dat']:
-            self.export_errors_to_dat()
-
-    def export_errors_to_fig(self):
-
-        # L2 errors
-        labels = {'rho': r"$\| \rho_h - \rho_e \|$", 'u': r"$\| \mathbf{u}_h - \mathbf{u}_e \|$",
-                  'p': r"$\| p_h - p_e \|$", 'rho_u': r"$\| \rho \mathbf{u}_h - \rho \mathbf{u}_e \|$",
-                  'rho_E': r"$\| \rho E_h - \rho E_e \|$", 'U': r"$\| \mathbf{U}_h - \mathbf{U}_e \|$"}
-
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-        axes = axes.flatten()
-
-        df = pd.DataFrame.from_dict(self.errors, orient='index')
-        df.index.names = list(self.log)
-
-        schemes = df.index.get_level_values('scheme').unique()
-
-        for scheme in schemes:
-            scheme_ = df.xs(scheme, level='scheme')
-            dt = scheme_.index.get_level_values('dt').unique()
-
-            mean = pd.DataFrame([scheme_.loc[j].mean() for j in dt])
-            mean.index = dt
-
-            for ax, field in zip(axes, labels):
-
-                error = mean.xs(field, axis=1)
-                ax.loglog(dt, error, marker='o',  label=fr"{scheme}")
-
-                if scheme in SCHEME_ORDER:
-                    order = SCHEME_ORDER[scheme]
-                    ax.loglog(dt, dt**order/dt[0]**order * error.iloc[0], ls='--', color='k')
-
-        for ax, field in zip(axes, labels):
-            ax.set_xlabel(r"$\Delta t_{ny}$")
-            ax.set_title(labels[field])
-            ax.legend()
-
-            ax.set_ylim(1e-6, 1)
-
-        fig.savefig(self.cfg.io.path.joinpath(f"{self.filename}.png"))
-
-    def export_errors_to_dat(self):
-        df = pd.DataFrame.from_dict(self.errors, orient='index')
-        df.index.names = list(self.log)
-        df.to_csv(self.cfg.io.path.joinpath(f"{self.filename}.dat"))
+    def update_timer(self, t):
+        raise NotImplementedError()
 
     def __call__(self, beta: float, R: float, t: float) -> flowfields:
 
@@ -305,7 +249,7 @@ class Vortex:
 
         def x(xc):
             return (ngs.x - xc) - M * t
-        
+
         def y(yc):
             return (ngs.y - yc)
 
@@ -332,9 +276,6 @@ class Vortex:
         U.p = 1/gamma * p**(gamma/(gamma - 1))
 
         return U
-    
-    def update_timer(self, t):
-        raise NotImplementedError()
 
     def __str__(self):
         return self.__class__.__name__
@@ -365,17 +306,42 @@ class SlowVortex(Vortex):
         return super().__call__(1/50, 0.1, t)
 
 
-def multizone_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh,
-                                           explicit_sim: Vortex, implicit_sim: Vortex,
-                                           pair_schemes: list, levels: int = 1):
+def single_transient_routine(simulation: Vortex):
 
     # Define common solver configuration
-    EXP = CompressibleFlowSolver(explicit_mesh)
-    IMP = CompressibleFlowSolver(implicit_mesh)
+    cfg = simulation.cfg
 
-    time = MultizoneIMEXTimeRoutine(IMP, EXP)
-    explicit_sim.set_conditions(EXP, time=time)
-    implicit_sim.set_conditions(IMP, time=time)
+    # Set filenames for output
+    simulation.set_filenames()
+
+    # Initialize the solver
+    cfg.initialize()
+
+    # Get solution fields
+    Uh = cfg.get_solution_fields()
+    simulation.set_solution_fields(Uh)
+
+    if cfg.io.vtk.enable:
+        simulation.set_vtk_stream()
+
+    if cfg.io.sensor.enable:
+        simulation.set_sensor_stream()
+
+    # Solve the system
+    start = clock()
+    with ngs.TaskManager():
+        for _, t in enumerate(cfg.time.start_solution_routine()):
+            simulation.update_timer(t)
+    end = clock()
+
+    with cfg.io.path.joinpath("runtime.txt").open("w") as file:
+        file.write(f"{cfg.fem.scheme.name}_{cfg.time.timer.step.Get()}: {end - start}\n")
+
+
+def imex_transient_routine(routine, *simulations: Vortex):
+
+    SIMP, SEXP = simulations
+    IMP, EXP = tuple(sim.cfg for sim in simulations)
 
     imp_bc = InterfaceBC(fields=None)
     exp_bc = InterfaceBC(fields=None)
@@ -383,241 +349,59 @@ def multizone_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mes
     IMP.bcs['interface'] = imp_bc
     EXP.bcs['interface'] = exp_bc
 
-    explicit_sim.open_output_streams()
-    implicit_sim.open_output_streams()
+    EXP.fem.initialize_finite_element_spaces()
+    EXP.fem.initialize_trial_and_test_functions()
+    EXP.fem.initialize_gridfunctions()
+    EXP.fem.initialize_time_scheme_gridfunctions()
 
-    runtimes = {}
-    for scheme in pair_schemes:
-        implicit_scheme, explicit_scheme = scheme
-        IMP.fem.scheme = implicit_scheme
-        EXP.fem.scheme = explicit_scheme
+    Uh_exp = EXP.get_all_solution_fields()
+    SEXP.set_solution_fields(Uh_exp)
+    imp_bc.fields = Uh_exp
 
-        time_steps = [pair_schemes[scheme]/(2**i) for i in range(levels)]
+    IMP.fem.initialize_finite_element_spaces()
+    IMP.fem.initialize_trial_and_test_functions()
+    IMP.fem.initialize_gridfunctions()
+    IMP.fem.initialize_time_scheme_gridfunctions()
 
-        EXP.fem.initialize_finite_element_spaces()
-        EXP.fem.initialize_trial_and_test_functions()
-        EXP.fem.initialize_gridfunctions()
-        EXP.fem.initialize_time_scheme_gridfunctions()
+    Uh_imp = IMP.get_all_solution_fields()
+    SIMP.set_solution_fields(Uh_imp)
+    exp_bc.fields = Uh_imp
 
-        Uh_exp = EXP.get_all_solution_fields()
-        explicit_sim.set_solution_fields(Uh_exp)
-        imp_bc.fields = Uh_exp
+    # Set filenames for output
+    SEXP.set_filenames()
+    SIMP.set_filenames()
 
-        IMP.fem.initialize_finite_element_spaces()
-        IMP.fem.initialize_trial_and_test_functions()
-        IMP.fem.initialize_gridfunctions()
-        IMP.fem.initialize_time_scheme_gridfunctions()
+    EXP.fem.set_boundary_conditions()
+    EXP.fem.set_initial_conditions()
+    EXP.fem.initialize_symbolic_forms()
 
-        Uh_imp = IMP.get_all_solution_fields()
-        implicit_sim.set_solution_fields(Uh_imp)
-        exp_bc.fields = Uh_imp
+    IMP.fem.set_boundary_conditions()
+    IMP.fem.set_initial_conditions()
+    IMP.fem.initialize_symbolic_forms()
 
-        rate_imp = IMP.io.gfu.rate
-        rate_exp = EXP.io.gfu.rate
-        for dt in time_steps:
-            time.timer.t = 0.0
-            time.timer.step = dt
+    if IMP.io.vtk.enable:
+        SEXP.set_vtk_stream()
+        SIMP.set_vtk_stream()
 
-            # Set filenames for output
-            explicit_sim.set_filenames(scheme=f"{explicit_scheme}", dt=dt)
-            implicit_sim.set_filenames(scheme=f"{implicit_scheme}", dt=dt)
+    if IMP.io.sensor.enable:
+        SEXP.set_sensor_stream()
+        SIMP.set_sensor_stream()
 
-            EXP.fem.set_boundary_conditions()
-            EXP.fem.set_initial_conditions()
-            EXP.fem.initialize_symbolic_forms()
+    # Solve the system
+    start = clock()
+    with ngs.TaskManager():
+        for t in routine.start_solution_routine():
+            for sim in simulations:
+                sim.update_timer(t)
+    end = clock()
 
-            IMP.fem.set_boundary_conditions()
-            IMP.fem.set_initial_conditions()
-            IMP.fem.initialize_symbolic_forms()
-
-            if IMP.io.vtk.enable:
-                explicit_sim.open_vtk_stream()
-                implicit_sim.open_vtk_stream()
-
-            explicit_sim.write_to_streams(0.0, scheme=f"{explicit_scheme}", dt=dt)
-            implicit_sim.write_to_streams(0.0, scheme=f"{implicit_scheme}", dt=dt)
-
-            # Solve the system
-            start = clock()
-            with ngs.TaskManager():
-
-                for t in time.start_solution_routine():
-                    explicit_sim.write_to_streams(t, scheme=f"{explicit_scheme}", dt=dt)
-                    implicit_sim.write_to_streams(t, scheme=f"{implicit_scheme}", dt=dt)
-            end = clock()
-            runtimes[f'{implicit_scheme}_{explicit_scheme}_{dt}'] = end - start
-
-            IMP.io.gfu.rate *= 2
-            EXP.io.gfu.rate *= 2
-
-        IMP.io.gfu.rate = rate_imp
-        EXP.io.gfu.rate = rate_exp
-
-    explicit_sim.close_output_streams()
-    implicit_sim.close_output_streams()
-
-    return runtimes
-
-
-def local_imex_time_refinement_routine(explicit_mesh: ngs.Mesh, implicit_mesh: ngs.Mesh,
-                                       explicit_sim: Vortex, implicit_sim: Vortex,
-                                       pair_schemes: list, levels: int = 1):
-
-    # Define common solver configuration
-    EXP = CompressibleFlowSolver(explicit_mesh)
-    IMP = CompressibleFlowSolver(implicit_mesh)
-
-    time = LocalTimeIMEXRoutine(IMP, EXP)
-    explicit_sim.set_conditions(EXP, time="transient")
-    implicit_sim.set_conditions(IMP, time="transient")
-
-    imp_bc = InterfaceBC(fields=None)
-    exp_bc = InterfaceBC(fields=None)
-
-    IMP.bcs['interface'] = imp_bc
-    EXP.bcs['interface'] = exp_bc
-
-    explicit_sim.open_output_streams()
-    implicit_sim.open_output_streams()
-
-    runtimes = {}
-    for scheme in pair_schemes:
-        implicit_scheme, explicit_scheme = scheme
-        IMP.fem.scheme = implicit_scheme
-        EXP.fem.scheme = explicit_scheme
-
-        ratio, dt_max = pair_schemes[scheme]
-
-        time_steps = [dt_max/(2**i) for i in range(levels)]
-
-        EXP.fem.initialize_finite_element_spaces()
-        EXP.fem.initialize_trial_and_test_functions()
-        EXP.fem.initialize_gridfunctions()
-        EXP.fem.initialize_time_scheme_gridfunctions()
-
-        Uh_exp = EXP.get_all_solution_fields()
-        explicit_sim.set_solution_fields(Uh_exp)
-        imp_bc.fields = Uh_exp
-
-        IMP.fem.initialize_finite_element_spaces()
-        IMP.fem.initialize_trial_and_test_functions()
-        IMP.fem.initialize_gridfunctions()
-        IMP.fem.initialize_time_scheme_gridfunctions()
-
-        Uh_imp = IMP.get_all_solution_fields()
-        implicit_sim.set_solution_fields(Uh_imp)
-        exp_bc.fields = Uh_imp
-
-        rate_imp = IMP.io.gfu.rate
-        rate_exp = EXP.io.gfu.rate
-        rate_imp_vtk = IMP.io.vtk.rate
-        rate_exp_vtk = EXP.io.vtk.rate
-        for dt in time_steps:
-            EXP.time.timer.t = 0.0
-            IMP.time.timer.t = 0.0
-            EXP.time.timer.step = dt
-            IMP.time.timer.step = ratio * dt
-
-            # Set filenames for output
-            explicit_sim.set_filenames(scheme=f"{explicit_scheme}", dt=dt)
-            implicit_sim.set_filenames(scheme=f"{implicit_scheme}", dt=dt)
-
-            EXP.fem.set_boundary_conditions()
-            EXP.fem.set_initial_conditions()
-            EXP.fem.initialize_symbolic_forms()
-
-            IMP.fem.set_boundary_conditions()
-            IMP.fem.set_initial_conditions()
-            IMP.fem.initialize_symbolic_forms()
-
-            if IMP.io.vtk.enable:
-                explicit_sim.open_vtk_stream()
-                implicit_sim.open_vtk_stream()
-
-            explicit_sim.write_to_streams(0.0, scheme=f"{explicit_scheme}", dt=dt)
-            implicit_sim.write_to_streams(0.0, scheme=f"{implicit_scheme}", dt=dt)
-
-            # Solve the system
-            start = clock()
-            with ngs.TaskManager():
-
-                for t in time.start_solution_routine():
-                    explicit_sim.write_to_streams(t, scheme=f"{explicit_scheme}", dt=dt)
-                    implicit_sim.write_to_streams(t, scheme=f"{implicit_scheme}", dt=dt)
-            end = clock()
-            runtimes[f'{implicit_scheme}_{explicit_scheme}_{dt}'] = end - start
-
-            IMP.io.gfu.rate *= 2
-            EXP.io.gfu.rate *= 2
-            IMP.io.vtk.rate *= 2
-            EXP.io.vtk.rate *= 2
-
-        IMP.io.gfu.rate = rate_imp
-        EXP.io.gfu.rate = rate_exp
-        IMP.io.vtk.rate = rate_imp_vtk
-        EXP.io.vtk.rate = rate_exp_vtk
-
-    explicit_sim.close_output_streams()
-    implicit_sim.close_output_streams()
-
-    return runtimes
-
-
-def time_refinement_routine(mesh: ngs.Mesh, schemes: list, simulation: Vortex, levels: int = 1):
-
-    # Define common solver configuration
-    cfg = CompressibleFlowSolver(mesh)
-    simulation.set_conditions(cfg)
-
-    simulation.open_output_streams()
-    runtimes = {}
-    for scheme in schemes:
-        cfg.fem.scheme = scheme
-
-        time_steps = [schemes[scheme]/(2**i) for i in range(levels)]
-
-        # Solve for different time integration schemes
-        rate = cfg.io.gfu.rate
-        for dt in time_steps:
-
-            cfg.time.timer.t = 0.0
-            cfg.time.timer.step = dt
-
-            # Set filenames for output
-            simulation.set_filenames(scheme=scheme, dt=dt)
-
-            # Initialize the solver
-            cfg.initialize()
-
-            # Get solution fields
-            Uh = cfg.get_solution_fields()
-            simulation.set_solution_fields(Uh)
-
-            if cfg.io.vtk.enable:
-                simulation.open_vtk_stream()
-
-            simulation.write_to_streams(0.0, scheme=scheme, dt=dt)
-
-            # Solve the system
-            start = clock()
-            with ngs.TaskManager():
-
-                for rate, t in enumerate(cfg.time.start_solution_routine()):
-                    simulation.write_to_streams(t, scheme=scheme, dt=dt)
-            end = clock()
-            runtimes[f'{scheme}_{dt}'] = end - start
-
-            simulation.cfg.io.gfu.rate *= 2
-        simulation.cfg.io.gfu.rate = rate
-
-    simulation.close_output_streams()
-
-    return runtimes
+    with IMP.io.path.joinpath("runtime.txt").open("w") as file:
+        file.write(f"{IMP.fem.scheme.name}_{IMP.time.timer.step.Get()}: {end - start}\n")
 
 
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
-    mesh, implicit_mesh, explicit_mesh = get_meshes(32, 32)
+    mesh, implicit_mesh, explicit_mesh = get_uniform_meshes(32, 32)
     Draw(mesh)
     Draw(implicit_mesh)
     Draw(explicit_mesh)
