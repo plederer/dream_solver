@@ -11,8 +11,8 @@ from time import time as clock
 
 def get_meshes(x, yl, yt, quads: bool = True) -> ngs.Mesh:
 
-    domains = (('explicit', (x, yl)),
-               ('implicit', (x, yt)),
+    domains = (('explicit', (x, yt)),
+               ('implicit', (x, yl)),
                )
 
     boundaries = (('bottom', (x, yl.min())),
