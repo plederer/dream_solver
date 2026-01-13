@@ -711,6 +711,7 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         self.lscheme.update_final_stage_solution()
         self.gscheme.update_final_stage_solution()
 
+
 class PCIMEXTimeRoutine(IMEXTimeRoutine):
     """ IMEX Predictor-Corrector routine with frozen interface values during the predictor stage. 
 
@@ -769,7 +770,7 @@ class PCIMEXTimeRoutine(IMEXTimeRoutine):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
 
         return log
-    
+
     def update_final_stage_solution(self):
         self.gscheme.update_final_stage_solution()
 
