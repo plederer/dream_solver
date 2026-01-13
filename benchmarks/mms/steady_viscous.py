@@ -11,7 +11,6 @@ from config import (PSEUDO_STATIONARY_CFG,
                         NavierStokesMMS,
                         get_uniform_meshes,
                         get_gassner_mms,
-                        get_roy_mms,
                         steady_convergence_routine)
 
 ngs.SetNumThreads(4)
