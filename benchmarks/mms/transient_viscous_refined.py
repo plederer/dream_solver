@@ -90,12 +90,12 @@ if __name__ == "__main__":
     mesh, imp_mesh, exp_mesh = get_refined_meshes(32, 32, refinements=5)
 
     if USER['splitting'] == 'implicit':
-        simulation = NavierStokesMMS(HDG, get_gassner_mms, 'hdg', periods=1)
+        simulation = NavierStokesMMS(HDG, get_gassner_mms, f'hdg_{USER["viscous_treatment"]}', periods=1)
         transient_convergence_routine(mesh, simulation, time_steps=USER['time_steps'])
     elif USER['splitting'] == 'explicit':
-        simulation = NavierStokesMMS(DG, get_gassner_mms, 'dg', periods=1)
+        simulation = NavierStokesMMS(DG, get_gassner_mms, 'dg_ip', periods=1)
         transient_convergence_routine(mesh, simulation, time_steps=USER['time_steps'])
     else:
-        hdg = NavierStokesMMS(HDG, get_gassner_mms, 'hdg', domain="implicit", boundaries="left|bottom|right", periods=1)
-        dg = NavierStokesMMS(DG, get_gassner_mms, 'dg', domain="explicit", boundaries="left|top|right", periods=1)
+        hdg = NavierStokesMMS(HDG, get_gassner_mms, f'hdg_{USER["viscous_treatment"]}', domain="implicit", boundaries="left|bottom|right", periods=1)
+        dg = NavierStokesMMS(DG, get_gassner_mms, f'dg_{USER["viscous_treatment"]}', domain="explicit", boundaries="left|top|right", periods=1)
         transient_imex_convergence_routine(imp_mesh, exp_mesh, hdg, dg, time_steps=USER['time_steps'])
