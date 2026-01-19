@@ -1358,3 +1358,119 @@ def get_rectangular_mesh(domains: dict[str, tuple[np.ndarray, np.ndarray]],
 
     mesh.Compress()
     return ngs.Mesh(mesh)
+
+
+def get_structured_cylinder_mesh(domains: dict[str, tuple[np.ndarray, np.ndarray]],
+                                 boundaries: dict[str, tuple[np.ndarray, np.ndarray]],
+                                 close_angular: bool = True,
+                                 curve_all=False,
+                                 quads: bool = True) -> ngs.Mesh:
+    """ Generates a structured cylinder mesh based on given radial and angular coordinates.
+
+    The mesh is constructed by defining domains and boundaries in (r, phi) coordinates.
+    Phi is assumed to be periodic, i.e., the first and last angular coordinates are connected, 
+    therefore pass only unique angular coordinates.
+
+    :param domains: Dictionary of domain names and their extents in (r, phi) coordinates
+    :type domains: dict[str, tuple[np.ndarray, np.ndarray]]
+    :param boundaries: Dictionary of boundary names and their extents in (r, phi) coordinates
+    :type boundaries: dict[str, tuple[np.ndarray, np.ndarray]]
+    :param close_angular: Whether the phi direction is closed, defaults to True
+    :type close_angular: bool, optional
+    :param curve_all: Whether to curve also the non-named boundaries, defaults to False
+    :type curve_all: bool, optional
+    :param quads: Whether to use quadrilateral elements, defaults to True
+    :type quads: bool, optional
+    :return: The generated structured cylinder mesh
+    :rtype: ngs.Mesh
+    """
+
+    from netgen.meshing import Mesh, MeshPoint, Pnt, Element1D, Element2D
+    from netgen.occ import WorkPlane, OCCGeometry, Glue
+
+    def union(*args):
+        x_ = args[0]
+        for arg in args[1:]:
+            x_ = np.union1d(x_, arg)
+        return x_
+
+    mesh = Mesh()
+    mesh.dim = 2
+
+    r = []
+    phi = []
+
+    for _, extents in domains:
+        r_, phi_ = extents
+        r.append(r_)
+        phi.append(phi_)
+
+    r = union(*r)
+    phi = union(*phi)
+
+    edge_map = dict.fromkeys(r, "default")
+    edge_map.update({r_: name for name, (r_, _) in boundaries})
+    outer = Glue([WorkPlane().Circle(0, 0, ri).Face() for ri in edge_map])
+    if curve_all:
+        boundaries += tuple((name, (r_, phi)) for r_, name in edge_map.items() if name == "default")
+    edge_map = {r: edgenr for edgenr, r in enumerate(edge_map)}
+    mesh.SetGeometry(OCCGeometry(outer, dim=2))
+
+    meshpoints = np.zeros((r.size, phi.size), dtype=object)
+
+    for i in range(r.size):
+        for j in range(phi.size-1 if close_angular else phi.size):
+            point = mesh.Add(MeshPoint(Pnt(r[i]*np.cos(phi[j]), r[i]*np.sin(phi[j]), 0)))
+            meshpoints[i, j] = point
+
+    if close_angular:
+        meshpoints[:, -1] = meshpoints[:, 0]
+
+    dom = {}
+    for name, extents in domains:
+
+        if name not in dom:
+            dom[name] = mesh.AddRegion(name, dim=2)
+        region = dom[name]
+
+        r_, phi_ = extents
+        mask_r = (np.min(r_) < r) & (r < np.max(r_)) | np.isclose(r, np.min(r_)) | np.isclose(r, np.max(r_))
+        mask_phi = (
+            np.min(phi_) < phi) & (
+            phi < np.max(phi_)) | np.isclose(
+            phi, np.min(phi_)) | np.isclose(
+            phi, np.max(phi_))
+        index = np.ix_(mask_r, mask_phi)
+        meshpoints_ = meshpoints[index]
+
+        for i in range(meshpoints_.shape[0] - 1):
+            for j in range(meshpoints_.shape[1] - 1):
+                pids = meshpoints_[i:i+2, j:j+2]
+                if quads:
+                    mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[1, 1], pids[0, 1]]))
+                else:
+                    mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[0, 1]]))
+                    mesh.Add(Element2D(region, [pids[1, 0], pids[1, 1], pids[0, 1]]))
+
+    bnd = {}
+    for name, extents in boundaries:
+
+        if name not in bnd:
+            bnd[name] = mesh.AddRegion(name, dim=1)
+        region = bnd[name]
+
+        r_, phi_ = extents
+        mask_r = (np.min(r_) < r) & (r < np.max(r_)) | np.isclose(r, np.min(r_)) | np.isclose(r, np.max(r_))
+        mask_phi = (
+            np.min(phi_) < phi) & (
+            phi < np.max(phi_)) | np.isclose(
+            phi, np.min(phi_)) | np.isclose(
+            phi, np.max(phi_))
+        index = np.ix_(mask_r, mask_phi)
+        meshpoints_ = meshpoints[index].flatten()
+
+        for begin, end in zip(meshpoints_[:-1], meshpoints_[1:]):
+            mesh.Add(Element1D([begin, end], index=region, edgenr=edge_map[r_]))
+
+    mesh.Compress()
+    return ngs.Mesh(mesh)
