@@ -339,12 +339,18 @@ class GridfunctionStream(Stream):
             raise ValueError("Format specifier must be a string!")
         self._format_specifier = t_format
 
-    def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
+    def load_gridfunction(self, gfu: ngs.GridFunction, 
+                          filename: str | None = None, 
+                          filepath: str = None,
+                          suffix: str = '.ngs') -> None:
 
         if filename is None:
             filename = self.filename
 
-        file = self.path.joinpath(filename + ".ngs")
+        if filepath is None:
+            filepath = self.path
+
+        file = filepath.joinpath(filename + suffix)
 
         gfu.Load(str(file))
 
