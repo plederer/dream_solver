@@ -8,7 +8,8 @@ from dream.compressible import CompressibleFlowSolver
 ngs.SetNumThreads(4)
 
 io = IOConfiguration(None)
-io.path = "meshes/32x32_drmin0.04"
+io.path = "32x32_drmin0.04"
+io.ngsmesh.path = io.path.joinpath("meshes")
 io.ngsmesh.filename = "gmesh"
 mesh = io.ngsmesh.load_routine()
 
@@ -28,7 +29,7 @@ HDG['io.gfu.rate'] = 1
 HDG['io.path'] = io.path.joinpath("steady_solution")
 
 cfg = CompressibleFlowSolver(mesh)
-simulation = Cylinder(HDG, filename="steady_2")
+simulation = Cylinder(HDG, filename="steady")
 simulation.set_conditions(cfg)
 
 mesh.Curve(cfg.fem.order)

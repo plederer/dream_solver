@@ -6,6 +6,7 @@ from dream.bla import fixpoint_iteration
 from dream.mesh import get_structured_cylinder_mesh
 from dream.compressible import CompressibleFlowSolver, FarField, Initial, flowfields,  AdiabaticWall, InterfaceBC
 from dream.io import BoundarySensor
+from dream.time import SynchronizedIMEXTimeRoutine
 from time import time as clock
 from pathlib import Path
 
@@ -48,7 +49,7 @@ def get_imex_meshes(ri, re, phi, curve_all=True) -> tuple[ngs.Mesh, ngs.Mesh, ng
     return implicit_mesh, explicit_mesh
 
 
-def get_geometrical_coordinates(Nr, Nphi, Ni, dr0=0.08, Ro=25.0, Ri=0.5) -> ngs.Mesh:
+def get_geometrical_coordinates(Nr, Nphi, Ni, dr0=0.08, Ro=25.0, Ri=0.5, wake = None) -> ngs.Mesh:
 
     dr = (Ro - Ri)
 
@@ -67,6 +68,8 @@ def get_geometrical_coordinates(Nr, Nphi, Ni, dr0=0.08, Ro=25.0, Ri=0.5) -> ngs.
     ri = r[:Ni+1]
     re = r[Ni:]
     phi = np.linspace(0, 2*np.pi, Nphi + 1)
+    if wake is not None:
+        phi = np.union1d( phi, wake)
 
     return ri, re, phi
 
@@ -223,14 +226,90 @@ class Cylinder:
         return self.__class__.__name__
 
 
-def single_transient_routine(simulation: Cylinder, initial: dict = {}, **log):
+def load_initial_solution(initial_cfg: CompressibleFlowSolver):
+    fem = initial_cfg.fem
+
+    try:
+        gfu = fem.gfu
+    except:
+        fem.initialize_finite_element_spaces()
+        fem.initialize_trial_and_test_functions()
+        fem.initialize_gridfunctions()
+        gfu = fem.gfu
+
+    initial_cfg.io.gfu.load_gridfunction(gfu)
+
+    return gfu
+
+
+def load_initial_solution_to_hdg(
+        initial_cfg: CompressibleFlowSolver, hdg_cfg: CompressibleFlowSolver, filename: str = None):
+
+    fem = hdg_cfg.fem
+    try:
+        gfu = fem.gfu
+    except:
+        fem.initialize_finite_element_spaces()
+        fem.initialize_trial_and_test_functions()
+        fem.initialize_gridfunctions()
+        gfu = fem.gfu
+
+    igfu = load_initial_solution(initial_cfg)
+
+    gfu.components[0].Set(igfu.components[0], bonus_intorder=10)
+
+    Uhat = hdg_cfg.fem.spaces['Uhat']
+    uhat, vhat = Uhat.TnT()
+
+    blf = ngs.BilinearForm(Uhat)
+    blf += uhat * vhat * ngs.dx(element_boundary=True, bonus_intorder=10)
+    blf.Assemble()
+
+    lf = ngs.LinearForm(Uhat)
+    lf += igfu.components[0] * vhat * ngs.dx(element_boundary=True, bonus_intorder=10)
+    lf.Assemble()
+
+    gfu.components[1].vec.data = blf.mat.Inverse(Uhat.FreeDofs()) * lf.vec
+
+    if fem.viscous_treatment == 'mixed_strain_temperature_gradient':
+        gfu.components[2].Set(igfu.components[2], bonus_intorder=10)
+
+    if filename is not None:
+        hdg_cfg.io.gfu.save_gridfunction(gfu, filename)
+
+    return gfu
+
+
+def load_initial_solution_to_dg(
+        initial_cfg: CompressibleFlowSolver, dg_cfg: CompressibleFlowSolver, filename: str = None):
+
+    fem = dg_cfg.fem
+    try:
+        gfu = fem.gfu
+    except:
+        fem.initialize_finite_element_spaces()
+        fem.initialize_trial_and_test_functions()
+        fem.initialize_gridfunctions()
+        gfu = fem.gfu
+
+    igfu = load_initial_solution(initial_cfg)
+
+    gfu.Set(igfu.components[0], bonus_intorder=10)
+
+    if filename is not None:
+        dg_cfg.io.gfu.save_gridfunction(gfu, filename)
+
+    return gfu
+
+
+def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlowSolver = None, **log):
 
     # Define common solver configuration
     cfg = simulation.cfg
 
     # Set filenames for output
     simulation.set_filenames(**log)
-    
+
     # Initialize the solver
     cfg.fem.initialize_finite_element_spaces()
     cfg.fem.initialize_trial_and_test_functions()
@@ -238,15 +317,20 @@ def single_transient_routine(simulation: Cylinder, initial: dict = {}, **log):
     cfg.fem.initialize_time_scheme_gridfunctions()
     cfg.fem.set_boundary_conditions()
 
-    if initial:
-        cfg.io.gfu.load_gridfunction(cfg.fem.gfu, **initial)
+    if initial_cfg is not None and cfg.fem.name == 'conservative_hdg':
+        load_initial_solution_to_hdg(initial_cfg, cfg)
+        cfg.fem.scheme.set_initial_conditions()
+    elif initial_cfg is not None and cfg.fem.name == 'conservative_dg':
+        load_initial_solution_to_dg(initial_cfg, cfg)
+        cfg.fem.scheme.set_initial_conditions()
     else:
         cfg.fem.set_initial_conditions()
 
     cfg.fem.initialize_symbolic_forms()
 
     # Get solution fields
-    Uh = cfg.get_solution_fields('eps')
+    # Uh = cfg.get_solution_fields('eps')
+    Uh = cfg.get_all_solution_fields()
     simulation.set_solution_fields(Uh)
 
     if cfg.io.vtk.enable:
@@ -268,11 +352,183 @@ def single_transient_routine(simulation: Cylinder, initial: dict = {}, **log):
         file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}: {end - start}\n")
 
 
+def imex_transient_routine(implicit_simulation: Cylinder,
+                           explicit_simulation: Cylinder,
+                           initial_cfg: CompressibleFlowSolver,
+                           **log):
+
+    # Define common solver configuration
+    IMP = implicit_simulation.cfg
+    EXP = explicit_simulation.cfg
+
+    time = SynchronizedIMEXTimeRoutine(IMP, EXP)
+
+    # Set filenames for output
+    implicit_simulation.set_filenames(**log)
+    explicit_simulation.set_filenames(**log)
+
+    imp_bc = InterfaceBC(fields=None)
+    exp_bc = InterfaceBC(fields=None)
+
+    IMP.bcs['interface'] = imp_bc
+    EXP.bcs['interface'] = exp_bc
+
+    # Initialize the solver
+    IMP.fem.initialize_finite_element_spaces()
+    IMP.fem.initialize_trial_and_test_functions()
+    IMP.fem.initialize_gridfunctions()
+    IMP.fem.initialize_time_scheme_gridfunctions()
+
+    EXP.fem.initialize_finite_element_spaces()
+    EXP.fem.initialize_trial_and_test_functions()
+    EXP.fem.initialize_gridfunctions()
+    EXP.fem.initialize_time_scheme_gridfunctions()
+
+    load_initial_solution_to_hdg(initial_cfg, IMP)
+    load_initial_solution_to_dg(initial_cfg, EXP)
+
+    # Get solution fields
+    Uhi = IMP.get_all_solution_fields()
+    implicit_simulation.set_solution_fields(Uhi)
+    exp_bc.fields = Uhi
+
+    Uhe = EXP.get_all_solution_fields()
+    explicit_simulation.set_solution_fields(Uhe)
+    imp_bc.fields = Uhe
+
+    IMP.fem.set_boundary_conditions()
+    IMP.fem.initialize_symbolic_forms()
+
+    EXP.fem.set_boundary_conditions()
+    EXP.fem.initialize_symbolic_forms()
+
+    if IMP.io.vtk.enable:
+        implicit_simulation.set_vtk_stream()
+        explicit_simulation.set_vtk_stream()
+
+    if IMP.io.sensor.enable:
+        implicit_simulation.set_sensor_stream()
+
+    # Solve the system
+    with ngs.TaskManager():
+        IMP.fem.scheme.assemble()
+        EXP.fem.scheme.assemble()
+
+        start = clock()
+        for _ in time.start_solution_routine(False):
+            pass
+        end = clock()
+
+    with IMP.io.path.joinpath(f"runtime_{implicit_simulation.filename}.txt").open("a") as file:
+        file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}: {end - start}\n")
+
+
+def single_stable_time_step_routine(simulation: Cylinder, initial: dict, **log):
+
+    # Define common solver configuration
+    cfg = simulation.cfg
+
+    # Set filenames for output
+    simulation.set_filenames(**log)
+
+    # Initialize the solver
+    cfg.fem.initialize_finite_element_spaces()
+    cfg.fem.initialize_trial_and_test_functions()
+    cfg.fem.initialize_gridfunctions()
+    cfg.fem.initialize_time_scheme_gridfunctions()
+    cfg.fem.set_boundary_conditions()
+    cfg.fem.initialize_symbolic_forms()
+
+    # Get solution fields
+    Uh = cfg.get_all_solution_fields()
+    simulation.set_solution_fields(Uh)
+
+    if cfg.io.vtk.enable:
+        simulation.set_vtk_stream()
+
+    if cfg.io.sensor.enable:
+        simulation.set_sensor_stream()
+
+    # Solve the system
+    dts = []
+    with ngs.TaskManager():
+        for dt in cfg.time.find_stable_time_step(tol=1e-6):
+            cfg.io.gfu.load_gridfunction(cfg.fem.gfu, **initial)
+            dts.append(dt)
+
+    return dts
+
+
+def imex_stable_time_step_routine(implicit_simulation: Cylinder,
+                                  explicit_simulation: Cylinder,
+                                  implicit_initial: dict,
+                                  explicit_initial: dict,
+                                  **log):
+
+    # Define common solver configuration
+    IMP = implicit_simulation.cfg
+    EXP = explicit_simulation.cfg
+
+    time = SynchronizedIMEXTimeRoutine(IMP, EXP)
+
+    # Set filenames for output
+    implicit_simulation.set_filenames(**log)
+    explicit_simulation.set_filenames(**log)
+
+    imp_bc = InterfaceBC(fields=None)
+    exp_bc = InterfaceBC(fields=None)
+
+    IMP.bcs['interface'] = imp_bc
+    EXP.bcs['interface'] = exp_bc
+
+    # Initialize the solver
+    IMP.fem.initialize_finite_element_spaces()
+    IMP.fem.initialize_trial_and_test_functions()
+    IMP.fem.initialize_gridfunctions()
+    IMP.fem.initialize_time_scheme_gridfunctions()
+    IMP.fem.set_boundary_conditions()
+    IMP.fem.initialize_symbolic_forms()
+
+    EXP.fem.initialize_finite_element_spaces()
+    EXP.fem.initialize_trial_and_test_functions()
+    EXP.fem.initialize_gridfunctions()
+    EXP.fem.initialize_time_scheme_gridfunctions()
+    EXP.fem.set_boundary_conditions()
+    EXP.fem.initialize_symbolic_forms()
+
+    # Get solution fields
+    Uhi = IMP.get_all_solution_fields()
+    IMP.set_solution_fields(Uhi)
+    exp_bc.fields = Uhi
+
+    Uhe = EXP.get_all_solution_fields()
+    EXP.set_solution_fields(Uhe)
+    imp_bc.fields = Uhe
+
+    if IMP.io.vtk.enable:
+        IMP.set_vtk_stream()
+        EXP.set_vtk_stream()
+
+    if IMP.io.sensor.enable:
+        IMP.set_sensor_stream()
+
+    # Solve the system
+    dts = []
+    with ngs.TaskManager():
+        for dt in time.find_stable_time_step(tol=1e-6):
+            IMP.io.gfu.load_gridfunction(IMP.fem.gfu, **implicit_initial)
+            EXP.io.gfu.load_gridfunction(EXP.fem.gfu, **explicit_initial)
+            dts.append(dt)
+
+    return dts
+
+
 # %%
 if __name__ == "__main__":
     ri, re, phi = get_geometrical_coordinates(Nr=32, Nphi=32, Ni=8, dr0=0.04, Ro=50.0)
-    mesh = get_connected_mesh(ri, re, phi)
-    implicit_mesh, explicit_mesh = get_imex_meshes(ri, re, phi)
+    mesh = get_connected_mesh(ri, re, phi, False)
+    implicit_mesh, explicit_mesh = get_imex_meshes(ri, re, phi, False)
+    mesh.Curve(3)
 
     Draw(mesh)
     Draw(implicit_mesh)
@@ -280,4 +536,3 @@ if __name__ == "__main__":
     print(mesh.ne, implicit_mesh.ne, explicit_mesh.ne)
     print(implicit_mesh.ne/mesh.ne, explicit_mesh.ne/mesh.ne)
 
-# %%

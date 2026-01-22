@@ -395,12 +395,18 @@ class GridfunctionStream(Stream):
 
                 self.load_gridfunction(gfu, f"{self.filename}_{t:{self.time_format}}_{fes}_{level}")
 
-    def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
+    def save_gridfunction(self, gfu: ngs.GridFunction, 
+                          filename: str | None = None,
+                          filepath: Path = None,
+                          suffix: str = '.ngs') -> None:
 
         if filename is None:
             filename = self.filename
 
-        file = self.path.joinpath(filename + ".ngs")
+        if filepath is None:
+            filepath = self.path
+
+        file = filepath.joinpath(filename + suffix)
 
         gfu.Save(str(file))
 

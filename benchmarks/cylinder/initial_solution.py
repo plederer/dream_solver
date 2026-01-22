@@ -8,14 +8,10 @@ from config import (TRANSIENT_CFG,
 ngs.SetNumThreads(4)
 
 io = IOConfiguration(None)
-io.path = "meshes/32x32_drmin0.04"
-io.ngsmesh.filename = "gmesh"
+io.path = "32x32_drmin0.04"
+io.ngsmesh.path = io.path.joinpath("meshes")
+io.ngsmesh.filename = "gmesh_curved"
 mesh = io.ngsmesh.load_routine()
-
-steady = {
-    'filename': 'steady_2',
-    'filepath': io.path.joinpath('steady_solution/states')
-}
 
 HDG = TRANSIENT_CFG.copy()
 HDG['time.timer.interval'] = (0.0, 50.0)
@@ -38,5 +34,11 @@ cfg = CompressibleFlowSolver(mesh)
 simulation = Cylinder(HDG, filename="initial")
 simulation.set_conditions(cfg)
 
+initial_cfg = CompressibleFlowSolver(mesh)
+simulation_initial = Cylinder(HDG, filename="initial")
+simulation_initial.set_conditions(initial_cfg)
+initial_cfg.io.path = io.path.joinpath("steady_solution")
+initial_cfg.io.gfu.filename = f"steady"
+
 mesh.Curve(cfg.fem.order)
-single_transient_routine(simulation, initial=steady)
+single_transient_routine(simulation, initial_cfg=initial_cfg)
