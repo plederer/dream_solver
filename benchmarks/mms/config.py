@@ -9,7 +9,63 @@ from dream.io import DomainL2Sensor
 from time import time as clock
 
 
-def get_meshes(x, yl, yt, quads: bool = True) -> ngs.Mesh:
+def get_meshes_with_x_split(xl, xm, xr, y, quads: bool = True, periodic: bool = False) -> ngs.Mesh:
+
+    domains = (('explicit', (xl, y)),
+               ('implicit', (xm, y)),
+               ('explicit', (xr, y)),
+               )
+
+    boundaries = (('bottom', ((xl.min(), xr.max()), y.min())),
+                  ('right', (xr.max(), y)),
+                  ('top', ((xl.min(), xr.max()), y.max())),
+                  ('left', (xl.min(), y)),
+                  ('interface', (xm.min(), y)),
+                  ('interface', (xm.max(), y)),
+                  )
+
+    mesh = get_rectangular_mesh(domains, boundaries, quads, periodic, periodic)
+
+    domains = (('explicit', (xl, y)),
+               ('explicit', (xr, y)),
+               )
+
+    boundaries = (('bottom', (xl, y.min())),
+                  ('bottom', (xr, y.min())),
+                  ('right', (xr.max(), y)),
+                  ('top', (xl, y.max())),
+                  ('top', (xr, y.max())),
+                  ('left', (xl.min(), y)),
+                  ('interface', (xm.min(), y)),
+                  ('interface', (xm.max(), y)),
+                  )
+
+    explicit_mesh = get_rectangular_mesh(domains, boundaries, quads, periodic, periodic)
+
+    domains = (('implicit', (xm, y)),)
+
+    boundaries = (('bottom', (xm, y.min())),
+                  ('interface', (xm.max(), y)),
+                  ('top', (xm, y.max())),
+                  ('interface', (xm.min(), y)),
+                  )
+
+    implicit_mesh = get_rectangular_mesh(domains, boundaries, quads, False, periodic)
+
+    return mesh, implicit_mesh, explicit_mesh
+
+
+def get_uniform_meshes_with_x_split(Nx, Ny, quads: bool = True, periodic: bool = False) -> ngs.Mesh:
+
+    y = np.linspace(-0.5, 0.5, Ny + 1)
+    xl = np.linspace(-0.5, -0.25, Nx//4 + 1)
+    xm = np.linspace(-0.25, 0.25, Nx//2 + 1)
+    xr = np.linspace(0.25, 0.5, Nx//4 + 1)
+
+    return get_meshes_with_x_split(xl, xm, xr, y, quads, periodic)
+
+
+def get_meshes_with_y_split(x, yl, yt, quads: bool = True) -> ngs.Mesh:
 
     domains = (('explicit', (x, yt)),
                ('implicit', (x, yl)),
@@ -55,7 +111,7 @@ def get_uniform_meshes(Nx, Ny, quads: bool = True) -> ngs.Mesh:
     yl = np.linspace(-0.5, 0.0, Ny//2 + 1)
     x = np.linspace(-0.5, 0.5, Nx + 1)
 
-    return get_meshes(x, yl, yt, quads)
+    return get_meshes_with_y_split(x, yl, yt, quads)
 
 
 def get_refined_meshes(Nx, Ny, quads: bool = True, refinements: int = 0) -> ngs.Mesh:
@@ -67,12 +123,11 @@ def get_refined_meshes(Nx, Ny, quads: bool = True, refinements: int = 0) -> ngs.
     yl = -0.5 + dy * series
     x = np.linspace(-0.5, 0.5, Nx + 1)
 
-    return get_meshes(x, yl, yt, quads)
+    return get_meshes_with_y_split(x, yl, yt, quads)
 
 
 def div(F):
     return ngs.CF(tuple(F[i, 0].Diff(ngs.x) + F[i, 1].Diff(ngs.y) for i in range(F.dims[0])))
-
 
 
 SCHEME_ORDER = {
@@ -155,6 +210,7 @@ class MMS:
                  filename: str | None = None,
                  domain: str = "explicit|implicit",
                  boundaries: str = "bottom|top|left|right",
+                 periodic: bool = False,
                  length: float = 1.0,
                  periods: int = 5):
 
@@ -168,6 +224,7 @@ class MMS:
         self.filename = filename
         self.domain = domain
         self.boundaries = boundaries
+        self.periodic = periodic
 
     @property
     def is_transient(self) -> bool:
@@ -216,7 +273,11 @@ class MMS:
         self.U0 = self.get_exact_fields(0.0)
 
         cfg.dcs[self.domain] = Initial(fields=self.U0)
-        cfg.bcs[self.boundaries] = Dirichlet(fields=self.Ue)
+
+        if self.periodic:
+            cfg.bcs[self.boundaries] = "periodic"
+        else:
+            cfg.bcs[self.boundaries] = Dirichlet(fields=self.Ue)
 
     def set_solution_fields(self, Uh: flowfields):
         Uh['Ma'] = self.cfg.get_local_mach_number(Uh)
@@ -392,7 +453,7 @@ def get_roy_mms(mms: MMS, t: float = None) -> flowfields:
 
 def get_gassner_mms(mms: MMS, t: float = None) -> flowfields:
     r""" The mach number is fixed by the choice of the conservative variables! 
-    
+
         The average Reynolds number is approximately
 
         ..math::
@@ -500,12 +561,12 @@ def transient_convergence_routine(mesh: ngs.Mesh, simulation: MMS, time_steps: t
             file.write(f"{cfg.fem.scheme.name}_{cfg.time.timer.step.Get()}: {end - start}\n")
 
 
-def transient_imex_convergence_routine(imp_mesh: ngs.Mesh, 
-                                       exp_mesh: ngs.Mesh, 
-                                       imp_simulation: MMS, 
-                                       exp_simulation: MMS, 
+def transient_imex_convergence_routine(imp_mesh: ngs.Mesh,
+                                       exp_mesh: ngs.Mesh,
+                                       imp_simulation: MMS,
+                                       exp_simulation: MMS,
                                        time_steps: tuple = (0.01,)):
-    
+
     IMP = CompressibleFlowSolver(imp_mesh)
     EXP = CompressibleFlowSolver(exp_mesh)
     SIMP, SEXP = imp_simulation, exp_simulation
@@ -577,4 +638,3 @@ def transient_imex_convergence_routine(imp_mesh: ngs.Mesh,
 
 if __name__ == "__main__":
     mesh, imp, exp = get_refined_meshes(32, 32, refinements=5)
-
