@@ -413,9 +413,6 @@ class SDIRK33(DIRKSchemes):
         self.x1 = self.root.fem.gfu.vec.CreateVector()
         self.x2 = self.root.fem.gfu.vec.CreateVector()
 
-        # Invert the (weighted-)mass matrix.
-        self.minv = self.root.fem.solver.get_inverse(self.mass, self.root.fem.fes)
-
         # Initialize the multistage configuration parameters for the scheme.
         self.configure_scheme()
 

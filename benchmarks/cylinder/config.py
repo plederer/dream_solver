@@ -523,6 +523,9 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
             load_initial_solution_to_dg(initial_cfg, EXP)
             load_initial_solution_to_hdg(initial_cfg, IMP)
 
+            # Need this, because the mass matrix changes with time step size
+            IMP.fem.scheme.mass.Assemble()
+
             IMP.fem.scheme.set_initial_conditions()
             EXP.fem.scheme.set_initial_conditions()
 
