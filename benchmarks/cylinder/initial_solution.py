@@ -8,9 +8,7 @@ from config import (TRANSIENT_CFG,
 ngs.SetNumThreads(4)
 
 io = IOConfiguration(None)
-io.path = "32x32_drmin0.04"
-io.ngsmesh.path = io.path.joinpath("meshes")
-io.ngsmesh.filename = "gmesh_curved"
+io.path = "32x32_drmin0.04_curved"
 mesh = io.ngsmesh.load_routine()
 
 HDG = TRANSIENT_CFG.copy()

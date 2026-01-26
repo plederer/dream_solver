@@ -11,45 +11,41 @@ from time import time as clock
 from pathlib import Path
 
 
-def get_connected_mesh(ri, re, phi, curve_all=True) -> ngs.Mesh:
+def get_single_mesh(r, phi, curve_all=True) -> ngs.Mesh:
 
-    if not np.allclose(ri.max(), re.min()):
-        raise ValueError("Inner and outer radial meshes do not align!")
+    domains = []
+    for i in range(r.size - 1):
+        r0, r1 = r[i], r[i+1]
+        domains.append((f'domain_{i}', (np.array([r0, r1]), phi)))
 
-    domains = (('implicit', (ri, phi)),
-               ('explicit', (re, phi)),
-               )
-
-    boundaries = (('wall', (ri.min(), phi)),
-                  ('farfield', (re.max(), phi)),
-                  ('interface', (ri.max(), phi)),
-                  )
+    boundaries = [(f'wall', (r[0], phi))]
+    for i in range(1, r.size - 1):
+        boundaries.append((f'boundary_{i}', (r[i], phi)))
+    boundaries.append((f'farfield', (r[-1], phi)))
 
     return get_structured_cylinder_mesh(domains, boundaries, curve_all=curve_all)
 
 
-def get_imex_meshes(ri, re, phi, curve_all=True) -> tuple[ngs.Mesh, ngs.Mesh, ngs.Mesh]:
-    domains = (('explicit', (re, phi)),
-               )
+def get_imex_mesh_from_single_mesh(mesh: ngs.Mesh, Ni: int, Nr: int) -> tuple[ngs.Mesh, ngs.Mesh]:
 
-    boundaries = (('farfield', (re.max(), phi)),
-                  ('interface', (re.min(), phi)),
-                  )
+    mesh = ngs.Mesh(mesh.ngmesh.Copy())
 
-    explicit_mesh = get_structured_cylinder_mesh(domains, boundaries, curve_all=curve_all)
+    # Netgen is 1 based indexing
+    for i in range(1, Ni+1):
+        mesh.ngmesh.SetMaterial(i, 'implicit')
 
-    domains = (('implicit', (ri, phi)),)
+    for i in range(Ni+1, Nr+1):
+        mesh.ngmesh.SetMaterial(i, 'explicit')
 
-    boundaries = (('wall', (ri.min(), phi)),
-                  ('interface', (ri.max(), phi)),
-                  )
+    mesh.ngmesh.SetBCName(Ni, "interface")
 
-    implicit_mesh = get_structured_cylinder_mesh(domains, boundaries, curve_all=curve_all)
+    implicit_mesh = mesh.ngmesh.GetSubMesh('implicit', 'implicit')
+    explicit_mesh = mesh.ngmesh.GetSubMesh('explicit', 'explicit')
 
-    return implicit_mesh, explicit_mesh
+    return ngs.Mesh(implicit_mesh), ngs.Mesh(explicit_mesh)
 
 
-def get_geometrical_coordinates(Nr, Nphi, Ni, dr0=0.08, Ro=25.0, Ri=0.5, wake = None) -> ngs.Mesh:
+def get_geometrical_coordinates(Nr, Nphi, dr0=0.08, Ro=50.0, Ri=0.5, wake=None) -> ngs.Mesh:
 
     dr = (Ro - Ri)
 
@@ -65,13 +61,11 @@ def get_geometrical_coordinates(Nr, Nphi, Ni, dr0=0.08, Ro=25.0, Ri=0.5, wake = 
     r = Ri * np.ones(Nr+1)
     r[1:] = Ri + np.cumsum(drs)
 
-    ri = r[:Ni+1]
-    re = r[Ni:]
     phi = np.linspace(0, 2*np.pi, Nphi + 1)
     if wake is not None:
-        phi = np.union1d( phi, wake)
+        phi = np.union1d(phi, wake)
 
-    return ri, re, phi
+    return r, phi
 
 
 TRANSIENT_CFG = {
@@ -96,7 +90,7 @@ TRANSIENT_CFG = {
     'fem.solver.method.convergence_criterion': 1e-20,
     'fem.solver.method.damping_factor': 1.0,
     'fem.bonus_int_order': 6,
-    'fem.viscous_treatment': None,
+    'fem.viscous_treatment': 'mixed_strain_temperature_gradient',
     'io.path': 'cylinder',
     'io.vtk.enable': False,
     'io.vtk.rate': 1,
@@ -141,7 +135,7 @@ class Cylinder:
     def __init__(self,
                  cfg: dict,
                  filename: str | None = None,
-                 domain: str = "explicit|implicit",
+                 domain: str | None = None,
                  boundaries: str = "wall|farfield"):
 
         if filename is None:
@@ -175,7 +169,11 @@ class Cylinder:
 
         self.Uinf = self.cfg.get_farfield_fields((1, 0))
 
-        cfg.dcs[self.domain] = Initial(fields=self.Uinf, bonus_int_order=10)
+        domain = self.domain
+        if domain is None:
+            domain = "|".join(cfg.dcs)
+
+        cfg.dcs[domain] = Initial(fields=self.Uinf, bonus_int_order=10)
 
         bcs = {'wall': AdiabaticWall(), 'farfield': FarField(fields=self.Uinf)}
         for bnd in self.boundaries.split('|'):
@@ -271,7 +269,7 @@ def load_initial_solution_to_hdg(
 
     gfu.components[1].vec.data = blf.mat.Inverse(Uhat.FreeDofs()) * lf.vec
 
-    if fem.viscous_treatment == 'mixed_strain_temperature_gradient':
+    if fem.viscous_treatment.name == 'mixed_strain_temperature_gradient':
         gfu.components[2].Set(igfu.components[2], bonus_intorder=10)
 
     if filename is not None:
@@ -280,8 +278,8 @@ def load_initial_solution_to_hdg(
     return gfu
 
 
-def load_initial_solution_to_dg(
-        initial_cfg: CompressibleFlowSolver, dg_cfg: CompressibleFlowSolver, filename: str = None):
+def load_initial_solution_to_dg(initial_cfg: CompressibleFlowSolver,
+                                dg_cfg: CompressibleFlowSolver, filename: str = None):
 
     fem = dg_cfg.fem
     try:
@@ -329,7 +327,6 @@ def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlow
     cfg.fem.initialize_symbolic_forms()
 
     # Get solution fields
-    # Uh = cfg.get_solution_fields('eps')
     Uh = cfg.get_all_solution_fields()
     simulation.set_solution_fields(Uh)
 
@@ -423,7 +420,7 @@ def imex_transient_routine(implicit_simulation: Cylinder,
         file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}: {end - start}\n")
 
 
-def single_stable_time_step_routine(simulation: Cylinder, initial: dict, **log):
+def single_stable_time_step_routine(simulation: Cylinder, initial_cfg: CompressibleFlowSolver, **log):
 
     # Define common solver configuration
     cfg = simulation.cfg
@@ -450,19 +447,23 @@ def single_stable_time_step_routine(simulation: Cylinder, initial: dict, **log):
         simulation.set_sensor_stream()
 
     # Solve the system
-    dts = []
+    track = {}
     with ngs.TaskManager():
-        for dt in cfg.time.find_stable_time_step(tol=1e-6):
-            cfg.io.gfu.load_gridfunction(cfg.fem.gfu, **initial)
-            dts.append(dt)
+        for _ in cfg.time.find_stable_time_step(tol=1e-5, track=track):
 
-    return dts
+            if initial_cfg is not None and cfg.fem.name == 'conservative_hdg':
+                load_initial_solution_to_hdg(initial_cfg, cfg)
+                cfg.fem.scheme.set_initial_conditions()
+            elif initial_cfg is not None and cfg.fem.name == 'conservative_dg':
+                load_initial_solution_to_dg(initial_cfg, cfg)
+                cfg.fem.scheme.set_initial_conditions()
+
+    return track
 
 
 def imex_stable_time_step_routine(implicit_simulation: Cylinder,
                                   explicit_simulation: Cylinder,
-                                  implicit_initial: dict,
-                                  explicit_initial: dict,
+                                  initial_cfg: CompressibleFlowSolver,
                                   **log):
 
     # Define common solver configuration
@@ -486,53 +487,60 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
     IMP.fem.initialize_trial_and_test_functions()
     IMP.fem.initialize_gridfunctions()
     IMP.fem.initialize_time_scheme_gridfunctions()
-    IMP.fem.set_boundary_conditions()
-    IMP.fem.initialize_symbolic_forms()
 
     EXP.fem.initialize_finite_element_spaces()
     EXP.fem.initialize_trial_and_test_functions()
     EXP.fem.initialize_gridfunctions()
     EXP.fem.initialize_time_scheme_gridfunctions()
-    EXP.fem.set_boundary_conditions()
-    EXP.fem.initialize_symbolic_forms()
 
     # Get solution fields
     Uhi = IMP.get_all_solution_fields()
-    IMP.set_solution_fields(Uhi)
+    implicit_simulation.set_solution_fields(Uhi)
     exp_bc.fields = Uhi
 
     Uhe = EXP.get_all_solution_fields()
-    EXP.set_solution_fields(Uhe)
+    explicit_simulation.set_solution_fields(Uhe)
     imp_bc.fields = Uhe
 
+    IMP.fem.set_boundary_conditions()
+    IMP.fem.initialize_symbolic_forms()
+
+    EXP.fem.set_boundary_conditions()
+    EXP.fem.initialize_symbolic_forms()
+
     if IMP.io.vtk.enable:
-        IMP.set_vtk_stream()
-        EXP.set_vtk_stream()
+        implicit_simulation.set_vtk_stream()
+        explicit_simulation.set_vtk_stream()
 
     if IMP.io.sensor.enable:
-        IMP.set_sensor_stream()
+        implicit_simulation.set_sensor_stream()
 
     # Solve the system
-    dts = []
+    track = {}
     with ngs.TaskManager():
-        for dt in time.find_stable_time_step(tol=1e-6):
-            IMP.io.gfu.load_gridfunction(IMP.fem.gfu, **implicit_initial)
-            EXP.io.gfu.load_gridfunction(EXP.fem.gfu, **explicit_initial)
-            dts.append(dt)
+        for _ in time.find_stable_time_step(tol=1e-5, track=track):
 
-    return dts
+            load_initial_solution_to_dg(initial_cfg, EXP)
+            load_initial_solution_to_hdg(initial_cfg, IMP)
+
+            IMP.fem.scheme.set_initial_conditions()
+            EXP.fem.scheme.set_initial_conditions()
+
+    return track
 
 
 # %%
 if __name__ == "__main__":
-    ri, re, phi = get_geometrical_coordinates(Nr=32, Nphi=32, Ni=8, dr0=0.04, Ro=50.0)
-    mesh = get_connected_mesh(ri, re, phi, False)
-    implicit_mesh, explicit_mesh = get_imex_meshes(ri, re, phi, False)
+    from ngsolve.webgui import Draw
+    r, phi = get_geometrical_coordinates(Nr=32, Nphi=32, dr0=0.04, Ro=50.0)
+    mesh = get_single_mesh(r, phi, curve_all=True)
+    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=8, Nr=32)
+
     mesh.Curve(3)
+    imp.Curve(3)
+    exp.Curve(3)
 
     Draw(mesh)
-    Draw(implicit_mesh)
-    Draw(explicit_mesh)
-    print(mesh.ne, implicit_mesh.ne, explicit_mesh.ne)
-    print(implicit_mesh.ne/mesh.ne, explicit_mesh.ne/mesh.ne)
+    Draw(imp)
+    Draw(exp)
 

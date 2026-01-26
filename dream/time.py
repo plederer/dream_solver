@@ -425,7 +425,7 @@ class TransientRoutine(TimeRoutine):
                     if "is_diverged" in log:
                         break
 
-                print(flush=True)
+                logger.info('\n')
 
                 if "is_diverged" in log:
                     logger.error("Transient routine diverged!")
@@ -440,6 +440,65 @@ class TransientRoutine(TimeRoutine):
             # Solution routine ends here
 
             io.save_post_time_routine(t1, rate)
+
+    def find_stable_time_step(self, tol: float = 1e-8, track: dict = None) -> typing.Generator[float | None, None, None]:
+
+        # self.root.timestep_controller = 'physical_controller'
+        # self.root.timestep_controller.rate = 1
+        # self.root.timestep_controller.cfl = 0.1
+
+        scheme = self.root.fem.scheme
+        timer = self.timer
+        scheme.assemble()
+
+        dt0 = timer.step.Get()
+        dts = (0.0, timer.step.Get(), timer.step.Get())
+
+        while True:
+            logger.info(f"Starting find stable time step with initial 𝚫t = {timer.step.Get()}")
+            timer.reset()
+
+            yield timer.step.Get()
+
+            # Solution routine starts here
+            for rate, tn, _ in self.timer():
+
+                for log in scheme.solve_current_time_level(tn):
+                    if "is_diverged" in log:
+                        break
+
+                if "is_diverged" in log:
+                    logger.error("Transient routine diverged!")
+                    break
+
+                scheme.update_step_gridfunctions()
+
+            if "is_diverged" in log:
+
+                if track is not None:
+                    track[timer.step.Get()] = False
+                
+                dts = (dts[0], 0.5 * (dts[0] + dts[1]), dts[1])
+                timer.step = dts[1]
+                logger.info(f"Reducing time step to 𝚫t = {timer.step.Get()}")
+            else:
+
+                if track is not None:
+                    track[timer.step.Get()] = True
+                
+                logger.info(f"Stable 𝚫t = {timer.step.Get()}")
+                if self.root.timestep_controller is not None:
+                    self.root.timestep_controller.process_iteration(iteration=rate)
+
+                dts = (dts[1], 0.5 * (dts[1] + dts[2]), dts[2])
+
+                if abs(dts[1] - timer.step.Get()) < tol:
+                    logger.info(f"Converged to stable time step 𝚫t = {timer.step.Get()}")
+                    break
+
+                timer.step = dts[1]
+
+        timer.step = dt0
 
 
 class PseudoTimeSteppingRoutine(TimeRoutine):
@@ -688,6 +747,81 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         if not np.isclose(self.gscheme.time_of_stages, self.lscheme.time_of_stages, rtol=1e-10, atol=1e-10).all():
             raise ValueError(f"Global scheme stage times and local scheme stage times must be equal.")
 
+    def find_stable_time_step(self, tol: float = 1e-8, track: dict = None) -> typing.Generator[float | None, None, None]:
+
+        # self.cfg_explicit.timestep_controller = 'physical_controller'
+        # self.cfg_explicit.timestep_controller.rate = 1
+        # self.cfg_explicit.timestep_controller.cfl = 0.1
+
+        # self.cfg_implicit.timestep_controller = 'physical_controller'
+        # self.cfg_implicit.timestep_controller.rate = 1
+        # self.cfg_implicit.timestep_controller.cfl = 0.1
+
+        self.initialize(reassemble=True)
+
+        dt0 = self.gtimer.step.Get()
+        dts = (0.0, self.gtimer.step.Get(), self.gtimer.step.Get())
+        while True:
+            logger.info(f"Starting find stable time step with initial 𝚫t = {self.gtimer.step.Get()}")
+            self.gtimer.reset()
+            self.ltimer.reset()
+
+            yield self.gtimer.step.Get()
+
+            # Start the global time-stepping loop.
+            for _, gt0, gt1 in self.gtimer():
+
+                # Sync timers
+                self.ltimer.t = self.gtimer.t.Get()
+                self.ltimer.interval = (gt0, gt1)
+
+                # Solve all stages.
+                for log in self.solve_stages(gt0):
+                    if "is_diverged" in log:
+                        break
+
+                if "is_diverged" in log:
+                    break
+
+                self.update_imex_step_gridfunctions()
+
+            self.finalize()
+
+            if "is_diverged" in log:
+
+                if track is not None:
+                    track[self.gtimer.step.Get()] = False
+
+                dts = (dts[0], 0.5 * (dts[0] + dts[1]), dts[1])
+                self.gtimer.step = dts[1]
+                logger.info(f"Reducing time step to 𝚫t = {self.gtimer.step.Get()}")
+
+            else:
+
+                if track is not None:
+                    track[self.gtimer.step.Get()] = True
+
+                logger.info(f"Stable 𝚫t = {self.gtimer.step.Get()}")
+
+                if self.cfg_implicit.timestep_controller is not None:
+                    self.cfg_implicit.timestep_controller.process_iteration(iteration=1)
+                if self.cfg_explicit.timestep_controller is not None:
+                    self.cfg_explicit.timestep_controller.process_iteration(iteration=1)
+
+                dts = (dts[1], 0.5 * (dts[1] + dts[2]), dts[2])
+
+                if abs(dts[1] - self.gtimer.step.Get()) < tol:
+                    logger.info(f"Converged to stable time step 𝚫t = {self.gtimer.step.Get()}")
+                    break
+
+                self.gtimer.step = dts[1]
+
+            self.ltimer.step = self.gtimer.step.Get()
+            self.ltimer.interval = self.gtimer.interval
+
+        self.gtimer.step = dt0
+        self.ltimer.step = dt0
+
     def solve_explicit_stage(self, stage: int, t0: float):
 
         # Solve explicit stage.
@@ -702,7 +836,7 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
             logger.info(self.parse_routine_log(**log, cfg=self.cfg_implicit))
 
         return log
-
+    
     def update_imex_step_gridfunctions(self):
         self.lscheme.update_step_gridfunctions()
         self.gscheme.update_step_gridfunctions()
