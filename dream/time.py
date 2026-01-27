@@ -425,11 +425,10 @@ class TransientRoutine(TimeRoutine):
                     if "is_diverged" in log:
                         break
 
-                logger.info('\n')
-
                 if "is_diverged" in log:
-                    logger.error("Transient routine diverged!")
+                    logger.error(f"Transient routine diverged from {tn:.6e} to {t1:.6e}!")
                     break
+                logger.info(f'Solved interval {tn:.6e} to {t1:.6e} \n')
 
                 scheme.update_step_gridfunctions()
 
