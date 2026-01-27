@@ -759,7 +759,6 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
 
         self.initialize(reassemble=True)
 
-        dt0 = self.gtimer.step.Get()
         dts = (0.0, self.gtimer.step.Get(), self.gtimer.step.Get())
         while True:
             logger.info(f"Starting find stable time step with initial 𝚫t = {self.gtimer.step.Get()}")
@@ -784,8 +783,6 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
                     break
 
                 self.update_imex_step_gridfunctions()
-
-            self.finalize()
 
             if "is_diverged" in log:
 
@@ -817,10 +814,8 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
                 self.gtimer.step = dts[1]
 
             self.ltimer.step = self.gtimer.step.Get()
-            self.ltimer.interval = self.gtimer.interval
 
-        self.gtimer.step = dt0
-        self.ltimer.step = dt0
+        self.finalize()
 
     def solve_explicit_stage(self, stage: int, t0: float):
 
