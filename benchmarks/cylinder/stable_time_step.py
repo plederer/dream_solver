@@ -75,7 +75,7 @@ if USER['splitting'] == 'explicit':
     FULL_EXPLICIT = Cylinder(DG, filename="full_explicit")
     FULL_EXPLICIT.set_conditions(cfg_full_explicit)
     outputfile = cfg_full_explicit.io.path.joinpath('explicit.csv')
-    track = single_stable_time_step_routine(FULL_EXPLICIT, initial_cfg)
+    single_stable_time_step_routine(FULL_EXPLICIT, initial_cfg, outputfile=outputfile)
 
 else:
 
@@ -88,16 +88,7 @@ else:
     IMEX_EXPLICIT.set_conditions(explicit_cfg)
     
     outputfile = implicit_cfg.io.path.joinpath(f'imex_{Ni}_{USER["mixed"]}.csv')
-    track = imex_stable_time_step_routine(IMEX_IMPLICIT, IMEX_EXPLICIT, initial_cfg)
-
-print(track)
-
-import csv
-with outputfile.open(mode='w') as file:
-    writer = csv.writer(file)
-    writer.writerow(["time_step", "is_stable"])
-    for dt, is_stable in track.items():
-        writer.writerow([dt, is_stable])
+    imex_stable_time_step_routine(IMEX_IMPLICIT, IMEX_EXPLICIT, initial_cfg, outputfile=outputfile)
 
 
 # fully explicit dt = 5.625e-4 stable

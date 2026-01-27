@@ -420,7 +420,7 @@ def imex_transient_routine(implicit_simulation: Cylinder,
         file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}: {end - start}\n")
 
 
-def single_stable_time_step_routine(simulation: Cylinder, initial_cfg: CompressibleFlowSolver, **log):
+def single_stable_time_step_routine(simulation: Cylinder, initial_cfg: CompressibleFlowSolver, outputfile: Path = None, **log):
 
     # Define common solver configuration
     cfg = simulation.cfg
@@ -446,10 +446,22 @@ def single_stable_time_step_routine(simulation: Cylinder, initial_cfg: Compressi
     if cfg.io.sensor.enable:
         simulation.set_sensor_stream()
 
+    process_routine = None
+    if outputfile is not None:
+        import csv
+        outputfile.parent.mkdir(parents=True, exist_ok=True)
+        file = outputfile.open(mode='w')
+        writer = csv.writer(file)
+        writer.writerow(["time_step", "is_stable"])
+        file.flush()
+
+        def process_routine(dt, is_stable):
+            writer.writerow([dt, is_stable])
+            file.flush()
+
     # Solve the system
-    track = {}
     with ngs.TaskManager():
-        for _ in cfg.time.find_stable_time_step(tol=1e-5, track=track):
+        for _ in cfg.time.find_stable_time_step(tol=1e-5, process_routine=process_routine):
 
             if initial_cfg is not None and cfg.fem.name == 'conservative_hdg':
                 load_initial_solution_to_hdg(initial_cfg, cfg)
@@ -458,12 +470,14 @@ def single_stable_time_step_routine(simulation: Cylinder, initial_cfg: Compressi
                 load_initial_solution_to_dg(initial_cfg, cfg)
                 cfg.fem.scheme.set_initial_conditions()
 
-    return track
+    if outputfile is not None:
+        file.close()
 
 
 def imex_stable_time_step_routine(implicit_simulation: Cylinder,
                                   explicit_simulation: Cylinder,
                                   initial_cfg: CompressibleFlowSolver,
+                                  outputfile: Path = None,
                                   **log):
 
     # Define common solver configuration
@@ -515,10 +529,22 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
     if IMP.io.sensor.enable:
         implicit_simulation.set_sensor_stream()
 
+    process_routine = None
+    if outputfile is not None:
+        import csv
+        outputfile.parent.mkdir(parents=True, exist_ok=True)
+        file = outputfile.open(mode='w')
+        writer = csv.writer(file)
+        writer.writerow(["time_step", "is_stable"])
+        file.flush()
+
+        def process_routine(dt, is_stable):
+            writer.writerow([dt, is_stable])
+            file.flush()
+
     # Solve the system
-    track = {}
     with ngs.TaskManager():
-        for _ in time.find_stable_time_step(tol=1e-5, track=track):
+        for _ in time.find_stable_time_step(tol=1e-5, process_routine=process_routine):
 
             load_initial_solution_to_dg(initial_cfg, EXP)
             load_initial_solution_to_hdg(initial_cfg, IMP)
@@ -529,7 +555,8 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
             IMP.fem.scheme.set_initial_conditions()
             EXP.fem.scheme.set_initial_conditions()
 
-    return track
+    if outputfile is not None:
+        file.close()
 
 
 # %%

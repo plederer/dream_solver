@@ -441,7 +441,7 @@ class TransientRoutine(TimeRoutine):
 
             io.save_post_time_routine(t1, rate)
 
-    def find_stable_time_step(self, tol: float = 1e-8, track: dict = None) -> typing.Generator[float | None, None, None]:
+    def find_stable_time_step(self, tol: float = 1e-8, process_routine: typing.Callable = None) -> typing.Generator[float | None, None, None]:
 
         # self.root.timestep_controller = 'physical_controller'
         # self.root.timestep_controller.rate = 1
@@ -475,16 +475,16 @@ class TransientRoutine(TimeRoutine):
 
             if "is_diverged" in log:
 
-                if track is not None:
-                    track[timer.step.Get()] = False
+                if process_routine is not None:
+                    process_routine(dt=timer.step.Get(), is_stable=False)
                 
                 dts = (dts[0], 0.5 * (dts[0] + dts[1]), dts[1])
                 timer.step = dts[1]
                 logger.info(f"Reducing time step to 𝚫t = {timer.step.Get()}")
             else:
 
-                if track is not None:
-                    track[timer.step.Get()] = True
+                if process_routine is not None:
+                    process_routine(dt=timer.step.Get(), is_stable=True)
                 
                 logger.info(f"Stable 𝚫t = {timer.step.Get()}")
                 if self.root.timestep_controller is not None:
@@ -747,7 +747,7 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         if not np.isclose(self.gscheme.time_of_stages, self.lscheme.time_of_stages, rtol=1e-10, atol=1e-10).all():
             raise ValueError(f"Global scheme stage times and local scheme stage times must be equal.")
 
-    def find_stable_time_step(self, tol: float = 1e-8, track: dict = None) -> typing.Generator[float | None, None, None]:
+    def find_stable_time_step(self, tol: float = 1e-8, process_routine: typing.Callable = None) -> typing.Generator[float | None, None, None]:
 
         # self.cfg_explicit.timestep_controller = 'physical_controller'
         # self.cfg_explicit.timestep_controller.rate = 1
@@ -789,8 +789,8 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
 
             if "is_diverged" in log:
 
-                if track is not None:
-                    track[self.gtimer.step.Get()] = False
+                if process_routine is not None:
+                    process_routine(dt=self.gtimer.step.Get(), is_stable=False)
 
                 dts = (dts[0], 0.5 * (dts[0] + dts[1]), dts[1])
                 self.gtimer.step = dts[1]
@@ -798,9 +798,9 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
 
             else:
 
-                if track is not None:
-                    track[self.gtimer.step.Get()] = True
-
+                if process_routine is not None:
+                    process_routine(dt=self.gtimer.step.Get(), is_stable=True)
+                
                 logger.info(f"Stable 𝚫t = {self.gtimer.step.Get()}")
 
                 if self.cfg_implicit.timestep_controller is not None:
