@@ -495,9 +495,11 @@ class LogStream(Stream):
         if enable:
             self.to_terminal = True
             self.to_file = False
+            logging.disable(logging.NOTSET)
         else:
             self.to_terminal = False
             self.to_file = False
+            logging.disable(logging.CRITICAL)
 
         self._enable = bool(enable)
 

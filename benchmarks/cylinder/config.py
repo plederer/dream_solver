@@ -345,6 +345,7 @@ def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlow
             pass
         end = clock()
 
+    cfg.io.path.mkdir(parents=True, exist_ok=True)
     with cfg.io.path.joinpath(f"runtime_{simulation.filename}.txt").open("a") as file:
         file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}: {end - start}\n")
 
@@ -416,6 +417,7 @@ def imex_transient_routine(implicit_simulation: Cylinder,
             pass
         end = clock()
 
+    IMP.io.path.mkdir(parents=True, exist_ok=True)
     with IMP.io.path.joinpath(f"runtime_{implicit_simulation.filename}.txt").open("a") as file:
         file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}: {end - start}\n")
 
