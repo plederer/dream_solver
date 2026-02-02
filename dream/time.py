@@ -440,6 +440,44 @@ class TransientRoutine(TimeRoutine):
 
             io.save_post_time_routine(t1, rate)
 
+    def start_timing_solution_routine(self, reassemble: bool = True, time = {}) -> typing.Generator[float | None, None, None]:
+        from time import time as clock
+
+        scheme = self.root.fem.scheme
+        timer = self.timer
+
+        timer.reset()
+
+        if reassemble:
+            scheme.assemble()
+
+        # Solution routine starts here
+        for _, tn, t1 in self.timer():
+
+            for stage in range(1, scheme.number_of_stages + 1):
+
+                start = clock()
+                for log in scheme.solve_stage(stage, tn):
+                        ...
+                end = clock()
+                time[f'stage_{stage}'] += end - start
+
+                if "is_diverged" in log:
+                    break
+
+            start = clock()
+            scheme.update_final_stage_solution()
+            end = clock()
+            time['final_stage'] += end - start
+
+            if np.isnan(self.root.fem.gfu.vec).any():
+                print("Time routine diverged!")
+                break
+
+            yield t1
+
+            scheme.update_step_gridfunctions()
+
     def find_stable_time_step(self, tol: float = 1e-8, process_routine: typing.Callable = None) -> typing.Generator[float | None, None, None]:
 
         # self.root.timestep_controller = 'physical_controller'
@@ -701,6 +739,55 @@ class IMEXTimeRoutine(TimeRoutine, is_interface=True):
 
             io_exp.save_post_time_routine(gt1, grate)
             io_imp.save_post_time_routine(gt1, grate)
+
+        self.finalize()
+
+    def start_timing_solution_routine(self, reassemble=True, time_explicit = {}, time_implicit = {}):
+        from time import time as clock
+
+        # Initialize predictor corrector routines.
+        self.initialize(reassemble)
+
+        # Start the global time-stepping loop.
+        for _, gt0, gt1 in self.gtimer():
+
+            # Sync timers
+            self.ltimer.t = self.gtimer.t.Get()
+            self.ltimer.interval = (gt0, gt1)
+
+            # Solve all stages.
+            # We loop over each stage and solve explicit regions first, then implicit ones.
+            for stage in range(1, self.gscheme.number_of_stages + 1):
+
+                # Step 1: Solve explicit stage.
+                start = clock()
+                for log in self.lscheme.solve_stage(stage, gt0):
+                    ...
+                end = clock()
+                time_explicit[f'stage_{stage}'] += end - start
+
+                # Step 2: Solve the implicit stage.
+                start = clock()
+                for log in self.gscheme.solve_stage(stage, gt0):
+                    ...
+                end = clock()
+                time_implicit[f'stage_{stage}'] += end - start
+                
+                if "is_diverged" in log:
+                    break
+
+            if "is_diverged" in log:
+                print("IMEX Time routine diverged!")
+                break
+
+            start = clock()
+            self.update_final_stage_solution()
+            end = clock()
+            time_explicit['final_stage'] += end - start
+
+            yield gt1
+
+            self.update_imex_step_gridfunctions()
 
         self.finalize()
 

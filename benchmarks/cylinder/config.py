@@ -340,14 +340,18 @@ def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlow
     with ngs.TaskManager():
         cfg.fem.scheme.assemble()
 
+        time= {'stage_1': 0.0, 'stage_2': 0.0, 'stage_3': 0.0, 'final_stage': 0.0}
         start = clock()
-        for _ in cfg.time.start_solution_routine(False):
+        for _ in cfg.time.start_timing_solution_routine(False, time):
             pass
         end = clock()
 
     cfg.io.path.mkdir(parents=True, exist_ok=True)
     with cfg.io.path.joinpath(f"runtime_{simulation.filename}.txt").open("a") as file:
         file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}: {end - start}\n")
+
+    with cfg.io.path.joinpath(f"stage_runtime_{simulation.filename}.txt").open("a") as file:
+        file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}: {time}\n")
 
 
 def imex_transient_routine(implicit_simulation: Cylinder,
@@ -413,13 +417,21 @@ def imex_transient_routine(implicit_simulation: Cylinder,
         EXP.fem.scheme.assemble()
 
         start = clock()
-        for _ in time.start_solution_routine(False):
+        # for _ in time.start_solution_routine(False):
+        time_explicit = {'stage_1': 0.0, 'stage_2': 0.0, 'stage_3': 0.0, 'final_stage': 0.0}
+        time_implicit = {'stage_1': 0.0, 'stage_2': 0.0, 'stage_3': 0.0}
+        for _ in time.start_timing_solution_routine(False, time_explicit=time_explicit, time_implicit=time_implicit):
             pass
         end = clock()
 
     IMP.io.path.mkdir(parents=True, exist_ok=True)
     with IMP.io.path.joinpath(f"runtime_{implicit_simulation.filename}.txt").open("a") as file:
         file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}: {end - start}\n")
+
+    IMP.io.path.mkdir(parents=True, exist_ok=True)
+    with IMP.io.path.joinpath(f"stage_runtime_{implicit_simulation.filename}.txt").open("a") as file:
+        file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()} explicit: {time_explicit}\n")
+        file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()} implicit: {time_implicit}\n")
 
 
 def single_stable_time_step_routine(simulation: Cylinder, initial_cfg: CompressibleFlowSolver, outputfile: Path = None, **log):
