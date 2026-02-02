@@ -45,27 +45,64 @@ def get_imex_mesh_from_single_mesh(mesh: ngs.Mesh, Ni: int, Nr: int) -> tuple[ng
     return ngs.Mesh(implicit_mesh), ngs.Mesh(explicit_mesh)
 
 
-def get_geometrical_coordinates(Nr, Nphi, dr0=0.08, Ro=50.0, Ri=0.5, wake=None) -> ngs.Mesh:
+def get_geometrical_coordinates(Nr, Nphi, dr0=None, dphi0=None, Ro=50.0, Ri=0.5) -> ngs.Mesh:
 
-    dr = (Ro - Ri)
+    if dr0 is None:
+        r = np.linspace(Ri, Ro, Nr + 1)
+    else:
 
-    def fp_geometrical(x0):
-        return np.power(1+(dr/dr0)*x0, 1/Nr) - 1
+        dr = (Ro - Ri)
 
-    geom = fixpoint_iteration(0.3, fp_geometrical, it=100, tol=1e-16)
-    drs = dr0*np.power(1+geom, np.arange(0, Nr))
+        def fp_geometrical(x0):
+            return np.power(1+(dr/dr0)*x0, 1/Nr) - 1
 
-    if not np.allclose(np.sum(drs), dr):
-        raise ValueError("Could not create desired mesh spacing!")
+        geom_r = fixpoint_iteration(0.3, fp_geometrical, it=100, tol=1e-16)
+        drs = dr0*np.power(1+geom_r, np.arange(Nr))
 
-    r = Ri * np.ones(Nr+1)
-    r[1:] = Ri + np.cumsum(drs)
+        if not np.allclose(np.sum(drs), dr):
+            raise ValueError("Could not create desired mesh spacing!")
 
-    phi = np.linspace(0, 2*np.pi, Nphi + 1)
-    if wake is not None:
-        phi = np.union1d(phi, wake)
+        r = Ri * np.ones(Nr+1)
+        r[1:] = Ri + np.cumsum(drs)
+
+    if dphi0 is None:
+        phi = np.linspace(0, 2*np.pi, Nphi + 1)
+    else:
+
+        dphi = np.pi
+
+        def fp_geometrical(x0):
+            return np.power(1+(dphi/dphi0)*x0, 1/(Nphi//2)) - 1
+
+        geom_phi = fixpoint_iteration(0.3, fp_geometrical, it=100, tol=1e-16)
+
+        dphis = dphi0*np.power(1+geom_phi, np.arange(Nphi//2))
+
+        phi = np.zeros(Nphi + 1)
+        phi[1:Nphi//2+1] = np.cumsum(dphis)
+        phi[Nphi//2+1:] = 2*np.pi - phi[:Nphi//2][::-1]
 
     return r, phi
+
+
+def get_hyperbolic_tangent_coordinates(Nr, Nphi, dro=0.08, dri=0.02) -> ngs.Mesh:
+
+    phi = np.linspace(0, 2*np.pi, Nphi + 1)
+    dr = np.linspace(-np.pi, np.pi, Nr)
+    dr = 0.5*(dro - dri) * np.tanh(dr) + 0.5*(dro + dri)
+    dr[0] = dri
+    dr[-1] = dro
+
+    return dr, phi
+
+
+def get_logarithmic_coordinates(Nr, Nphi, dro=0.08, dri=0.02, Ri=0.5, Ro=50.0) -> ngs.Mesh:
+
+    phi = np.linspace(0, 2*np.pi, Nphi + 1)
+    dr = np.linspace(Ri, Ro, Nr)
+    dr = (dro - dri) * np.log(dr/Ri)/np.log(Ro/Ri) + dri
+
+    return dr, phi
 
 
 TRANSIENT_CFG = {
@@ -422,7 +459,8 @@ def imex_transient_routine(implicit_simulation: Cylinder,
         file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}: {end - start}\n")
 
 
-def single_stable_time_step_routine(simulation: Cylinder, initial_cfg: CompressibleFlowSolver, outputfile: Path = None, **log):
+def single_stable_time_step_routine(
+        simulation: Cylinder, initial_cfg: CompressibleFlowSolver, outputfile: Path = None, **log):
 
     # Define common solver configuration
     cfg = simulation.cfg
@@ -564,9 +602,12 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
 # %%
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
-    r, phi = get_geometrical_coordinates(Nr=32, Nphi=32, dr0=0.04, Ro=50.0)
+
+    r, phi = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32, Ro=100.0)
+
     mesh = get_single_mesh(r, phi, curve_all=True)
-    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=8, Nr=32)
+    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=16, Nr=32)
+    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=32, Nr=64)
 
     mesh.Curve(3)
     imp.Curve(3)
@@ -575,4 +616,3 @@ if __name__ == "__main__":
     Draw(mesh)
     Draw(imp)
     Draw(exp)
-
