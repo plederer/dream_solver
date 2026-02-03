@@ -25,7 +25,7 @@ MIXED = {
 parser = argparse.ArgumentParser(description='Run stable time step tests for IMEX schemes')
 parser.add_argument('splitting', type=str, help='Splitting type', choices=SPLITTING)
 parser.add_argument('dt', type=float, help='Time step size')
-parser.add_argument('--Ni', type=int, help='Number of radial elements', default=32)
+parser.add_argument('--Ni', type=int, help='Number of radial elements', default=16)
 parser.add_argument('--mixed', type=str, help='Viscous treatment for implicit part', choices=list(MIXED.keys()), default='mixed')
 USER = vars(parser.parse_args())
 
@@ -34,9 +34,9 @@ dt = USER['dt']
 mixed = MIXED[USER['mixed']]
 
 io = IOConfiguration(None)
-io.path = "32x32_drmin0.04_curved"
+io.path = "64x32_dr0.05_dphi0.03125_curved"
 mesh = io.ngsmesh.load_routine()
-mesh_implicit, mesh_explicit = get_imex_mesh_from_single_mesh(mesh, Ni=Ni, Nr=32)
+mesh_implicit, mesh_explicit = get_imex_mesh_from_single_mesh(mesh, Ni=Ni, Nr=64)
 
 initial_cfg = CompressibleFlowSolver(mesh)
 initial_cfg.update(**TRANSIENT_CFG)

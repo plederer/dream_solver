@@ -375,20 +375,15 @@ def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlow
 
     # Solve the system
     with ngs.TaskManager():
-        cfg.fem.scheme.assemble()
-
-        time= {'stage_1': 0.0, 'stage_2': 0.0, 'stage_3': 0.0, 'final_stage': 0.0}
-        start = clock()
-        for _ in cfg.time.start_timing_solution_routine(False, time):
+        time = {}
+        for _ in cfg.time.start_timing_solution_routine(time):
             pass
-        end = clock()
 
     cfg.io.path.mkdir(parents=True, exist_ok=True)
     with cfg.io.path.joinpath(f"runtime_{simulation.filename}.txt").open("a") as file:
-        file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}: {end - start}\n")
-
-    with cfg.io.path.joinpath(f"stage_runtime_{simulation.filename}.txt").open("a") as file:
-        file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}: {time}\n")
+        file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}:\n")
+        for key, value in time.items():
+            file.write(f"{key}: {value}\n")
 
 
 def imex_transient_routine(implicit_simulation: Cylinder,
@@ -400,7 +395,7 @@ def imex_transient_routine(implicit_simulation: Cylinder,
     IMP = implicit_simulation.cfg
     EXP = explicit_simulation.cfg
 
-    time = SynchronizedIMEXTimeRoutine(IMP, EXP)
+    time_routine = SynchronizedIMEXTimeRoutine(IMP, EXP)
 
     # Set filenames for output
     implicit_simulation.set_filenames(**log)
@@ -450,25 +445,17 @@ def imex_transient_routine(implicit_simulation: Cylinder,
 
     # Solve the system
     with ngs.TaskManager():
-        IMP.fem.scheme.assemble()
-        EXP.fem.scheme.assemble()
+        time = {}
 
-        start = clock()
-        # for _ in time.start_solution_routine(False):
-        time_explicit = {'stage_1': 0.0, 'stage_2': 0.0, 'stage_3': 0.0, 'final_stage': 0.0}
-        time_implicit = {'stage_1': 0.0, 'stage_2': 0.0, 'stage_3': 0.0}
-        for _ in time.start_timing_solution_routine(False, time_explicit=time_explicit, time_implicit=time_implicit):
+        for _ in time_routine.start_timing_solution_routine(time):
             pass
-        end = clock()
 
     IMP.io.path.mkdir(parents=True, exist_ok=True)
-    with IMP.io.path.joinpath(f"runtime_{implicit_simulation.filename}.txt").open("a") as file:
-        file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}: {end - start}\n")
-
-    IMP.io.path.mkdir(parents=True, exist_ok=True)
-    with IMP.io.path.joinpath(f"stage_runtime_{implicit_simulation.filename}.txt").open("a") as file:
-        file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()} explicit: {time_explicit}\n")
-        file.write(f"{IMP.fem.scheme.name} {IMP.time.timer.interval} {IMP.time.timer.step.Get()} implicit: {time_implicit}\n")
+    with IMP.io.path.joinpath(f"runtime_{implicit_simulation.filename}_{explicit_simulation.filename}.txt").open("a") as file:
+        file.write(f"{IMP.fem.scheme.name}|{EXP.fem.scheme.name} {
+                   IMP.time.timer.interval} {IMP.time.timer.step.Get()}:\n")
+        for key, value in time.items():
+            file.write(f"{key}: {value}\n")
 
 
 def single_stable_time_step_routine(
