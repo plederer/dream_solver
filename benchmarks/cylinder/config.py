@@ -604,9 +604,14 @@ if __name__ == "__main__":
 
     r, phi = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32, Ro=100.0)
 
-    mesh = get_single_mesh(r, phi, curve_all=True)
-    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=16, Nr=32)
-    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=32, Nr=64)
+    # mesh = get_single_mesh(r, phi, curve_all=True)
+    
+    from dream.io import IOConfiguration
+    io = IOConfiguration(None)
+    io.path = "64x32_dr0.05_dphi0.03125_curved"
+    mesh = io.ngsmesh.load_routine()
+
+    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=16, Nr=64)
 
     mesh.Curve(3)
     imp.Curve(3)
