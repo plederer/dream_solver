@@ -379,11 +379,26 @@ def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlow
         for _ in cfg.time.start_timing_solution_routine(time):
             pass
 
+    csv = {}
+    info = {}
+    for key, value in time.items():
+        if isinstance(value, np.ndarray):
+            csv[key] = value
+        else:
+            info[key] = value
+
     cfg.io.path.mkdir(parents=True, exist_ok=True)
-    with cfg.io.path.joinpath(f"runtime_{simulation.filename}.txt").open("a") as file:
-        file.write(f"{cfg.fem.scheme.name} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}:\n")
-        for key, value in time.items():
+    filename = f"runtime_{simulation.filename}"
+    label = f"{cfg.fem.scheme.name}"
+
+    with cfg.io.path.joinpath(f"{filename}_info.txt").open("a") as file:
+        file.write(f"{label} {cfg.time.timer.interval} {cfg.time.timer.step.Get()}:\n")
+        for key, value in info.items():
             file.write(f"{key}: {value}\n")
+
+    import pandas as pd
+    df = pd.DataFrame(csv)
+    df.to_csv(cfg.io.path.joinpath(f"{filename}_data.csv"), index=False)
 
 
 def imex_transient_routine(implicit_simulation: Cylinder,
@@ -450,12 +465,26 @@ def imex_transient_routine(implicit_simulation: Cylinder,
         for _ in time_routine.start_timing_solution_routine(time):
             pass
 
+    csv = {}
+    info = {}
+    for key, value in time.items():
+        if isinstance(value, np.ndarray):
+            csv[key] = value
+        else:
+            info[key] = value
+
     IMP.io.path.mkdir(parents=True, exist_ok=True)
-    with IMP.io.path.joinpath(f"runtime_{implicit_simulation.filename}_{explicit_simulation.filename}.txt").open("a") as file:
-        file.write(f"{IMP.fem.scheme.name}|{EXP.fem.scheme.name} {
-                   IMP.time.timer.interval} {IMP.time.timer.step.Get()}:\n")
-        for key, value in time.items():
+    filename = f"runtime_{implicit_simulation.filename}_{explicit_simulation.filename}"
+    label = f"{IMP.fem.scheme.name}|{EXP.fem.scheme.name}"
+
+    with IMP.io.path.joinpath(f"{filename}_info.txt").open("a") as file:
+        file.write(f"{label} {IMP.time.timer.interval} {IMP.time.timer.step.Get()}:\n")
+        for key, value in info.items():
             file.write(f"{key}: {value}\n")
+
+    import pandas as pd
+    df = pd.DataFrame(csv)
+    df.to_csv(IMP.io.path.joinpath(f"{filename}_data.csv"), index=False)
 
 
 def single_stable_time_step_routine(
@@ -605,7 +634,7 @@ if __name__ == "__main__":
     r, phi = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32, Ro=100.0)
 
     # mesh = get_single_mesh(r, phi, curve_all=True)
-    
+
     from dream.io import IOConfiguration
     io = IOConfiguration(None)
     io.path = "64x32_dr0.05_dphi0.03125_curved"
