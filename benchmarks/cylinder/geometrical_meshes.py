@@ -4,18 +4,14 @@ from dream.io import IOConfiguration
 from pathlib import Path
 import numpy as np
 
-mesh = {
-    'geometrical': get_geometrical_coordinates,
-}
 
 parser = argparse.ArgumentParser(description='Export meshes')
-parser.add_argument('mesh', type=str, help='Mesh type', choices=list(mesh))
 parser.add_argument('--Nr', type=int, help='Number of radial elements', default=32)
 parser.add_argument('--Nphi', type=int, help='Number of radial elements', default=32)
 
 parser.add_argument('--dr0', type=float, help='Initial radial spacing', default=0.04)
 parser.add_argument('--dphi0', type=float, help='Initial circumferential spacing', default=0.0)
-parser.add_argument('--Ro', type=float, help='Outer radius', default=50.0)
+parser.add_argument('--Ro', type=float, help='Outer radius', default=100.0)
 parser.add_argument('--Ri', type=float, help='Inner radius', default=0.5)
 parser.add_argument('--path', type=str, help='Path for the mesh export', default='default')
 parser.add_argument('--curve', action=argparse.BooleanOptionalAction, default=False)
@@ -51,8 +47,7 @@ if curve:
 if path == 'default':
     path = Path.cwd().joinpath(foldername)
 
-if USER['mesh'] == 'geometrical':
-    r, phi = get_geometrical_coordinates(Nr=Nr, Nphi=Nphi, dr0=dr0, dphi0=np.pi*dphi0, Ro=Ro, Ri=Ri)
+r, phi = get_geometrical_coordinates(Nr=Nr, Nphi=Nphi, dr0=dr0, dphi0=np.pi*dphi0, Ro=Ro, Ri=Ri)
 mesh = get_single_mesh(r, phi, curve_all=curve)
 
 io = IOConfiguration(None)

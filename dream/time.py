@@ -428,9 +428,12 @@ class TransientRoutine(TimeRoutine):
                 if "is_diverged" in log:
                     logger.error(f"Transient routine diverged from {tn:.6e} to {t1:.6e}!")
                     break
-                logger.info(f'Solved interval {tn:.6e} to {t1:.6e} \n')
 
+                logger.info(f'Solved interval {tn:.6e} to {t1:.6e} \n')
                 scheme.update_step_gridfunctions()
+
+                if self.root.timestep_controller is not None:
+                    self.root.timestep_controller.process_iteration(iteration=rate)
 
                 yield t1
 

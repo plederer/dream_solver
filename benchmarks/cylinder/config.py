@@ -45,7 +45,7 @@ def get_imex_mesh_from_single_mesh(mesh: ngs.Mesh, Ni: int, Nr: int) -> tuple[ng
     return ngs.Mesh(implicit_mesh), ngs.Mesh(explicit_mesh)
 
 
-def get_geometrical_coordinates(Nr, Nphi, dr0=None, dphi0=None, Ro=50.0, Ri=0.5) -> ngs.Mesh:
+def get_geometrical_coordinates(Nr, Nphi, dr0=None, dphi0=None, Ro=100.0, Ri=0.5) -> ngs.Mesh:
 
     if dr0 is None:
         r = np.linspace(Ri, Ro, Nr + 1)
@@ -64,6 +64,50 @@ def get_geometrical_coordinates(Nr, Nphi, dr0=None, dphi0=None, Ro=50.0, Ri=0.5)
 
         r = Ri * np.ones(Nr+1)
         r[1:] = Ri + np.cumsum(drs)
+
+    if dphi0 is None:
+        phi = np.linspace(0, 2*np.pi, Nphi + 1)
+    else:
+
+        dphi = np.pi
+
+        def fp_geometrical(x0):
+            return np.power(1+(dphi/dphi0)*x0, 1/(Nphi//2)) - 1
+
+        geom_phi = fixpoint_iteration(0.3, fp_geometrical, it=100, tol=1e-16)
+
+        dphis = dphi0*np.power(1+geom_phi, np.arange(Nphi//2))
+
+        phi = np.zeros(Nphi + 1)
+        phi[1:Nphi//2+1] = np.cumsum(dphis)
+        phi[Nphi//2+1:] = 2*np.pi - phi[:Nphi//2][::-1]
+
+    return r, phi
+
+
+def get_twosided_geometrical_coordinates(Nr, Ni, Nphi, dri0, dre0, dphi0=None, Ro=100.0, Ri=0.5) -> ngs.Mesh:
+
+    Ne = Nr - Ni
+
+    r = np.zeros(Nr + 1)
+    r[:Ni+1] = Ri
+
+    if Ni != 0:
+        geom_i = np.power(dre0/dri0, 1/Ni)
+        dri = dri0 * np.power(geom_i, np.arange(Ni))
+        r[1:Ni+1] += np.cumsum(dri)
+    else:
+        dre0 = dri0
+
+    dRe = Ro - r[Ni]
+
+    def fp_geometrical(x0):
+        return np.power(1+(dRe/dre0)*x0, 1/Ne) - 1
+
+    geom_e = fixpoint_iteration(0.3, fp_geometrical, it=1000, tol=1e-16)
+    dre = dre0 * np.power(1+geom_e, np.arange(Ne))
+    r[Ni+1:] = r[Ni]
+    r[Ni+1:] += np.cumsum(dre)
 
     if dphi0 is None:
         phi = np.linspace(0, 2*np.pi, Nphi + 1)
@@ -337,7 +381,8 @@ def load_initial_solution_to_dg(initial_cfg: CompressibleFlowSolver,
     return gfu
 
 
-def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlowSolver = None, **log):
+def single_transient_routine(
+        simulation: Cylinder, initial_cfg: CompressibleFlowSolver = None, test: bool = False, **log):
 
     # Define common solver configuration
     cfg = simulation.cfg
@@ -373,6 +418,11 @@ def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlow
     if cfg.io.sensor.enable:
         simulation.set_sensor_stream()
 
+    if test:
+        with ngs.TaskManager():
+            cfg.solve()
+        return
+
     # Solve the system
     with ngs.TaskManager():
         time = {}
@@ -404,6 +454,7 @@ def single_transient_routine(simulation: Cylinder, initial_cfg: CompressibleFlow
 def imex_transient_routine(implicit_simulation: Cylinder,
                            explicit_simulation: Cylinder,
                            initial_cfg: CompressibleFlowSolver,
+                           test: bool = False,
                            **log):
 
     # Define common solver configuration
@@ -457,6 +508,12 @@ def imex_transient_routine(implicit_simulation: Cylinder,
 
     if IMP.io.sensor.enable:
         implicit_simulation.set_sensor_stream()
+
+    if test:
+        with ngs.TaskManager():
+            for _ in time_routine.start_solution_routine():
+                ...
+        return
 
     # Solve the system
     with ngs.TaskManager():
@@ -631,16 +688,10 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
 
-    r, phi = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32, Ro=100.0)
-
-    # mesh = get_single_mesh(r, phi, curve_all=True)
-
-    from dream.io import IOConfiguration
-    io = IOConfiguration(None)
-    io.path = "64x32_dr0.05_dphi0.03125_curved"
-    mesh = io.ngsmesh.load_routine()
-
-    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=16, Nr=64)
+    r, phi = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32)
+    r, phi = get_twosided_geometrical_coordinates(64, 4, 32, 0.001, 0.05, dphi0=np.pi/32)
+    mesh = get_single_mesh(r, phi, curve_all=True)
+    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=4, Nr=64)
 
     mesh.Curve(3)
     imp.Curve(3)
@@ -649,3 +700,52 @@ if __name__ == "__main__":
     Draw(mesh)
     Draw(imp)
     Draw(exp)
+
+# %%
+if __name__ == "__main__":
+    from ngsolve.webgui import Draw
+    import matplotlib.pyplot as plt
+    %matplotlib qt5
+
+    r0, _ = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32)
+    dr0 = r0[1:] - r0[:-1]
+    s0 = dr0 / dr0[0]
+
+    rn = []
+    drn = []
+    sn = []
+    for Ni in [0, 4, 8, 12, 16]:
+        r, _ = get_twosided_geometrical_coordinates(64, Ni, 32, 0.001, 0.05, dphi0=np.pi/32)
+        rn.append(r)
+        drn.append(r[1:] - r[:-1])
+        sn.append(drn[-1] / drn[-1][0])
+
+    fig, axes = plt.subplots(nrows=3, figsize=(15, 15))
+
+    ax = axes[0]
+    ax.plot(r0, label=r"$\Delta r_0^{0.05}$", marker='o')
+    for i, r in enumerate(rn):
+        ax.semilogy(r, label=rf"$\Delta r_{i}^{0.001}$", marker='o')
+    ax.set_ylabel(r"$r$")
+    ax.grid(which='both')
+
+    ax = axes[1]
+    ax.plot(dr0, label=r"$\Delta r_0^{0.05}$", marker='o')
+    for i, r in enumerate(drn):
+        ax.semilogy(r, label=rf"$\Delta r_{i}^{{{0.001}}}$", marker='o')
+    ax.set_ylabel(r"$\Delta r$")
+    ax.grid(which='both')
+
+    ax = axes[2]
+    ax.plot(s0, label=r"$\Delta r_0^{0.05}$", marker='o')
+    for i, r in enumerate(sn):
+        ax.semilogy(r, label=rf"$\Delta r_{i}^{{{0.001}}}$", marker='o')
+    ax.set_ylabel(r"$\frac{\Delta r}{\Delta r_0}$")
+    ax.grid(which='both')
+    ax.legend()
+
+
+    
+
+
+# %%
