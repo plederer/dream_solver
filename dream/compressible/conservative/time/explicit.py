@@ -10,14 +10,13 @@ from dream.config import Integrals, Log
 
 class ExplicitSchemes(TimeSchemes):
 
+    @property
+    def minv(self):
+        return self.dt.Get() * self._minv
+
     def assemble(self) -> None:
 
-        # Check that a mass matrix is indeed defined in the bilinear form dictionary.
-        if "mass" not in self.root.fem.blf['U']:
-            raise ValueError("Could not find a mass matrix definition in the bilinear form.")
-
         self.blf = ngs.BilinearForm(self.root.fem.fes, nonassemble=True)
-        self._minv = ngs.BilinearForm(self.root.fem.fes, symmetric=True)  # TODO: diag=True
 
         self.lf = None
         if any([space for space, forms in self.root.fem.lf.items() if forms]):
@@ -26,32 +25,18 @@ class ExplicitSchemes(TimeSchemes):
             self.lf.Assemble()
 
         # Step 1: precompute and store the inverse mass matrix. Note, this is scaled by dt.
-        mass = self.parse_sum_of_integrals(self.root.fem.blf, include_terms=('mass',))
-        self.add_sum_of_integrals(self._minv, mass, "mass matrix")
-
-        # Invert the mass matrix.
-        self._minv.Assemble()
-        self._minv = self.root.fem.solver.get_inverse(self._minv, self.root.fem.fes)
+        self._minv = self.root.fem.spaces['U'].Mass(1.0).Inverse()
 
         # Process all items in the relevant bilinear and linear forms.
-        rhs = self.parse_sum_of_integrals(self.root.fem.blf, exclude_terms=('mass',))
+        rhs = self.parse_sum_of_integrals(self.root.fem.blf)
         self.add_sum_of_integrals(self.blf, rhs, 'explicit bilinear form')
 
         if self.root.timestep_controller is not None:
             self.root.timestep_controller.initialize()
 
-    @property
-    def minv(self):
-        return self.dt.Get() * self._minv
-
-    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
-
-        u, v = self.root.fem.TnT['U']
-        gfus = self.gfus['U'].copy()
-        gfus['n+1'] = u
-
-        # Add the mass matrix.
-        blf['U']['mass'] = ngs.InnerProduct(u, v) * ngs.dx
+    def add_symbolic_temporal_forms(self, blf, lf):
+        """ Not used in explicit schemes, since the temporal forms are not needed. """
+        ...
 
     def is_diverged(self, vec) -> bool:
         return np.isnan(vec).any()

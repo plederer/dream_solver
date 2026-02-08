@@ -705,7 +705,6 @@ if __name__ == "__main__":
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
     import matplotlib.pyplot as plt
-    %matplotlib qt5
 
     r0, _ = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32)
     dr0 = r0[1:] - r0[:-1]

@@ -199,9 +199,7 @@ class DirectSolver(Solver):
 
     def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
 
-        inverse = self.inverse
-        if inverse in kwargs:
-            inverse = kwargs[inverse]
+        inverse = kwargs.get("inverse", self.inverse)
 
         if freedofs is None:
             freedofs = fes.FreeDofs(blf.condense)
