@@ -419,7 +419,7 @@ def single_transient_routine(
         simulation.set_sensor_stream()
 
     if test:
-        with ngs.TaskManager():
+        with ngs.TaskManager(pajetrace=int(10e9)):
             cfg.solve()
         return
 
@@ -510,7 +510,7 @@ def imex_transient_routine(implicit_simulation: Cylinder,
         implicit_simulation.set_sensor_stream()
 
     if test:
-        with ngs.TaskManager():
+        with ngs.TaskManager(pajetrace=int(10e9)):
             for _ in time_routine.start_solution_routine():
                 ...
         return
