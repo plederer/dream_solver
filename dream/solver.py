@@ -199,9 +199,7 @@ class DirectSolver(Solver):
 
     def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
 
-        inverse = self.inverse
-        if inverse in kwargs:
-            inverse = kwargs[inverse]
+        inverse = kwargs.get("inverse", self.inverse)
 
         if freedofs is None:
             freedofs = fes.FreeDofs(blf.condense)
@@ -363,7 +361,7 @@ class FiniteElementMethod(Configuration, is_interface=True):
     def initialize_time_scheme_gridfunctions(self, *spaces: str) -> None:
         if isinstance(self.scheme, TimeSchemes):
             gfus = {space: gfu for space, gfu in self.gfus.items() if space in spaces}
-            self.scheme.initialize_gridfunctions(gfus)
+            self.scheme.initialize_step_gridfunctions(gfus)
 
     def initialize_symbolic_forms(self) -> None:
         self.blf: Integrals = {label: {} for label in self.spaces}

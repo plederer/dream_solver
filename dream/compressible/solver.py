@@ -190,7 +190,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         if not isinstance(dim_fields, dimensionalfields):
             raise ValueError(f"Dimensional fields has to be of type dimensionalfields, not {type(dim_fields)}!")
-        
+
         logger.info("Setting dimensionless numbers from dimensional fields. Previous values will be overwritten.")
 
         gamma = self.equation_of_state.heat_capacity_ratio.Get()
@@ -216,7 +216,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @timestep_controller.setter
     def timestep_controller(self, value: str | PhysicalTimeStepController | None):
-        
+
         if value is None:
             self._timestep_controller = None
             return
@@ -332,92 +332,89 @@ class CompressibleFlowSolver(SolverConfiguration):
         return rho * ngs.sqrt(bla.inner(u, u)) / mu
 
     def get_accurate_time_step_estimate(self, points: list[tuple[float, float]], he: list[float]) -> float:
-        
+
         import numpy as np
-        
+
         # Convert the list of tuples into a numpy ndarray with shape (n, 2).
         pts = np.array(points)
-        
+
         # Inverse of the effective length scale.
-        ovl = float(self.fem.order + 1) / he 
+        ovl = float(self.fem.order + 1) / he
 
         # Get a solution flowfield.
         U = self.root.get_solution_fields()
 
         # Explicitly extract x,y coordinates (integration points).
-        x = points[:,0]
-        y = points[:,1]
+        x = points[:, 0]
+        y = points[:, 1]
 
         # Get the expression for the (common) variables needed.
         func_rho = self.root.density(U)
-        func_u   = self.root.velocity(U)[0]
-        func_v   = self.root.velocity(U)[1]
-        func_a   = self.root.speed_of_sound(U)
+        func_u = self.root.velocity(U)[0]
+        func_v = self.root.velocity(U)[1]
+        func_a = self.root.speed_of_sound(U)
 
         # Evaluate the (common) variables at the input (integration) points.
-        rho  = func_rho( self.root.mesh(x=x, y=y) )
-        uabs = np.abs( func_u( self.root.mesh(x=x, y=y) ) ) 
-        vabs = np.abs( func_v( self.root.mesh(x=x, y=y) ) )
-        a    = func_a( self.root.mesh(x=x, y=y) )
+        rho = func_rho(self.root.mesh(x=x, y=y))
+        uabs = np.abs(func_u(self.root.mesh(x=x, y=y)))
+        vabs = np.abs(func_v(self.root.mesh(x=x, y=y)))
+        a = func_a(self.root.mesh(x=x, y=y))
 
         # Estimate the spectral radius of the inviscid (EEs) part.
-        rad_ees = ngs.sqrt( (uabs + a)**2 + (vabs + a)**2 ) # units: m/s
-        rad_nse = 0.0 # default: inviscid.
+        rad_ees = ngs.sqrt((uabs + a)**2 + (vabs + a)**2)  # units: m/s
+        rad_nse = 0.0  # default: inviscid.
 
         # Account for diffusion, in case the NSE are solved.
         if not self.root.dynamic_viscosity.is_inviscid:
-            
+
             # Extract the viscosity.
             func_mu = self.root.viscosity(U)
-            
+
             # If the viscosity is not constant, evaluate it on the grid points.
             if isinstance(self.root.dynamic_viscosity, Constant):
-                mu = float( func_mu )
+                mu = float(func_mu)
             else:
-                mu = func_mu( self.root.mesh(x=x, y=y) )
-                
+                mu = func_mu(self.root.mesh(x=x, y=y))
+
             # Get the relevant nondimensional numbers.
             Re = self.root.scaling.reference_reynolds_number.Get()
             Pr = self.root.prandtl_number.Get()
-            
-            # NOTE, we explicitly scale the viscosity with Re, 
+
+            # NOTE, we explicitly scale the viscosity with Re,
             # to obtain the correct nondimensionalization.
             mu /= Re
 
             # Get the nondimensionalized specific heat at constant volume.
             func_cv = self.root.equation_of_state.specific_heat_cv
-            cv = func_cv( self.mesh(x=x[0],y=y[0]) )
+            cv = func_cv(self.mesh(x=x[0], y=y[0]))
 
             # Estimate the spetral radius of the viscous part.
             cshear = 4.0/3.0
             ctherm = 1.0/(Pr*cv)
-            rad_nse = mu * np.max( [cshear, ctherm] ) / rho # units: m2/s
+            rad_nse = mu * np.max([cshear, ctherm]) / rho  # units: m2/s
 
         # Obtain the inverse of the effective time step.
-        ovdteff = ovl * ( rad_ees + ovl * rad_nse ) 
+        ovdteff = ovl * (rad_ees + ovl * rad_nse)
 
         # Return an estimate for a stable dt.
-        return 1.0/np.max( ovdteff )
-
-
-
+        return 1.0/np.max(ovdteff)
 
     def get_averaged_time_step_estimate(self, U: flowfields):
 
         # Effective length scale and its inverse.
-        #leff = self.mesh.meshsize / ( 2 * self.fem.order + 1)
-        leff = self.mesh.meshsize / ( self.fem.order + 1) # TESTING
-        ovl  = 1.0/leff 
+        # leff = self.mesh.meshsize / ( 2 * self.fem.order + 1)
+        leff = self.mesh.meshsize / (self.fem.order + 1)  # TESTING
+        ovl = 1.0/leff
 
         # Required velocities.
         vel = self.velocity(U)
-        uabs = bla.abs( vel[0] )
-        vabs = bla.abs( vel[1] )
-        a    = self.speed_of_sound(U) 
+        uabs = bla.abs(vel[0])
+        vabs = bla.abs(vel[1])
+        a = self.speed_of_sound(U)
 
         # Estimate the spectral radius of the inviscid (EEs) part.
-        rad_ees = ngs.sqrt( (uabs + a)**2 + (vabs + a)**2 ) # units: m/s
-        rad_nse = 0.0 # default: inviscid.
+        rad_ees = ngs.sqrt((uabs + a)**2 + (vabs + a)**2)  # units: m/s
+        rad_nse = 0.0  # default: inviscid.
 
         # Account for diffusion, in case the NSE are solved.
         if not self.root.dynamic_viscosity.is_inviscid:
@@ -428,13 +425,13 @@ class CompressibleFlowSolver(SolverConfiguration):
             Re = self.root.scaling.reference_reynolds_number
             Pr = self.root.prandtl_number
 
-            # NOTE, we explicitly scale the viscosity with Re, 
+            # NOTE, we explicitly scale the viscosity with Re,
             # to obtain the correct nondimensionalization.
             mu /= Re
 
             # Compute the respective thermal conductivity constant.
-            kappa = mu/Pr # mu already is divided by Re.
-            
+            kappa = mu/Pr  # mu already is divided by Re.
+
             # Get the nondimensionalized specific heat at constant volume.
             cv = self.root.equation_of_state.specific_heat_cv
 
@@ -445,7 +442,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             rho = self.density(U)
 
             # Estimate the spetral radius of the viscous part.
-            rad_nse = bla.max( 2*mu + lmb, kappa/cv ) / rho # units: m2/s
+            rad_nse = bla.max(2*mu + lmb, kappa/cv) / rho  # units: m2/s
 
         # Obtain the relevant space, based on constant polynomials.
         fes = ngs.L2(self.mesh, order=0)
@@ -454,10 +451,10 @@ class CompressibleFlowSolver(SolverConfiguration):
 
         # Assemble the rhs, while taking the correct scaling into account.
         lf = ngs.LinearForm(fes)
-        lf += ovl * ( rad_ees + ovl * rad_nse ) * v * ngs.dx
+        lf += ovl * (rad_ees + ovl * rad_nse) * v * ngs.dx
         lf.Assemble()
 
-        # Note, this estimates (1/dt) and for order>0 is an averaged one. 
+        # Note, this estimates (1/dt) and for order>0 is an averaged one.
         gfu.vec.data = fes.Mass(1).Inverse() * lf.vec
 
         dtmin = 1.0/max(gfu.vec)
@@ -467,7 +464,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         logger.info(f"Minimum (averaged) time step estimate: {dtmin}")
         logger.info(f"Maximum (averaged) time step estimate: {dtmax}")
         logger.info(f"Ratio (averaged) dtmax/dtmin estimate: {ratio}")
-        
+
         return dtmin
 
     def get_primitive_convective_jacobian(self, U: flowfields, unit_vector: ngs.CF, type: str = None):
@@ -698,6 +695,10 @@ class CompressibleFlowSolver(SolverConfiguration):
         return self.equation_of_state.specific_entropy(U)
 
     @equation
+    def thermodynamic_entropy(self, U: flowfields):
+        return self.equation_of_state.thermodynamic_entropy(U)
+
+    @equation
     def density_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         return self.equation_of_state.density_gradient(U, dU)
 
@@ -723,7 +724,7 @@ class CompressibleFlowSolver(SolverConfiguration):
                 grad_u[0, 2] - grad_u[2, 0],
                 grad_u[1, 0] - grad_u[0, 1]
             ))
-        
+
     @equation
     def momentum_gradient(self, U: flowfields, dU: flowfields) -> ngs.CF:
         if dU.grad_rho_u is not None:

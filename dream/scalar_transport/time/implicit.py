@@ -75,7 +75,6 @@ class ImplicitEuler(ImplicitSchemes):
     """
     name: str = "implicit_euler"
     aliases = ("ie", )
-    time_levels = ('n+1',)
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
         u, v = self.root.fem.TnT['U']
@@ -108,7 +107,6 @@ class BDF2(ImplicitSchemes):
     where :math:`\widetilde{\bm{M}} = \frac{3}{2\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """
     name: str = "bdf2"
-    time_levels = ('n-1', 'n', 'n+1')
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
         u, v = self.root.fem.TnT['U']
@@ -264,7 +262,6 @@ class SDIRK22(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{u}^{n+1} = \bm{y}_{2}`.
     """
     name: str = "sdirk22"
-    time_levels = ('n+1',)
 
     def assemble(self) -> None:
         super().assemble()
@@ -340,7 +337,6 @@ class SDIRK33(DIRKSchemes):
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{u}^{n+1} = \bm{y}_{3}`.
     """
     name: str = "sdirk33"
-    time_levels = ('n+1',)
 
     def initialize_butcher_tableau(self):
 

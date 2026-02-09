@@ -265,7 +265,6 @@ class IMEXRK_ARS443(IMEXRKSchemes):
     :note: The SDIRK coefficients are padded (zero on first row/column). In reality their indices ignore the padding, e.g. :math:`a_{21} = 1/6`, :math:`a_{22} = 1/2`.
     """
     name: str = "imex_rk_ars443"
-    time_levels = ('n+1',)
 
     def initialize_butcher_tableau(self):
 

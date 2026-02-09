@@ -8,7 +8,6 @@ import typing
 
 
 class ExplicitSchemes(TimeSchemes):
-    time_levels = ('n+1',)
 
     def assemble(self) -> None:
 
