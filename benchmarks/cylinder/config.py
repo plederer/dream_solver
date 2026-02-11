@@ -7,11 +7,10 @@ from dream.mesh import get_structured_cylinder_mesh
 from dream.compressible import CompressibleFlowSolver, FarField, Initial, flowfields,  AdiabaticWall, InterfaceBC
 from dream.io import BoundarySensor
 from dream.time import SynchronizedIMEXTimeRoutine
-from time import time as clock
 from pathlib import Path
 
 
-def get_single_mesh(r, phi, curve_all=True) -> ngs.Mesh:
+def get_single_mesh(r, phi) -> ngs.Mesh:
 
     domains = []
     for i in range(r.size - 1):
@@ -23,7 +22,7 @@ def get_single_mesh(r, phi, curve_all=True) -> ngs.Mesh:
         boundaries.append((f'boundary_{i}', (r[i], phi)))
     boundaries.append((f'farfield', (r[-1], phi)))
 
-    return get_structured_cylinder_mesh(domains, boundaries, curve_all=curve_all)
+    return get_structured_cylinder_mesh(domains, boundaries)
 
 
 def get_imex_mesh_from_single_mesh(mesh: ngs.Mesh, Ni: int, Nr: int) -> tuple[ngs.Mesh, ngs.Mesh]:
@@ -69,18 +68,23 @@ def get_geometrical_coordinates(Nr, Nphi, dr0=None, dphi0=None, Ro=100.0, Ri=0.5
         phi = np.linspace(0, 2*np.pi, Nphi + 1)
     else:
 
-        dphi = np.pi
+        dphi = 0.5 *np.pi
+        N_left = Nphi//2 - 4
+        N_right = Nphi//2 + 4
+
 
         def fp_geometrical(x0):
-            return np.power(1+(dphi/dphi0)*x0, 1/(Nphi//2)) - 1
+            return np.power(1+(dphi/dphi0)*x0, 1/(N_right//2)) - 1
 
         geom_phi = fixpoint_iteration(0.3, fp_geometrical, it=100, tol=1e-16)
 
-        dphis = dphi0*np.power(1+geom_phi, np.arange(Nphi//2))
+        dphis = dphi0*np.power(1+geom_phi, np.arange(N_right//2))
+        phi_right = np.zeros(N_right + 1)
+        phi_right[1:N_right//2+1] = np.cumsum(dphis)
+        phi_right[N_right//2+1:] = 2*np.pi - phi_right[:N_right//2][::-1]
+        phi_left = np.linspace(np.pi/2, 3/2*np.pi, N_left + 1)
 
-        phi = np.zeros(Nphi + 1)
-        phi[1:Nphi//2+1] = np.cumsum(dphis)
-        phi[Nphi//2+1:] = 2*np.pi - phi[:Nphi//2][::-1]
+        phi = np.union1d(phi_left[1:], phi_right)
 
     return r, phi
 
@@ -113,18 +117,22 @@ def get_twosided_geometrical_coordinates(Nr, Ni, Nphi, dri0, dre0, dphi0=None, R
         phi = np.linspace(0, 2*np.pi, Nphi + 1)
     else:
 
-        dphi = np.pi
+        dphi = 0.5 *np.pi
+        N_left = Nphi//2 - 4
+        N_right = Nphi//2 + 4
 
         def fp_geometrical(x0):
-            return np.power(1+(dphi/dphi0)*x0, 1/(Nphi//2)) - 1
+            return np.power(1+(dphi/dphi0)*x0, 1/(N_right//2)) - 1
 
         geom_phi = fixpoint_iteration(0.3, fp_geometrical, it=100, tol=1e-16)
 
-        dphis = dphi0*np.power(1+geom_phi, np.arange(Nphi//2))
+        dphis = dphi0*np.power(1+geom_phi, np.arange(N_right//2))
+        phi_right = np.zeros(N_right + 1)
+        phi_right[1:N_right//2+1] = np.cumsum(dphis)
+        phi_right[N_right//2+1:] = 2*np.pi - phi_right[:N_right//2][::-1]
+        phi_left = np.linspace(np.pi/2, 3/2*np.pi, N_left + 1)
 
-        phi = np.zeros(Nphi + 1)
-        phi[1:Nphi//2+1] = np.cumsum(dphis)
-        phi[Nphi//2+1:] = 2*np.pi - phi[:Nphi//2][::-1]
+        phi = np.union1d(phi_left[1:], phi_right)
 
     return r, phi
 
@@ -321,8 +329,28 @@ def load_initial_solution(initial_cfg: CompressibleFlowSolver):
     return gfu
 
 
-def load_initial_solution_to_hdg(
-        initial_cfg: CompressibleFlowSolver, hdg_cfg: CompressibleFlowSolver, filename: str = None):
+def project_initial_solution(gfus, U, rhs, bonus_intorder=6, **kwargs):
+
+    U0 = U.components[0]
+    u, v = U0.TnT()
+
+    blf = ngs.BilinearForm(U0)
+    blf += u * v * ngs.dx(**kwargs, bonus_intorder=bonus_intorder)
+    blf.Assemble()
+
+    inv = blf.mat.Inverse(U0.FreeDofs(), inverse="sparsecholesky")
+
+    for rhs, gfu in zip(rhs.components, gfus.components):
+        lf = ngs.LinearForm(U0)
+        lf += rhs * v * ngs.dx(**kwargs, bonus_intorder=bonus_intorder)
+        lf.Assemble()
+
+        gfu.vec.data = inv * lf.vec
+
+
+def load_initial_solution_to_hdg(initial_cfg: CompressibleFlowSolver, 
+                                 hdg_cfg: CompressibleFlowSolver, 
+                                 filename: str = None):
 
     fem = hdg_cfg.fem
     try:
@@ -335,23 +363,15 @@ def load_initial_solution_to_hdg(
 
     igfu = load_initial_solution(initial_cfg)
 
-    gfu.components[0].Set(igfu.components[0], bonus_intorder=10)
+    U = hdg_cfg.fem.spaces['U']
+    project_initial_solution(gfu.components[0], U, igfu.components[0])
 
     Uhat = hdg_cfg.fem.spaces['Uhat']
-    uhat, vhat = Uhat.TnT()
-
-    blf = ngs.BilinearForm(Uhat)
-    blf += uhat * vhat * ngs.dx(element_boundary=True, bonus_intorder=10)
-    blf.Assemble()
-
-    lf = ngs.LinearForm(Uhat)
-    lf += igfu.components[0] * vhat * ngs.dx(element_boundary=True, bonus_intorder=10)
-    lf.Assemble()
-
-    gfu.components[1].vec.data = blf.mat.Inverse(Uhat.FreeDofs()) * lf.vec
+    project_initial_solution(gfu.components[1], Uhat, gfu.components[0], element_boundary=True)
 
     if fem.viscous_treatment.name == 'mixed_strain_temperature_gradient':
-        gfu.components[2].Set(igfu.components[2], bonus_intorder=10)
+        Q = hdg_cfg.fem.spaces['Q']
+        project_initial_solution(gfu.components[2], Q, igfu.components[2])
 
     if filename is not None:
         hdg_cfg.io.gfu.save_gridfunction(gfu, filename)
@@ -360,7 +380,8 @@ def load_initial_solution_to_hdg(
 
 
 def load_initial_solution_to_dg(initial_cfg: CompressibleFlowSolver,
-                                dg_cfg: CompressibleFlowSolver, filename: str = None):
+                                dg_cfg: CompressibleFlowSolver, 
+                                filename: str = None):
 
     fem = dg_cfg.fem
     try:
@@ -373,7 +394,8 @@ def load_initial_solution_to_dg(initial_cfg: CompressibleFlowSolver,
 
     igfu = load_initial_solution(initial_cfg)
 
-    gfu.Set(igfu.components[0], bonus_intorder=10)
+    U = dg_cfg.fem.spaces['U']
+    project_initial_solution(gfu, U, igfu.components[0])
 
     if filename is not None:
         dg_cfg.io.gfu.save_gridfunction(gfu, filename)
@@ -688,10 +710,14 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
 
-    r, phi = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32)
-    r, phi = get_twosided_geometrical_coordinates(64, 4, 32, 0.001, 0.05, dphi0=np.pi/32)
-    mesh = get_single_mesh(r, phi, curve_all=True)
-    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni=4, Nr=64)
+    Nr = 128
+    Nphi = 32
+    Ni = 4
+
+    r, phi = get_twosided_geometrical_coordinates(Nr, Ni, Nphi, 0.001, 0.05, dphi0=np.pi/32)
+    r, phi = get_geometrical_coordinates(Nr, Nphi, dr0=0.05, dphi0=np.pi/32)
+    mesh = get_single_mesh(r, phi)
+    imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni, Nr)
 
     mesh.Curve(3)
     imp.Curve(3)

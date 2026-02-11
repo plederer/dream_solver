@@ -16,7 +16,6 @@ parser.add_argument('--dphi0', type=float, help='Initial circumferential spacing
 parser.add_argument('--Ro', type=float, help='Outer radius', default=100.0)
 parser.add_argument('--Ri', type=float, help='Inner radius', default=0.5)
 parser.add_argument('--path', type=str, help='Path for the mesh export', default='default')
-parser.add_argument('--curve', action=argparse.BooleanOptionalAction, default=False)
 
 USER = vars(parser.parse_args())
 Nr = USER['Nr']
@@ -28,7 +27,6 @@ dphi0 = USER['dphi0']
 Ro = USER['Ro']
 Ri = USER['Ri']
 path = USER['path']
-curve = USER['curve']
 
 if np.allclose(dri0, 0.0):
     dri0 = None
@@ -51,14 +49,15 @@ if dre0 is not None:
 if dphi0 is not None:
     foldername += f"_dphi{dphi0}"
 
-if curve:
-    foldername += "_curved"
-
 if path == 'default':
     path = Path.cwd().joinpath(foldername)
 
-r, phi = get_twosided_geometrical_coordinates(Nr, Ni, Nphi, dri0, dre0, dphi0=np.pi*dphi0, Ro=Ro, Ri=Ri)
-mesh = get_single_mesh(r, phi, curve_all=curve)
+
+if dphi0 is None:
+    r, phi = get_twosided_geometrical_coordinates(Nr, Ni, Nphi, dri0, dre0, dphi0=None, Ro=Ro, Ri=Ri)
+else:
+    r, phi = get_twosided_geometrical_coordinates(Nr, Ni, Nphi, dri0, dre0, dphi0=np.pi*dphi0, Ro=Ro, Ri=Ri)
+mesh = get_single_mesh(r, phi)
 
 io = IOConfiguration(None)
 io.path = path
