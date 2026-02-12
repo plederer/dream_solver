@@ -87,10 +87,10 @@ DG['fem.viscous_treatment.interior_penalty_coefficient'] = 1.0
 if test and USER['splitting'] == 'explicit':
     DG['io.sensor.enable'] = True
 
-mesh.Curve(initial_cfg.fem.order)
-mesh_implicit.Curve(initial_cfg.fem.order)
-mesh_explicit.Curve(initial_cfg.fem.order)
-initial_mesh.Curve(initial_cfg.fem.order)
+# mesh.Curve(initial_cfg.fem.order)
+# mesh_implicit.Curve(initial_cfg.fem.order)
+# mesh_explicit.Curve(initial_cfg.fem.order)
+# initial_mesh.Curve(initial_cfg.fem.order)
 
 if USER['splitting'] == 'explicit':
 

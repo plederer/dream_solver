@@ -329,7 +329,7 @@ def load_initial_solution(initial_cfg: CompressibleFlowSolver):
     return gfu
 
 
-def project_initial_solution(gfus, U, rhs, bonus_intorder=6, **kwargs):
+def project_initial_solution(gfus, U, rhs, bonus_intorder=0, **kwargs):
 
     U0 = U.components[0]
     u, v = U0.TnT()
@@ -404,7 +404,12 @@ def load_initial_solution_to_dg(initial_cfg: CompressibleFlowSolver,
 
 
 def single_transient_routine(
-        simulation: Cylinder, initial_cfg: CompressibleFlowSolver = None, test: bool = False, **log):
+        simulation: Cylinder, initial_cfg: CompressibleFlowSolver = None, curve:bool = True, test: bool = False, **log):
+    
+    if curve:
+        print("Make sure the mesh you are projecting from is the same!")
+    else:
+        print("Is the mesh different? Otherwise Curve it!")
 
     # Define common solver configuration
     cfg = simulation.cfg
@@ -427,6 +432,9 @@ def single_transient_routine(
         cfg.fem.scheme.set_initial_conditions()
     else:
         cfg.fem.set_initial_conditions()
+    
+    if curve:
+        cfg.mesh.Curve(cfg.fem.order)
 
     cfg.fem.initialize_symbolic_forms()
 
@@ -476,8 +484,14 @@ def single_transient_routine(
 def imex_transient_routine(implicit_simulation: Cylinder,
                            explicit_simulation: Cylinder,
                            initial_cfg: CompressibleFlowSolver,
+                           curve: bool = True,
                            test: bool = False,
                            **log):
+    
+    if curve:
+        print("Make sure the mesh you are projecting from is the same!")
+    else:
+        print("Is the mesh different? Otherwise Curve it!")
 
     # Define common solver configuration
     IMP = implicit_simulation.cfg
@@ -508,6 +522,10 @@ def imex_transient_routine(implicit_simulation: Cylinder,
 
     load_initial_solution_to_hdg(initial_cfg, IMP)
     load_initial_solution_to_dg(initial_cfg, EXP)
+
+    if curve:
+        IMP.mesh.Curve(IMP.fem.order)
+        EXP.mesh.Curve(EXP.fem.order)
 
     # Get solution fields
     Uhi = IMP.get_all_solution_fields()
@@ -610,12 +628,14 @@ def single_stable_time_step_routine(
     with ngs.TaskManager():
         for _ in cfg.time.find_stable_time_step(tol=1e-5, process_routine=process_routine):
 
+            cfg.mesh.Curve(0)
             if initial_cfg is not None and cfg.fem.name == 'conservative_hdg':
                 load_initial_solution_to_hdg(initial_cfg, cfg)
                 cfg.fem.scheme.set_initial_conditions()
             elif initial_cfg is not None and cfg.fem.name == 'conservative_dg':
                 load_initial_solution_to_dg(initial_cfg, cfg)
                 cfg.fem.scheme.set_initial_conditions()
+            cfg.mesh.Curve(cfg.fem.order)
 
     if outputfile is not None:
         file.close()
@@ -693,6 +713,10 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
     with ngs.TaskManager():
         for _ in time.find_stable_time_step(tol=1e-5, process_routine=process_routine):
 
+            IMP.mesh.Curve(0)
+            EXP.mesh.Curve(0)
+
+
             load_initial_solution_to_dg(initial_cfg, EXP)
             load_initial_solution_to_hdg(initial_cfg, IMP)
 
@@ -701,6 +725,9 @@ def imex_stable_time_step_routine(implicit_simulation: Cylinder,
 
             IMP.fem.scheme.set_initial_conditions()
             EXP.fem.scheme.set_initial_conditions()
+
+            IMP.mesh.Curve(IMP.fem.order)
+            EXP.mesh.Curve(EXP.fem.order)
 
     if outputfile is not None:
         file.close()
@@ -729,10 +756,14 @@ if __name__ == "__main__":
 
 # %%
 if __name__ == "__main__":
+
+    Nr = 128
+    Nphi = 32
+
     from ngsolve.webgui import Draw
     import matplotlib.pyplot as plt
 
-    r0, _ = get_geometrical_coordinates(Nr=64, Nphi=32, dr0=0.05, dphi0=np.pi/32)
+    r0, _ = get_geometrical_coordinates(Nr, Nphi, dr0=0.05, dphi0=np.pi/32)
     dr0 = r0[1:] - r0[:-1]
     s0 = dr0 / dr0[0]
 
@@ -740,7 +771,7 @@ if __name__ == "__main__":
     drn = []
     sn = []
     for Ni in [0, 4, 8, 12, 16]:
-        r, _ = get_twosided_geometrical_coordinates(64, Ni, 32, 0.001, 0.05, dphi0=np.pi/32)
+        r, _ = get_twosided_geometrical_coordinates(Nr, Ni, Nphi, 0.001, 0.05, dphi0=np.pi/32)
         rn.append(r)
         drn.append(r[1:] - r[:-1])
         sn.append(drn[-1] / drn[-1][0])
