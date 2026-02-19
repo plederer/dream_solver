@@ -40,9 +40,6 @@ if np.allclose(dphi0, 0.0):
 filename = "mesh"
 foldername = f"{Nr}x{Ni}x{Nphi}"
 
-if dri0 is not None:
-    foldername += f"_dri{dri0}"
-
 if dre0 is not None:
     foldername += f"_dre{dre0}"
 
@@ -50,7 +47,7 @@ if dphi0 is not None:
     foldername += f"_dphi{dphi0}"
 
 if path == 'default':
-    path = Path.cwd().joinpath(foldername)
+    path = Path.cwd().joinpath(foldername + f"/dri{dri0}")
 
 
 if dphi0 is None:

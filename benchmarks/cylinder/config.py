@@ -176,7 +176,7 @@ TRANSIENT_CFG = {
     'fem.solver': 'direct',
     'fem.solver.method': 'newton',
     'fem.solver.method.max_iterations': 5,
-    'fem.solver.method.convergence_criterion': 1e-20,
+    'fem.solver.method.convergence_criterion': 1e-14,
     'fem.solver.method.damping_factor': 1.0,
     'fem.bonus_int_order': 6,
     'fem.viscous_treatment': 'mixed_strain_temperature_gradient',
@@ -741,8 +741,8 @@ if __name__ == "__main__":
     Nphi = 32
     Ni = 4
 
-    r, phi = get_twosided_geometrical_coordinates(Nr, Ni, Nphi, 0.001, 0.05, dphi0=np.pi/32)
-    r, phi = get_geometrical_coordinates(Nr, Nphi, dr0=0.05, dphi0=np.pi/32)
+    r, phi = get_geometrical_coordinates(Nr, Nphi, dr0=0.0005, dphi0=np.pi/32)
+    r, phi = get_twosided_geometrical_coordinates(Nr, Ni, Nphi, 0.0005, 0.05, dphi0=np.pi/32)
     mesh = get_single_mesh(r, phi)
     imp, exp = get_imex_mesh_from_single_mesh(mesh, Ni, Nr)
 
@@ -762,10 +762,14 @@ if __name__ == "__main__":
 
     from ngsolve.webgui import Draw
     import matplotlib.pyplot as plt
+    # %matplotlib qt5
 
     r0, _ = get_geometrical_coordinates(Nr, Nphi, dr0=0.05, dphi0=np.pi/32)
+    r1, _ = get_geometrical_coordinates(Nr, Nphi, dr0=0.0005, dphi0=np.pi/32)
     dr0 = r0[1:] - r0[:-1]
+    dr1 = r1[1:] - r1[:-1]
     s0 = dr0 / dr0[0]
+    s1 = dr1 / dr1[0]
 
     rn = []
     drn = []
@@ -780,6 +784,7 @@ if __name__ == "__main__":
 
     ax = axes[0]
     ax.plot(r0, label=r"$\Delta r_0^{0.05}$", marker='o')
+    ax.plot(r1, label=r"$\Delta r_1^{0.0001}$", marker='o')
     for i, r in enumerate(rn):
         ax.semilogy(r, label=rf"$\Delta r_{i}^{0.001}$", marker='o')
     ax.set_ylabel(r"$r$")
@@ -787,6 +792,7 @@ if __name__ == "__main__":
 
     ax = axes[1]
     ax.plot(dr0, label=r"$\Delta r_0^{0.05}$", marker='o')
+    ax.plot(dr1, label=r"$\Delta r_1^{0.0001}$", marker='o')
     for i, r in enumerate(drn):
         ax.semilogy(r, label=rf"$\Delta r_{i}^{{{0.001}}}$", marker='o')
     ax.set_ylabel(r"$\Delta r$")
@@ -794,6 +800,7 @@ if __name__ == "__main__":
 
     ax = axes[2]
     ax.plot(s0, label=r"$\Delta r_0^{0.05}$", marker='o')
+    ax.plot(s1, label=r"$\Delta r_0^{0.0001}$", marker='o')
     for i, r in enumerate(sn):
         ax.semilogy(r, label=rf"$\Delta r_{i}^{{{0.001}}}$", marker='o')
     ax.set_ylabel(r"$\frac{\Delta r}{\Delta r_0}$")
@@ -804,4 +811,31 @@ if __name__ == "__main__":
     
 
 
+# %%
+if __name__ == "__main__":
+
+    from ngsolve.webgui import Draw
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    # %matplotlib qt5
+    fig, ax = plt.subplots()
+
+    h = [1e-3, 5e-3, 1e-2, 5e-2]
+    dt = [5e-7, 1.25e-5, 4.8e-5, 5e-4]
+
+    k = np.log(dt[0])/np.log(h[0])
+
+    # k = (dt[2] - dt[0])/(h[2] - h[0])
+
+
+
+    # dt_new = k*h[3]+dt[0]
+    dt_new = np.power(h[3],k)
+
+    ax.loglog(h, dt, marker="o")
+    ax.loglog(h[3], dt_new, marker="o", color='k')
+
+    ax.grid()
+    ax.set_xlabel
 # %%
