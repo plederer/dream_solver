@@ -26,7 +26,7 @@ MIXED = {
 parser = argparse.ArgumentParser(description='Run stable time step tests for IMEX schemes')
 parser.add_argument('splitting', type=str, help='Splitting type', choices=SPLITTING)
 parser.add_argument('dt', type=float, help='Time step size')
-parser.add_argument('--interval', type=float, nargs=2, help='Time interval', default=(0.0, 1/6))
+parser.add_argument('--interval', type=float, nargs=2, help='Time interval', default=(0.0, 1.0))
 parser.add_argument('--r', type=int, help='First mesh size ratio', default=1)
 parser.add_argument('--Ni', type=int, help='Number of implicit elements', default=2)
 parser.add_argument('--N', type=int, help='Number of elements', default=40)
@@ -35,7 +35,7 @@ parser.add_argument('--mixed', type=str, help='Viscous treatment for implicit pa
 parser.add_argument('--test', action=argparse.BooleanOptionalAction, default=False)
 USER = vars(parser.parse_args())
 
-ALPHA = 0.1
+ALPHA = 0.001
 X = 0.1
 
 r = USER['r']

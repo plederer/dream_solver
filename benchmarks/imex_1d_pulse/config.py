@@ -244,13 +244,13 @@ def single_transient_routine(simulation: Pulse,  test: bool = False, **log):
 
     # Solve the system
     with ngs.TaskManager():
-        time = {}
-        for _ in cfg.time.start_timing_solution_routine(time):
+        timings = {}
+        for _ in cfg.time.start_timing_solution_routine(timings):
             pass
 
     csv = {}
     info = {}
-    for key, value in time.items():
+    for key, value in timings.items():
         if isinstance(value, np.ndarray):
             csv[key] = value
         else:
@@ -334,14 +334,14 @@ def imex_transient_routine(implicit_simulation: Pulse,
 
     # Solve the system
     with ngs.TaskManager():
-        time = {}
+        timings = {}
 
-        for _ in time_routine.start_timing_solution_routine(time):
+        for _ in time_routine.start_timing_solution_routine(timings):
             pass
 
     csv = {}
     info = {}
-    for key, value in time.items():
+    for key, value in timings.items():
         if isinstance(value, np.ndarray):
             csv[key] = value
         else:

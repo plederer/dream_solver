@@ -28,7 +28,7 @@ parser.add_argument('dt', type=float, help='Time step size')
 parser.add_argument('--interval', type=float, nargs=2, help='Time interval', default=(0.0, 0.15))
 parser.add_argument('--r', type=int, help='First mesh size ratio', default=1)
 parser.add_argument('--tol', type=float, help='Tolerance for stable time step', default=1e-5)
-parser.add_argument('--Ni', type=int, help='Number of implicit elements', default=2)
+parser.add_argument('--Ni', type=int, help='Number of implicit elements', default=8)
 parser.add_argument('--N', type=int, help='Number of elements', default=40)
 parser.add_argument('--mixed', type=str, help='Viscous treatment for implicit part',
                     choices=list(MIXED.keys()), default='mixed')
