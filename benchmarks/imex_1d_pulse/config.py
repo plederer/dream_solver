@@ -9,27 +9,26 @@ from dream.time import SynchronizedIMEXTimeRoutine
 from pathlib import Path
 
 
-def get_coordinates(N, Ni, dxi0, dxe0, L=1.0) -> ngs.Mesh:
+def get_coordinates(N, Ni, dxi0) -> ngs.Mesh:
 
     N = N//2
     Ni = Ni//2
-    L = L/2
     Ne = N - Ni
 
-    y = np.linspace(-dxe0, dxe0, 3)
+    y = np.linspace(-1, 1, 3)
     x = np.zeros(N + 1)
 
-    geom_i = np.power(dxe0/dxi0, 1/Ni)
+    geom_i = np.power(1/dxi0, 1/Ni)
     xi = dxi0 * np.power(geom_i, np.arange(Ni))
     x[1:Ni+1] = np.cumsum(xi)
 
-    Lxi = L - x[Ni]
+    Lxi = N - x[Ni]
 
     def fp_geometrical(x0):
-        return np.power(1+(Lxi/dxe0)*x0, 1/Ne) - 1
+        return np.power(1+(Lxi)*x0, 1/Ne) - 1
 
-    geom_e = fixpoint_iteration(0.3, fp_geometrical, it=1000, tol=1e-16)
-    xe = dxe0 * np.power(1+geom_e, np.arange(Ne))
+    geom_e = fixpoint_iteration(0.3, fp_geometrical, it=1000, tol=1e-132)
+    xe = np.power(1+geom_e, np.arange(Ne))
 
     x[Ni+1:] = x[Ni]
     x[Ni+1:] += np.cumsum(xe)
@@ -39,7 +38,7 @@ def get_coordinates(N, Ni, dxi0, dxe0, L=1.0) -> ngs.Mesh:
 
 def get_single_mesh(N, Ni, dxi0) -> ngs.Mesh:
 
-    x, y = get_coordinates(N, Ni, dxi0, 1.0/N, 1.0)
+    x, y = get_coordinates(N, Ni, dxi0)
 
     left = slice(0, N//2-Ni//2+1)
     middle = slice(N//2-Ni//2, N//2+Ni//2+1)
@@ -495,7 +494,7 @@ def imex_stable_time_step_routine(implicit_simulation: Pulse,
 if __name__ == "__main__":
     from ngsolve.webgui import Draw
 
-    mesh, imp, exp = get_single_mesh(40, 16, 0.00025)
+    mesh, imp, exp = get_single_mesh(40, 2, 0.01)
 
     Draw(mesh)
     Draw(imp)
