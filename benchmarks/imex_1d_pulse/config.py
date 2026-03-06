@@ -16,7 +16,7 @@ def get_coordinates(N, Ni, dxi0, dxe0, L=1.0) -> ngs.Mesh:
     L = L/2
     Ne = N - Ni
 
-    y = np.linspace(-dxe0, dxe0, 3)
+    y = np.linspace(-dxe0, dxe0, 3)/dxe0
     x = np.zeros(N + 1)
 
     geom_i = np.power(dxe0/dxi0, 1/Ni)
@@ -33,13 +33,14 @@ def get_coordinates(N, Ni, dxi0, dxe0, L=1.0) -> ngs.Mesh:
 
     x[Ni+1:] = x[Ni]
     x[Ni+1:] += np.cumsum(xe)
+    x /= dxe0
 
     return np.union1d(-x, x), y
 
 
-def get_single_mesh(N, Ni, dxi0) -> ngs.Mesh:
+def get_single_mesh(N, Ni, dxi0, L=1.0) -> ngs.Mesh:
 
-    x, y = get_coordinates(N, Ni, dxi0, 1.0/N, 1.0)
+    x, y = get_coordinates(N, Ni, dxi0, L/N, L)
 
     left = slice(0, N//2-Ni//2+1)
     middle = slice(N//2-Ni//2, N//2+Ni//2+1)

@@ -26,7 +26,7 @@ MIXED = {
 parser = argparse.ArgumentParser(description='Run stable time step tests for IMEX schemes')
 parser.add_argument('splitting', type=str, help='Splitting type', choices=SPLITTING)
 parser.add_argument('dt', type=float, help='Time step size')
-parser.add_argument('--interval', type=float, nargs=2, help='Time interval', default=(0.0, 1.0))
+parser.add_argument('--interval', type=float, nargs=2, help='Time interval', default=(0.0, 1/6))
 parser.add_argument('--r', type=int, help='First mesh size ratio', default=1)
 parser.add_argument('--Ni', type=int, help='Number of implicit elements', default=2)
 parser.add_argument('--N', type=int, help='Number of elements', default=40)
@@ -36,7 +36,8 @@ parser.add_argument('--test', action=argparse.BooleanOptionalAction, default=Fal
 USER = vars(parser.parse_args())
 
 ALPHA = 0.001
-X = 0.1
+X = 0.5
+L = 1.0
 
 r = USER['r']
 N = USER['N']
@@ -46,12 +47,12 @@ interval = USER['interval']
 mixed = MIXED[USER['mixed']]
 test = USER['test']
 
-dxi0 = 1.0 / (r*N)
+dxi0 = L / (r*N)
 
 io = IOConfiguration(None)
-io.path = f"{N}x{Ni}/r{r}"
+io.path = f"test/{N}x{Ni}/r{r}"
 
-mesh, mesh_implicit, mesh_explicit = get_single_mesh(N, Ni, dxi0)
+mesh, mesh_implicit, mesh_explicit = get_single_mesh(N, Ni, dxi0, L)
 
 GENERAL = TRANSIENT_CFG.copy()
 GENERAL['time.timer.interval'] = tuple(interval)
@@ -66,7 +67,7 @@ if test:
 
 GENERAL['io.path'] = io.path.joinpath(f"runtimes")
 GENERAL['io.log.enable'] = test
-# GENERAL['fem.scheme.compile'] = {'realcompile': True, 'wait': True, 'keep_files': False},
+GENERAL['fem.scheme.compile'] = {'realcompile': True, 'wait': True, 'keep_files': False},
 
 
 HDG = GENERAL.copy()
