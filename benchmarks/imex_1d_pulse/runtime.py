@@ -35,8 +35,8 @@ parser.add_argument('--mixed', type=str, help='Viscous treatment for implicit pa
 parser.add_argument('--test', action=argparse.BooleanOptionalAction, default=False)
 USER = vars(parser.parse_args())
 
-ALPHA = 0.001
-X = 0.5
+ALPHA = 0.01
+X = 4.0
 
 r = USER['r']
 N = USER['N']
@@ -47,7 +47,7 @@ mixed = MIXED[USER['mixed']]
 test = USER['test']
 
 io = IOConfiguration(None)
-io.path = f"test/{N}x{Ni}/r{r}"
+io.path = f"{N}x{Ni}/r{r}"
 
 mesh, mesh_implicit, mesh_explicit = get_single_mesh(N, Ni, 1/r)
 

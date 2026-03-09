@@ -16,8 +16,11 @@ def get_coordinates(N, Ni, dxi0) -> ngs.Mesh:
     Ne = N - Ni
 
     y = np.linspace(-1, 1, 3)
+    if np.isclose(dxi0, 1.0):
+        x = np.linspace(-N, N, 2*N+1)
+        return x, y
+    
     x = np.zeros(N + 1)
-
     geom_i = np.power(1/dxi0, 1/Ni)
     xi = dxi0 * np.power(geom_i, np.arange(Ni))
     x[1:Ni+1] = np.cumsum(xi)
@@ -25,9 +28,9 @@ def get_coordinates(N, Ni, dxi0) -> ngs.Mesh:
     Lxi = N - x[Ni]
 
     def fp_geometrical(x0):
-        return np.power(1+(Lxi)*x0, 1/Ne) - 1
+        return np.power(1+Lxi*x0, 1/Ne) - 1
 
-    geom_e = fixpoint_iteration(0.3, fp_geometrical, it=1000, tol=1e-132)
+    geom_e = fixpoint_iteration(0.3, fp_geometrical, it=1000, tol=1e-16)
     xe = np.power(1+geom_e, np.arange(Ne))
 
     x[Ni+1:] = x[Ni]
