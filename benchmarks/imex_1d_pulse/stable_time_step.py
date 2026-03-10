@@ -34,8 +34,8 @@ parser.add_argument('--mixed', type=str, help='Viscous treatment for implicit pa
                     choices=list(MIXED.keys()), default='mixed')
 USER = vars(parser.parse_args())
 
-ALPHA = 0.1
-X = 0.1
+ALPHA = 0.01
+X = 4.0
 
 r = USER['r']
 N = USER['N']
@@ -45,13 +45,10 @@ tol = USER['tol']
 interval = USER['interval']
 mixed = MIXED[USER['mixed']]
 
-dxi0 = 1.0 / (r*N)
-
-
 io = IOConfiguration(None)
 io.path = f"{N}x{Ni}/r{r}"
 
-mesh, mesh_implicit, mesh_explicit = get_single_mesh(N, Ni, dxi0)
+mesh, mesh_implicit, mesh_explicit = get_single_mesh(N, Ni, 1/r)
 
 GENERAL = TRANSIENT_CFG.copy()
 GENERAL['time.timer.interval'] = tuple(interval)
