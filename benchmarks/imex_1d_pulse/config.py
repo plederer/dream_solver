@@ -161,6 +161,7 @@ class Pulse:
         U0.rho = Uinf.rho
         U0.u = Uinf.u * (1 + Uinf.p/(Uinf.rho * Uinf.c) * self.alpha * ngs.exp(-(ngs.x/self.X)**2))
         U0.p = Uinf.p * (1 + self.alpha * ngs.exp(-(ngs.x/self.X)**2))
+        U0.rho = Uinf.rho * (1 + self.alpha * ngs.exp(-(ngs.x/self.X)**2))**(1/self.cfg.equation_of_state.heat_capacity_ratio)
         self._set_fields(U0)
         return U0
 
