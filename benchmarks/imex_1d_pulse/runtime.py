@@ -35,7 +35,7 @@ parser.add_argument('--mixed', type=str, help='Viscous treatment for implicit pa
 parser.add_argument('--test', action=argparse.BooleanOptionalAction, default=False)
 USER = vars(parser.parse_args())
 
-ALPHA = 0.01
+ALPHA = 0.001
 X = 4.0
 
 r = USER['r']

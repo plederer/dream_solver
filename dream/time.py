@@ -463,6 +463,11 @@ class TransientRoutine(TimeRoutine):
         timings['total_final_stage_time'] = 0.0
         timings['final_stage_times'] = np.zeros(steps)
 
+        self.root.fem.solver.solve_update_step = self.root.fem.solver.solve_update_step_timing
+        timings['solver_assemble'] = []
+        timings['solver_solve'] = []
+        timings['solver_local'] = []
+
         # Solution routine starts here
         timings['total_time'] = time.perf_counter()
         for rate, tn, t1 in self.timer():
@@ -471,7 +476,9 @@ class TransientRoutine(TimeRoutine):
 
                 start = time.perf_counter()
                 for log in scheme.solve_stage(stage, tn):
-                    ...
+                    timings['solver_assemble'].append(log.get('solver_assemble', 0))
+                    timings['solver_solve'].append(log.get('solver_solve', 0))
+                    timings['solver_local'].append(log.get('solver_local', 0))
                 end = time.perf_counter()
                 timings[f'total_{stage}stage_time'] += end - start
                 timings[f'{stage}_stage_times'][rate-1] = end - start
@@ -916,6 +923,11 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         timings['total_final_stage_time_explicit'] = 0.0
         timings['final_stage_times_explicit'] = np.zeros(steps)
 
+        self.cfg_implicit.fem.solver.solve_update_step = self.cfg_implicit.fem.solver.solve_update_step_timing
+        timings['solver_assemble'] = []
+        timings['solver_solve'] = []
+        timings['solver_local'] = []
+
         # Start the global time-stepping loop.
         timings['total_time'] = time.perf_counter()
         for rate, gt0, gt1 in self.gtimer():
@@ -939,7 +951,9 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
                 # Step 2: Solve the implicit stage.
                 start = time.perf_counter()
                 for log in self.gscheme.solve_stage(stage, gt0):
-                    ...
+                    timings['solver_assemble'].append(log['solver_assemble'])
+                    timings['solver_solve'].append(log['solver_solve'])
+                    timings['solver_local'].append(log['solver_local'])
                 end = time.perf_counter()
                 timings[f'total_{stage}stage_time_implicit'] += end - start
                 timings[f'{stage}_stage_times_implicit'][rate-1] = end - start

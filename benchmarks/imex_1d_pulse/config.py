@@ -157,11 +157,18 @@ class Pulse:
 
     def _get_initial_fields(self, Uinf: flowfields):
 
+        dp = 1
+        du = 1
+        for x in range(-510, 520, 10):
+            dx = ngs.x - x
+            dp += self.alpha * ngs.exp(-(dx/self.X)**2)
+            du += Uinf.p/(Uinf.rho * Uinf.c) * self.alpha * ngs.exp(-(dx/self.X)**2)
+                    
         U0 = flowfields()
-        U0.rho = Uinf.rho
-        U0.u = Uinf.u * (1 + Uinf.p/(Uinf.rho * Uinf.c) * self.alpha * ngs.exp(-(ngs.x/self.X)**2))
-        U0.p = Uinf.p * (1 + self.alpha * ngs.exp(-(ngs.x/self.X)**2))
-        U0.rho = Uinf.rho * (1 + self.alpha * ngs.exp(-(ngs.x/self.X)**2))**(1/self.cfg.equation_of_state.heat_capacity_ratio)
+        U0.rho = Uinf.rho * dp**(1/self.cfg.equation_of_state.heat_capacity_ratio)
+        U0.u = Uinf.u * du
+        U0.p = Uinf.p * dp
+        
         self._set_fields(U0)
         return U0
 
@@ -252,10 +259,13 @@ def single_transient_routine(simulation: Pulse,  test: bool = False, **log):
             pass
 
     csv = {}
+    solver = {}
     info = {}
     for key, value in timings.items():
         if isinstance(value, np.ndarray):
             csv[key] = value
+        elif isinstance(value, list):
+            solver[key] = value
         else:
             info[key] = value
 
@@ -271,6 +281,9 @@ def single_transient_routine(simulation: Pulse,  test: bool = False, **log):
     import pandas as pd
     df = pd.DataFrame(csv)
     df.to_csv(cfg.io.path.joinpath(f"{filename}_data.csv"), index=False)
+
+    df_solver = pd.DataFrame(solver)
+    df_solver.to_csv(cfg.io.path.joinpath(f"{filename}_solver.csv"), index=False)
 
 
 def imex_transient_routine(implicit_simulation: Pulse,
@@ -343,10 +356,13 @@ def imex_transient_routine(implicit_simulation: Pulse,
             pass
 
     csv = {}
+    solver = {}
     info = {}
     for key, value in timings.items():
         if isinstance(value, np.ndarray):
             csv[key] = value
+        elif isinstance(value, list):
+            solver[key] = value
         else:
             info[key] = value
 
@@ -363,6 +379,8 @@ def imex_transient_routine(implicit_simulation: Pulse,
     df = pd.DataFrame(csv)
     df.to_csv(IMP.io.path.joinpath(f"{filename}_data.csv"), index=False)
 
+    df_solver = pd.DataFrame(solver)
+    df_solver.to_csv(IMP.io.path.joinpath(f"{filename}_solver.csv"), index=False)
 
 def single_stable_time_step_routine(simulation: Pulse, tol: float = 1e-5, outputfile: Path = None, **log):
 
