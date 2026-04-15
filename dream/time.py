@@ -464,6 +464,7 @@ class TransientRoutine(TimeRoutine):
         timings['final_stage_times'] = np.zeros(steps)
 
         self.root.fem.solver.solve_update_step = self.root.fem.solver.solve_update_step_timing
+        timings['solver_apply'] = []
         timings['solver_assemble'] = []
         timings['solver_solve'] = []
         timings['solver_local'] = []
@@ -476,8 +477,10 @@ class TransientRoutine(TimeRoutine):
 
                 start = time.perf_counter()
                 for log in scheme.solve_stage(stage, tn):
+                    logger.info(self.parse_routine_log(**log))
                     timings['solver_assemble'].append(log.get('solver_assemble', 0))
                     timings['solver_solve'].append(log.get('solver_solve', 0))
+                    timings['solver_apply'].append(log.get('solver_apply', 0))
                     timings['solver_local'].append(log.get('solver_local', 0))
                 end = time.perf_counter()
                 timings[f'total_{stage}stage_time'] += end - start
@@ -924,6 +927,7 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         timings['final_stage_times_explicit'] = np.zeros(steps)
 
         self.cfg_implicit.fem.solver.solve_update_step = self.cfg_implicit.fem.solver.solve_update_step_timing
+        timings['solver_apply'] = []
         timings['solver_assemble'] = []
         timings['solver_solve'] = []
         timings['solver_local'] = []
@@ -952,6 +956,7 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
                 start = time.perf_counter()
                 for log in self.gscheme.solve_stage(stage, gt0):
                     timings['solver_assemble'].append(log['solver_assemble'])
+                    timings['solver_apply'].append(log['solver_apply'])
                     timings['solver_solve'].append(log['solver_solve'])
                     timings['solver_local'].append(log['solver_local'])
                 end = time.perf_counter()

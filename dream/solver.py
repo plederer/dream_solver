@@ -252,30 +252,30 @@ class DirectSolver(Solver):
         self.blf.Apply(self.gfu.vec, self.res)
         if self.rhs is not None:
             self.res.data -= self.rhs
-        self.blf.AssembleLinearization(self.gfu.vec)
-        end = time.perf_counter()
-        log['solver_assemble'] = end - start
+        log['solver_apply'] = time.perf_counter() - start
 
-        inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
+        start = time.perf_counter()
+        self.blf.AssembleLinearization(self.gfu.vec)
+        log['solver_assemble'] = time.perf_counter() - start
+
         if self.blf.condense:
 
             start = time.perf_counter()
+            inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
             self.res.data += self.blf.harmonic_extension_trans * self.res
             self.du.data = inv * self.res
-            end = time.perf_counter()
-            log['solver_solve'] = end - start
+            log['solver_solve'] = time.perf_counter() - start
 
             start = time.perf_counter()
             self.du.data += self.blf.harmonic_extension * self.du
             self.du.data += self.blf.inner_solve * self.res
-            end = time.perf_counter()
-            log['solver_local'] = end - start
+            log['solver_local'] = time.perf_counter() - start
 
         else:
             start = time.perf_counter()
+            inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
             self.du.data = inv * self.res
-            end = time.perf_counter()
-            log['solver_solve'] = end - start
+            log['solver_solve'] = time.perf_counter() - start
             log['solver_local'] = 0.0
 
         return log

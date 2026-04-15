@@ -42,15 +42,15 @@ mixed = MIXED[USER['mixed']]
 test = USER['test']
 
 io = IOConfiguration(None)
-io.path = "64x32_dr0.05_dphi0.03125_curved"
+io.path = f"{Nr}x32_dphi0.03125/dr0.001"
 initial_mesh = io.ngsmesh.load_routine()
 
 initial_cfg = CompressibleFlowSolver(initial_mesh)
 initial_cfg.update(**TRANSIENT_CFG)
 initial_cfg.io.path = io.path.joinpath("initial_solution")
-initial_cfg.io.gfu.filename = f"initial_{300:.6e}"
+initial_cfg.io.gfu.filename = f"full_implicit_mixed_{400:.6e}"
 
-io.path = f"{Nr}x32_dr0.05_dphi0.03125"
+io.path = f"{Nr}x{Ni}x32_dre0.05_dphi0.03125/dri0.001"
 mesh = io.ngsmesh.load_routine()
 mesh_implicit, mesh_explicit = get_imex_mesh_from_single_mesh(mesh, Ni=Ni, Nr=Nr)
 

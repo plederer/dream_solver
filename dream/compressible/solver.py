@@ -928,7 +928,11 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @equation
     def pressure_coefficient(self, U: flowfields, Uref: flowfields):
-        return (self.pressure(U) - self.pressure(Uref))/(self.kinetic_energy(Uref))
+        return (self.pressure(U) - self.pressure(Uref))/self.kinetic_energy(Uref)
+    
+    @equation
+    def skin_friction_coefficient(self, U: flowfields, Uref: flowfields):
+        return ((self.deviatoric_stress_tensor(U, U) * self.mesh.normal) * self.mesh.tangential)/self.kinetic_energy(Uref)
 
     @equation
     def specific_entropy(self, U: flowfields):

@@ -9,13 +9,15 @@ from dream.time import SynchronizedIMEXTimeRoutine
 from pathlib import Path
 
 
-def get_coordinates(N, Ni, dxi0) -> ngs.Mesh:
+def get_coordinates(N, Ni, dxi0, square: bool = False) -> ngs.Mesh:
 
     N = N//2
     Ni = Ni//2
     Ne = N - Ni
 
     y = np.linspace(-1, 1, 3)
+    if square:
+        y = np.linspace(-N, N, 2*N+1)
     if np.isclose(dxi0, 1.0):
         x = np.linspace(-N, N, 2*N+1)
         return x, y
@@ -39,9 +41,9 @@ def get_coordinates(N, Ni, dxi0) -> ngs.Mesh:
     return np.union1d(-x, x), y
 
 
-def get_single_mesh(N, Ni, dxi0) -> ngs.Mesh:
+def get_single_mesh(N, Ni, dxi0, square: bool = False) -> ngs.Mesh:
 
-    x, y = get_coordinates(N, Ni, dxi0)
+    x, y = get_coordinates(N, Ni, dxi0, square)
 
     left = slice(0, N//2-Ni//2+1)
     middle = slice(N//2-Ni//2, N//2+Ni//2+1)
