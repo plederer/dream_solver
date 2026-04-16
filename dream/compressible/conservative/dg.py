@@ -26,7 +26,7 @@ from dream.compressible.config import (flowfields,
                                        Initial)
 
 from .diffusion import ViscousTreatment, InteriorPenaltySDG
-from .time import ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2, SDIRK22, SDIRK33
+from .time import ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS232, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2, SDIRK22, SDIRK33
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +60,14 @@ class ConservativeDG(ConservativeFiniteElementMethod):
         self._viscous_treatment = self._get_configuration_option(value, OPTIONS, ViscousTreatment)
 
     @dream_configuration
-    def scheme(self) -> ExplicitEuler | SSPRK3 | CRK4 | RK_ARS22 | RK_ARS33 | RK_ARS43 | ImplicitEuler | BDF2:
+    def scheme(self) -> ExplicitEuler | SSPRK3 | CRK4 | RK_ARS22 | RK_ARS232 | RK_ARS33 | RK_ARS43 | ImplicitEuler | BDF2:
         return self._scheme
 
     @scheme.setter
     def scheme(self, scheme: TimeSchemes) -> None:
 
         if isinstance(self.root.time, TransientRoutine):
-            OPTIONS = [ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2, SDIRK22, SDIRK33]
+            OPTIONS = [ExplicitEuler, SSPRK3, CRK4, RK_ARS22, RK_ARS232, RK_ARS33, RK_ARS43, ImplicitEuler, BDF2, SDIRK22, SDIRK33]
         elif isinstance(self.root.time, PseudoTimeSteppingRoutine):
             OPTIONS = [ImplicitEuler, BDF2]
         else:
