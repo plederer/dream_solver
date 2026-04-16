@@ -38,10 +38,7 @@ class ConservativeDG(ConservativeFiniteElementMethod):
     def __init__(self, mesh, root=None, **default):
 
         DEFAULT = {'viscous_treatment': None,}
-
         DEFAULT.update(default)
-
-        logger.warning("Conservative DG method is still experimental and may not be fully functional!")
 
         super().__init__(mesh, root, **DEFAULT)
 
