@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 import ngsolve as ngs
 from ngsolve.webgui import Draw

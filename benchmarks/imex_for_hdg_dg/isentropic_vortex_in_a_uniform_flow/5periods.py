@@ -1,6 +1,8 @@
 # Import modules
 import argparse
 import ngsolve as ngs
+from dream.time import (TimeRoutine, SynchronizedIMEXTimeRoutine, PCIMEXTimeRoutine, LinearPCIMEXTimeRoutine)
+from dream.compressible import CompressibleFlowSolver
 from config import (TRANSIENT_CFG,
                     STAGE_TO_SCHEME,
                     get_uniform_meshes,
@@ -8,8 +10,6 @@ from config import (TRANSIENT_CFG,
                     single_transient_routine,
                     imex_transient_routine,
                     FastVortex, SlowVortex)
-from dream.time import (TimeRoutine, SynchronizedIMEXTimeRoutine, PCIMEXTimeRoutine, LinearPCIMEXTimeRoutine)
-from dream.compressible import CompressibleFlowSolver
 
 ngs.SetNumThreads(4)
 
