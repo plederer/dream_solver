@@ -6,18 +6,12 @@ import typing
 import dream.bla as bla
 
 from dream.config import Configuration, dream_configuration, Integrals
-from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
+from dream.mesh import Initial
 from dream.compressible.config import (flowfields,
                                        ConservativeFiniteElementMethod,
                                        FarField,
-                                       Outflow,
-                                       InviscidWall,
-                                       Symmetry,
-                                       IsothermalWall,
                                        AdiabaticWall,
                                        InterfaceBC,
-                                       Dirichlet,
-                                       Force,
                                        CBC)
 
 logger = logging.getLogger(__name__)

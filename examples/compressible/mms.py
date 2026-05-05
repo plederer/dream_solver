@@ -48,10 +48,11 @@ class EulerMMS(NamedTuple):
         # Parameters for dimensionalization
         c_p = self.gamma * self.R / (self.gamma - 1)
         T = self.p.c / (self.R * self.rho.c)
+        u_inf = ngs.sqrt(self.u.c**2 + self.v.c**2)
 
         # Pass dimensional fields to determine dimensionless numbers
         cfg.equation_of_state.heat_capacity_ratio = self.gamma
-        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=self.u.c,
+        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=u_inf,
                                                    T_inf=T, c_p=c_p, L=self.L)
 
     def set_conditions(self, cfg: CompressibleFlowSolver) -> flowfields:
@@ -67,8 +68,7 @@ class EulerMMS(NamedTuple):
 
         cfg.dcs['default'] = Initial(fields=U0)
         cfg.dcs['default'] = self.get_forcing(cfg)
-        #cfg.bcs['left|right|top|bottom'] = FarField(fields=Ue)
-        cfg.bcs['left|right|top|bottom'] = Dirichlet(fields=Ue)
+        cfg.bcs['left|right|top|bottom'] = FarField(fields=Ue)
 
         return Ue
 
@@ -102,7 +102,7 @@ class EulerMMS(NamedTuple):
         return Force(F[0], (F[1], F[2]), F[3])
 
     def __str__(self):
-        return "EE"
+        return "Euler"
 
 
 class NavierStokesMMS(NamedTuple):
@@ -120,12 +120,13 @@ class NavierStokesMMS(NamedTuple):
         # Parameters for dimensionalization
         c_p = self.gamma * self.R / (self.gamma - 1)
         T = self.p.c / (self.R * self.rho.c)
+        u_inf = ngs.sqrt(self.u.c**2 + self.v.c**2)
 
         k_inf = self.mu * c_p / self.Pr
 
         # Pass dimensional fields to determine dimensionless numbers
         cfg.equation_of_state.heat_capacity_ratio = self.gamma
-        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=self.u.c, T_inf=T,
+        cfg.dimensional_fields = dimensionalfields(rho_inf=self.rho.c, u_inf=u_inf, T_inf=T,
                                                    mu_inf=self.mu, k_inf=k_inf, c_p=c_p, L=self.L)
 
     def set_conditions(self, cfg: CompressibleFlowSolver) -> flowfields:
@@ -186,25 +187,26 @@ class NavierStokesMMS(NamedTuple):
 
 
 # Define refinement levels, polynomial orders and simulations to run
-LEVELS = 3
+LEVELS = 4
 ORDERS = [1, 2, 3, 4, 5]
 SIMULATIONS = [EulerMMS(), NavierStokesMMS()]
 
-# Temporal values.
-TIME_T0 = 0.0
-TIME_T1 = 3.0  # 2 is enough
-TIME_DT = 1e-5 # 2e-5 is stable
+LEVELS = 4
+ORDERS = [5]
+SIMULATIONS = [EulerMMS()]
+SIMULATIONS = [NavierStokesMMS()]
 
 draw = False
-write_vtk = True
 
 # Setup solution routine
+
+
 def mms_routine(func):
 
-    def polynomial_order_routine(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS, order: int, level: int):
+    def polyomial_order_routine(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS, order: int):
 
         # Set Finite Element configuration
-        func(cfg, simulation, order)
+        func(cfg, simulation)
 
         # Set polynomial order
         cfg.fem.order = order
@@ -219,30 +221,13 @@ def mms_routine(func):
             cfg.io.undraw()
             cfg.io.draw(fields)
 
-        if write_vtk:
-            order = 1
-            if cfg.fem.order > 0:
-                order = cfg.fem.order
-
-            path = "ees" 
-            if isinstance(simulation, NavierStokesMMS):
-                path = "nse"
-            fn = f"mms_{cfg.fem.order}_{level}" 
-            
-            cfg.io.vtk.fields = fields 
-            cfg.io.vtk.enable=True
-            cfg.io.vtk.rate = 10000000 # just output the last step.
-            #cfg.io.vtk.subdivision = order
-            cfg.io.vtk.path = path 
-            cfg.io.vtk.filename = fn 
-
         # Solve the system
         with ngs.TaskManager():
             cfg.solve()
 
         return fields
 
-    def simulation_routine(cfg: CompressibleFlowSolver, level, simulation: EulerMMS | NavierStokesMMS):
+    def simulation_routine(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS):
 
         # Set necessary conditions
         Ue = simulation.set_conditions(cfg)
@@ -251,7 +236,7 @@ def mms_routine(func):
         for order in ORDERS:
 
             # Solve for different polynomial orders
-            Uh = polynomial_order_routine(cfg, simulation, order, level)
+            Uh = polyomial_order_routine(cfg, simulation, order)
             L2[order] = {'rho': ngs.sqrt(ngs.Integrate((Uh.rho - Ue.rho)**2, cfg.mesh, order=order+10)),
                          'u': ngs.sqrt(ngs.Integrate((Uh.u - Ue.u)**2, cfg.mesh, order=order+10)),
                          'p': ngs.sqrt(ngs.Integrate((Uh.p - Ue.p)**2, cfg.mesh, order=order+10))}
@@ -266,13 +251,8 @@ def mms_routine(func):
 
         # Define common solver configuration
         cfg = CompressibleFlowSolver(mesh)
+        cfg.time = "pseudo_time_stepping"
         cfg.scaling = "aerodynamic"
-        cfg.riemann_solver = "lax_friedrich"
-
-        cfg.time = "transient"
-        cfg.time.scheme = "explicit_euler"
-        cfg.time.timer.step = TIME_DT
-        cfg.time.timer.interval = (TIME_T0, TIME_T1)
 
         L2 = {}
         for LEVEL in range(LEVELS):
@@ -284,7 +264,7 @@ def mms_routine(func):
 
             L2[MAXH] = {}
             for simulation in SIMULATIONS:
-                L2[MAXH][str(simulation)] = simulation_routine(cfg, LEVEL, simulation)
+                L2[MAXH][str(simulation)] = simulation_routine(cfg, simulation)
 
         return L2
 
@@ -292,77 +272,77 @@ def mms_routine(func):
 
 
 @mms_routine
-def conservative_sdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS, order: int):
+def conservative_hdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS):
     # Set only finite element configuration
-    cfg.fem = 'conservative_dg'
-    cfg.fem.order = order
-    cfg.fem.scheme = "explicit_euler"
+    cfg.riemann_solver = "lax_friedrich"
+
+    cfg.time.timer.step = 1
+    cfg.time.max_time_step = 10
+    cfg.time.increment_at = 10
+    cfg.time.increment_factor = 5
+
+    cfg.fem = 'conservative_hdg'
+    cfg.fem.scheme = "implicit_euler"
+
+    cfg.fem.solver = "direct"
+    cfg.fem.solver.method = "newton"
+    cfg.fem.solver.method.max_iterations = 300
+    cfg.fem.solver.method.convergence_criterion = 1e-12
 
     if isinstance(simulation, NavierStokesMMS):
-        cfg.fem.viscous_treatment = "interior_penalty_method_sdg"
-        cfg.fem.viscous_treatment.interior_penalty_coefficient = 1.0
+        cfg.fem.viscous_treatment = "mixed_strain_temperature_gradient"
+    else:
+        cfg.fem.viscous_treatment = None
 
-    #nOverInt = order+1
-    #cfg.fem.bonus_int_order['convection']['vol'] = nOverInt 
-    #cfg.fem.bonus_int_order['convection']['bnd'] = nOverInt  
-    #cfg.fem.bonus_int_order['diffusion']['vol']  = nOverInt 
-    #cfg.fem.bonus_int_order['diffusion']['bnd']  = nOverInt 
+@mms_routine
+def conservative_sdg(cfg: CompressibleFlowSolver, simulation: EulerMMS | NavierStokesMMS):
+    # Set only finite element configuration
+    cfg.riemann_solver = "lax_friedrich"
+
+    cfg.time.timer.step = 1.0
+    cfg.time.max_time_step = 10
+    cfg.time.increment_at = 10
+    cfg.time.increment_factor = 5
+
+    cfg.fem = 'conservative_dg'
+    cfg.fem.scheme = "implicit_euler"
+
+    cfg.fem.solver = "direct"
+    cfg.fem.solver.method = "newton"
+    cfg.fem.solver.method.max_iterations = 300
+    cfg.fem.solver.method.convergence_criterion = 1e-12
+
+    if isinstance(simulation, NavierStokesMMS):
+        cfg.fem.viscous_treatment = "interior_penalty"
+        cfg.fem.viscous_treatment.interior_penalty_coefficient = 1.0
 
 
 # Run the simulations and collect errors
-ERROR = conservative_sdg()
+ERROR = conservative_hdg()
 
-import matplotlib.pyplot as plt 
+# Plot the results
+import matplotlib.pyplot as plt
 import numpy as np
-import csv
+
 
 H = sorted(ERROR.keys(), reverse=True)
 
-fig, axes_grid = plt.subplots(2, 3, figsize=(10, 6)) 
+fig, axes_grid = plt.subplots(2, 3, figsize=(10, 6))
 axes = {(str(sim), field): axes_grid[i, j]
         for i, sim in enumerate(SIMULATIONS)
         for j, field in enumerate(['rho', 'u', 'p'])}
 
-# Open the CSV file and write the plot data. 
-with open("mms_sdg_errors.csv", "w", newline="") as f:
-    
-    # Write the header information.
-    writer = csv.writer(f)
-    f.write(f"levels (refinement): {LEVELS}\n")
-    f.write(f"dt: {TIME_DT}\n")
-    f.write(f"simulation time (t0,tf): ({TIME_T0}, {TIME_T1})\n")
-    f.write("\n")
-    f.write("------------------------------------------------------------------------\n")
-    f.write("h, eq, field, order, error\n")
-    f.write("------------------------------------------------------------------------\n")
-    
-    for key, ax in axes.items():
-        sim, field = key 
+for key, ax in axes.items():
+    sim, field = key
 
-        for order in ORDERS:
-            errors = [ERROR[h][sim][order][field] for h in H]
-            ax.loglog(H, errors, marker='o', label=fr"$p={order}$")
+    for order in ORDERS:
+        errors = [ERROR[h][sim][order][field] for h in H]
+        ax.loglog(H, errors, marker='o', label=fr"$p={order}$")
 
-            # Save the data onto the file. 
-            for h, err in zip(H, errors):
-                field_fmt = field
-                if field in ["u", "p"]:
-                    field_fmt = f"  {field}" # prepend two spaces
-                row = [
-                    f"{h:.15e}", sim, field_fmt, str(order), f"{err:.15e}"
-                ]
-                f.write(",\t".join(row) + "\n")
-
-        ax.set_xlabel(r"$h$")
-        ax.set_title(rf"${field}$")
-        ax.legend()
+    ax.set_xlabel(r"$h$")
+    ax.set_title(rf"${field}$")
+    ax.legend()
 
 plt.tight_layout()
-
-# Save the whole figure in vector formats.
-plt.savefig("mms_sdg_errors.pdf")
-plt.savefig("mms_sdg_errors.svg")
-
 plt.show()
-
 

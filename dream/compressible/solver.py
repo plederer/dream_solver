@@ -14,7 +14,7 @@ from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
 from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
 from .config import flowfields, dimensionalfields, BCS, DCS
-from .conservative import ConservativeHDG, ConservativeDG, ConservativeDG_HDG
+from .conservative import ConservativeHDG, ConservativeDG
 from .timestep_controller import TimeStepController, PhysicalTimeStepController
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @fem.setter
     def fem(self, fem):
-        OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
+        OPTIONS = [ConservativeHDG, ConservativeDG]
         self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
 
     @dream_configuration

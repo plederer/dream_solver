@@ -278,8 +278,6 @@ class DirectSolver(Solver):
             log['solver_solve'] = time.perf_counter() - start
             log['solver_local'] = 0.0
 
-        return log
-
 # ------- Finite Element Method ------- #
 
 
