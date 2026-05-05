@@ -10,7 +10,7 @@ Literature:
 # Import modules
 import ngsolve as ngs
 from typing import NamedTuple
-from dream.compressible import CompressibleFlowSolver, Force, FarField, Initial, flowfields, dimensionalfields, Dirichlet
+from dream.compressible_flow import CompressibleFlowSolver, Force, FarField, Initial, flowfields, dimensionalfields, Dirichlet
 
 ngs.ngsglobals.msg_level = 0
 ngs.SetNumThreads(8)

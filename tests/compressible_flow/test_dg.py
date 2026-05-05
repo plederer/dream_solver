@@ -4,7 +4,7 @@ import numpy as np
 import numpy.testing as nptest
 import dream.bla as bla
 
-from dream.compressible import CompressibleFlowSolver, flowfields, Initial
+from dream.compressible_flow import CompressibleFlowSolver, flowfields, Initial
 
 mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
 

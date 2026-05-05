@@ -2,7 +2,7 @@
 import argparse
 import ngsolve as ngs
 from dream.time import (TimeRoutine, SynchronizedIMEXTimeRoutine, PCIMEXTimeRoutine, LinearPCIMEXTimeRoutine)
-from dream.compressible import CompressibleFlowSolver
+from dream.compressible_flow import CompressibleFlowSolver
 from config import (TRANSIENT_CFG,
                     STAGE_TO_SCHEME,
                     get_uniform_meshes,

@@ -1,7 +1,7 @@
 import argparse
 import ngsolve as ngs
 from netgen import occ
-from dream.compressible import CompressibleFlowSolver, flowfields, FarField, Outflow, GRCBC, NSCBC, Initial
+from dream.compressible_flow import CompressibleFlowSolver, flowfields, FarField, Outflow, GRCBC, NSCBC, Initial
 
 ngs.ngsglobals.msg_level = 0
 ngs.SetNumThreads(16)

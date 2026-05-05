@@ -9,7 +9,7 @@ from dream.time import (TimeSchemes,
                         PseudoTimeSteppingRoutine)
 from dream.config import dream_configuration, Integrals
 from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
-from dream.compressible.config import (flowfields,
+from dream.compressible_flow.config import (flowfields,
                                        ConservativeFiniteElementMethod,
                                        FarField,
                                        Outflow,

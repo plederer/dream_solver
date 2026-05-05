@@ -1,7 +1,7 @@
 import argparse
 import ngsolve as ngs
 from netgen import occ
-from dream.compressible import CompressibleFlowSolver, FarField, Outflow, GRCBC, NSCBC, AdiabaticWall, Initial
+from dream.compressible_flow import CompressibleFlowSolver, FarField, Outflow, GRCBC, NSCBC, AdiabaticWall, Initial
 from dream.io import BoundarySensor
 
 ngs.ngsglobals.msg_level = 0

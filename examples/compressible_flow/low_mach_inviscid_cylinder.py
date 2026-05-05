@@ -19,7 +19,7 @@ Literature:
 # ------- Import Modules ------- #
 from ngsolve import *
 from dream.mesh import get_cylinder_omesh
-from dream.compressible import CompressibleFlowSolver, InviscidWall, FarField, Initial, flowfields
+from dream.compressible_flow import CompressibleFlowSolver, InviscidWall, FarField, Initial, flowfields
 from dream.io import PointSensor
 
 ngsglobals.msg_level = 0

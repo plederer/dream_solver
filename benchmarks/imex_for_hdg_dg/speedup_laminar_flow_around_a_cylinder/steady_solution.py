@@ -3,7 +3,7 @@ from config import (PSEUDO_STATIONARY,
                     Cylinder)
 from dream.io import IOConfiguration
 import ngsolve as ngs
-from dream.compressible import CompressibleFlowSolver
+from dream.compressible_flow import CompressibleFlowSolver
 
 ngs.SetNumThreads(4)
 

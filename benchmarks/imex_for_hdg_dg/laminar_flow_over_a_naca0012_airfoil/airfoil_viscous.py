@@ -1,11 +1,11 @@
 # Import preliminary modules.
-from dream.compressible import Initial, CompressibleFlowSolver, flowfields, FarField, Outflow, InterfaceBC, AdiabaticWall, IsothermalWall, dimensionalfields
+from dream.compressible_flow import Initial, CompressibleFlowSolver, flowfields, FarField, Outflow, InterfaceBC, AdiabaticWall, IsothermalWall, dimensionalfields
 from dream.time import SynchronizedIMEXTimeRoutine
 import ngsolve as ngs 
 import numpy as np
 from geometry import get_airfoil_ogrid
 from dream.io import BoundarySensor, PointSensor
-from dream.compressible import SpongeLayer
+from dream.compressible_flow import SpongeLayer
 from dream.mesh import BufferCoord, SpongeFunction
 
 ngs.ngsglobals.msg_level = 0 

@@ -2,7 +2,7 @@
 # ------- Import Modules ------- #
 from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
-from dream.compressible import CompressibleFlowSolver, flowfields, FarField, Initial, Outflow, GRCBC, NSCBC
+from dream.compressible_flow import CompressibleFlowSolver, flowfields, FarField, Initial, Outflow, GRCBC, NSCBC
 
 ngsglobals.msg_level = 0
 SetNumThreads(8)

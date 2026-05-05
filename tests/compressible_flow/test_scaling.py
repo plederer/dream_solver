@@ -1,7 +1,7 @@
 import pytest
 import ngsolve as ngs
 
-from dream.compressible import CompressibleFlowSolver
+from dream.compressible_flow import CompressibleFlowSolver
 
 mesh = ngs.Mesh(ngs.unit_square.GenerateMesh(maxh=1))
 mip = mesh(0.5, 0.5)

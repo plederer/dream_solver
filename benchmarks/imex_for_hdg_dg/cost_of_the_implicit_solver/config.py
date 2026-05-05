@@ -3,7 +3,7 @@ import numpy as np
 import ngsolve as ngs
 from dream.bla import fixpoint_iteration
 from dream.mesh import get_rectangular_mesh
-from dream.compressible import CompressibleFlowSolver, Initial, flowfields,  InterfaceBC
+from dream.compressible_flow import CompressibleFlowSolver, Initial, flowfields,  InterfaceBC
 from dream.io import BoundarySensor
 from dream.time import SynchronizedIMEXTimeRoutine
 from pathlib import Path

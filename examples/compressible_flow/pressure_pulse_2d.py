@@ -3,7 +3,7 @@ from ngsolve import *
 from netgen.occ import OCCGeometry, WorkPlane
 from netgen.meshing import IdentificationType
 from ngsolve.meshes import MakeStructured2DMesh
-from dream.compressible import flowfields, FarField, Initial, CompressibleFlowSolver
+from dream.compressible_flow import flowfields, FarField, Initial, CompressibleFlowSolver
 
 ngsglobals.msg_level = 0
 SetNumThreads(4)

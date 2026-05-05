@@ -7,7 +7,7 @@ import dream.bla as bla
 
 from dream.config import Configuration, dream_configuration, Integrals
 from dream.mesh import Initial
-from dream.compressible.config import (flowfields,
+from dream.compressible_flow.config import (flowfields,
                                        ConservativeFiniteElementMethod,
                                        FarField,
                                        AdiabaticWall,

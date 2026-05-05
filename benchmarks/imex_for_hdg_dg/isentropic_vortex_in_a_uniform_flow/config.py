@@ -1,7 +1,7 @@
 # %%
 import numpy as np
 import ngsolve as ngs
-from dream.compressible import CompressibleFlowSolver, flowfields, Initial, InterfaceBC
+from dream.compressible_flow import CompressibleFlowSolver, flowfields, Initial, InterfaceBC
 from dream.time import IMEXTimeRoutine, Timer
 from dream.mesh import get_rectangular_mesh
 from dream.io import DomainL2Sensor

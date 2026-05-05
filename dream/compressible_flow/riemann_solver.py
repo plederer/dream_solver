@@ -68,7 +68,7 @@ import ngsolve as ngs
 
 from dream import bla
 from dream.config import Configuration, dream_configuration
-from dream.compressible.config import flowfields
+from dream.compressible_flow.config import flowfields
 
 if typing.TYPE_CHECKING:
     from .solver import CompressibleFlowSolver

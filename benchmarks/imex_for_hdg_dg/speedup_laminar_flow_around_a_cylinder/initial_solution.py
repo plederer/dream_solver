@@ -1,5 +1,5 @@
 import ngsolve as ngs
-from dream.compressible import CompressibleFlowSolver
+from dream.compressible_flow import CompressibleFlowSolver
 from dream.io import IOConfiguration
 from config import (TRANSIENT_CFG,
                     single_transient_routine,
