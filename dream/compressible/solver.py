@@ -14,7 +14,7 @@ from .viscosity import Inviscid, Constant, Sutherland, DynamicViscosity
 from .scaling import Aerodynamic, Aeroacoustic, Acoustic, Scaling
 from .riemann_solver import LaxFriedrich, Roe, HLL, HLLEM, Upwind, RiemannSolver
 from .config import flowfields, dimensionalfields, BCS, DCS
-from .conservative import ConservativeHDG, ConservativeDG, ConservativeDG_HDG
+from .conservative import ConservativeHDG, ConservativeDG
 from .timestep_controller import TimeStepController, PhysicalTimeStepController
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @fem.setter
     def fem(self, fem):
-        OPTIONS = [ConservativeHDG, ConservativeDG, ConservativeDG_HDG]
+        OPTIONS = [ConservativeHDG, ConservativeDG]
         self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
 
     @dream_configuration
@@ -928,7 +928,11 @@ class CompressibleFlowSolver(SolverConfiguration):
 
     @equation
     def pressure_coefficient(self, U: flowfields, Uref: flowfields):
-        return (self.pressure(U) - self.pressure(Uref))/(self.kinetic_energy(Uref))
+        return (self.pressure(U) - self.pressure(Uref))/self.kinetic_energy(Uref)
+    
+    @equation
+    def skin_friction_coefficient(self, U: flowfields, Uref: flowfields):
+        return ((self.deviatoric_stress_tensor(U, U) * self.mesh.normal) * self.mesh.tangential)/self.kinetic_energy(Uref)
 
     @equation
     def specific_entropy(self, U: flowfields):

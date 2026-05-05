@@ -7,7 +7,7 @@ from math import isnan
 
 from .mesh import is_mesh_periodic, Periodic, BoundaryConditions, DomainConditions
 from .config import Configuration, dream_configuration, ngsdict, Integrals
-from .time import StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine, TimeRoutine, Scheme, TimeSchemes
+from .time import StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine, TimeRoutine, Scheme, TimeSchemes, time
 from .io import IOConfiguration
 
 logger = logging.getLogger(__name__)
@@ -134,10 +134,12 @@ class Solver(Configuration, is_interface=True):
         """
 
         for it in range(self.method.max_iterations):
+            log = {'it': it}
 
-            self.solve_update_step()
+            self.solve_update_step(log)
+
             error = self.get_iteration_error(self.du, self.res)
-            log = {'it': it, 'error': error}
+            log['error'] = error
 
             if isnan(error):
                 log['is_diverged'] = True
@@ -167,7 +169,7 @@ class Solver(Configuration, is_interface=True):
     def solve_linear_system(self, blf: ngs.BilinearForm, gfu: ngs.GridFunction, rhs: ngs.BaseVector, **kwargs):
         raise NotImplementedError("Overload this configuration in derived class!")
 
-    def solve_update_step(self) -> None:
+    def solve_update_step(self, log: dict = None) -> None:
         raise NotImplementedError("Overload this configuration in derived class!")
 
 
@@ -228,7 +230,7 @@ class DirectSolver(Solver):
             case _:
                 raise ValueError(f"Operator {operator} not supported!")
 
-    def solve_update_step(self):
+    def solve_update_step(self, log: dict = None) -> None:
 
         self.blf.Apply(self.gfu.vec, self.res)
         if self.rhs is not None:
@@ -244,6 +246,37 @@ class DirectSolver(Solver):
         else:
             self.du.data = inv * self.res
 
+    def solve_update_step_timing(self, log: dict):
+
+        start = time.perf_counter()
+        self.blf.Apply(self.gfu.vec, self.res)
+        if self.rhs is not None:
+            self.res.data -= self.rhs
+        log['solver_apply'] = time.perf_counter() - start
+
+        start = time.perf_counter()
+        self.blf.AssembleLinearization(self.gfu.vec)
+        log['solver_assemble'] = time.perf_counter() - start
+
+        if self.blf.condense:
+
+            start = time.perf_counter()
+            inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
+            self.res.data += self.blf.harmonic_extension_trans * self.res
+            self.du.data = inv * self.res
+            log['solver_solve'] = time.perf_counter() - start
+
+            start = time.perf_counter()
+            self.du.data += self.blf.harmonic_extension * self.du
+            self.du.data += self.blf.inner_solve * self.res
+            log['solver_local'] = time.perf_counter() - start
+
+        else:
+            start = time.perf_counter()
+            inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
+            self.du.data = inv * self.res
+            log['solver_solve'] = time.perf_counter() - start
+            log['solver_local'] = 0.0
 
 # ------- Finite Element Method ------- #
 

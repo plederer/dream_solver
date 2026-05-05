@@ -6,18 +6,12 @@ import typing
 import dream.bla as bla
 
 from dream.config import Configuration, dream_configuration, Integrals
-from dream.mesh import SpongeLayer, PSpongeLayer, Periodic, Initial
+from dream.mesh import Initial
 from dream.compressible.config import (flowfields,
                                        ConservativeFiniteElementMethod,
                                        FarField,
-                                       Outflow,
-                                       InviscidWall,
-                                       Symmetry,
-                                       IsothermalWall,
                                        AdiabaticWall,
                                        InterfaceBC,
-                                       Dirichlet,
-                                       Force,
                                        CBC)
 
 logger = logging.getLogger(__name__)
@@ -764,10 +758,8 @@ class InteriorPenalty(ViscousTreatment, is_interface=True):
 
 class InteriorPenaltyHDG(InteriorPenalty):
 
-    # XXX: This will be removed, once we are confident in this class.
     def __init__(self, mesh, root=None, **default):
         super().__init__(mesh, root, **default)
-        logger.warning("Conservative HDG with IP is still experimental and may not be fully functional!")
 
     def add_surface_term(self, blf: Integrals, lf: Integrals) -> None:
 

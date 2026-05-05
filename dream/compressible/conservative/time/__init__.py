@@ -12,6 +12,7 @@ from .explicit import (ExplicitEuler,
                        SSPRK3,
                        CRK4,
                        RK_ARS22,
+                       RK_ARS232,
                        RK_ARS33,
                        RK_ARS43)
 from .imex import (IMEXRK_ARS443)
@@ -29,6 +30,7 @@ __all__ = ['ImplicitEuler',
            'SSPRK3',
            'CRK4',
            'RK_ARS22',
+           'RK_ARS232',
            'RK_ARS33',
            'RK_ARS43',
            'IMEXRK_ARS443']

@@ -472,7 +472,8 @@ def test_sensorstream_save_transient_point_sensor(sensor_handler):
     path = cfg.io.sensor.path.joinpath("point.csv")
     assert path.exists()
     expected = [
-        ['point', '(0, 0)', '(0, 0)', '(0, 0)', '(1, 0)', '(1, 0)', '(1, 0)', '(0, 1)', '(0, 1)', '(0, 1)'],
+        ['x', '0', '0', '0', '1', '1', '1', '0', '0', '0'],
+        ['y', '0', '0', '0', '0', '0', '0', '1', '1', '1'],
         ['field', 'rho', 'u', 'u', 'rho', 'u', 'u', 'rho', 'u', 'u'],
         ['component', '', 'x', 'y', '', 'x', 'y', '', 'x', 'y'],
         ['t', '', '', '', '', '', '', '', '', ''],

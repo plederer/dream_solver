@@ -2,7 +2,6 @@
 from __future__ import annotations
 import logging
 import ngsolve as ngs
-import typing
 import dream.bla as bla
 
 from dream.time import (TimeSchemes,
@@ -80,7 +79,8 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
     @scheme.setter
     def scheme(self, scheme: TimeSchemes) -> None:
         if isinstance(self.root.time, TransientRoutine):
-            OPTIONS = [ImplicitEuler, BDF2, BDF3, IMEXRK_ARS443, SDIRK22, SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2]
+            OPTIONS = [ImplicitEuler, BDF2, BDF3, IMEXRK_ARS443, SDIRK22,
+                       SDIRK33, SDIRK43, SDIRK54, DIRK34_LDD, DIRK43_WSO2]
         elif isinstance(self.root.time, PseudoTimeSteppingRoutine):
             OPTIONS = [ImplicitEuler, BDF2]
         else:
@@ -492,107 +492,3 @@ class ConservativeHDG(ConservativeFiniteElementMethod):
             self.viscous_treatment.set_initial_conditions()
 
         super().set_initial_conditions()
-
-
-class ConservativeDG_HDG(ConservativeHDG):
-
-    name: str = "conservative_dg_hdg"
-
-    def __init__(self, mesh, root=None, **default):
-
-        DEFAULT = {
-            'static_condensation': True,
-        }
-
-        DEFAULT.update(default)
-
-        logger.warning("Conservative DG-HDG method is still experimental and may not be fully functional!")
-
-        super().__init__(mesh, root, **DEFAULT)
-
-    @dream_configuration
-    def scheme(self) -> IMEXRK_ARS443:
-        return self._scheme
-
-    @scheme.setter
-    def scheme(self, scheme: TimeSchemes) -> None:
-
-        if not isinstance(self.root.time, TransientRoutine):
-            raise TypeError("DG-HDG method only supports transient time routines!")
-
-        OPTIONS = [IMEXRK_ARS443]
-        self._scheme = self._get_configuration_option(scheme, OPTIONS, TimeSchemes)
-
-    def add_finite_element_spaces(self, fes: dict[str, ngs.FESpace]) -> None:
-
-        order = self.root.fem.order
-        dim = self.mesh.dim + 2
-
-        super().add_finite_element_spaces(fes)
-        fes['U'] = ngs.L2(self.mesh, order=order, dgjumps=True)**dim
-
-    # In this (IMEX-)specialized class, the inviscid terms are handled via a standard DG.
-    def add_convection_form(self, blf: Integrals, lf:  Integrals):
-
-        # Extract the bonus integration order, if specified.
-        bonus = self.bonus_int_order['convection']
-
-        # Obtain the relevant test and trial functions. Notice, the solution "U"
-        # is assumed to be an unknown in the bilinear form, despite being explicit
-        # in time. This works, because we invoke the "Apply" function when solving.
-        U, V = self.TnT['U']
-
-        # Get a mask that is nonzero (unity) for only the internal faces.
-        mask = self.get_domain_boundary_mask()
-
-        # Current/owned solution.
-        Ui = self.get_conservative_fields(U)
-
-        # Neighboring solution.
-        Uj = self.get_conservative_fields(U.Other())
-
-        # Compute the flux of the solution on the volume elements.
-        F = self.root.get_convective_flux(Ui)
-
-        # Compute the flux on the surface of an element, in the normal direction.
-        Fn = self.root.riemann_solver.get_convective_numerical_flux_dg(Ui, Uj, self.mesh.normal)
-
-        # Assemble the explicit bilinear form, keeping in mind this is also placed on the LHS.
-        blf['U']['convection'] = -bla.inner(F, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus['vol'])
-        blf['U']['convection'] += mask*bla.inner(Fn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
-
-    # In this (IMEX-)specialized class, the elliptic terms are handled via an HDG.
-    def add_diffusion_form(self, blf: Integrals, lf: Integrals):
-
-        bonus = self.bonus_int_order['diffusion']
-
-        mask = self.get_domain_boundary_mask()
-
-        U, V = self.TnT['U']
-        Uhat, Vhat = self.TnT['Uhat']
-        Q, _ = self.viscous_treatment.TnT['Q']
-
-        U = self.get_conservative_fields(U)
-        Uhat = self.get_conservative_fields(Uhat)
-        Q = self.root.fem.viscous_treatment.get_mixed_fields(Q)
-
-        G = self.root.get_diffusive_flux(U, Q)
-        Gn = self.viscous_treatment.get_diffusive_numerical_flux(U, Uhat, Q, self.mesh.normal)
-
-        blf['U']['diffusion'] = ngs.InnerProduct(G, ngs.grad(V)) * ngs.dx(bonus_intorder=bonus['vol'])
-        blf['U']['diffusion'] -= ngs.InnerProduct(Gn, V) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
-        blf['Uhat']['diffusion'] = mask * ngs.InnerProduct(Gn,
-                                                           Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
-
-        # NOTE, to obtain a well-posed formulation, we require a value for rho_hat, since we need it on the facets.
-        # To this end, we estimate its value as the average of the density on the surface (w.r.t. neighboring elements).
-        # Recall, we solve for a Uhat implicitly, but use it explicitly in the next time step -- also note, rho is
-        # solved for explicitly, as it's governed by a pure hyperbolic equation (continuity eq).
-        rho = self.root.density(U)
-        rhoHat = self.root.density(Uhat)
-        rho_avg = rho - rhoHat
-        eq = ngs.CF((rho_avg, 0, 0, 0))
-
-        blf['Uhat']['test'] = mask * ngs.InnerProduct(eq,
-                                                      Vhat) * ngs.dx(element_boundary=True, bonus_intorder=bonus['bnd'])
-

@@ -1,6 +1,8 @@
 # Import modules
 import argparse
 import ngsolve as ngs
+from dream.time import (TimeRoutine, SynchronizedIMEXTimeRoutine, PCIMEXTimeRoutine, LinearPCIMEXTimeRoutine)
+from dream.compressible import CompressibleFlowSolver
 from config import (TRANSIENT_CFG,
                     STAGE_TO_SCHEME,
                     get_uniform_meshes,
@@ -8,8 +10,6 @@ from config import (TRANSIENT_CFG,
                     single_transient_routine,
                     imex_transient_routine,
                     FastVortex, SlowVortex)
-from dream.time import (TimeRoutine, SynchronizedIMEXTimeRoutine, PCIMEXTimeRoutine, LinearPCIMEXTimeRoutine)
-from dream.compressible import CompressibleFlowSolver
 
 ngs.SetNumThreads(4)
 
@@ -65,15 +65,15 @@ GENERAL['fem.solver'] = 'direct'
 GENERAL['fem.order'] = 3
 GENERAL['fem.solver.method'] = 'newton'
 GENERAL['fem.solver.method.max_iterations'] = 5
-GENERAL['fem.solver.method.convergence_criterion'] = 1e-20
+GENERAL['fem.solver.method.convergence_criterion'] = 1e-14
 GENERAL['fem.solver.method.damping_factor'] = 1.0
 GENERAL['fem.bonus_int_order'] = 6
 GENERAL['fem.scheme.compile'] = True
 GENERAL['io.sensor.enable'] = True
-GENERAL['io.vtk.enable'] = True
+GENERAL['io.vtk.enable'] = False
 GENERAL['io.vtk.rate'] = USER['vtkrate']
 GENERAL['io.vtk.subdivision'] = 2
-GENERAL['io.gfu.enable'] = True
+GENERAL['io.gfu.enable'] = False
 GENERAL['io.gfu.rate'] = USER['gfurate']
 GENERAL['io.gfu.time_level_rate'] = 100
 GENERAL['io.vtk.subdivision'] = 2

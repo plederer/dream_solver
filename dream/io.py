@@ -945,11 +945,11 @@ class PointSensor(Sensor):
         return pd.DataFrame(values, index=index, columns=columns)
 
     def get_header(self):
-        names = ['point']
+        names = ['x', 'y', 'z'][:self.mesh.dim]
         names_, header_ = super().get_header()
 
         names.extend(names_)
-        header = [(point, *header) for point in self.points for header in header_]
+        header = [(*point[:self.mesh.dim], *header) for point in self.points for header in header_]
         return names, header
 
 

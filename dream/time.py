@@ -4,7 +4,7 @@ import ngsolve as ngs
 import logging
 import typing
 from functools import wraps
-from time import time
+import time
 
 from dream.config import Integrals, Log, Configuration, dream_configuration
 
@@ -26,11 +26,9 @@ def time_generator(label):
                 yield from generator(self, *args, **kwargs)
                 return
 
-            start = time()
+            start = time.perf_counter()
             yield from generator(self, *args, **kwargs)
-            end = time()
-
-            logger.info(f"Solve {label.format(*args, **kwargs)} runtime: {end - start:.6f}s")
+            logger.info(f"Solve {label.format(*args, **kwargs)} runtime: {time.perf_counter() - start:.6f}s")
 
         return wrap
 
@@ -443,9 +441,8 @@ class TransientRoutine(TimeRoutine):
 
             io.save_post_time_routine(t1, rate)
 
-    def start_timing_solution_routine(self, time: dict[str, float],
+    def start_timing_solution_routine(self, timings: dict[str, float],
                                       reassemble: bool = True) -> typing.Generator[float | None, None, None]:
-        from time import time as clock
 
         scheme = self.root.fem.scheme
         timer = self.timer
@@ -457,39 +454,49 @@ class TransientRoutine(TimeRoutine):
         steps = timer.num_steps()
 
         # Setup timing containers
-        time['total_time'] = 0.0
+        timings['total_time'] = 0.0
         for stage in range(1, scheme.number_of_stages + 1):
-            time[f'total_{stage}stage_time'] = 0.0
-            time[f'{stage}_stage_times'] = np.zeros(steps)
-            time[f'{stage}_stage_iterations'] = np.zeros(steps)
+            timings[f'total_{stage}stage_time'] = 0.0
+            timings[f'{stage}_stage_times'] = np.zeros(steps)
+            timings[f'{stage}_stage_iterations'] = np.zeros(steps)
 
-        time['total_final_stage_time'] = 0.0
-        time['final_stage_times'] = np.zeros(steps)
+        timings['total_final_stage_time'] = 0.0
+        timings['final_stage_times'] = np.zeros(steps)
+
+        self.root.fem.solver.solve_update_step = self.root.fem.solver.solve_update_step_timing
+        timings['solver_apply'] = []
+        timings['solver_assemble'] = []
+        timings['solver_solve'] = []
+        timings['solver_local'] = []
 
         # Solution routine starts here
-        time['total_time'] = clock()
+        timings['total_time'] = time.perf_counter()
         for rate, tn, t1 in self.timer():
 
             for stage in range(1, scheme.number_of_stages + 1):
 
-                start = clock()
+                start = time.perf_counter()
                 for log in scheme.solve_stage(stage, tn):
-                    ...
-                end = clock()
-                time[f'total_{stage}stage_time'] += end - start
-                time[f'{stage}_stage_times'][rate-1] = end - start
+                    logger.info(self.parse_routine_log(**log))
+                    timings['solver_assemble'].append(log.get('solver_assemble', 0))
+                    timings['solver_solve'].append(log.get('solver_solve', 0))
+                    timings['solver_apply'].append(log.get('solver_apply', 0))
+                    timings['solver_local'].append(log.get('solver_local', 0))
+                end = time.perf_counter()
+                timings[f'total_{stage}stage_time'] += end - start
+                timings[f'{stage}_stage_times'][rate-1] = end - start
 
                 if 'it' in log:
-                    time[f'{stage}_stage_iterations'][rate-1] = log['it']
+                    timings[f'{stage}_stage_iterations'][rate-1] = log['it']
 
                 if "is_diverged" in log:
                     break
 
-            start = clock()
+            start = time.perf_counter()
             scheme.update_final_stage_solution()
-            end = clock()
-            time['total_final_stage_time'] += end - start
-            time['final_stage_times'][rate-1] = end - start
+            end = time.perf_counter()
+            timings['total_final_stage_time'] += end - start
+            timings['final_stage_times'][rate-1] = end - start
 
             if np.isnan(self.root.fem.gfu.vec).any():
                 print("Time routine diverged!")
@@ -499,7 +506,7 @@ class TransientRoutine(TimeRoutine):
 
             scheme.update_step_gridfunctions()
 
-        time['total_time'] = clock() - time['total_time']
+        timings['total_time'] = time.perf_counter() - timings['total_time']
 
     def find_stable_time_step(
             self, tol: float = 1e-8, process_routine: typing.Callable = None) -> typing.Generator[
@@ -896,8 +903,7 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
 
         return log
 
-    def start_timing_solution_routine(self, time: dict[str, float], reassemble=True):
-        from time import time as clock
+    def start_timing_solution_routine(self, timings: dict[str, float], reassemble=True):
 
         # Initialize predictor corrector routines.
         self.initialize(reassemble)
@@ -905,23 +911,29 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
         steps = self.gtimer.num_steps()
 
         # Setup timing containers
-        time['total_time'] = 0.0
+        timings['total_time'] = 0.0
         for stage in range(1, self.gscheme.number_of_stages + 1):
-            time[f'total_{stage}stage_time_implicit'] = 0.0
-            time[f'{stage}_stage_times_implicit'] = np.zeros(steps)
-            time[f'{stage}_stage_iterations_implicit'] = np.zeros(steps)
+            timings[f'total_{stage}stage_time_implicit'] = 0.0
+            timings[f'{stage}_stage_times_implicit'] = np.zeros(steps)
+            timings[f'{stage}_stage_iterations_implicit'] = np.zeros(steps)
 
-            time[f'total_{stage}stage_time_explicit'] = 0.0
-            time[f'{stage}_stage_times_explicit'] = np.zeros(steps)
+            timings[f'total_{stage}stage_time_explicit'] = 0.0
+            timings[f'{stage}_stage_times_explicit'] = np.zeros(steps)
 
-        time['total_final_stage_time_implicit'] = 0.0
-        time['final_stage_times_implicit'] = np.zeros(steps)
+        timings['total_final_stage_time_implicit'] = 0.0
+        timings['final_stage_times_implicit'] = np.zeros(steps)
 
-        time['total_final_stage_time_explicit'] = 0.0
-        time['final_stage_times_explicit'] = np.zeros(steps)
+        timings['total_final_stage_time_explicit'] = 0.0
+        timings['final_stage_times_explicit'] = np.zeros(steps)
+
+        self.cfg_implicit.fem.solver.solve_update_step = self.cfg_implicit.fem.solver.solve_update_step_timing
+        timings['solver_apply'] = []
+        timings['solver_assemble'] = []
+        timings['solver_solve'] = []
+        timings['solver_local'] = []
 
         # Start the global time-stepping loop.
-        time['total_time'] = clock()
+        timings['total_time'] = time.perf_counter()
         for rate, gt0, gt1 in self.gtimer():
 
             # Sync timers
@@ -933,21 +945,24 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
             for stage in range(1, self.gscheme.number_of_stages + 1):
 
                 # Step 1: Solve explicit stage.
-                start = clock()
+                start = time.perf_counter()
                 for log in self.lscheme.solve_stage(stage, gt0):
                     ...
-                end = clock()
-                time[f'total_{stage}stage_time_explicit'] += end - start
-                time[f'{stage}_stage_times_explicit'][rate-1] = end - start
+                end = time.perf_counter()
+                timings[f'total_{stage}stage_time_explicit'] += end - start
+                timings[f'{stage}_stage_times_explicit'][rate-1] = end - start
 
                 # Step 2: Solve the implicit stage.
-                start = clock()
+                start = time.perf_counter()
                 for log in self.gscheme.solve_stage(stage, gt0):
-                    ...
-                end = clock()
-                time[f'total_{stage}stage_time_implicit'] += end - start
-                time[f'{stage}_stage_times_implicit'][rate-1] = end - start
-                time[f'{stage}_stage_iterations_implicit'][rate-1] = log['it']
+                    timings['solver_assemble'].append(log['solver_assemble'])
+                    timings['solver_apply'].append(log['solver_apply'])
+                    timings['solver_solve'].append(log['solver_solve'])
+                    timings['solver_local'].append(log['solver_local'])
+                end = time.perf_counter()
+                timings[f'total_{stage}stage_time_implicit'] += end - start
+                timings[f'{stage}_stage_times_implicit'][rate-1] = end - start
+                timings[f'{stage}_stage_iterations_implicit'][rate-1] = log['it']
 
                 if "is_diverged" in log:
                     break
@@ -956,24 +971,24 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
                 print("IMEX Time routine diverged!")
                 break
 
-            start = clock()
+            start = time.perf_counter()
             self.lscheme.update_final_stage_solution()
-            end = clock()
-            time[f'total_final_stage_time_explicit'] += end - start
-            time['final_stage_times_explicit'][rate-1] = end - start
+            end = time.perf_counter()
+            timings[f'total_final_stage_time_explicit'] += end - start
+            timings['final_stage_times_explicit'][rate-1] = end - start
 
-            start = clock()
+            start = time.perf_counter()
             self.gscheme.update_final_stage_solution()
-            end = clock()
-            time[f'total_final_stage_time_implicit'] += end - start
-            time['final_stage_times_implicit'][rate-1] = end - start
+            end = time.perf_counter()
+            timings[f'total_final_stage_time_implicit'] += end - start
+            timings['final_stage_times_implicit'][rate-1] = end - start
 
             yield gt1
 
             self.update_imex_step_gridfunctions()
 
         self.finalize()
-        time['total_time'] = clock() - time['total_time']
+        timings['total_time'] = time.perf_counter() - timings['total_time']
 
     def update_imex_step_gridfunctions(self):
         self.lscheme.update_step_gridfunctions()

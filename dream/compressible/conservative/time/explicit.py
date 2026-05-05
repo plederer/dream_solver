@@ -148,6 +148,74 @@ class RK_ARS22(ExplicitSchemes):
             raise TypeError(f"Stage {stage} does not exist.")
 
 
+class RK_ARS232(ExplicitSchemes):
+    r""" Class responsible for implementing an explicit 2-stage, 2nd-order Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.5, Equation in :cite:`ascher1997implicit`. Assuming a standard DG formulation,
+
+    """
+    name: str = "rk_ars232"
+    number_of_stages: int = 2
+    time_of_stages: tuple[float] = (0.0, 1.0 - ngs.sqrt(2.0)/2.0, 1.0)
+
+    def assemble(self) -> None:
+        super().assemble()
+
+        # Reserve space for the solution at the old time step (at t^n).
+        self.U0 = self.root.fem.gfu.vec.CreateVector()
+        self.K1 = self.root.fem.gfu.vec.CreateVector()
+        self.K2 = self.root.fem.gfu.vec.CreateVector()
+        self.K3 = self.K1
+
+        # Butcher tableau coefficients.
+        alpha = ngs.sqrt(2.0)/2.0
+        gamma = 1.0 - alpha
+        delta = -2*ngs.sqrt(2.0)/3.0
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c1 = 0.0
+        self.c2 = gamma
+        self.c3 = 1.0
+
+        # Define A-coefficients in the Butcher tableau.
+        self.a21 = gamma
+        self.a31 = delta
+        self.a32 = 1.0 - delta
+
+        # Define the b-coefficients in the Butcher tableau.
+        self.b2 = 1 - gamma
+        self.b3 = gamma
+
+        if self.lf is not None:
+            raise NotImplementedError(f"RHS term has not been implimented in this scheme (yet).")
+
+    @time_generator(r"stage {0}")
+    def solve_stage(self, stage: int, t0: float) -> typing.Generator[Log, None, None]:
+
+        if stage == 1:
+
+            self.U0.data = self.root.fem.gfu.vec
+            self.blf.Apply(self.root.fem.gfu.vec, self.K1)
+            self.root.fem.gfu.vec.data = self.U0 - self.minv * (self.a21 * self.K1)
+
+            self.set_stage_time(stage, t0)
+            yield {'t': self.t.Get(), 'stage': stage}
+
+        elif stage == 2:
+
+            self.blf.Apply(self.root.fem.gfu.vec, self.K2)
+            self.root.fem.gfu.vec.data = self.U0 - self.minv * (self.a31 * self.K1 + self.a32 * self.K2)
+
+            self.set_stage_time(stage, t0)
+            yield {'t': self.t.Get(), 'stage': stage}
+
+        else:
+            raise TypeError(f"Stage {stage} does not exist.")
+
+    def update_final_stage_solution(self) -> None:
+        self.blf.Apply(self.root.fem.gfu.vec, self.K3)  # K1 is used to store K3, since b1 = 0
+
+        self.root.fem.gfu.vec.data = self.U0 - self.minv * (self.b2 * self.K2 + self.b3 * self.K3)
+
+
 class RK_ARS33(ExplicitSchemes):
     r""" Class responsible for implementing an explicit 3-stage, 3rd-order Runge-Kutta time-marching scheme that updates the current solution (:math:`t = t^{n}`) to the next time step (:math:`t = t^{n+1}`), see Section 2.7, Equation in :cite:`ascher1997implicit`. Assuming a standard DG formulation,
 
