@@ -244,7 +244,7 @@ class CompressibleFlowSolver(SolverConfiguration):
             :param direction: A container containing the flow direction
             :type direction: tuple[float, ...]
 
-            :note: See :class:`~dream.compressible.scaling` for the different scalings.
+            :note: See :class:`~dream.compressible_flow.scaling` for the different scalings.
         """
 
         INF = flowfields()

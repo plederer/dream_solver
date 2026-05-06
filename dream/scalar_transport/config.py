@@ -1,17 +1,10 @@
 """ Definitions of boundary/domain conditions for a scalar transport equation. """
 from __future__ import annotations
-import ngsolve as ngs
 
-from dream import bla
-from dream.bla import is_scalar
-from dream.config import quantity, dream_configuration, ngsdict
+from dream.config import quantity, ngsdict
 from dream.mesh import (Condition,
                         Periodic,
-                        Initial,
-                        Perturbation,
-                        SpongeLayer,
-                        PSpongeLayer,
-                        GridDeformation)
+                        Initial)
 
 
 class transportfields(ngsdict):
@@ -20,12 +13,12 @@ class transportfields(ngsdict):
         Literal mathematical symbols as key names are converted to their respective quantities,
         if predefined. Values are converted to NGSolve CoefficientFunctions.
 
-        >>> fields = transportfields(phi=1.0)
+        >>> fields = transportfields(u=1.0)
         >>> fields
-        {'phi': CoefficientFunction((1.0))}
- 
+        {'u': CoefficientFunction((1.0))}
+
     """
-    phi = quantity('phi', r"\phi")
+    u = quantity('u', r"u")
 
 
 class FarField(Condition):
@@ -38,19 +31,11 @@ class FarField(Condition):
     """
 
     name = "farfield"
-    
+
     def __init__(self, fields: transportfields | None = None):
-
         self.fields = fields
-
         super().__init__()
-
-
-    
 
 
 BCS = [Periodic, FarField]
 DCS = [Initial]
-
-
-

@@ -343,10 +343,7 @@ class SDIRK22(DIRKSchemes):
         self.configure_scheme()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
-
         u, v = self.root.fem.TnT['U']
-        gfus = self.gfus['U'].copy()
-        gfus['n+1'] = u
        
         # This initializes the coefficients for this scheme.
         self.initialize_butcher_tableau()

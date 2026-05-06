@@ -5,49 +5,43 @@ from dream.time import TimeSchemes
 
 import ngsolve as ngs
 import typing
+import numpy as np
 
 
 class ExplicitSchemes(TimeSchemes):
 
     def assemble(self) -> None:
 
-        # Check that a mass matrix is indeed defined in the bilinear form dictionary.
-        if "mass" not in self.root.fem.blf['U']:
-            raise ValueError("Could not find a mass matrix definition in the bilinear form.")
+        condense = self.root.fem.static_condensation
+        self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
+        self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'explicit form')
 
-        self.blf = ngs.BilinearForm(self.root.fem.fes)
-        self.lf = ngs.LinearForm(self.root.fem.fes)
-        self.rhs = self.root.fem.gfu.vec.CreateVector()
-        
-        # Step 1: precompute the mass matrix. Note, this is scaled by dt.
-        mass = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
-        mass += self.root.fem.blf['U']['mass']
-
-        # Assemble the mass matrix.
-        mass.Assemble()
-        # Invert and store the mass matrix.
-        self.minv = self.root.fem.solver.get_inverse(mass, self.root.fem.fes)
-
-        # Remove the mass matrix item from the bilinear form dictionary, before proceeding.
-        self.root.fem.blf['U'].pop('mass')
-
-        # Process all items in the relevant bilinear and linear forms.
-        self.add_sum_of_integrals(self.blf, self.root.fem.blf)
-
-        # Add the integrals to the linear functional, if they exist (all symbolic at this point).
-        self.add_sum_of_integrals(self.lf, self.root.fem.lf)
-        
-        # Before proceeding, check whether we require a linear functional or not. 
-        if self.lf.integrators:
+        self.lf = None
+        if any([space for space, forms in self.root.fem.lf.items() if forms]):
+            self.lf = ngs.LinearForm(self.root.fem.fes)
+            self.add_sum_of_integrals(self.lf, self.root.fem.lf, 'linear form')
             self.lf.Assemble()
 
-    def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
+        # Precompute the  mass matrix.
+        u, v = self.root.fem.TnT['u']
+        self.mass = ngs.BilinearForm(self.root.fem.fes)
+        self.mass += ngs.InnerProduct(u, v) * ngs.dx
+        self.mass.Assemble()
+        self.mass = self.mass.mat
+        self.minv = self.mass.Inverse(self.root.fem.fes.FreeDofs(), inverse="sparsecholesky")
 
-        u, v = self.root.fem.TnT['U']
-        gfus = self.gfus['U'].copy()
-        gfus['n+1'] = u
-        
-        blf['U']['mass'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
+        # TODO: Use matrix-free implementation
+        # self.mass = self.root.fem.spaces['u'].Mass(1.0)
+
+        # Can be avoided, but for readability and given the simplicity of the PDE, we allocate a rhs anyway.
+        self.rhs = self.root.fem.gfu.vec.CreateVector()
+
+    def add_symbolic_temporal_forms(self, blf, lf):
+        """ Not used in explicit schemes, since the temporal forms are not needed. """
+        ...
+
+    def is_diverged(self, vec) -> bool:
+        return np.isnan(vec).any()
 
 
 class ExplicitEuler(ExplicitSchemes):
@@ -60,14 +54,17 @@ class ExplicitEuler(ExplicitSchemes):
     """
     name: str = "explicit_euler"
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-        self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
-        
-        self.root.fem.gfu.vec.data -= self.minv * self.rhs
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
 
-        yield {}
+        self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+
+        self.root.fem.gfu.vec.data -= self.dt.Get() * self.minv * self.rhs
+
+        self.t.Set(t0 + self.dt.Get())
+
+        yield {'t': self.t.Get()}
 
 
 class SSPRK3(ExplicitSchemes):
@@ -81,13 +78,14 @@ class SSPRK3(ExplicitSchemes):
     where :math:`\widetilde{\bm{M}} = \frac{1}{\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """
     name: str = "ssprk3"
+    number_of_stages: int = 3
+    time_of_stages: tuple[float] = (0.0, 1.0, 0.5, 1.0)
 
     def assemble(self) -> None:
-
-        # Call the parent's assemble, in case additional checks need be done first.
         super().assemble()
 
         # Reserve space for the solution at the old time step (at t^n).
+        self.rhs = self.root.fem.gfu.vec.CreateVector()
         self.U0 = self.root.fem.gfu.vec.CreateVector()
 
         # Time stamps for the stage values between t = [n,n+1].
@@ -104,35 +102,47 @@ class SSPRK3(ExplicitSchemes):
         self.alpha32 = 2.0/3.0
         self.beta32 = 2.0/3.0
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
 
         # Extract the current solution.
-        self.U0.data = self.root.fem.gfu.vec
+        Un = self.root.fem.gfu
+        self.U0.data = Un.vec
 
-        # Stage: 1.
-        self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
+        # First stage.
+        self.blf.Apply(Un.vec, self.rhs)
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+        Un.vec.data = self.U0 - self.dt.Get() * self.minv * self.rhs
 
-        self.root.fem.gfu.vec.data = self.U0 - self.minv * self.rhs
+        self.set_stage_time(1, t0)
+        yield {'t': self.t.Get(), 'stage': 1}
 
-        # Stage: 2.
-        self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
+        # Second stage.
+        self.blf.Apply(Un.vec, self.rhs)
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
 
-        self.root.fem.gfu.vec.data *= self.alpha21
-        self.root.fem.gfu.vec.data += self.alpha20 * self.U0 - self.beta21 * self.minv * self.rhs
+        # NOTE, avoid 1-liners with dependency on the same read/write data.
+        Un.vec.data *= self.alpha21
+        Un.vec.data += self.alpha20 * self.U0 - self.beta21 * self.dt.Get() * self.minv * self.rhs
 
-        # Stage: 3.
-        self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
+        self.set_stage_time(2, t0)
+        yield {'t': self.t.Get(), 'stage': 2}
 
-        self.root.fem.gfu.vec.data *= self.alpha32
-        self.root.fem.gfu.vec.data += self.alpha30 * self.U0 - self.beta32 * self.minv * self.rhs
+        # Third stage.
+        self.blf.Apply(Un.vec, self.rhs)
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
 
-        yield {}
+        # NOTE, avoid 1-liners with dependency on the same read/write data.
+        Un.vec.data *= self.alpha32
+        Un.vec.data += self.alpha30 * self.U0 - self.beta32 * self.dt.Get() * self.minv * self.rhs
+
+        self.set_stage_time(3, t0)
+        yield {'t': self.t.Get(), 'stage': 3}
+
+        if self.is_diverged(self.root.fem.gfu.vec):
+            yield {"is_diverged": True}
 
 
 class CRK4(ExplicitSchemes):
@@ -148,6 +158,8 @@ class CRK4(ExplicitSchemes):
     where :math:`\widetilde{\bm{M}} = \frac{1}{\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """
     name: str = "crk4"
+    number_of_stages: int = 4
+    time_of_stages: tuple[float] = (0.0, 0.5, 0.5, 1.0, 1.0)
 
     def assemble(self) -> None:
         super().assemble()
@@ -168,55 +180,56 @@ class CRK4(ExplicitSchemes):
         self.c4 = 1.0
 
         # Reserve space for the tentative solution.
+        self.rhs = self.root.fem.gfu.vec.CreateVector()  # can be avoided (I think)
         self.K1 = self.root.fem.gfu.vec.CreateVector()
         self.K2 = self.root.fem.gfu.vec.CreateVector()
         self.K3 = self.root.fem.gfu.vec.CreateVector()
         self.K4 = self.root.fem.gfu.vec.CreateVector()
         self.Us = self.root.fem.gfu.vec.CreateVector()
 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
 
-        # Stage: 1.
+        # First stage.
         self.blf.Apply(self.root.fem.gfu.vec, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
-        
-        self.K1.data = -self.minv * self.rhs
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+        self.K1.data = -self.dt.Get() * self.minv * self.rhs
 
-        # Stage: 2.
+        self.set_stage_time(1, t0)
+        yield {'t': self.t.Get(), 'stage': 1}
+
+        # Second stage.
         self.Us.data = self.root.fem.gfu.vec + self.a21 * self.K1
         self.blf.Apply(self.Us, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+        self.K2.data = -self.dt.Get() * self.minv * self.rhs
 
-        self.K2.data = -self.minv * self.rhs
+        self.set_stage_time(2, t0)
+        yield {'t': self.t.Get(), 'stage': 2}
 
-        # Stage: 3.
+        # Third stage.
         self.Us.data = self.root.fem.gfu.vec + self.a32 * self.K2
         self.blf.Apply(self.Us, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+        self.K3.data = -self.dt.Get() * self.minv * self.rhs
 
-        self.K3.data = -self.minv * self.rhs
+        self.set_stage_time(3, t0)
+        yield {'t': self.t.Get(), 'stage': 3}
 
-        # Stage: 4.
+        # Fourth stage.
         self.Us.data = self.root.fem.gfu.vec + self.K3
         self.blf.Apply(self.Us, self.rhs)
-        if self.lf.integrators:
-            self.rhs -= self.lf.vec
+        if self.lf is not None:
+            self.rhs.data -= self.lf.vec
+        self.K4.data = -self.dt.Get() * self.minv * self.rhs
 
-        self.K4.data = -self.minv * self.rhs
+        self.set_stage_time(4, t0)
+        yield {'t': self.t.Get(), 'stage': 4}
 
         # Reconstruct the solution at t^{n+1}.
         self.root.fem.gfu.vec.data += self.b1 * self.K1 \
-                                    + self.b2 * self.K2 \
-                                    + self.b3 * self.K3 \
-                                    + self.b4 * self.K4
-        
-        yield {}
-
-
-
-
-
-
+            + self.b2 * self.K2 \
+            + self.b3 * self.K3 \
+            + self.b4 * self.K4

@@ -427,11 +427,12 @@ class TransientRoutine(TimeRoutine):
                     logger.error(f"Transient routine diverged from {tn:.6e} to {t1:.6e}!")
                     break
 
-                logger.info(f'Solved interval {tn:.6e} to {t1:.6e} \n')
+                logger.debug(f'Solved interval {tn:.6e} to {t1:.6e} \n')
                 scheme.update_step_gridfunctions()
 
-                if self.root.timestep_controller is not None:
-                    self.root.timestep_controller.process_iteration(iteration=rate)
+                #TODO: Add timestep controller to streams
+                # if self.root.timestep_controller is not None:
+                #     self.root.timestep_controller.process_iteration(iteration=rate)
 
                 yield t1
 
@@ -512,9 +513,6 @@ class TransientRoutine(TimeRoutine):
             self, tol: float = 1e-8, process_routine: typing.Callable = None) -> typing.Generator[
             float | None, None, None]:
 
-        # self.root.timestep_controller = 'physical_controller'
-        # self.root.timestep_controller.rate = 1
-        # self.root.timestep_controller.cfl = 0.1
 
         scheme = self.root.fem.scheme
         timer = self.timer
@@ -556,8 +554,9 @@ class TransientRoutine(TimeRoutine):
                     process_routine(dt=timer.step.Get(), is_stable=True)
 
                 logger.info(f"Stable 𝚫t = {timer.step.Get()}")
-                if self.root.timestep_controller is not None:
-                    self.root.timestep_controller.process_iteration(iteration=rate)
+                #TODO: Add timestep controller to streams
+                # if self.root.timestep_controller is not None:
+                #     self.root.timestep_controller.process_iteration(iteration=rate)
 
                 dts = (dts[1], 0.5 * (dts[1] + dts[2]), dts[2])
 
@@ -820,14 +819,6 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
             self, tol: float = 1e-8, process_routine: typing.Callable = None) -> typing.Generator[
             float | None, None, None]:
 
-        # self.cfg_explicit.timestep_controller = 'physical_controller'
-        # self.cfg_explicit.timestep_controller.rate = 1
-        # self.cfg_explicit.timestep_controller.cfl = 0.1
-
-        # self.cfg_implicit.timestep_controller = 'physical_controller'
-        # self.cfg_implicit.timestep_controller.rate = 1
-        # self.cfg_implicit.timestep_controller.cfl = 0.1
-
         self.initialize(reassemble=True)
 
         dts = (0.0, self.gtimer.step.Get(), self.gtimer.step.Get())
@@ -870,11 +861,6 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
                     process_routine(dt=self.gtimer.step.Get(), is_stable=True)
 
                 logger.info(f"Stable 𝚫t = {self.gtimer.step.Get()}")
-
-                if self.cfg_implicit.timestep_controller is not None:
-                    self.cfg_implicit.timestep_controller.process_iteration(iteration=1)
-                if self.cfg_explicit.timestep_controller is not None:
-                    self.cfg_explicit.timestep_controller.process_iteration(iteration=1)
 
                 dts = (dts[1], 0.5 * (dts[1] + dts[2]), dts[2])
 

@@ -562,9 +562,9 @@ class LogStream(Stream):
 
         # Set logger to carriage return
         stream_handler = self._get_handler("terminal")
-        # TODO: needs fixing, by having this as an option.
-        # if stream_handler:
-        #    stream_handler.terminator = "\r"
+
+        if self.level != logging.DEBUG and stream_handler:
+            stream_handler.terminator = "\r"
 
         return self
 

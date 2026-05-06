@@ -2,26 +2,26 @@ from dream import *
 from dream.scalar_transport import Initial, transportfields, ScalarTransportSolver
 from ngsolve import *
 from ngsolve.meshes import Make1DMesh
-import numpy as np  
-from matplotlib import pyplot as plt 
+import numpy as np
+from matplotlib import pyplot as plt
 
 
 # Number of elements per dimension.
 ne = 30
-x0 = -2.0 
-x1 =  2.0 
+x0 = -2.0
+x1 = 2.0
 lx = x1-x0
 
 # Generate a simple grid.
-mesh = Make1DMesh(ne, periodic=True, mapping=lambda x: lx*x + x0 )
+mesh = Make1DMesh(ne, periodic=True, mapping=lambda x: lx*x + x0)
 
 # Message output detail from netgen.
-ngs.ngsglobals.msg_level = 0 
+ngs.ngsglobals.msg_level = 0
 ngs.SetNumThreads(4)
 
 
 # Define analytic solution.
-def get_analytic_solution(t, v): 
+def get_analytic_solution(t, v):
 
     # Initial pulse location.
     x0 = 0.0
@@ -31,27 +31,26 @@ def get_analytic_solution(t, v):
     # Standard deviation.
     mu = sqrt(s2)
     # Pulse center/expectation.
-    xt = -v*t + ngs.x 
+    xt = -v*t + ngs.x
     # Radial distance (time-dependent).
     r2 = (xt-x0)**2
-    
+
     # Return the analytic solution.
-    #return ngs.exp( -r2/(2.0*s2) )/( mu*sqrt(ngs.pi) )
+    # return ngs.exp( -r2/(2.0*s2) )/( mu*sqrt(ngs.pi) )
 
     # Number of cycle throughout the simulation.
     n_cycle = 4
 
-    f = ngs.exp( -r2/(2.0*s2) )/( mu*sqrt(ngs.pi) )
-    for i in range(1,n_cycle):
-        f += ngs.exp( -(xt-x0+i*lx)**2/(2.0*s2) )/( mu*sqrt(ngs.pi) )
+    f = ngs.exp(-r2/(2.0*s2))/(mu*sqrt(ngs.pi))
+    for i in range(1, n_cycle):
+        f += ngs.exp(-(xt-x0+i*lx)**2/(2.0*s2))/(mu*sqrt(ngs.pi))
 
-    return f 
+    return f
 
-def get_variance_pulse(): 
-    mu = 0.15 # Standard deviation.
+
+def get_variance_pulse():
+    mu = 0.15  # Standard deviation.
     return mu*mu
-
-
 
 
 # Solver configuration: pure advection equation.
@@ -61,7 +60,7 @@ cfg.convection_velocity = (1.0,)
 cfg.is_inviscid = True
 
 cfg.riemann_solver = "lax_friedrich"
-cfg.fem = "dg" # NOTE, by default, DG is used.
+cfg.fem = "dg"  # NOTE, by default, DG is used.
 cfg.fem.order = 0
 cfg.fem.static_condensation = False  # NOTE, by default, condensation is turned off.
 
@@ -72,7 +71,7 @@ cfg.time.timer.interval = (0.0, 12.0)
 cfg.time.timer.step = 0.01
 
 U0 = transportfields()
-U0.phi = get_analytic_solution(cfg.time.timer.interval[0], cfg.convection_velocity[0])
+U0.u = get_analytic_solution(cfg.time.timer.interval[0], cfg.convection_velocity[0])
 
 cfg.bcs['left|right'] = "periodic"
 cfg.dcs['dom'] = Initial(fields=U0)
@@ -84,6 +83,8 @@ nt = int(round((tf - t0) / dt))
 
 
 plt.ioff()
+
+
 def _init_plot(x, y1, y2, label):
     fig, ax = plt.subplots()
     num_line, = ax.plot(x, y1, 'r-', label="numerical")
@@ -94,6 +95,7 @@ def _init_plot(x, y1, y2, label):
     ax.grid(True)
     ax.legend(frameon=False)
     return fig, ax, num_line, exact_line
+
 
 def _update_plot(line1, line2, y1, y2, t, label):
     line1.set_ydata(y1)
@@ -106,17 +108,15 @@ def _update_plot(line1, line2, y1, y2, t, label):
     ax.figure.canvas.flush_events()
     plt.pause(0.05)
 
+
 def wave1d_routine(label):
     def decorator(func):
         def wrapper(*args, draw_solution=False, plot_freq=10, **kwargs):
-            cfg.fem.static_condensation = False
             func(*args, **kwargs)
             cfg.fem.order = 5
-            if cfg.fem.name == "hdg":
-                cfg.fem.static_condensation = True
             cfg.initialize()
 
-            uh = cfg.fem.get_fields("phi").phi
+            uh = cfg.fem.get_fields("u").u
             ue_func = get_analytic_solution(cfg.time.timer.t, cfg.convection_velocity[0])
             xcoor = np.linspace(x0, x1, ne * cfg.fem.order, dtype=float)
 
@@ -136,9 +136,9 @@ def wave1d_routine(label):
                     _update_plot(num_line, exact_line, uh(mesh(xcoor)), ue_func(mesh(xcoor)), t, label)
 
             if draw_solution:
-                plt.pause(1.0)
+                plt.pause(0.1)
                 plt.close(fig)
-            
+
             u_final = uh(mesh(xcoor))  # Evaluate at final time
             return data, xcoor, u_final
         wrapper.label = label
@@ -146,66 +146,77 @@ def wave1d_routine(label):
     return decorator
 
 
-
 # Specialized routines.
 @wave1d_routine("implicit_euler(hdg)")
 def implicit_euler_hdg():
     cfg.fem = "hdg"
     cfg.fem.scheme = "implicit_euler"
-    
+
+
 @wave1d_routine("implicit_euler(dg)")
 def implicit_euler_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "implicit_euler"
 
+
 @wave1d_routine("bdf2(hdg)")
 def bdf2_hdg():
     cfg.fem = "hdg"
     cfg.fem.scheme = "bdf2"
+
+
 @wave1d_routine("bdf2(dg)")
 def bdf2_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "bdf2"
 
+
 @wave1d_routine("sdirk22(hdg)")
 def sdirk22_hdg():
     cfg.fem = "hdg"
     cfg.fem.scheme = "sdirk22"
+
+
 @wave1d_routine("sdirk22(dg)")
 def sdirk22_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "sdirk22"
 
+
 @wave1d_routine("sdirk33(hdg)")
 def sdirk33_hdg():
     cfg.fem = "hdg"
     cfg.fem.scheme = "sdirk33"
+
+
 @wave1d_routine("sdirk33(dg)")
 def sdirk33_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "sdirk33"
+
 
 @wave1d_routine("imex_rk_ars443(dg)")
 def imex_rk_ars443_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "imex_rk_ars443"
 
+
 @wave1d_routine("ssprk3(dg)")
 def ssprk3_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "ssprk3"
+
 
 @wave1d_routine("crk4(dg)")
 def crk4_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "crk4"
 
+
 @wave1d_routine("explicit_euler(dg)")
 def explicit_euler_dg():
     cfg.fem = "dg"
     cfg.fem.scheme = "explicit_euler"
-
-
 
 
 # Assign colors to base method names
@@ -217,14 +228,16 @@ method_colors = {
 }
 
 # Helper function that sets up a generic figure.
+
+
 def setup_fig(xlabel, ylabel, title):
-    fig, ax = plt.subplots(figsize=(15, 6)) 
+    fig, ax = plt.subplots(figsize=(15, 6))
     ax.tick_params(axis='both', labelsize=16)
     ax.set_xlabel(xlabel, fontsize=14)
     ax.set_ylabel(ylabel, fontsize=16)
     ax.set_title(title, fontsize=16)
     ax.grid(True)
-    return fig,ax
+    return fig, ax
 
 
 # Helper function that specifies the plot style properties.
@@ -239,7 +252,7 @@ def get_plot_style(label, method_colors):
         marker = '^'
     else:
         base_name = label.strip()
-        linestyle = ":" 
+        linestyle = ":"
         marker = '.'
 
     color = method_colors.get(base_name, "black")
@@ -270,7 +283,7 @@ fig3, ax3 = setup_fig("x", "u(x, t_final)", f"Final Solution at t = {tf}")
 # Run each simulation.
 for routine in routines:
     print(f"Running {routine.label}...")
-    data, xcoor, usol = routine(draw_solution=True)
+    data, xcoor, usol = routine(draw_solution=False)
     style = get_plot_style(routine.label, method_colors)
 
     ax2.semilogy(data[:, 0], data[:, 1], **style)
@@ -282,13 +295,10 @@ ax2.legend(loc="upper right", frameon=False)
 fig2.tight_layout()
 
 # Plot analytic solution at the final step.
-ue_final = get_analytic_solution(data[-1,0], cfg.convection_velocity[0])
+ue_final = get_analytic_solution(data[-1, 0], cfg.convection_velocity[0])
 ax3.plot(xcoor, ue_final(mesh(xcoor)), 'k-')
 
 ax3.legend(loc="upper right", frameon=False)
 ax3.set_xlim(x0, x1)
 fig3.tight_layout()
 plt.show()
-
-
-

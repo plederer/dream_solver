@@ -473,7 +473,7 @@ class CRK4(ExplicitSchemes):
 
     name: str = "crk4"
     number_of_stages: int = 4
-    time_of_stages: tuple[float] = (0.0, 0.5, 0.5, 1.0)
+    time_of_stages: tuple[float] = (0.0, 0.5, 0.5, 1.0, 1.0)
 
     def assemble(self) -> None:
         super().assemble()

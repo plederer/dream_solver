@@ -226,8 +226,8 @@ class FarField(Condition):
     :param use_identity_jacobian: Flag to use the identity jacobian for the farfield condition.
     :type use_identity_jacobian: bool
 
-    :note: See :func:`~dream.compressible.conservative.hdg.HDG.add_farfield_formulation` for the implementation of 
-              the farfield condition in the :class:`~dream.compressible.conservative.hdg.HDG` formulation.
+    :note: See :func:`~dream.compressible_flow.conservative.hdg.HDG.add_farfield_formulation` for the implementation of 
+              the farfield condition in the :class:`~dream.compressible_flow.conservative.hdg.HDG` formulation.
 
     """
 

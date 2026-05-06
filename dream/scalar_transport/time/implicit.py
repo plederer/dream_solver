@@ -9,60 +9,40 @@ import typing
 
 class ImplicitSchemes(TimeSchemes):
 
-    def assemble_bilinear_form(self, blf) -> None:
-        
-        # Import locally, to avoid a circular dependency error.
-        from dream.scalar_transport.spatial import DG, HDG
-        
-        # If this is an HDG method, we need to linearize to avoid a bug (with condensation).
-        # ... even though we are (redundantly) linearizing a linear problem.
-        if isinstance(self.root.fem, HDG):
-            blf.AssembleLinearization(self.root.fem.gfu.vec)
-        elif isinstance(self.root.fem, DG):
-            blf.Assemble()
-        else:
-            raise ValueError("Can only support (pure) DG or HDG scheme for now.")
-
     def assemble(self) -> None:
 
         condense = self.root.fem.static_condensation
-
         self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
-     
-        # Check that a mass matrix is defined in the bilinear form dictionary.
-        if "mass" not in self.root.fem.blf['U']:
-            raise ValueError("Could not find a mass matrix definition in the bilinear form.")
+        self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'implicit bilinear form')
+        self.blf.Assemble()
 
-        # Process all items in the relevant bilinear and linear forms.
-        self.add_sum_of_integrals(self.blf, self.root.fem.blf)
-     
-        # We do this as a wrapper, which decides how to assemble self.blf, which avoids a bug(?) in the assembly.
-        self.assemble_bilinear_form(self.blf)
-
-        # Add the integrals to the linear functional, if they exist (all symbolic at this point).
-        lf = ngs.LinearForm(self.root.fem.fes)
-        self.add_sum_of_integrals(lf, self.root.fem.lf)
-        
-        # Before proceeding, check whether we require a linear functional or not. 
-        if not lf.integrators:
-            self.lf = None
-        else:
-            self.lf = lf
+        self.lf = None
+        if any([space for space, forms in self.root.fem.lf.items() if forms]):
+            self.lf = ngs.LinearForm(self.root.fem.fes)
+            self.add_sum_of_integrals(self.lf, self.root.fem.lf, 'linear form')
             self.lf.Assemble()
 
-        # Precompute the inverse of the bilinear matrix (if static condensation is false) 
-        # or the factorization of the inverse of the Schur complement (if static condensation is True).
-        self.binv = self.root.fem.solver.get_inverse(self.blf, self.root.fem.fes)
-
-        # Precompute the (scaled, with c/dt, where c is some constant) mass matrix.
-        self.mass = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
-        self.mass += self.root.fem.blf['U']['mass']
-        
-        # And assemble it.
+        # Precompute the  mass matrix.
+        u, v = self.root.fem.TnT['u']
+        self.mass = ngs.BilinearForm(self.root.fem.fes)
+        self.mass += ngs.InnerProduct(u, v) * ngs.dx
         self.mass.Assemble()
+        self.mass = self.mass.mat
+
+        # TODO: Use matrix-free implementation
+        # self.mass = self.root.fem.spaces['u'].Mass(1.0)
 
         # Can be avoided, but for readability and given the simplicity of the PDE, we allocate a rhs anyway.
         self.rhs = self.root.fem.gfu.vec.CreateVector()
+
+    def solve_stage(self, stage: int, t0: float) -> typing.Generator[Log, None, None]:
+
+        if stage != 1:
+            raise TypeError(f"Stage {stage} does not exist.")
+
+        for log in self.solve_current_time_level(t0):
+            log['stage'] = stage
+            yield log
 
 
 class ImplicitEuler(ImplicitSchemes):
@@ -74,28 +54,26 @@ class ImplicitEuler(ImplicitSchemes):
     where :math:`\widetilde{\bm{M}} = \frac{1}{\delta t} \int_{D} u v\, d\bm{x}` is the modified mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """
     name: str = "implicit_euler"
-    aliases = ("ie", )
+    number_of_steps: int = 2
+    number_of_stages: int = 1
+    time_of_stages: tuple[float] = (0.0, 1.0)
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
-        u, v = self.root.fem.TnT['U']
-        blf['U'][f'mass'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
- 
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
+        u, v = self.root.fem.TnT['u']
+        blf['u']['time'] = ngs.InnerProduct(u/self.dt, v) * ngs.dx
+
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
+        self.t.Set(t0 + self.dt.Get())
+
         # Compute the right-hand side, first.
-        self.rhs.data = self.mass.mat * self.root.fem.gfu.vec
+        self.rhs.data = 1/self.dt.Get() * self.mass * self.root.fem.gfu.vec
+
         if self.lf is not None:
-            self.rhs.data += self.lf.vec
+            self.rhs.data -= self.lf.vec
 
-        # Then, solve, depending on whether we static condense or not.
-        if self.root.fem.static_condensation is True:
-            self.rhs.data += self.blf.harmonic_extension_trans * self.rhs
-            self.root.fem.gfu.vec.data = self.binv * self.rhs
-            self.root.fem.gfu.vec.data += self.blf.harmonic_extension * self.root.fem.gfu.vec
-            self.root.fem.gfu.vec.data += self.blf.inner_solve * self.rhs
-        else:
-            self.root.fem.gfu.vec.data = self.binv * self.rhs
+        self.root.fem.solver.solve_linear_system(self.blf, self.root.fem.gfu, self.rhs, operator="=")
 
-        yield {}
+        yield {'t': self.t.Get()}
 
 
 class BDF2(ImplicitSchemes):
@@ -107,42 +85,29 @@ class BDF2(ImplicitSchemes):
     where :math:`\widetilde{\bm{M}} = \frac{3}{2\delta t} \int_{D} u v\, d\bm{x}` is the weighted mass matrix and :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """
     name: str = "bdf2"
+    number_of_steps: int = 3
+    number_of_stages: int = 1
+    time_of_stages: tuple[float] = (0.0, 1.0)
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
-        u, v = self.root.fem.TnT['U']
-        c = 3.0/2.0 
-        blf['U'][f'mass'] = ngs.InnerProduct( c*u/self.dt, v) * ngs.dx
-     
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-        
-        # Scaling factors for the BDF2 scheme.
-        f1 = 4.0/3.0
-        f2 = 1.0/3.0
-        
-        # Abbreviation for the three solution steps we book-keep.
-        Unp1 = self.gfus['U']['n+1']
-        Un   = self.gfus['U']['n']
-        Unm1 = self.gfus['U']['n-1']
+        u, v = self.root.fem.TnT['u']
+        blf['u']['time'] = ngs.InnerProduct(1.5*u/self.dt, v) * ngs.dx
 
-        # We are computing (and storing U^{n+1}): f1*Un - f2 * U^{n-1}.
-        Unp1.vec.data *= f1
-        Unp1.vec.data -= f2 * Unm1.vec
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
+        self.t.Set(t0 + self.dt.Get())
+
+        un = self.gfus['u']['n']
+        un_1 = self.gfus['u']['n-1']
 
         # Compute the right-hand side, first.
-        self.rhs.data = self.mass.mat * self.root.fem.gfu.vec
+        self.rhs.data = 0.5/self.dt.Get() * self.mass * (4*un.vec - un_1.vec)
+
         if self.lf is not None:
-            self.rhs.data += self.lf.vec
+            self.rhs.data -= self.lf.vec
 
-        # Then, solve, depending on whether we static condense or not.
-        if self.root.fem.static_condensation is True:
-            self.rhs.data += self.blf.harmonic_extension_trans * self.rhs
-            self.root.fem.gfu.vec.data = self.binv * self.rhs
-            self.root.fem.gfu.vec.data += self.blf.harmonic_extension * self.root.fem.gfu.vec
-            self.root.fem.gfu.vec.data += self.blf.inner_solve * self.rhs
-        else:
-            self.root.fem.gfu.vec.data = self.binv * self.rhs
+        self.root.fem.solver.solve_linear_system(self.blf, self.root.fem.gfu, self.rhs, operator="=")
 
-        yield {}
+        yield {'t': self.t.Get()}
 
 
 class DIRKSchemes(TimeSchemes):
@@ -158,92 +123,95 @@ class DIRKSchemes(TimeSchemes):
     - :math:`\widetilde{\bm{M}}` is based on :math:`a_{ii}=1`.
     - :math:`\bm{y}_{i}` is the solution at the *ith* stage.
     - :math:`a_{ij}` and :math:`b_{i}` are taken from the Butcher of a specific scheme.
-    
+
     Finally, :math:`\bm{B}` is the matrix associated with the spatial bilinear form, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms` for the implementation.
     """
-
-    def assemble_bilinear_form(self, blf) -> None:
-        
-        # Import locally, to avoid a circular dependency error.
-        from dream.scalar_transport.spatial import DG, HDG
-        
-        # Book-keep whether this is a DG class (needed for imposing BCs in linear functional).
-        self.is_dgfem = False
-
-        # If this is an HDG method, we need to linearize to avoid a bug (with condensation).
-        # ... even though we are (redundantly) linearizing a linear problem.
-        if isinstance(self.root.fem, HDG):
-            blf.AssembleLinearization(self.root.fem.gfu.vec)
-        elif isinstance(self.root.fem, DG):
-            blf.Assemble()
-            self.is_dgfem = True
-        else:
-            raise ValueError("Can only support (pure) DG or HDG scheme for now.")
 
     def assemble(self) -> None:
 
         condense = self.root.fem.static_condensation
 
+        # NOTE, we assume that self.lf is not needed here (for efficiency).
         self.blf = ngs.BilinearForm(self.root.fem.fes, condense=condense)
         self.blfs = ngs.BilinearForm(self.root.fem.fes, condense=condense)
+        self.mass = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
+        self.rhs = self.root.fem.gfu.vec.CreateVector()
+        self.mu0 = self.root.fem.gfu.vec.CreateVector()
 
         # Check that a mass matrix is defined in the bilinear form dictionary.
-        self.mass = ngs.BilinearForm(self.root.fem.fes, symmetric=True)
-        if "mass" not in self.root.fem.blf['U']:
+        if "mass" not in self.root.fem.blf['u']:
             raise ValueError("Could not find a mass matrix definition in the bilinear form.")
 
         # Precompute the weighted mass matrix, with weights: 1/(dt*aii).
-        self.mass += self.root.fem.blf['U']['mass']
+        self.mass += self.root.fem.blf['u']['mass']
 
         # Assemble the mass matrix once.
         self.mass.Assemble()
-        
+
         # Add both spatial and mass-matrix terms in blf.
-        self.add_sum_of_integrals(self.blf, self.root.fem.blf)
-    
+        self.add_sum_of_integrals(self.blf, self.root.fem.blf, 'implicit bilinear form')
+
         # Skip the mass matrix contribution in blfs and only use the space for "U".
-        integrals = self.parse_sum_of_integrals(self.root.fem.blf, include_spaces=['U'], exclude_terms=('mass',))
-        self.add_sum_of_integrals(self.blfs, integrals)
+        integrals = self.parse_sum_of_integrals(self.root.fem.blf, include_spaces=['u'], exclude_terms=('mass',))
+        self.add_sum_of_integrals(self.blfs, integrals, "implicit bilinear form for splitting")
 
-        # We do this as a wrapper, which decides how to assemble self.blf, which avoids a bug(?) in the assembly.
-        self.assemble_bilinear_form(self.blf)
+        self.blf.Assemble()
 
-        # Add the integrals to the linear functional, if they exist (all symbolic at this point).
-        lf = ngs.LinearForm(self.root.fem.fes)
-        self.add_sum_of_integrals(lf, self.root.fem.lf)
-        
-        # Before proceeding, check whether we require a linear functional or not. 
-        if not lf.integrators:
-            self.lf = None
+    # Generic function to store (S-)DIRK coefficient, vector pairs.
+    def setup_stage_definitions(self,
+                                stage_data: list[tuple[typing.Any, list[tuple[float, typing.Any]]]]
+                                ) -> None:
+        r"""
+        stage_data:
+            list of (apply_target, coeffs) for each stage, starting at stage 1.
+            apply_target: vector to pass to Apply() or None.
+            coeffs: list of (coeff, vector) pairs to sum into rhs.
+        """
+        self.stage_definitions = \
+            {
+                i + 1: {"apply_target": apply_target, "coeffs": coeffs}
+                for i, (apply_target, coeffs) in enumerate(stage_data)
+            }
+
+    # Generic function that solves a DIRK scheme.
+    def solve_stage(self, stage: int, t0: float) -> typing.Generator[Log, None, None]:
+
+        # Extract the stage information, if possible.
+        try:
+            stage_info = self.stage_definitions[stage]
+        except KeyError:
+            raise TypeError(f"Stage {stage} does not exist.")
+
+        # Stage 1 is a special case, we handle it separately.
+        if stage == 1:
+            self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
+
+        # Distinguish between singly-diagonal (SDIRK) and variable (DIRK) coefficients.
+        if self.variable_aii is not None:
+            self.aii.Set(self.variable_aii[stage])  # should be set before the solving routine.
+            ovaii = 1.0/self.variable_aii[stage]
+            self.rhs.data = ovaii * self.mu0
         else:
-            self.lf = lf
-            self.lf.Assemble()
+            self.rhs.data = self.mu0
 
-        # Precompute the inverse of the bilinear matrix (if static condensation is false) 
-        # or the factorization of the inverse of the Schur complement (if static condensation is True).
-        self.binv = self.root.fem.solver.get_inverse(self.blf, self.root.fem.fes)
+        # Compute previous-stage residuals, if the apply_target exists.
+        if stage_info["apply_target"] is not None:
+            self.set_stage_time(stage - 1, t0)
+            self.blfs.Apply(self.root.fem.gfu.vec, stage_info["apply_target"])
 
-    def compute_previous_stage(self, U: ngs.GridFunction, rhs: ngs.BaseVector):
-        
-        # First, we apply our grid function to get its spatial residual.
-        self.blfs.Apply(U.vec, rhs)
-        
-        # Then, we check whether this is a DG formulation that also 
-        # requires a non-periodic BC. If it is, then we need to explicitly
-        # account for the BCs conveyed in the linear functional (with -ve sign).
-        # Otherwise, in the case of an HDG, we skip this, as the BCs are already
-        # imposed on the facets and blfs uses only for the volume solution ['U'].
-        if self.is_dgfem and self.lf is not None:
-            rhs.data -= self.lf.vec 
+        # Build the right-hand side, scaled with its respective coefficients.
+        for aij, xj in stage_info["coeffs"]:
+            self.rhs.data += aij * xj
 
-    def solve_stage(self, U: ngs.GridFunction, rhs: ngs.BaseVector):
-        if self.root.fem.static_condensation is True:
-            rhs.data += self.blf.harmonic_extension_trans * rhs
-            U.vec.data = self.binv * rhs
-            U.vec.data += self.blf.harmonic_extension * U.vec
-            U.vec.data += self.blf.inner_solve * rhs
-        else:
-            U.vec.data = self.binv * rhs
+        self.set_stage_time(stage, t0)
+        # Solve the resulting nonlinear system.
+
+        self.root.fem.solver.solve_linear_system(self.blf, self.root.fem.gfu, self.rhs, operator="=")
+        yield {'t': self.t.Get(), 'stage': stage}
+
+    def solve_current_time_level(self, t0: float) -> typing.Generator[Log, None, None]:
+        for i in range(1, self.number_of_stages + 1):
+            yield from self.solve_stage(i, t0)
 
 
 class SDIRK22(DIRKSchemes):
@@ -251,45 +219,58 @@ class SDIRK22(DIRKSchemes):
 
     .. math::
         \begin{array}{c|cc}
-	        \alpha & \alpha     & 0      \\
-	        1    &   1 - \alpha & \alpha \\
+                \alpha & \alpha     & 0      \\
+                1    &   1 - \alpha & \alpha \\
             \hline
-	             & 1 - \alpha    & \alpha
+                     & 1 - \alpha    & \alpha
         \end{array}
 
     where :math:`\alpha = (2 - \sqrt{2})/2`.
-    
+
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{u}^{n+1} = \bm{y}_{2}`.
     """
     name: str = "sdirk22"
+    number_of_stages: int = 2
+    time_of_stages: tuple[float] = (0.0, 1.0 - ngs.sqrt(2.0)/2.0, 1.0)
+
+    def initialize_butcher_tableau(self):
+
+        alpha = ngs.sqrt(2.0)/2.0
+
+        self.aii = 1.0 - alpha
+        self.a21 = alpha
+
+        # Time stamps for the stage values between t = [n,n+1].
+        self.c = [1.0 - alpha, 1.0]
+
+        # This is possible, because the method is stiffly-accurate.
+        self.b1 = self.a21
+        self.b2 = self.aii
+
+    def configure_scheme(self) -> None:
+
+        # This is an SDIRK scheme, aii is constant.
+        self.variable_aii = None
+
+        # Scale the coefficients by their (-ve) diagonal counterpart.
+        a21 = -self.a21 / self.aii
+        self.setup_stage_definitions([
+            (None, []),                 # stage 1
+            (self.x1, [(a21, self.x1)])  # stage 2
+        ])
 
     def assemble(self) -> None:
         super().assemble()
-        
+
         # Reserve space for additional vectors.
-        self.mu0 = self.root.fem.gfu.vec.CreateVector()
-        self.rhs = self.root.fem.gfu.vec.CreateVector()
-        
-    def initialize_butcher_tableau(self):
-        
-        alpha = ngs.sqrt(2.0)/2.0
+        self.x1 = self.root.fem.gfu.vec.CreateVector()
 
-        self.aii = 1.0 - alpha 
-        self.a21 = alpha 
-       
-        # Time stamps for the stage values between t = [n,n+1].
-        self.c1  = 1.0 - alpha
-        self.c2  = 1.0 
-
-        # This is possible, because the method is L-stable.
-        self.b1  = self.a21
-        self.b2  = self.aii
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
+        u, v = self.root.fem.TnT['u']
 
-        u, v = self.root.fem.TnT['U']
-        gfus = self.gfus['U'].copy()
-       
         # This initializes the coefficients for this scheme.
         self.initialize_butcher_tableau()
 
@@ -297,29 +278,7 @@ class SDIRK22(DIRKSchemes):
         ovadt = 1.0/(self.aii*self.dt)
 
         # Add the scaled mass matrix.
-        blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
-
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
-
-        # Initial rhs vector: M*U^n + lf.vec.
-        self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
-        if self.lf is not None:
-            self.mu0.data += self.lf.vec
-
-        # Abbreviations.
-        a21 = -self.a21 / self.aii
-
-        # Stage: 1.
-        self.rhs.data = self.mu0 
-        self.solve_stage(self.root.fem.gfu, self.rhs)
-
-        # Stage: 2.
-        self.compute_previous_stage(self.root.fem.gfu, self.rhs)
-        self.rhs.data *= a21
-        self.rhs.data += self.mu0
-        self.solve_stage(self.root.fem.gfu, self.rhs)
-
-        yield {}
+        blf['u']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
 
 
 class SDIRK33(DIRKSchemes):
@@ -327,33 +286,48 @@ class SDIRK33(DIRKSchemes):
 
     .. math::
         \begin{array}{c|ccc}
-	        0.4358665215 & 0.4358665215 &  0            & 0            \\
-	        0.7179332608 & 0.2820667392 &  \phantom{-}0.4358665215 & 0 \\
+                0.4358665215 & 0.4358665215 &  0            & 0            \\
+                0.7179332608 & 0.2820667392 &  \phantom{-}0.4358665215 & 0 \\
             1            & 1.2084966490 & -0.6443631710 & 0.4358665215 \\
             \hline
-	                     & 1.2084966490 & -0.6443631710 & 0.4358665215
+                             & 1.2084966490 & -0.6443631710 & 0.4358665215
         \end{array}
 
     :note: No need to explicitly form the solution at the next time step, since this is a stiffly-accurate method, i.e. :math:`\bm{u}^{n+1} = \bm{y}_{3}`.
     """
     name: str = "sdirk33"
+    number_of_stages: int = 3
+    time_of_stages: tuple[float] = (0.0, 0.4358665215, 0.7179332608, 1.0)
 
     def initialize_butcher_tableau(self):
 
-        self.aii =  0.4358665215
-        self.a21 =  0.2820667392
-        self.a31 =  1.2084966490
+        self.aii = 0.4358665215
+        self.a21 = 0.2820667392
+        self.a31 = 1.2084966490
         self.a32 = -0.6443631710
 
         # Time stamps for the stage values between t = [n,n+1].
-        self.c1  =  0.4358665215 
-        self.c2  =  0.7179332608
-        self.c3  =  1.0
+        self.c = [0.4358665215, 0.7179332608, 1.0]
 
-        # This is possible, because the method is L-stable.
-        self.b1  = self.a31
-        self.b2  = self.a32
-        self.b3  = self.aii
+        # This is possible, because the method is stiffly-accurate.
+        self.b1 = self.a31
+        self.b2 = self.a32
+        self.b3 = self.aii
+
+    def configure_scheme(self) -> None:
+
+        # This is an SDIRK scheme, aii is constant.
+        self.variable_aii = None
+
+        # Scale the coefficients by their (-ve) diagonal counterpart.
+        a21 = -self.a21 / self.aii
+        a31 = -self.a31 / self.aii
+        a32 = -self.a32 / self.aii
+        self.setup_stage_definitions([
+            (None, []),                                 # stage 1
+            (self.x1, [(a21, self.x1)]),                # stage 2
+            (self.x2, [(a31, self.x1), (a32, self.x2)])  # stage 3
+        ])
 
     def assemble(self) -> None:
         super().assemble()
@@ -361,52 +335,21 @@ class SDIRK33(DIRKSchemes):
         # Reserve space for additional vectors.
         self.x1 = self.root.fem.gfu.vec.CreateVector()
         self.x2 = self.root.fem.gfu.vec.CreateVector()
-        self.mu0 = self.root.fem.gfu.vec.CreateVector()
-        self.rhs = self.root.fem.gfu.vec.CreateVector()
+
+        # Initialize the multistage configuration parameters for the scheme.
+        self.configure_scheme()
 
     def add_symbolic_temporal_forms(self, blf: Integrals, lf: Integrals) -> None:
 
-        u, v = self.root.fem.TnT['U']
-        gfus = self.gfus['U'].copy()
+        u, v = self.root.fem.TnT['u']
+        gfus = self.gfus['u'].copy()
         gfus['n+1'] = u
- 
-        # This initializes the coefficients for this scheme.      
+
+        # This initializes the coefficients for this scheme.
         self.initialize_butcher_tableau()
-       
+
         # Abbreviation.
         ovadt = 1.0/(self.aii*self.dt)
 
         # Add the scaled mass matrix.
-        blf['U']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx
-
-    def solve_current_time_level(self) -> typing.Generator[Log, None, None]:
- 
-        # Initial rhs vector: M*U^n + lf.vec.
-        self.mu0.data = self.mass.mat * self.root.fem.gfu.vec
-        if self.lf is not None:
-            self.mu0.data += self.lf.vec
-        
-        # Abbreviations.
-        a21 = -self.a21 / self.aii
-        a31 = -self.a31 / self.aii
-        a32 = -self.a32 / self.aii
-
-        # Stage: 1.
-        self.rhs.data = self.mu0
-        self.solve_stage(self.root.fem.gfu, self.rhs)
-        
-        # Stage: 2.
-        self.compute_previous_stage(self.root.fem.gfu, self.x1)
-        self.rhs.data = self.mu0 + a21 * self.x1
-        self.solve_stage(self.root.fem.gfu, self.rhs)
-
-        # Stage: 3.
-        self.compute_previous_stage(self.root.fem.gfu, self.x2)
-        self.rhs.data = self.mu0 + a31 * self.x1 + a32 * self.x2
-        self.solve_stage(self.root.fem.gfu, self.rhs)
-
-        yield {}
-
-
-
-
+        blf['u']['mass'] = ngs.InnerProduct(ovadt*u, v) * ngs.dx

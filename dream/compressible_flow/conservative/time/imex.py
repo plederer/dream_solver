@@ -11,6 +11,8 @@ class IMEXRKSchemes(TimeSchemes):
 
     def assemble(self) -> None:
 
+        self.root.io.log.logger.warning("Experimental IMEXRK schemes are currently under development. Use with caution!")
+
         condense = self.root.fem.static_condensation
 
         # NOTE, we assume that self.lf is not needed here (for efficiency).

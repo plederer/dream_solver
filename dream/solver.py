@@ -166,7 +166,7 @@ class Solver(Configuration, is_interface=True):
     def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
         raise NotImplementedError("Overload this configuration in derived class!")
 
-    def solve_linear_system(self, blf: ngs.BilinearForm, gfu: ngs.GridFunction, rhs: ngs.BaseVector, **kwargs):
+    def solve_linear_system(self, blf: ngs.BilinearForm, gfu: ngs.GridFunction, rhs: ngs.BaseVector, operator: str = "=", **kwargs):
         raise NotImplementedError("Overload this configuration in derived class!")
 
     def solve_update_step(self, log: dict = None) -> None:
@@ -206,7 +206,7 @@ class DirectSolver(Solver):
         if freedofs is None:
             freedofs = fes.FreeDofs(blf.condense)
 
-        return blf.mat.Inverse(freedofs, inverse=inverse)
+        return blf.mat.Inverse(freedofs=freedofs, inverse=inverse)
 
     def solve_linear_system(self, blf: ngs.BilinearForm,
                             gfu: ngs.GridFunction,
