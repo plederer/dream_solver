@@ -232,7 +232,7 @@ class VTKStream(Stream):
     @subdivision.setter
     def subdivision(self, subdivision: int):
         subdivision = int(subdivision)
-        if subdivision <= 0:
+        if subdivision < 0:
             raise ValueError("Subdivision must be greater than 0!")
         self._subdivision = subdivision
 
@@ -302,6 +302,7 @@ class GridfunctionStream(Stream):
         DEFAULT = {
             "rate": 1,
             "time_level_rate": 0,
+            "time_format": ".6e",
         }
         DEFAULT.update(default)
         super().__init__(mesh, root, **DEFAULT)
@@ -328,12 +329,28 @@ class GridfunctionStream(Stream):
             raise ValueError("Saving rate must be greater equal than 0!")
         self._time_level_rate = time_level_rate
 
-    def load_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
+    @dream_configuration
+    def time_format(self) -> str:
+        return self._format_specifier
+    
+    @time_format.setter
+    def time_format(self, t_format: str):
+        if not isinstance(t_format, str):
+            raise ValueError("Format specifier must be a string!")
+        self._format_specifier = t_format
+
+    def load_gridfunction(self, gfu: ngs.GridFunction, 
+                          filename: str | None = None, 
+                          filepath: str = None,
+                          suffix: str = '.ngs') -> None:
 
         if filename is None:
             filename = self.filename
 
-        file = self.path.joinpath(filename + ".ngs")
+        if filepath is None:
+            filepath = self.path
+
+        file = filepath.joinpath(filename + suffix)
 
         gfu.Load(str(file))
 
@@ -341,7 +358,7 @@ class GridfunctionStream(Stream):
 
         filename = self.filename
         if t is not None:
-            filename = f"{filename}_{t}"
+            filename = f"{filename}_{t:{self.time_format}}"
 
         self.load_gridfunction(self.root.fem.gfu, filename)
 
@@ -357,8 +374,8 @@ class GridfunctionStream(Stream):
         with self.root.io as io:
 
             for it, t in enumerate(self.root.time.timer.start(stride=self.rate)):
-                logger.info(f"file: {self.filename} | t: {t}")
-                
+                logger.info(f"file: {self.filename} | t: {t:{self.time_format}} ")
+
                 self.load_routine(t)
                 io.redraw()
                 io.save_in_time_routine(t, it)
@@ -376,20 +393,26 @@ class GridfunctionStream(Stream):
 
             for level, gfu in gfu.items():
 
-                self.load_gridfunction(gfu, f"{self.filename}_{t}_{fes}_{level}")
+                self.load_gridfunction(gfu, f"{self.filename}_{t:{self.time_format}}_{fes}_{level}")
 
-    def save_gridfunction(self, gfu: ngs.GridFunction, filename: str | None = None) -> None:
+    def save_gridfunction(self, gfu: ngs.GridFunction, 
+                          filename: str | None = None,
+                          filepath: Path = None,
+                          suffix: str = '.ngs') -> None:
 
         if filename is None:
             filename = self.filename
 
-        file = self.path.joinpath(filename + ".ngs")
+        if filepath is None:
+            filepath = self.path
+
+        file = filepath.joinpath(filename + suffix)
 
         gfu.Save(str(file))
 
     def save_in_time_routine(self, t: float, it: int = 0):
 
-        filename = f"{self.filename}_{t}"
+        filename = f"{self.filename}_{t:{self.time_format}}"
 
         if self.rate:
             self._save_routine_gridfunction(filename, it % self.rate == 0)
@@ -405,7 +428,7 @@ class GridfunctionStream(Stream):
             self._save_routine_gridfunction(filename, True)
         else:
             # Transient case
-            filename = f"{filename}_{t}"
+            filename = f"{filename}_{t:{self.time_format}}"
             self._save_routine_gridfunction(filename, True)
             self._save_routine_gridfunction_level(filename, True)
 
@@ -417,7 +440,7 @@ class GridfunctionStream(Stream):
             self._save_routine_gridfunction(filename, True)
         else:
             # Transient case
-            filename = f"{filename}_{t}"
+            filename = f"{filename}_{t:{self.time_format}}"
 
             self._save_routine_gridfunction(filename, True)
             self._save_routine_gridfunction_level(filename, True)
@@ -442,7 +465,8 @@ class LogStream(Stream):
         self.logger = logging.getLogger('dream')
 
         DEFAULT = {
-            "level": logging.INFO
+            "level": logging.INFO,
+            "time_routines": False,
         }
         DEFAULT.update(default)
 
@@ -456,6 +480,14 @@ class LogStream(Stream):
     def level(self, level: int | str):
         self.logger.setLevel(level)
 
+    @dream_configuration
+    def time_routines(self) -> bool:
+        return self._time_routines
+
+    @time_routines.setter
+    def time_routines(self, time_routines: bool):
+        self._time_routines = bool(time_routines)
+
     @Stream.enable.setter
     def enable(self, enable: bool):
         enable = bool(enable)
@@ -463,9 +495,11 @@ class LogStream(Stream):
         if enable:
             self.to_terminal = True
             self.to_file = False
+            logging.disable(logging.NOTSET)
         else:
             self.to_terminal = False
             self.to_file = False
+            logging.disable(logging.CRITICAL)
 
         self._enable = bool(enable)
 
@@ -528,7 +562,8 @@ class LogStream(Stream):
 
         # Set logger to carriage return
         stream_handler = self._get_handler("terminal")
-        if stream_handler:
+
+        if self.level != logging.DEBUG and stream_handler:
             stream_handler.terminator = "\r"
 
         return self
@@ -650,14 +685,18 @@ class SensorStream(Stream):
         for sensor, data in self.measure():
 
             if self.to_csv:
-                self.csv[sensor.name][1].writerow([t, *data])
+                file, writer = self.csv[sensor.name]
+                writer.writerow([t, *data])
+                file.flush()
 
     def save_in_time_routine(self,  t: float, it: int) -> None:
 
         for sensor, data in self.measure():
             if it % sensor.rate == 0:
                 if self.to_csv:
-                    self.csv[sensor.name][1].writerow([t, *data])
+                    file, writer = self.csv[sensor.name]
+                    writer.writerow([t, *data])
+                    file.flush()
 
     def save_post_time_routine(self, t: float | None = None, it: int = 0) -> None:
 
@@ -667,7 +706,9 @@ class SensorStream(Stream):
         for sensor, data in self.measure():
             if self.to_csv:
                 if t == '' or not it % sensor.rate == 0:
-                    self.csv[sensor.name][1].writerow([t, *data])
+                    file, writer = self.csv[sensor.name]
+                    writer.writerow([t, *data])
+                    file.flush()
 
     def load_csv_as_dict(self, sensor: Sensor | str) -> tuple[np.ndarray, dict[tuple[str, str, str], np.ndarray]]:
         import csv
@@ -904,11 +945,11 @@ class PointSensor(Sensor):
         return pd.DataFrame(values, index=index, columns=columns)
 
     def get_header(self):
-        names = ['point']
+        names = ['x', 'y', 'z'][:self.mesh.dim]
         names_, header_ = super().get_header()
 
         names.extend(names_)
-        header = [(point, *header) for point in self.points for header in header_]
+        header = [(*point[:self.mesh.dim], *header) for point in self.points for header in header_]
         return names, header
 
 

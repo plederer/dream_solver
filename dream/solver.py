@@ -7,7 +7,7 @@ from math import isnan
 
 from .mesh import is_mesh_periodic, Periodic, BoundaryConditions, DomainConditions
 from .config import Configuration, dream_configuration, ngsdict, Integrals
-from .time import StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine, TimeRoutine, Scheme, TimeSchemes
+from .time import StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine, TimeRoutine, Scheme, TimeSchemes, time
 from .io import IOConfiguration
 
 logger = logging.getLogger(__name__)
@@ -134,21 +134,28 @@ class Solver(Configuration, is_interface=True):
         """
 
         for it in range(self.method.max_iterations):
+            log = {'it': it}
 
-            self.solve_update_step()
+            self.solve_update_step(log)
+
             error = self.get_iteration_error(self.du, self.res)
+            log['error'] = error
 
             if isnan(error):
-                logger.error("Solution process diverged!")
+                log['is_diverged'] = True
                 break
 
             self.method.update_solution(self.gfu, self.du)
 
-            yield {'it': it, 'error': error}
+            yield log
 
             if error < self.method.convergence_criterion:
-                logger.debug(f"Solution process converged!")
+                logger.debug(f"Solution converged!")
                 break
+
+        if "is_diverged" in log:
+            logger.error(f"Solution process diverged at iteration {it}!")
+            yield log
 
         if it + 1 == self.method.max_iterations:
             logger.warning(f"Solution process did not converge after {self.method.max_iterations} iterations!")
@@ -159,10 +166,10 @@ class Solver(Configuration, is_interface=True):
     def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
         raise NotImplementedError("Overload this configuration in derived class!")
 
-    def solve_linear_system(self, blf: ngs.BilinearForm, gfu: ngs.GridFunction, rhs: ngs.BaseVector, **kwargs):
+    def solve_linear_system(self, blf: ngs.BilinearForm, gfu: ngs.GridFunction, rhs: ngs.BaseVector, operator: str = "=", **kwargs):
         raise NotImplementedError("Overload this configuration in derived class!")
 
-    def solve_update_step(self) -> None:
+    def solve_update_step(self, log: dict = None) -> None:
         raise NotImplementedError("Overload this configuration in derived class!")
 
 
@@ -194,14 +201,12 @@ class DirectSolver(Solver):
 
     def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
 
-        inverse = self.inverse
-        if inverse in kwargs:
-            inverse = kwargs[inverse]
+        inverse = kwargs.get("inverse", self.inverse)
 
         if freedofs is None:
             freedofs = fes.FreeDofs(blf.condense)
 
-        return blf.mat.Inverse(freedofs, inverse=inverse)
+        return blf.mat.Inverse(freedofs=freedofs, inverse=inverse)
 
     def solve_linear_system(self, blf: ngs.BilinearForm,
                             gfu: ngs.GridFunction,
@@ -225,7 +230,7 @@ class DirectSolver(Solver):
             case _:
                 raise ValueError(f"Operator {operator} not supported!")
 
-    def solve_update_step(self):
+    def solve_update_step(self, log: dict = None) -> None:
 
         self.blf.Apply(self.gfu.vec, self.res)
         if self.rhs is not None:
@@ -241,6 +246,37 @@ class DirectSolver(Solver):
         else:
             self.du.data = inv * self.res
 
+    def solve_update_step_timing(self, log: dict):
+
+        start = time.perf_counter()
+        self.blf.Apply(self.gfu.vec, self.res)
+        if self.rhs is not None:
+            self.res.data -= self.rhs
+        log['solver_apply'] = time.perf_counter() - start
+
+        start = time.perf_counter()
+        self.blf.AssembleLinearization(self.gfu.vec)
+        log['solver_assemble'] = time.perf_counter() - start
+
+        if self.blf.condense:
+
+            start = time.perf_counter()
+            inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
+            self.res.data += self.blf.harmonic_extension_trans * self.res
+            self.du.data = inv * self.res
+            log['solver_solve'] = time.perf_counter() - start
+
+            start = time.perf_counter()
+            self.du.data += self.blf.harmonic_extension * self.du
+            self.du.data += self.blf.inner_solve * self.res
+            log['solver_local'] = time.perf_counter() - start
+
+        else:
+            start = time.perf_counter()
+            inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
+            self.du.data = inv * self.res
+            log['solver_solve'] = time.perf_counter() - start
+            log['solver_local'] = 0.0
 
 # ------- Finite Element Method ------- #
 
@@ -358,7 +394,7 @@ class FiniteElementMethod(Configuration, is_interface=True):
     def initialize_time_scheme_gridfunctions(self, *spaces: str) -> None:
         if isinstance(self.scheme, TimeSchemes):
             gfus = {space: gfu for space, gfu in self.gfus.items() if space in spaces}
-            self.scheme.initialize_gridfunctions(gfus)
+            self.scheme.initialize_step_gridfunctions(gfus)
 
     def initialize_symbolic_forms(self) -> None:
         self.blf: Integrals = {label: {} for label in self.spaces}
@@ -446,10 +482,14 @@ class SolverConfiguration(Configuration, is_interface=True):
 
     def initialize(self) -> None:
 
-        if self.mesh.is_periodic and not self.root.bcs.has_condition(Periodic):
+        if self.mesh.is_periodic and not Periodic in self.root.bcs:
             raise ValueError("Mesh has periodic boundaries, but no periodic boundary conditions are set!")
 
         self.fem.initialize()
+
+    def get_all_solution_fields(self) -> ngsdict:
+        
+        return self.fem.get_solution_fields()
 
     def get_solution_fields(self, *fields) -> ngsdict:
 
@@ -481,5 +521,14 @@ class SolverConfiguration(Configuration, is_interface=True):
         self.doc = doc
 
     def solve(self, reassemble: bool = True):
+        
+        # Proceed with the simulation.
         for t in self.time.start_solution_routine(reassemble):
             pass
+
+
+
+
+
+
+

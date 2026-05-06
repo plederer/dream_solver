@@ -62,7 +62,7 @@ class DummyFiniteElementMethod(FiniteElementMethod):
 
 
 class DummyTimeScheme(TimeSchemes):
-    time_levels = ("n", "n+1")
+    number_of_steps: int = 2
 
     def add_symbolic_temporal_forms(self, blf, lf):
         ...

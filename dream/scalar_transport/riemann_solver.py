@@ -4,7 +4,8 @@ import typing
 import ngsolve as ngs
 
 from dream import bla
-from dream.config import Configuration, dream_configuration
+from dream.config import Configuration
+from dream.scalar_transport.config import transportfields
 
 if typing.TYPE_CHECKING:
     from .solver import ScalarTransportSolver
@@ -12,7 +13,7 @@ if typing.TYPE_CHECKING:
 
 class RiemannSolver(Configuration, is_interface=True):
 
-    root: ScalarTransportSolver 
+    root: ScalarTransportSolver
 
     def get_convective_numerical_flux_hdg(self, U: transportfields, Uhat: transportfields, unit_vector: bla.VECTOR):
         r""" Returns the numerical flux based on a standard HDG Riemann solver. 
@@ -25,23 +26,25 @@ class RiemannSolver(Configuration, is_interface=True):
         unit_vector = bla.as_vector(unit_vector)
         wind = self.root.convection_velocity
         tau = self.get_convective_stabilisation_hdg(wind, unit_vector)
-        return self.root.get_convective_flux(Uhat) * unit_vector + tau * (U.U - Uhat.U)
+        return self.root.get_convective_flux(Uhat) * unit_vector + tau * (U.u - Uhat.u)
 
     def get_convective_stabilisation_hdg(self, wind: ngs.CF, unit_vector: bla.VECTOR) -> bla.SCALAR:
         r""" Interface for computing an HDG stabilization value. This method must be implemented by subclasses!
-        
+
         See :class:`LaxFriedrich` for concrete implementation.
-        
+
         """
         raise NotImplementedError()
 
-    def get_convective_numerical_flux_dg(self, Ui: transportfields, Uj: transportfields, wind: bla.VECTOR, unit_vector: bla.VECTOR) -> bla.SCALAR:
+    def get_convective_numerical_flux_dg(
+            self, Ui: transportfields, Uj: transportfields, wind: bla.VECTOR, unit_vector: bla.VECTOR) -> bla.SCALAR:
         r""" Interface for computing an DG numerical flux. This method must be implemented by subclasses!
-        
+
         See :class:`LaxFriedrich` for concrete implementation.
-        
+
         """
         raise NotImplementedError()
+
 
 class LaxFriedrich(RiemannSolver):
     """ Lax-Friedrich scheme for the convective flux. """
@@ -55,9 +58,10 @@ class LaxFriedrich(RiemannSolver):
             \tau_c := |\bm{b} \cdot \bm{n}|
         """
         unit_vector = bla.as_vector(unit_vector)
-        return bla.abs( bla.inner(wind, unit_vector) )
+        return bla.abs(bla.inner(wind, unit_vector))
 
-    def get_convective_numerical_flux_dg(self, Ui: transportfields, Uj: transportfields, wind: bla.VECTOR, unit_vector: bla.VECTOR) -> bla.SCALAR:
+    def get_convective_numerical_flux_dg(
+            self, Ui: transportfields, Uj: transportfields, wind: bla.VECTOR, unit_vector: bla.VECTOR) -> bla.SCALAR:
         r""" Returns the convective numerical flux on a surface, which for this linear and scalar equation is identical to standard upwinding.
 
         .. math::
@@ -70,10 +74,8 @@ class LaxFriedrich(RiemannSolver):
         Fi = self.root.get_convective_flux(Ui)
         Fj = self.root.get_convective_flux(Uj)
 
-        lmb_max = bla.abs( bla.inner(wind, n) )
-        
-        fs = 0.5*( (Fi+Fj)*n - lmb_max*(Uj.phi - Ui.U) )
+        lmb_max = bla.abs(bla.inner(wind, n))
+
+        fs = 0.5*((Fi+Fj)*n - lmb_max*(Uj.u - Ui.u))
 
         return fs
-
-

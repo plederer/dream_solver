@@ -1,11 +1,11 @@
-# %%
 from __future__ import annotations
 import logging
 import ngsolve as ngs
 import netgen.occ as occ
+import numpy as np
 
-from collections import UserDict
-from typing import Callable, Sequence
+
+from typing import Callable, Sequence, Generator
 
 from dream import bla
 from dream.config import ngsdict, dream_configuration
@@ -31,6 +31,83 @@ def get_regions_from_pattern(regions, pattern) -> tuple[str]:
     regions = tuple(region for region in pattern if region in regions)
 
     return regions
+
+
+def get_nodal_points(n, distribution='uniform', **kwargs):
+    r""" Generate 1D nodal points in [0, 1] with various clustering distributions.
+
+    Parameters
+    ----------
+    n : int
+        Number of points.
+    distribution : str, optional
+        Type of nodal distribution. Options:
+        'uniform' (default), 'cosine', 'polynomial', 'tanh', 'exponential'.
+    **kwargs : dict, optional
+        Additional parameters for specific distributions:
+            - polynomial: p (default=2)
+            - tanh: beta (default=2.5)
+            - exponential: a (default=4)
+
+    Returns
+    -------
+    x : ndarray
+        Array of nodal points in [0, 1].
+    """
+    import numpy as np
+
+    def cosine_points(n):
+        i = np.arange(n)
+        return 0.5 * (1 - np.cos(np.pi * i / (n - 1)))
+
+    def polynomial_points(n, p=2):
+        x = np.linspace(0, 1, n)
+        return 0.5 * (1 - np.cos(np.pi * x**(1/p)))
+
+    def tanh_points(n, beta=2.5):
+        xi = np.linspace(0, 1, n)
+        return 0.5 * (1 + np.tanh(beta * (2*xi - 1)) / np.tanh(beta))
+
+    def exponential_points(n, a=4):
+        xi = np.linspace(0, 1, n//2)
+        left = (np.exp(a*xi) - 1)/(np.exp(a) - 1)
+        x = np.concatenate((0.5 - 0.5*left[::-1], 0.5 + 0.5*left))
+        if len(x) < n:  # if n is odd
+            x = np.insert(x, n//2, 0.5)
+        return x
+
+    distribution = distribution.lower()
+    if distribution == 'uniform':
+        x = np.linspace(0, 1, n)
+    elif distribution == 'cosine':
+        x = cosine_points(n)
+    elif distribution == 'polynomial':
+        x = polynomial_points(n, p=kwargs.get('p', 2))
+    elif distribution == 'tanh':
+        x = tanh_points(n, beta=kwargs.get('beta', 2.5))
+    elif distribution == 'exponential':
+        x = exponential_points(n, a=kwargs.get('a', 4))
+    else:
+        raise ValueError(f"Unknown distribution '{distribution}'")
+
+    return x
+
+
+def get_integration_points_physical_space(mesh: ngs.Mesh, element_type: ngs.ET,
+                                          order: int, bonus: int = 0) -> list[tuple[float, float]]:
+    r""" Compute and return the integration points on each element in physical space.
+    """
+    import numpy as np
+
+    # Integration rule always assumes 2*order, as default.
+    qorder = 2*order + bonus
+    ir = ngs.IntegrationRule(element_type, qorder)
+    pts = mesh.MapToAllElements(ir, ngs.VOL)
+    return np.column_stack((ngs.x(pts)[:, 0], ngs.y(pts)[:, 0]))
+
+
+def get_local_meshsize_from_points(mesh: ngs.Mesh, x: list[float], y: list[float]) -> list[float]:
+    return ngs.specialcf.mesh_size(mesh(x=x, y=y))
 
 
 class BufferCoord(ngs.CF):
@@ -248,6 +325,7 @@ class GridMapping:
 class Condition:
 
     name: str
+    mesh: ngs.Mesh
 
     def __init_subclass__(cls) -> None:
         if not hasattr(cls, "name"):
@@ -262,9 +340,6 @@ class Condition:
     def __ne__(self, other):
         return self is not other
 
-    def __repr__(self) -> str:
-        return f"{self.name}"
-
 
 class Periodic(Condition):
 
@@ -273,9 +348,10 @@ class Periodic(Condition):
 
 class Initial(Condition):
 
-    def __init__(self, fields: ngsdict | None = None):
+    def __init__(self, fields: ngsdict | None = None, bonus_int_order: int = 0):
         super().__init__()
         self.fields = fields
+        self.bonus_int_order = bonus_int_order
 
     @dream_configuration
     def fields(self) -> ngsdict:
@@ -321,31 +397,6 @@ class Perturbation(Condition):
             raise TypeError(f"Perturbation fields must be of type '{ngsdict}' or '{dict}'")
 
 
-class Force(Condition):
-
-    def __init__(self, fields: ngsdict | None = None):
-        super().__init__()
-        self.fields = fields
-
-    @dream_configuration
-    def fields(self) -> ngsdict:
-        """ Returns the force of the corresponding equation """
-        if self._fields is None:
-            raise ValueError("Force fields not set!")
-        return self._fields
-
-    @fields.setter
-    def fields(self, fields: ngsdict) -> None:
-        if isinstance(fields, ngsdict):
-            self._fields = fields
-        elif isinstance(fields, dict):
-            self._fields = ngsdict(**fields)
-        elif fields is None:
-            self._fields = None
-        else:
-            raise TypeError(f"Fields must be of type '{ngsdict}' or '{dict}'")
-
-
 class Buffer(Condition):
 
     def __init__(self, function: ngs.CF | None = None, order: int = 0):
@@ -372,8 +423,7 @@ class Buffer(Condition):
     def order(self) -> int:
         return self._order
 
-    order.setter
-
+    @order.setter
     def order(self, order):
         self._order = int(order)
 
@@ -590,47 +640,37 @@ class PSpongeLayer(SpongeLayer):
     low_order: int
 
 
-class Conditions(UserDict):
+class Conditions:
 
     def __init__(self, regions: list[str], mesh: ngs.Mesh, options: list[Condition]) -> None:
-        self.data = {region: [] for region in regions}
+        self._reg2con = {region: [] for region in regions}
+        self._con2reg = {}
         self.mesh = mesh
         self.options = {option.name: option for option in options}
 
-    def get_region(self, *condition_types, as_pattern=False) -> str | list[str]:
-        reg = [name for name, cond in self.items() if any(isinstance(c, condition_types) for c in cond)]
-        if as_pattern:
-            reg = get_pattern_from_sequence(reg)
-        return reg
+    def items(self, *condition_types) -> Generator[tuple[str, Condition], None, None]:
 
-    def has_condition(self, condition_type: Condition | str) -> bool:
+        condition_types = tuple(self.options[condition] if isinstance(
+            condition, str) else condition for condition in condition_types)
+        if not condition_types:
+            condition_types = tuple(self.options.values())
 
-        if isinstance(condition_type, str):
-            condition_type = self.options[condition_type]
+        for condition in self._con2reg:
+            if not isinstance(condition, condition_types):
+                continue
 
-        for container in self.values():
-            if any(isinstance(condition, condition_type) for condition in container):
-                return True
-
-        return False
-
-    def to_pattern(self, condition_type: Condition | str = Condition) -> dict[str, Condition]:
-
-        if isinstance(condition_type, str):
-            condition_type = self.options[condition_type]
-
-        pattern = {}
-        unique_conditions = set([condition for conditions in self.values()
-                                for condition in conditions if isinstance(condition, condition_type)])
-
-        for unique in unique_conditions:
-            regions = [region for region in self if unique in self[region]]
-            pattern[get_pattern_from_sequence(regions)] = unique
-
-        return pattern
+            regions = self._con2reg[condition]
+            yield regions, condition
 
     def clear(self) -> None:
-        self.data = {region: [] for region in self}
+        self._reg2con = {region: [] for region in self._reg2con}
+        self._con2reg = {}
+
+    def __iter__(self):
+        return iter(self._reg2con)
+
+    def __getitem__(self, key: str) -> list[Condition]:
+        return self._reg2con[key]
 
     def __setitem__(self, pattern: str, condition: Condition) -> None:
 
@@ -644,23 +684,39 @@ class Conditions(UserDict):
         elif not isinstance(condition, Condition):
             raise TypeError(f"Condition must be instance of '{Condition}'")
 
+        # Give mesh access to the condition
+        condition.mesh = self.mesh
+
         if isinstance(pattern, str):
             pattern = pattern.split("|")
 
-        regions = get_regions_from_pattern(self, pattern)
+        regions = get_regions_from_pattern(self._reg2con, pattern)
 
         for miss in set(pattern).difference(regions):
             logger.warning(f"Region '{miss}' does not exist! Condition can not be set!")
 
-        for region in regions:
-            self.data[region].append(condition)
+        if regions:
 
-            # Give mesh access to the condition
-            condition.mesh = self.mesh
+            if condition not in self._con2reg:
+                self._con2reg[condition] = get_pattern_from_sequence(regions)
+            else:
+                self._con2reg[condition] += "|" + get_pattern_from_sequence(regions)
 
-            if len(self.data[region]) > 1:
-                logger.warning(f"""Multiple conditions set for region '{region}': {
-                               '|'.join([condition.name for condition in self[region]])}!""")
+            for region in regions:
+                self._reg2con[region].append(condition)
+
+                if len(self._reg2con[region]) > 1:
+                    logger.warning(f"""Multiple conditions set for region '{region}': {
+                        '|'.join([condition.name for condition in self[region]])}!""")
+
+    def __contains__(self, key: str | Condition) -> bool:
+
+        if isinstance(key, str):
+            return key in self._reg2con
+        elif issubclass(key, Condition):
+            return any(isinstance(condition, key) for condition in self._con2reg)
+        else:
+            raise TypeError(f"Key must be of type '{str}' or '{Condition}'")
 
 
 class BoundaryConditions(Conditions):
@@ -668,22 +724,16 @@ class BoundaryConditions(Conditions):
     def __init__(self, mesh: ngs.Mesh, options: list[Condition]) -> None:
         super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh, options)
 
-    def get_periodic_boundaries(self, as_pattern: bool = False) -> str | list[str]:
-        return self.get_region(Periodic, as_pattern=as_pattern)
+    def get_periodic_boundaries(self) -> str:
+        return get_pattern_from_sequence([bnd for bnd, _ in self.items(Periodic)])
 
-    def get_domain_boundaries(self, as_pattern: bool = False) -> list | str:
+    def get_domain_boundaries(self) -> str:
         """ Returns a list or pattern of the domain boundaries!
 
             The domain boundaries are deduced by the current set boundary conditions,
             while periodic boundaries are neglected! 
         """
-
-        bnds = [bnd for bnd, bcs in self.items() if not any([isinstance(bc, Periodic) for bc in bcs]) and bcs]
-
-        if as_pattern:
-            bnds = get_pattern_from_sequence(bnds)
-
-        return bnds
+        return get_pattern_from_sequence([bnd for bnd, bc in self.items() if not isinstance(bc, Periodic)])
 
 
 class DomainConditions(Conditions):
@@ -692,27 +742,27 @@ class DomainConditions(Conditions):
         super().__init__(list(dict.fromkeys(mesh.GetMaterials())), mesh, options)
 
     def get_psponge_layers(self) -> dict[str, PSpongeLayer]:
-        return {region: dc for region, dcs in self.items() for dc in dcs if isinstance(dc, PSpongeLayer)}
+        return {region: dc for region, dc in self.items(PSpongeLayer)}
 
     def get_sponge_layers(self) -> dict[str, SpongeLayer]:
-        return {region: dc for region, dcs in self.items() for dc in dcs if isinstance(dc, SpongeLayer) and not isinstance(dc, PSpongeLayer)}
+        return {region: dc for region, dc in self.items(SpongeLayer) if not isinstance(dc, PSpongeLayer)}
 
     def get_grid_deformations(self) -> dict[str, GridDeformation]:
-        return {region: dc for region, dcs in self.items() for dc in dcs if isinstance(dc, GridDeformation)}
+        return {region: dc for region, dc in self.items(GridDeformation)}
 
     def get_grid_deformation_function(self, grid_deformations: dict[str, GridDeformation] = None):
         if grid_deformations is None:
-            self.to_pattern(GridDeformation)
+            grid_deformations = self.get_grid_deformations()
         return self.get_buffer_function_(grid_deformations, GridDeformation)
 
     def get_sponge_layer_function(self, sponge_layers: dict[str, SpongeLayer] = None):
         if sponge_layers is None:
-            sponge_layers = self.to_pattern(SpongeLayer)
+            sponge_layers = self.get_sponge_layers()
         return self.get_buffer_function_(sponge_layers, SpongeLayer)
 
     def get_psponge_layer_function(self, psponge_layers:  dict[str, PSpongeLayer] = None):
         if psponge_layers is None:
-            psponge_layers = self.to_pattern(PSpongeLayer)
+            psponge_layers = self.get_psponge_layers()
         return self.get_buffer_function_(psponge_layers, PSpongeLayer)
 
     def get_buffer_function_(self, domains: dict[str, Buffer], buffer_type: Buffer) -> ngs.GridFunction:
@@ -754,7 +804,7 @@ class DomainConditions(Conditions):
             raise TypeError("Can not reduce element order of non L2-spaces!")
 
         if psponge_layers is None:
-            psponge_layers = self.to_pattern(PSpongeLayer)
+            psponge_layers = self.get_psponge_layers()
 
         if psponge_layers:
 
@@ -781,7 +831,7 @@ class DomainConditions(Conditions):
             raise TypeError("Can not reduce element order of non FacetFESpace-spaces!")
 
         if psponge_layers is None:
-            psponge_layers = self.to_pattern(PSpongeLayer)
+            psponge_layers = self.get_psponge_layers()
 
         if psponge_layers:
 
@@ -869,7 +919,6 @@ def get_cylinder_omesh(ri: float,
 
             pnums.append(mesh.Add(MeshPoint(Pnt(r * px, r * py, 0))))
 
-    # print(pnums)
     mesh.Add(FaceDescriptor(surfnr=1, domin=1, bc=1))
     mesh.Add(FaceDescriptor(surfnr=2, domin=1, domout=0, bc=1))
     mesh.Add(FaceDescriptor(surfnr=3, domin=1, domout=0, bc=2))
@@ -877,10 +926,7 @@ def get_cylinder_omesh(ri: float,
     idx_dom = 1
 
     for j in range(n_radial):
-        # print("j=",j)
         for i in range(n_polar-1):
-            # print("i=",i)
-            # offset =
             mesh.Add(
                 Element2D(
                     idx_dom, [pnums[i + j * (n_polar)],
@@ -1084,17 +1130,17 @@ def get_cylinder_mesh(radius: float = 0.5,
     return ngs.Mesh(mesh)
 
 
-def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
+def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int, nodal_distribution: str = 'uniform'):
     """ Returns the coordinates of a NACA 4-digit airfoil.
 
         :param number: NACA 4-digit number
         :type number: str | int
         :param n: Number of coordinates
         :type n: int
+        :type nodal_distribution: str
 
         .. [1]: Thanks to Edoardo Bonetti for providing this routine.
     """
-    import numpy as np
 
     if isinstance(number, int):
         number = str(number)
@@ -1112,7 +1158,7 @@ def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
     A3 = +0.2843
     A4 = -0.1036
 
-    x = np.linspace(0.0, 1.0, n+1)
+    x = get_nodal_points(n, distribution=nodal_distribution)
 
     yt = 5*t * (A0*np.sqrt(x) + A1*x + A2*np.power(x, 2) + A3*np.power(x, 3) + A4*np.power(x, 4))
     xl = x <= p
@@ -1146,6 +1192,32 @@ def get_unit_chord_naca_4digit_series_coordinates(number: str | int, n: int):
     return X, Y
 
 
+def get_chord_naca_4digit_series_coordinates(number: str | int,
+                                             LE=(0, 0),
+                                             chord: float = 1.0,
+                                             n: int = 600,
+                                             nodal_distribution: str = 'uniform') -> list[tuple[float, float, 0]]:
+    """ Returns a 2D NACA airfoil profile with leading edge at position (0, 0).
+
+        :param number: NACA digit number
+        :type number: str | int
+        :param LE: Leading edge coordinates, defaults to (0, 0)
+        :type LE: tuple, optional
+        :param chord: Chord length, defaults to 1
+        :type chord: float, optional
+        :param n: Number of coordinates, defaults to 600
+        :type n: int, optional
+        :type nodal_distribution: str, defaults to 'uniform'
+        :return: NACA airfoil points
+        :rtype: list[tuple[float, float, 0]]
+    """
+    xs, ys = get_unit_chord_naca_4digit_series_coordinates(number, n, nodal_distribution=nodal_distribution)
+    xs = chord * xs + LE[0]
+    ys = chord * ys + LE[1]
+    pnts = [(x, y, 0) for x, y in zip(xs, ys)]
+    return pnts
+
+
 def get_2d_naca_occ_profile(number: str | int,
                             AoA=0,
                             LE=(0, 0),
@@ -1166,12 +1238,9 @@ def get_2d_naca_occ_profile(number: str | int,
         :return: NACA airfoil profile
         :rtype: occ.TopoDS_Shape
     """
-    xs, ys = get_unit_chord_naca_4digit_series_coordinates(number, n)
-    xs = chord * xs + LE[0]
-    ys = chord * ys + LE[1]
-    pnts = [(x, y, 0) for x, y in zip(xs, ys)]
+    pnts = get_chord_naca_4digit_series_coordinates(number, LE, chord, n)
 
-    curve = occ.Wire(occ.SplineApproximation(pnts))
+    curve = occ.Wire(occ.SplineApproximation(pnts, continuity=occ.ShapeContinuity.C0))
     wing = occ.Face(curve)
     wing = wing.Rotate(occ.Axis((LE[0], LE[1], 0), occ.Z), -AoA)
     return wing
@@ -1208,3 +1277,200 @@ def get_3d_naca_occ_profile(number: str | int, depth: float,
         wing.faces.Max(occ.Z).Identify(wing.faces.Min(occ.Z), "periodic", occ.IdentificationType.PERIODIC)
 
     return wing
+
+
+def get_rectangular_mesh(domains: dict[str, tuple[np.ndarray, np.ndarray]],
+                         boundaries: dict[str, tuple[np.ndarray, np.ndarray]],
+                         quads: bool = True,
+                         periodic_x: bool = False,
+                         periodic_y: bool = False) -> ngs.Mesh:
+    from netgen.meshing import Mesh, MeshPoint, Pnt, Element1D, Element2D, IdentificationType
+
+    def union(*args):
+        x_ = args[0]
+        for arg in args[1:]:
+            x_ = np.union1d(x_, arg)
+        return x_
+
+    mesh = Mesh()
+    mesh.dim = 2
+
+    x = []
+    y = []
+
+    for _, extents in domains:
+        x_, y_ = extents
+        x.append(x_)
+        y.append(y_)
+
+    x = union(*x)
+    y = union(*y)
+
+    meshpoints = np.zeros((x.size, y.size), dtype=object)
+    for i in range(x.size):
+        for j in range(y.size):
+            point = mesh.Add(MeshPoint(Pnt(x[i], y[j], 0)))
+            meshpoints[i, j] = point
+
+    # Periodic x-direction
+    if periodic_x:
+        for slave, master in zip(meshpoints[0, :], meshpoints[-1, :]):
+            mesh.AddPointIdentification(master, slave, identnr=1, type=IdentificationType.PERIODIC)
+
+    # Periodic y-direction
+    if periodic_y:
+        for slave, master in zip(meshpoints[:, 0], meshpoints[:, -1]):
+            mesh.AddPointIdentification(master, slave, identnr=2, type=IdentificationType.PERIODIC)
+
+    dom = {}
+    for name, extents in domains:
+
+        if name not in dom:
+            dom[name] = mesh.AddRegion(name, dim=2)
+        region = dom[name]
+
+        x_, y_ = extents
+        index = np.ix_((np.min(x_) <= x) & (x <= np.max(x_)), (np.min(y_) <= y) & (y <= np.max(y_)))
+        meshpoints_ = meshpoints[index]
+
+        for i in range(meshpoints_.shape[0] - 1):
+            for j in range(meshpoints_.shape[1] - 1):
+                pids = meshpoints_[i:i+2, j:j+2]
+                if quads:
+                    mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[1, 1], pids[0, 1]]))
+                else:
+                    mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[0, 1]]))
+                    mesh.Add(Element2D(region, [pids[1, 0], pids[1, 1], pids[0, 1]]))
+
+    bnd = {}
+    for name, extents in boundaries:
+
+        if name not in bnd:
+            bnd[name] = mesh.AddRegion(name, dim=1)
+        region = bnd[name]
+
+        x_, y_ = extents
+        index = np.ix_((np.min(x_) <= x) & (x <= np.max(x_)), (np.min(y_) <= y) & (y <= np.max(y_)))
+        meshpoints_ = meshpoints[index].flatten()
+
+        for begin, end in zip(meshpoints_[:-1], meshpoints_[1:]):
+            mesh.Add(Element1D([begin, end], index=region))
+
+    mesh.Compress()
+    return ngs.Mesh(mesh)
+
+
+def get_structured_cylinder_mesh(domains: dict[str, tuple[np.ndarray, np.ndarray]],
+                                 boundaries: dict[str, tuple[np.ndarray, np.ndarray]],
+                                 close_angular: bool = True,
+                                 curve_all=False,
+                                 quads: bool = True) -> ngs.Mesh:
+    """ Generates a structured cylinder mesh based on given radial and angular coordinates.
+
+    The mesh is constructed by defining domains and boundaries in (r, phi) coordinates.
+    Phi is assumed to be periodic, i.e., the first and last angular coordinates are connected, 
+    therefore pass only unique angular coordinates.
+
+    :param domains: Dictionary of domain names and their extents in (r, phi) coordinates
+    :type domains: dict[str, tuple[np.ndarray, np.ndarray]]
+    :param boundaries: Dictionary of boundary names and their extents in (r, phi) coordinates
+    :type boundaries: dict[str, tuple[np.ndarray, np.ndarray]]
+    :param close_angular: Whether the phi direction is closed, defaults to True
+    :type close_angular: bool, optional
+    :param curve_all: Whether to curve also the non-named boundaries, defaults to False
+    :type curve_all: bool, optional
+    :param quads: Whether to use quadrilateral elements, defaults to True
+    :type quads: bool, optional
+    :return: The generated structured cylinder mesh
+    :rtype: ngs.Mesh
+    """
+
+    from netgen.meshing import Mesh, MeshPoint, Pnt, Element1D, Element2D
+    from netgen.occ import WorkPlane, OCCGeometry, Glue
+
+    def union(*args):
+        x_ = args[0]
+        for arg in args[1:]:
+            x_ = np.union1d(x_, arg)
+        return x_
+
+    mesh = Mesh()
+    mesh.dim = 2
+
+    r = []
+    phi = []
+
+    for _, extents in domains:
+        r_, phi_ = extents
+        r.append(r_)
+        phi.append(phi_)
+
+    r = union(*r)
+    phi = union(*phi)
+
+    edge_map = dict.fromkeys(r, "default")
+    edge_map.update({r_: name for name, (r_, _) in boundaries})
+    outer = Glue([WorkPlane().Circle(0, 0, ri).Face() for ri in edge_map])
+    if curve_all:
+        boundaries += tuple((name, (r_, phi)) for r_, name in edge_map.items() if name == "default")
+    edge_map = {r: edgenr for edgenr, r in enumerate(edge_map)}
+    mesh.SetGeometry(OCCGeometry(outer, dim=2))
+
+    meshpoints = np.zeros((r.size, phi.size), dtype=object)
+
+    for i in range(r.size):
+        for j in range(phi.size-1 if close_angular else phi.size):
+            point = mesh.Add(MeshPoint(Pnt(r[i]*np.cos(phi[j]), r[i]*np.sin(phi[j]), 0)))
+            meshpoints[i, j] = point
+
+    if close_angular:
+        meshpoints[:, -1] = meshpoints[:, 0]
+
+    dom = {}
+    for name, extents in domains:
+
+        if name not in dom:
+            dom[name] = mesh.AddRegion(name, dim=2)
+        region = dom[name]
+
+        r_, phi_ = extents
+        mask_r = (np.min(r_) < r) & (r < np.max(r_)) | np.isclose(r, np.min(r_)) | np.isclose(r, np.max(r_))
+        mask_phi = (
+            np.min(phi_) < phi) & (
+            phi < np.max(phi_)) | np.isclose(
+            phi, np.min(phi_)) | np.isclose(
+            phi, np.max(phi_))
+        index = np.ix_(mask_r, mask_phi)
+        meshpoints_ = meshpoints[index]
+
+        for i in range(meshpoints_.shape[0] - 1):
+            for j in range(meshpoints_.shape[1] - 1):
+                pids = meshpoints_[i:i+2, j:j+2]
+                if quads:
+                    mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[1, 1], pids[0, 1]]))
+                else:
+                    mesh.Add(Element2D(region, [pids[0, 0], pids[1, 0], pids[0, 1]]))
+                    mesh.Add(Element2D(region, [pids[1, 0], pids[1, 1], pids[0, 1]]))
+
+    bnd = {}
+    for name, extents in boundaries:
+
+        if name not in bnd:
+            bnd[name] = mesh.AddRegion(name, dim=1)
+        region = bnd[name]
+
+        r_, phi_ = extents
+        mask_r = (np.min(r_) < r) & (r < np.max(r_)) | np.isclose(r, np.min(r_)) | np.isclose(r, np.max(r_))
+        mask_phi = (
+            np.min(phi_) < phi) & (
+            phi < np.max(phi_)) | np.isclose(
+            phi, np.min(phi_)) | np.isclose(
+            phi, np.max(phi_))
+        index = np.ix_(mask_r, mask_phi)
+        meshpoints_ = meshpoints[index].flatten()
+
+        for begin, end in zip(meshpoints_[:-1], meshpoints_[1:]):
+            mesh.Add(Element1D([begin, end], index=region, edgenr=edge_map[r_]))
+
+    mesh.Compress()
+    return ngs.Mesh(mesh)

@@ -33,7 +33,7 @@ class ScalarTransportSolver(SolverConfiguration):
             "is_inviscid": False
         }
         DEFAULT.update(default)
-        
+
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
 
     @dream_configuration
@@ -75,13 +75,13 @@ class ScalarTransportSolver(SolverConfiguration):
 
     @convection_velocity.setter
     def convection_velocity(self, convection_velocity: ngs.CF):
-        
-        if not isinstance( convection_velocity, ngs.CF ):
-            convection_velocity = ngs.CF( tuple(convection_velocity) )
+
+        if not isinstance(convection_velocity, ngs.CF):
+            convection_velocity = ngs.CF(tuple(convection_velocity))
 
         if not convection_velocity.dim == self.mesh.dim:
             raise ValueError("Convection speed must match mesh dimension.")
-      
+
         self._convection_velocity = convection_velocity
 
     @dream_configuration
@@ -111,16 +111,11 @@ class ScalarTransportSolver(SolverConfiguration):
         self._is_inviscid = bool(is_inviscid)
 
     def get_convective_flux(self, U: transportfields) -> ngs.CF:
-        return self.convection_velocity * U.phi 
+        return self.convection_velocity * U.u
 
     @equation
-    def phi(self, U: transportfields):
+    def u(self, u: transportfields):
         r""" Returns the definition of our scalar variable: :math:`\phi`.
         """
-        if U.phi is not None:
-            return U.phi
-
-
-
-
-
+        if u.u is not None:
+            return u.u

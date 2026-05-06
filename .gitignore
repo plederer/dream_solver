@@ -1,9 +1,14 @@
 __pycache__/
 .mypy_cache/
 *.vscode
+*.csv
 *.dat
 *.ini
 *.ipynb_checkpoints
 *.swp
 *.vtu
 *.vtk
+*.pvd
+*.pvsm
+*.clean
+*.DS_Store

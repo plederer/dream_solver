@@ -1,7 +1,7 @@
 import argparse
 import ngsolve as ngs
 from netgen import occ
-from dream.compressible import CompressibleFlowSolver, FarField, Outflow, GRCBC, NSCBC, AdiabaticWall, Initial
+from dream.compressible_flow import CompressibleFlowSolver, FarField, Outflow, GRCBC, NSCBC, AdiabaticWall, Initial
 from dream.io import BoundarySensor
 
 ngs.ngsglobals.msg_level = 0
@@ -84,7 +84,7 @@ cfg.scaling = 'aerodynamic'
 
 cfg.fem = 'conservative_hdg'
 cfg.fem.order = 4
-cfg.fem.mixed_method = 'strain_heat'
+cfg.fem.viscous_treatment = 'mixed_strain_temperature_gradient'
 cfg.fem.scheme = 'bdf2'
 cfg.fem.bonus_int_order = cfg.fem.order
 
