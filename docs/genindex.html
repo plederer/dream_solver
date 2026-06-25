@@ -14,7 +14,7 @@
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=e1a75a79"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
@@ -72,7 +72,7 @@
 <li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.convection_velocity"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.convection_velocity</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.diffusion_coefficient</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.is_inviscid</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.phi"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.phi()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.u"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.u()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -148,7 +148,7 @@
 <li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html">config</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields"><code class="docutils literal notranslate"><span class="pre">transportfields</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields.phi"><code class="docutils literal notranslate"><span class="pre">transportfields.phi</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields.u"><code class="docutils literal notranslate"><span class="pre">transportfields.u</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -156,229 +156,254 @@
 <li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/index.html#scalar-transport-equation">Scalar transport equation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/scalar_transport/index.html#examples">Examples</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="examples/wave1d.html">Scalar wave equation in 1D</a></li>
-<li class="toctree-l3"><a class="reference internal" href="examples/gaussian_hill_farfield.html">Rotation of a Gaussian hill</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/compressible/index.html">compressible</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html">solver</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.fem"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.fem</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.mach_number</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.reynolds_number</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.prandtl_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.prandtl_number</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.equation_of_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.equation_of_state</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dynamic_viscosity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.scaling</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_reynolds_number()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.deviatoric_stress_tensor()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.drag_coefficient()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.lift_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.lift_coefficient()</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/compressible/index.html">compressible_flow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html">solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.fem"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.fem</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.mach_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.prandtl_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.prandtl_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.equation_of_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.equation_of_state</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dynamic_viscosity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.scaling</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.dimensional_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dimensional_fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_reynolds_number()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.deviatoric_stress_tensor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.drag_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.drag_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.lift_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.lift_coefficient()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.html">conservative</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.dg.html">dg</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.html">conservative</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.dg.html">dg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.dg.html#dream.compressible_flow.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html">hdg</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG_HDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG"><code class="docutils literal notranslate"><span class="pre">ConservativeHDG</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Inactive"><code class="docutils literal notranslate"><span class="pre">Inactive</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.MixedMethod"><code class="docutils literal notranslate"><span class="pre">MixedMethod</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.diffusion.html">diffusion</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenalty"><code class="docutils literal notranslate"><span class="pre">InteriorPenalty</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltyHDG"><code class="docutils literal notranslate"><span class="pre">InteriorPenaltyHDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltySDG"><code class="docutils literal notranslate"><span class="pre">InteriorPenaltySDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.ViscousTreatment"><code class="docutils literal notranslate"><span class="pre">ViscousTreatment</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.time.html">time</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.time.explicit.html">explicit</a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.time.imex.html">imex</a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.conservative.time.implicit.html">implicit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.hdg.html">hdg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG"><code class="docutils literal notranslate"><span class="pre">ConservativeHDG</span></code></a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html">eos</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.EquationOfState"><code class="docutils literal notranslate"><span class="pre">EquationOfState</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas"><code class="docutils literal notranslate"><span class="pre">IdealGas</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.density"><code class="docutils literal notranslate"><span class="pre">IdealGas.density()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.pressure"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.inner_energy()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">IdealGas.speed_of_sound()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_entropy()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.density_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.density_gradient()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.pressure_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure_gradient()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature_gradient()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.characteristic_amplitudes"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_amplitudes()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_from_primitive"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_from_primitive()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.primitive_from_conservative"><code class="docutils literal notranslate"><span class="pre">IdealGas.primitive_from_conservative()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.primitive_from_characteristic"><code class="docutils literal notranslate"><span class="pre">IdealGas.primitive_from_characteristic()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.characteristic_from_primitive"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_from_primitive()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_from_characteristic"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_from_characteristic()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.characteristic_from_conservative"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_from_conservative()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_x"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_convective_jacobian_x()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_y"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_convective_jacobian_y()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.isentropic_density"><code class="docutils literal notranslate"><span class="pre">IdealGas.isentropic_density()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.time.html">time</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html">explicit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.time.imex.html">imex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html">implicit</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html">riemann_solver</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.theta_0"><code class="docutils literal notranslate"><span class="pre">HLLEM.theta_0</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html">viscosity</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant.viscosity"><code class="docutils literal notranslate"><span class="pre">Constant.viscosity()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid.viscosity"><code class="docutils literal notranslate"><span class="pre">Inviscid.viscosity()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.sutherland_temperature"><code class="docutils literal notranslate"><span class="pre">Sutherland.sutherland_temperature</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.viscosity"><code class="docutils literal notranslate"><span class="pre">Sutherland.viscosity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html">eos</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.EquationOfState"><code class="docutils literal notranslate"><span class="pre">EquationOfState</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas"><code class="docutils literal notranslate"><span class="pre">IdealGas</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.density"><code class="docutils literal notranslate"><span class="pre">IdealGas.density()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.temperature"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.inner_energy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">IdealGas.speed_of_sound()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.thermodynamic_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.thermodynamic_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.density_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.density_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.temperature_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_inner_energy_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_amplitudes"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_amplitudes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_from_primitive"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_from_primitive()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_conservative"><code class="docutils literal notranslate"><span class="pre">IdealGas.primitive_from_conservative()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_characteristic"><code class="docutils literal notranslate"><span class="pre">IdealGas.primitive_from_characteristic()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_from_primitive"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_from_primitive()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_from_characteristic"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_from_characteristic()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_from_conservative"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_from_conservative()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_x"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_convective_jacobian_x()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_y"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_convective_jacobian_y()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.isentropic_density"><code class="docutils literal notranslate"><span class="pre">IdealGas.isentropic_density()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html">scaling</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_velocity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.velocity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_temperature</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.temperature</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Acoustic.pressure</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Acoustic.speed_of_sound</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html">riemann_solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_velocity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.velocity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_temperature</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.temperature</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.pressure</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_reynolds_number</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.speed_of_sound</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.theta_0"><code class="docutils literal notranslate"><span class="pre">HLLEM.theta_0</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_velocity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.velocity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_temperature</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.temperature</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.pressure"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.pressure</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_reynolds_number</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.speed_of_sound</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.farfield"><code class="docutils literal notranslate"><span class="pre">Scaling.farfield</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.reference_density"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_density</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.density"><code class="docutils literal notranslate"><span class="pre">Scaling.density</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible.config.html">config</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.AdiabaticWall"><code class="docutils literal notranslate"><span class="pre">AdiabaticWall</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC"><code class="docutils literal notranslate"><span class="pre">CBC</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.fields"><code class="docutils literal notranslate"><span class="pre">CBC.fields</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.target"><code class="docutils literal notranslate"><span class="pre">CBC.target</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.relaxation_factor"><code class="docutils literal notranslate"><span class="pre">CBC.relaxation_factor</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.tangential_relaxation"><code class="docutils literal notranslate"><span class="pre">CBC.tangential_relaxation</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.is_viscous_fluxes"><code class="docutils literal notranslate"><span class="pre">CBC.is_viscous_fluxes</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html">viscosity</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant.viscosity"><code class="docutils literal notranslate"><span class="pre">Constant.viscosity()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid.viscosity"><code class="docutils literal notranslate"><span class="pre">Inviscid.viscosity()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.fields"><code class="docutils literal notranslate"><span class="pre">FarField.fields</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.use_identity_jacobian"><code class="docutils literal notranslate"><span class="pre">FarField.use_identity_jacobian</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland.sutherland_temperature"><code class="docutils literal notranslate"><span class="pre">Sutherland.sutherland_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland.viscosity"><code class="docutils literal notranslate"><span class="pre">Sutherland.viscosity()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.GRCBC"><code class="docutils literal notranslate"><span class="pre">GRCBC</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.InviscidWall"><code class="docutils literal notranslate"><span class="pre">InviscidWall</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.IsothermalWall"><code class="docutils literal notranslate"><span class="pre">IsothermalWall</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.IsothermalWall.fields"><code class="docutils literal notranslate"><span class="pre">IsothermalWall.fields</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.NSCBC"><code class="docutils literal notranslate"><span class="pre">NSCBC</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.NSCBC.length"><code class="docutils literal notranslate"><span class="pre">NSCBC.length</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html">scaling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Acoustic.pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Acoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.Outflow"><code class="docutils literal notranslate"><span class="pre">Outflow</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.Outflow.fields"><code class="docutils literal notranslate"><span class="pre">Outflow.fields</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.speed_of_sound</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho"><code class="docutils literal notranslate"><span class="pre">flowfields.rho</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.u"><code class="docutils literal notranslate"><span class="pre">flowfields.u</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_u"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_u</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.p"><code class="docutils literal notranslate"><span class="pre">flowfields.p</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.T"><code class="docutils literal notranslate"><span class="pre">flowfields.T</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_E"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_E</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.E"><code class="docutils literal notranslate"><span class="pre">flowfields.E</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_Ei"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_Ei</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.Ei"><code class="docutils literal notranslate"><span class="pre">flowfields.Ei</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_Ek"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_Ek</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.Ek"><code class="docutils literal notranslate"><span class="pre">flowfields.Ek</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_H"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_H</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.H"><code class="docutils literal notranslate"><span class="pre">flowfields.H</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.c"><code class="docutils literal notranslate"><span class="pre">flowfields.c</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_rho"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_u"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_u</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_rho_u"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho_u</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_p"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_p</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_T"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_T</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_rho_E"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho_E</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.eps"><code class="docutils literal notranslate"><span class="pre">flowfields.eps</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.pressure"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.speed_of_sound</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.density"><code class="docutils literal notranslate"><span class="pre">Scaling.density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_density"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_pressure"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_time_scale"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_time_scale</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html">config</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.AdiabaticWall"><code class="docutils literal notranslate"><span class="pre">AdiabaticWall</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC"><code class="docutils literal notranslate"><span class="pre">CBC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.fields"><code class="docutils literal notranslate"><span class="pre">CBC.fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.target"><code class="docutils literal notranslate"><span class="pre">CBC.target</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.relaxation_factor"><code class="docutils literal notranslate"><span class="pre">CBC.relaxation_factor</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.tangential_relaxation"><code class="docutils literal notranslate"><span class="pre">CBC.tangential_relaxation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.is_viscous_fluxes"><code class="docutils literal notranslate"><span class="pre">CBC.is_viscous_fluxes</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Dirichlet"><code class="docutils literal notranslate"><span class="pre">Dirichlet</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.fields"><code class="docutils literal notranslate"><span class="pre">FarField.fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.use_identity_jacobian"><code class="docutils literal notranslate"><span class="pre">FarField.use_identity_jacobian</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Force"><code class="docutils literal notranslate"><span class="pre">Force</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.GRCBC"><code class="docutils literal notranslate"><span class="pre">GRCBC</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Inflow"><code class="docutils literal notranslate"><span class="pre">Inflow</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InterfaceBC"><code class="docutils literal notranslate"><span class="pre">InterfaceBC</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InviscidWall"><code class="docutils literal notranslate"><span class="pre">InviscidWall</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall"><code class="docutils literal notranslate"><span class="pre">IsothermalWall</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall.fields"><code class="docutils literal notranslate"><span class="pre">IsothermalWall.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC"><code class="docutils literal notranslate"><span class="pre">NSCBC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC.length"><code class="docutils literal notranslate"><span class="pre">NSCBC.length</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow"><code class="docutils literal notranslate"><span class="pre">Outflow</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow.fields"><code class="docutils literal notranslate"><span class="pre">Outflow.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields"><code class="docutils literal notranslate"><span class="pre">dimensionalfields</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.c"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.c</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.t"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.t</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.rho"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.rho</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.u"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.T"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.T</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.L"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.L</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.mu"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.mu</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.k"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.k</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.c_p"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.c_p</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho"><code class="docutils literal notranslate"><span class="pre">flowfields.rho</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.u"><code class="docutils literal notranslate"><span class="pre">flowfields.u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_u"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.p"><code class="docutils literal notranslate"><span class="pre">flowfields.p</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.T"><code class="docutils literal notranslate"><span class="pre">flowfields.T</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_E"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_E</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.E"><code class="docutils literal notranslate"><span class="pre">flowfields.E</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_Ei"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_Ei</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.Ei"><code class="docutils literal notranslate"><span class="pre">flowfields.Ei</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_Ek"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_Ek</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.Ek"><code class="docutils literal notranslate"><span class="pre">flowfields.Ek</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_H"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_H</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.H"><code class="docutils literal notranslate"><span class="pre">flowfields.H</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.c"><code class="docutils literal notranslate"><span class="pre">flowfields.c</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_u"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho_u"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho_u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_p"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_p</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_T"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_T</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho_E"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho_E</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.eps"><code class="docutils literal notranslate"><span class="pre">flowfields.eps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.omega"><code class="docutils literal notranslate"><span class="pre">flowfields.omega</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -430,6 +455,7 @@
  | <a href="#G"><strong>G</strong></a>
  | <a href="#H"><strong>H</strong></a>
  | <a href="#I"><strong>I</strong></a>
+ | <a href="#K"><strong>K</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
@@ -445,7 +471,7 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic">Acoustic (class in dream.compressible.scaling)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic">Acoustic (class in dream.compressible_flow.scaling)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions">add_boundary_conditions() (ScalarTransportFiniteElementMethod method)</a>
 </li>
@@ -463,7 +489,7 @@
       </ul></li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions">add_domain_conditions() (ScalarTransportFiniteElementMethod method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.add_farfield_formulation">add_farfield_formulation() (ConservativeHDG method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG.add_farfield_formulation">add_farfield_formulation() (ConservativeHDG method)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation">(DG method)</a>
@@ -481,11 +507,13 @@
       </ul></li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms">add_symbolic_spatial_forms() (ScalarTransportFiniteElementMethod method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.AdiabaticWall">AdiabaticWall (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.ExplicitSchemes.add_symbolic_temporal_forms">add_symbolic_temporal_forms() (ExplicitSchemes method)</a>, <a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes.add_symbolic_temporal_forms">[1]</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic">Aeroacoustic (class in dream.compressible.scaling)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.AdiabaticWall">AdiabaticWall (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic">Aerodynamic (class in dream.compressible.scaling)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic">Aeroacoustic (class in dream.compressible_flow.scaling)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic">Aerodynamic (class in dream.compressible_flow.scaling)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -493,55 +521,63 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.BDF2">BDF2 (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.BDF2">BDF2 (class in dream.compressible_flow.conservative.time.implicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.BDF2">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.BDF3">BDF3 (class in dream.compressible_flow.conservative.time.implicit)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.c">c (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.c">c (dimensionalfields attribute)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.c">(flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC">CBC (class in dream.compressible.config)</a>
+      </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.c_p">c_p (dimensionalfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.characteristic_amplitudes">characteristic_amplitudes() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC">CBC (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.characteristic_from_conservative">characteristic_from_conservative() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_amplitudes">characteristic_amplitudes() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.characteristic_from_primitive">characteristic_from_primitive() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_from_conservative">characteristic_from_conservative() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod">CompressibleFiniteElementMethod (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_from_primitive">characteristic_from_primitive() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver">CompressibleFlowSolver (class in dream.compressible.solver)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod">CompressibleFiniteElementMethod (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_x">conservative_convective_jacobian_x() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver">CompressibleFlowSolver (class in dream.compressible_flow.solver)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_convective_jacobian_y">conservative_convective_jacobian_y() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_x">conservative_convective_jacobian_x() (IdealGas method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_from_characteristic">conservative_from_characteristic() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_y">conservative_convective_jacobian_y() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.conservative_from_primitive">conservative_from_primitive() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_from_characteristic">conservative_from_characteristic() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.dg.html#dream.compressible.conservative.dg.ConservativeDG">ConservativeDG (class in dream.compressible.conservative.dg)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_from_primitive">conservative_from_primitive() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG">ConservativeDG_HDG (class in dream.compressible.conservative.hdg)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.dg.html#dream.compressible_flow.conservative.dg.ConservativeDG">ConservativeDG (class in dream.compressible_flow.conservative.dg)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.ConservativeFiniteElementMethod">ConservativeFiniteElementMethod (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.ConservativeFiniteElementMethod">ConservativeFiniteElementMethod (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG">ConservativeHDG (class in dream.compressible.conservative.hdg)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG">ConservativeHDG (class in dream.compressible_flow.conservative.hdg)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant">Constant (class in dream.compressible.viscosity)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant">Constant (class in dream.compressible_flow.viscosity)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.convection_velocity">convection_velocity (ScalarTransportSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.CRK4">CRK4 (class in dream.compressible.conservative.time.explicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.CRK4">CRK4 (class in dream.compressible_flow.conservative.time.explicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.CRK4">(class in dream.scalar_transport.time.explicit)</a>
@@ -553,121 +589,134 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.density">density (Scaling property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.density">density (Scaling property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.density">density() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.density">density() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.density_gradient">density_gradient() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.density_gradient">density_gradient() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.deviatoric_stress_tensor">deviatoric_stress_tensor() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.deviatoric_stress_tensor">deviatoric_stress_tensor() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG">DG (class in dream.scalar_transport.spatial)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient">diffusion_coefficient (ScalarTransportSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK34_LDD">DIRK34_LDD (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.dimensional_fields">dimensional_fields (CompressibleFlowSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRK43_WSO2">DIRK43_WSO2 (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields">dimensionalfields (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.DIRKSchemes">DIRKSchemes (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Dirichlet">Dirichlet (class in dream.compressible_flow.config)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.DIRK34_LDD">DIRK34_LDD (class in dream.compressible_flow.conservative.time.implicit)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.DIRK43_WSO2">DIRK43_WSO2 (class in dream.compressible_flow.conservative.time.implicit)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.DIRKSchemes">DIRKSchemes (class in dream.compressible_flow.conservative.time.implicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.drag_coefficient">drag_coefficient() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.drag_coefficient">drag_coefficient() (CompressibleFlowSolver method)</a>
 </li>
       <li>
-    dream.compressible.config
+    dream.compressible_flow.config
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.config.html#module-dream.compressible.config">module</a>
-</li>
-      </ul></li>
-      <li>
-    dream.compressible.conservative
-
-      <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.html#module-dream.compressible.conservative">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#module-dream.compressible_flow.config">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.conservative.dg
+    dream.compressible_flow.conservative
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.dg.html#module-dream.compressible.conservative.dg">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.html#module-dream.compressible_flow.conservative">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.conservative.hdg
+    dream.compressible_flow.conservative.dg
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#module-dream.compressible.conservative.hdg">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.dg.html#module-dream.compressible_flow.conservative.dg">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.conservative.time
+    dream.compressible_flow.conservative.diffusion
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.html#module-dream.compressible.conservative.time">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#module-dream.compressible_flow.conservative.diffusion">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.conservative.time.explicit
+    dream.compressible_flow.conservative.hdg
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#module-dream.compressible.conservative.time.explicit">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#module-dream.compressible_flow.conservative.hdg">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.conservative.time.imex
+    dream.compressible_flow.conservative.time
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.imex.html#module-dream.compressible.conservative.time.imex">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.html#module-dream.compressible_flow.conservative.time">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.conservative.time.implicit
+    dream.compressible_flow.conservative.time.explicit
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#module-dream.compressible.conservative.time.implicit">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#module-dream.compressible_flow.conservative.time.explicit">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.compressible_flow.conservative.time.imex
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.imex.html#module-dream.compressible_flow.conservative.time.imex">module</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
-    dream.compressible.eos
+    dream.compressible_flow.conservative.time.implicit
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.eos.html#module-dream.compressible.eos">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#module-dream.compressible_flow.conservative.time.implicit">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.riemann_solver
+    dream.compressible_flow.eos
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#module-dream.compressible.riemann_solver">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.eos.html#module-dream.compressible_flow.eos">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.scaling
+    dream.compressible_flow.riemann_solver
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#module-dream.compressible.scaling">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#module-dream.compressible_flow.riemann_solver">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.solver
+    dream.compressible_flow.scaling
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.solver.html#module-dream.compressible.solver">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#module-dream.compressible_flow.scaling">module</a>
 </li>
       </ul></li>
       <li>
-    dream.compressible.viscosity
+    dream.compressible_flow.solver
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.viscosity.html#module-dream.compressible.viscosity">module</a>
+        <li><a href="modules/compressible/dream.compressible_flow.solver.html#module-dream.compressible_flow.solver">module</a>
+</li>
+      </ul></li>
+      <li>
+    dream.compressible_flow.viscosity
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#module-dream.compressible_flow.viscosity">module</a>
 </li>
       </ul></li>
       <li>
@@ -726,9 +775,9 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#module-dream.scalar_transport.time.implicit">module</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.dynamic_viscosity">dynamic_viscosity (CompressibleFlowSolver property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.dynamic_viscosity">dynamic_viscosity (CompressibleFlowSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.DynamicViscosity">DynamicViscosity (class in dream.compressible.viscosity)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.DynamicViscosity">DynamicViscosity (class in dream.compressible_flow.viscosity)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -736,27 +785,27 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.E">E (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.E">E (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.Ei">Ei (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.Ei">Ei (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.Ek">Ek (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.Ek">Ek (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.eps">eps (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.eps">eps (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.equation_of_state">equation_of_state (CompressibleFlowSolver property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.equation_of_state">equation_of_state (CompressibleFlowSolver property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.EquationOfState">EquationOfState (class in dream.compressible.eos)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.EquationOfState">EquationOfState (class in dream.compressible_flow.eos)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.ExplicitEuler">ExplicitEuler (class in dream.compressible.conservative.time.explicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.ExplicitEuler">ExplicitEuler (class in dream.compressible_flow.conservative.time.explicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitEuler">(class in dream.scalar_transport.time.explicit)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.ExplicitSchemes">ExplicitSchemes (class in dream.compressible.conservative.time.explicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.ExplicitSchemes">ExplicitSchemes (class in dream.compressible_flow.conservative.time.explicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes">(class in dream.scalar_transport.time.explicit)</a>
@@ -768,33 +817,33 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField">FarField (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField">FarField (class in dream.compressible_flow.config)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.FarField">(class in dream.scalar_transport.config)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.farfield">farfield (Scaling property)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.fem">fem (CompressibleFlowSolver property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.fem">fem (CompressibleFlowSolver property)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.fem">(ScalarTransportSolver property)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.fields">fields (CBC property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.fields">fields (CBC property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.fields">(FarField property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.fields">(FarField property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.IsothermalWall.fields">(IsothermalWall property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall.fields">(IsothermalWall property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.Outflow.fields">(Outflow property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow.fields">(Outflow property)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields">flowfields (class in dream.compressible.config)</a>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields">flowfields (class in dream.compressible_flow.config)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Force">Force (class in dream.compressible_flow.config)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -802,9 +851,9 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_convective_flux">get_convective_flux() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_convective_flux">get_convective_flux() (CompressibleFlowSolver method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.get_convective_numerical_flux">get_convective_numerical_flux() (ConservativeHDG method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG.get_convective_numerical_flux">get_convective_numerical_flux() (ConservativeHDG method)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_numerical_flux_dg">get_convective_numerical_flux_dg() (LaxFriedrich method)</a>
 
@@ -820,67 +869,69 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg">(RiemannSolver method)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg">get_convective_stabilisation_matrix_hdg() (HLL method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg">get_convective_stabilisation_matrix_hdg() (HLL method)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg">(HLLEM method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg">(HLLEM method)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg">(LaxFriedrich method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg">(LaxFriedrich method)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg">(Roe method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg">(Roe method)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg">(Upwind method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg">(Upwind method)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_diffusive_flux">get_diffusive_flux() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_diffusive_flux">get_diffusive_flux() (CompressibleFlowSolver method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.get_diffusive_numerical_flux">get_diffusive_numerical_flux() (ConservativeHDG method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenalty.get_diffusive_flux_from_conservative_jump">get_diffusive_flux_from_conservative_jump() (InteriorPenalty method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.get_domain_boundary_mask">get_domain_boundary_mask() (CompressibleFiniteElementMethod method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat.get_diffusive_numerical_flux">get_diffusive_numerical_flux() (StrainHeat method)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod.get_domain_boundary_mask">get_domain_boundary_mask() (CompressibleFiniteElementMethod method)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask">(ScalarTransportFiniteElementMethod method)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_farfield_fields">get_farfield_fields() (CompressibleFlowSolver method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_mach_number">get_local_mach_number() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_farfield_fields">get_farfield_fields() (CompressibleFlowSolver method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_local_reynolds_number">get_local_reynolds_number() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_mach_number">get_local_mach_number() (CompressibleFlowSolver method)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_reynolds_number">get_local_reynolds_number() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient">get_penalty_coefficient() (ScalarTransportFiniteElementMethod method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg">get_simplified_convective_stabilisation_matrix_hdg() (HLL method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg">get_simplified_convective_stabilisation_matrix_hdg() (HLL method)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg">(HLLEM method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg">(HLLEM method)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg">(LaxFriedrich method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg">(LaxFriedrich method)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg">(Roe method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg">(Roe method)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg">(Upwind method)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg">(Upwind method)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.get_solution_fields">get_solution_fields() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_solution_fields">get_solution_fields() (CompressibleFlowSolver method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_p">grad_p (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_p">grad_p (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_rho">grad_rho (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho">grad_rho (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_rho_E">grad_rho_E (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho_E">grad_rho_E (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_rho_u">grad_rho_u (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho_u">grad_rho_u (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_T">grad_T (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_T">grad_T (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.grad_u">grad_u (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_u">grad_u (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Gradient">Gradient (class in dream.compressible.conservative.hdg)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.Gradient">Gradient (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.GRCBC">GRCBC (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.GRCBC">GRCBC (class in dream.compressible_flow.config)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -888,15 +939,15 @@
 <h2 id="H">H</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.H">H (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.H">H (flowfields attribute)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG">HDG (class in dream.scalar_transport.spatial)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLL">HLL (class in dream.compressible.riemann_solver)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL">HLL (class in dream.compressible_flow.riemann_solver)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM">HLLEM (class in dream.compressible.riemann_solver)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM">HLLEM (class in dream.compressible_flow.riemann_solver)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -904,51 +955,71 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas">IdealGas (class in dream.compressible.eos)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas">IdealGas (class in dream.compressible_flow.eos)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.imex.html#dream.compressible.conservative.time.imex.IMEXRK_ARS443">IMEXRK_ARS443 (class in dream.compressible.conservative.time.imex)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.imex.html#dream.compressible_flow.conservative.time.imex.IMEXRK_ARS443">IMEXRK_ARS443 (class in dream.compressible_flow.conservative.time.imex)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRK_ARS443">(class in dream.scalar_transport.time.imex)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.imex.html#dream.compressible.conservative.time.imex.IMEXRKSchemes">IMEXRKSchemes (class in dream.compressible.conservative.time.imex)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.imex.html#dream.compressible_flow.conservative.time.imex.IMEXRKSchemes">IMEXRKSchemes (class in dream.compressible_flow.conservative.time.imex)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRKSchemes">(class in dream.scalar_transport.time.imex)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.ImplicitEuler">ImplicitEuler (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.ImplicitEuler">ImplicitEuler (class in dream.compressible_flow.conservative.time.implicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitEuler">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.ImplicitSchemes">ImplicitSchemes (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.ImplicitSchemes">ImplicitSchemes (class in dream.compressible_flow.conservative.time.implicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitSchemes">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Inflow">Inflow (class in dream.compressible_flow.config)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.inner_energy">inner_energy() (IdealGas method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.Inactive">Inactive (class in dream.compressible.conservative.hdg)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InterfaceBC">InterfaceBC (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.inner_energy">inner_energy() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenalty.interior_penalty_coefficient">interior_penalty_coefficient (InteriorPenalty property)</a>
+
+      <ul>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.interior_penalty_coefficient">(ScalarTransportFiniteElementMethod property)</a>
 </li>
-      <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.interior_penalty_coefficient">interior_penalty_coefficient (ScalarTransportFiniteElementMethod property)</a>
+      </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenalty">InteriorPenalty (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid">Inviscid (class in dream.compressible.viscosity)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltyHDG">InteriorPenaltyHDG (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.InviscidWall">InviscidWall (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltySDG">InteriorPenaltySDG (class in dream.compressible_flow.conservative.diffusion)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid">Inviscid (class in dream.compressible_flow.viscosity)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InviscidWall">InviscidWall (class in dream.compressible_flow.config)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid">is_inviscid (ScalarTransportSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.is_viscous_fluxes">is_viscous_fluxes (CBC property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.is_viscous_fluxes">is_viscous_fluxes (CBC property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.isentropic_density">isentropic_density() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.isentropic_density">isentropic_density() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.IsothermalWall">IsothermalWall (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall">IsothermalWall (class in dream.compressible_flow.config)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="K">K</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.k">k (dimensionalfields attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -956,7 +1027,9 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.LaxFriedrich">LaxFriedrich (class in dream.compressible.riemann_solver)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.L">L (dimensionalfields attribute)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich">LaxFriedrich (class in dream.compressible_flow.riemann_solver)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich">(class in dream.scalar_transport.riemann_solver)</a>
@@ -964,9 +1037,9 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.NSCBC.length">length (NSCBC property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC.length">length (NSCBC property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.lift_coefficient">lift_coefficient() (CompressibleFlowSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.lift_coefficient">lift_coefficient() (CompressibleFlowSolver method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -974,41 +1047,39 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.mach_number">mach_number (CompressibleFlowSolver property)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.mixed_method">mixed_method (ConservativeHDG property)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.MixedMethod">MixedMethod (class in dream.compressible.conservative.hdg)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.mach_number">mach_number (CompressibleFlowSolver property)</a>
 </li>
       <li>
     module
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.config.html#module-dream.compressible.config">dream.compressible.config</a>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#module-dream.compressible_flow.config">dream.compressible_flow.config</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.html#module-dream.compressible.conservative">dream.compressible.conservative</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.html#module-dream.compressible_flow.conservative">dream.compressible_flow.conservative</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.dg.html#module-dream.compressible.conservative.dg">dream.compressible.conservative.dg</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.dg.html#module-dream.compressible_flow.conservative.dg">dream.compressible_flow.conservative.dg</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#module-dream.compressible.conservative.hdg">dream.compressible.conservative.hdg</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#module-dream.compressible_flow.conservative.diffusion">dream.compressible_flow.conservative.diffusion</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.html#module-dream.compressible.conservative.time">dream.compressible.conservative.time</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#module-dream.compressible_flow.conservative.hdg">dream.compressible_flow.conservative.hdg</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#module-dream.compressible.conservative.time.explicit">dream.compressible.conservative.time.explicit</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.html#module-dream.compressible_flow.conservative.time">dream.compressible_flow.conservative.time</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.imex.html#module-dream.compressible.conservative.time.imex">dream.compressible.conservative.time.imex</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#module-dream.compressible_flow.conservative.time.explicit">dream.compressible_flow.conservative.time.explicit</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#module-dream.compressible.conservative.time.implicit">dream.compressible.conservative.time.implicit</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.imex.html#module-dream.compressible_flow.conservative.time.imex">dream.compressible_flow.conservative.time.imex</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.eos.html#module-dream.compressible.eos">dream.compressible.eos</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#module-dream.compressible_flow.conservative.time.implicit">dream.compressible_flow.conservative.time.implicit</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.riemann_solver.html#module-dream.compressible.riemann_solver">dream.compressible.riemann_solver</a>
+        <li><a href="modules/compressible/dream.compressible_flow.eos.html#module-dream.compressible_flow.eos">dream.compressible_flow.eos</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#module-dream.compressible.scaling">dream.compressible.scaling</a>
+        <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#module-dream.compressible_flow.riemann_solver">dream.compressible_flow.riemann_solver</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.solver.html#module-dream.compressible.solver">dream.compressible.solver</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#module-dream.compressible_flow.scaling">dream.compressible_flow.scaling</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.viscosity.html#module-dream.compressible.viscosity">dream.compressible.viscosity</a>
+        <li><a href="modules/compressible/dream.compressible_flow.solver.html#module-dream.compressible_flow.solver">dream.compressible_flow.solver</a>
+</li>
+        <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#module-dream.compressible_flow.viscosity">dream.compressible_flow.viscosity</a>
 </li>
         <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#module-dream.scalar_transport.config">dream.scalar_transport.config</a>
 </li>
@@ -1028,12 +1099,16 @@
 </li>
       </ul></li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.mu">mu (dimensionalfields attribute)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.NSCBC">NSCBC (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC">NSCBC (class in dream.compressible_flow.config)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1041,7 +1116,11 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.Outflow">Outflow (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.omega">omega (flowfields attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow">Outflow (class in dream.compressible_flow.config)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1049,33 +1128,29 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.p">p (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.p">p (flowfields attribute)</a>
 </li>
-      <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields.phi">phi (transportfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.PML">PML (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.phi">phi() (ScalarTransportSolver method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.prandtl_number">prandtl_number (CompressibleFlowSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.PML">PML (class in dream.compressible.config)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.prandtl_number">prandtl_number (CompressibleFlowSolver property)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.pressure">pressure (Acoustic property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.pressure">pressure (Acoustic property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.pressure">(Aeroacoustic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.pressure">(Aeroacoustic property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.pressure">(Aerodynamic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.pressure">(Aerodynamic property)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.pressure">pressure() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure">pressure() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.pressure_gradient">pressure_gradient() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure_gradient">pressure_gradient() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.primitive_from_characteristic">primitive_from_characteristic() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_characteristic">primitive_from_characteristic() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.primitive_from_conservative">primitive_from_conservative() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_conservative">primitive_from_conservative() (IdealGas method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1083,63 +1158,81 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling.reference_density">reference_density (Scaling property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_density">reference_density (Scaling property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_reynolds_number">reference_reynolds_number (Acoustic property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_pressure">reference_pressure (Scaling property)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_reynolds_number">reference_reynolds_number (Acoustic property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_reynolds_number">(Aeroacoustic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_reynolds_number">(Aeroacoustic property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_reynolds_number">(Aerodynamic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_reynolds_number">(Aerodynamic property)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_temperature">reference_temperature (Acoustic property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_temperature">reference_temperature (Acoustic property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_temperature">(Aeroacoustic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_temperature">(Aeroacoustic property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_temperature">(Aerodynamic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_temperature">(Aerodynamic property)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.reference_velocity">reference_velocity (Acoustic property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_time_scale">reference_time_scale (Scaling property)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_velocity">reference_velocity (Acoustic property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.reference_velocity">(Aeroacoustic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_velocity">(Aeroacoustic property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.reference_velocity">(Aerodynamic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_velocity">(Aerodynamic property)</a>
+</li>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_velocity">(Scaling property)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.relaxation_factor">relaxation_factor (CBC property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.relaxation_factor">relaxation_factor (CBC property)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.reynolds_number">reynolds_number (CompressibleFlowSolver property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.reynolds_number">reynolds_number (CompressibleFlowSolver property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.rho">rho (dimensionalfields attribute)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho">(flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho">rho (flowfields attribute)</a>
+      </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_E">rho_E (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_E">rho_E (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_Ei">rho_Ei (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_Ei">rho_Ei (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_Ek">rho_Ek (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_Ek">rho_Ek (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_H">rho_H (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_H">rho_H (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_u">rho_u (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.rho_u">rho_u (flowfields attribute)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.riemann_solver">riemann_solver (CompressibleFlowSolver property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.riemann_solver">riemann_solver (CompressibleFlowSolver property)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.riemann_solver">(ScalarTransportSolver property)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.RiemannSolver">RiemannSolver (class in dream.compressible.riemann_solver)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.RiemannSolver">RiemannSolver (class in dream.compressible_flow.riemann_solver)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver">(class in dream.scalar_transport.riemann_solver)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Roe">Roe (class in dream.compressible.riemann_solver)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS22">RK_ARS22 (class in dream.compressible_flow.conservative.time.explicit)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS232">RK_ARS232 (class in dream.compressible_flow.conservative.time.explicit)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS33">RK_ARS33 (class in dream.compressible_flow.conservative.time.explicit)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS43">RK_ARS43 (class in dream.compressible_flow.conservative.time.explicit)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe">Roe (class in dream.compressible_flow.riemann_solver)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1151,35 +1244,35 @@
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver">ScalarTransportSolver (class in dream.scalar_transport.solver)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Scaling">Scaling (class in dream.compressible.scaling)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling">Scaling (class in dream.compressible_flow.scaling)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.solver.html#dream.compressible.solver.CompressibleFlowSolver.scaling">scaling (CompressibleFlowSolver property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.scaling">scaling (CompressibleFlowSolver property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeDG_HDG.scheme">scheme (ConservativeDG_HDG property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG.scheme">scheme (ConservativeHDG property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.ConservativeHDG.scheme">(ConservativeHDG property)</a>
-</li>
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme">(DG property)</a>
 </li>
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme">(HDG property)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK22">SDIRK22 (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.SDIRK22">SDIRK22 (class in dream.compressible_flow.conservative.time.implicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK22">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK33">SDIRK33 (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.SDIRK33">SDIRK33 (class in dream.compressible_flow.conservative.time.implicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK33">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.implicit.html#dream.compressible.conservative.time.implicit.SDIRK54">SDIRK54 (class in dream.compressible.conservative.time.implicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.SDIRK43">SDIRK43 (class in dream.compressible_flow.conservative.time.implicit)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CompressibleFiniteElementMethod.set_boundary_conditions">set_boundary_conditions() (CompressibleFiniteElementMethod method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.SDIRK54">SDIRK54 (class in dream.compressible_flow.conservative.time.implicit)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod.set_boundary_conditions">set_boundary_conditions() (CompressibleFiniteElementMethod method)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.set_boundary_conditions">(ScalarTransportFiniteElementMethod method)</a>
@@ -1188,34 +1281,42 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.set_initial_conditions">set_initial_conditions() (HDG method)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_entropy">specific_entropy() (IdealGas method)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.specific_inner_energy">specific_inner_energy() (IdealGas method)</a>
-</li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.speed_of_sound">speed_of_sound (Acoustic property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.speed_of_sound">(Aeroacoustic property)</a>
-</li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.speed_of_sound">(Aerodynamic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat.set_initial_conditions">(StrainHeat method)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.speed_of_sound">speed_of_sound() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.DIRKSchemes.setup_stage_definitions">setup_stage_definitions() (DIRKSchemes method)</a>, <a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes.setup_stage_definitions">[1]</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.conservative.time.explicit.html#dream.compressible.conservative.time.explicit.SSPRK3">SSPRK3 (class in dream.compressible.conservative.time.explicit)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_entropy">specific_entropy() (IdealGas method)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_inner_energy">specific_inner_energy() (IdealGas method)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_inner_energy_gradient">specific_inner_energy_gradient() (IdealGas method)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.speed_of_sound">speed_of_sound (Acoustic property)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.speed_of_sound">(Aeroacoustic property)</a>
+</li>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.speed_of_sound">(Aerodynamic property)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.speed_of_sound">speed_of_sound() (IdealGas method)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.SSPRK3">SSPRK3 (class in dream.compressible_flow.conservative.time.explicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3">(class in dream.scalar_transport.time.explicit)</a>
 </li>
       </ul></li>
-      <li><a href="modules/compressible/dream.compressible.conservative.hdg.html#dream.compressible.conservative.hdg.StrainHeat">StrainHeat (class in dream.compressible.conservative.hdg)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat">StrainHeat (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland">Sutherland (class in dream.compressible.viscosity)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland">Sutherland (class in dream.compressible_flow.viscosity)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.sutherland_temperature">sutherland_temperature (Sutherland property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland.sutherland_temperature">sutherland_temperature (Sutherland property)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.Symmetry">Symmetry (class in dream.compressible.config)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Symmetry">Symmetry (class in dream.compressible_flow.config)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1223,27 +1324,33 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.T">T (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.T">T (dimensionalfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.tangential_relaxation">tangential_relaxation (CBC property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.t">t (dimensionalfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.CBC.target">target (CBC property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.T">T (flowfields attribute)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.temperature">temperature (Acoustic property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.tangential_relaxation">tangential_relaxation (CBC property)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.target">target (CBC property)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.temperature">temperature (Acoustic property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.temperature">(Aeroacoustic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.temperature">(Aeroacoustic property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.temperature">(Aerodynamic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.temperature">(Aerodynamic property)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature">temperature() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.temperature">temperature() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.eos.html#dream.compressible.eos.IdealGas.temperature_gradient">temperature_gradient() (IdealGas method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.temperature_gradient">temperature_gradient() (IdealGas method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.HLLEM.theta_0">theta_0 (HLLEM property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.thermodynamic_entropy">thermodynamic_entropy() (IdealGas method)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.theta_0">theta_0 (HLLEM property)</a>
 </li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields">transportfields (class in dream.scalar_transport.config)</a>
 </li>
@@ -1253,13 +1360,29 @@
 <h2 id="U">U</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.flowfields.u">u (flowfields attribute)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.u">u (dimensionalfields attribute)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.u">(flowfields attribute)</a>
+</li>
+        <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields.u">(transportfields attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.u">u() (ScalarTransportSolver method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.riemann_solver.html#dream.compressible.riemann_solver.Upwind">Upwind (class in dream.compressible.riemann_solver)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.DIRK34_LDD.update_final_stage_solution">update_final_stage_solution() (DIRK34_LDD method)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS232.update_final_stage_solution">(RK_ARS232 method)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible.config.html#dream.compressible.config.FarField.use_identity_jacobian">use_identity_jacobian (FarField property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS33.update_final_stage_solution">(RK_ARS33 method)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind">Upwind (class in dream.compressible_flow.riemann_solver)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.use_identity_jacobian">use_identity_jacobian (FarField property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1267,24 +1390,28 @@
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Acoustic.velocity">velocity (Acoustic property)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.velocity">velocity (Acoustic property)</a>
 
       <ul>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aeroacoustic.velocity">(Aeroacoustic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.velocity">(Aeroacoustic property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.scaling.html#dream.compressible.scaling.Aerodynamic.velocity">(Aerodynamic property)</a>
+        <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.velocity">(Aerodynamic property)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant.viscosity">viscosity() (Constant method)</a>
+
+      <ul>
+        <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid.viscosity">(Inviscid method)</a>
+</li>
+        <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland.viscosity">(Sutherland method)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Constant.viscosity">viscosity() (Constant method)</a>
-
-      <ul>
-        <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Inviscid.viscosity">(Inviscid method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG.viscous_treatment">viscous_treatment (ConservativeHDG property)</a>
 </li>
-        <li><a href="modules/compressible/dream.compressible.viscosity.html#dream.compressible.viscosity.Sutherland.viscosity">(Sutherland method)</a>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.ViscousTreatment">ViscousTreatment (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
-      </ul></li>
   </ul></td>
 </tr></table>
 

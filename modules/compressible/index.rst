@@ -1,6 +1,6 @@
-compressible
+compressible_flow
 ========================================
-.. currentmodule:: dream.compressible
+.. currentmodule:: dream.compressible_flow
 
 .. note:: We currently only support two-dimensional domains.
 
@@ -26,3 +26,4 @@ Examples
 
     ../../examples/euler_around_naca.ipynb
     ../../examples/isentropic_vortex.ipynb
+

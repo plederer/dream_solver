@@ -23,4 +23,4 @@ Examples
     :maxdepth: 1
 
     ../../examples/wave1d.ipynb
-    ../../examples/gaussian_hill_farfield.ipynb
+

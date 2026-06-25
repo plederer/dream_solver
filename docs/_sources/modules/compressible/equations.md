@@ -20,7 +20,7 @@ In a general form the convective $\vec{F}$ and the viscous fluxes $\vec{G}$ are 
 \end{align*}
 where $p$ denotes the pressure, $H = E + p/\rho$ the specific enthalpy, $\mat{\tau}$ the deviatoric stress tensor, and $\vec{q}$ the heat flux vector. 
 
-To close the system of equations we need to specify the equation of state (see {py:class}`~dream.compressible.eos`) and the constitutive relations for the deviatoric stress tensor $\mat{\tau}$ and the heat flux vector $\vec{q}$ (see {py:class}`~dream.compressible.viscosity`).
+To close the system of equations we need to specify the equation of state (see {py:class}`~dream.compressible_flow.eos`) and the constitutive relations for the deviatoric stress tensor $\mat{\tau}$ and the heat flux vector $\vec{q}$ (see {py:class}`~dream.compressible_flow.viscosity`).
 
 ## Quasi-linear Euler equations
 The hyperbolic nature of the Navier-Stokes equations with respect to time lies in the Euler

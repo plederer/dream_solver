@@ -61,7 +61,7 @@ class SomeCFDSolver:
         self._reynolds_number = value
 ```
 
-See e.g. {class}`~dream.compressible.solver.CompressibleFlowSolver` for a complete example for a documentation of a CFD solver using the dream package.
+See e.g. {class}`~dream.compressible_flow.solver.CompressibleFlowSolver` for a complete example for a documentation of a CFD solver using the dream package.
 
 ```python
 class FiniteElementMethod:
