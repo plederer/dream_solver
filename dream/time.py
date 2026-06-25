@@ -36,6 +36,14 @@ def time_generator(label):
 
 
 class Timer(Configuration):
+    r""" Keeps track of the simulation time and time step used by a :class:`TimeRoutine`.
+
+        The timer holds the time interval :math:`(t_0, t_{\mathrm{end}})` to be simulated, the current
+        simulation time :math:`t` and the time step :math:`\Delta t`. Calling the timer as a generator,
+        see :meth:`__call__`, advances :math:`t` from :math:`t_0` to :math:`t_{\mathrm{end}}` in increments
+        of :math:`\Delta t`, yielding the iteration number together with the time levels :math:`t_n` and
+        :math:`t_{n+1}` bracketing each step.
+    """
 
     name: str = "timer"
 
@@ -55,6 +63,11 @@ class Timer(Configuration):
 
     @dream_configuration
     def interval(self) -> tuple[float, float]:
+        r""" Sets the time interval :math:`(t_0, t_{\mathrm{end}})` to be simulated.
+
+            :getter: Returns the time interval
+            :setter: Sets the time interval, defaults to (0.0, 1.0)
+        """
         return self._interval
 
     @interval.setter
@@ -71,6 +84,11 @@ class Timer(Configuration):
 
     @dream_configuration
     def step(self) -> ngs.Parameter:
+        r""" Sets the time step :math:`\Delta t` used to advance the simulation.
+
+            :getter: Returns the time step
+            :setter: Sets the time step, defaults to 1e-4
+        """
         return self._step
 
     @step.setter
@@ -80,6 +98,11 @@ class Timer(Configuration):
 
     @dream_configuration
     def t(self) -> ngs.Parameter:
+        r""" Sets the current simulation time :math:`t`.
+
+            :getter: Returns the current simulation time
+            :setter: Sets the current simulation time, defaults to 0.0
+        """
         return self._t
 
     @t.setter
@@ -123,6 +146,12 @@ class Timer(Configuration):
 
 
 class Scheme(Configuration, is_interface=True):
+    r""" Base interface for a spatial/temporal discretization scheme.
+
+        A :class:`Scheme` is responsible for assembling the bilinear and linear forms of the
+        discretized problem, see :meth:`assemble`, and for solving either a stationary problem,
+        see :meth:`solve_stationary`, or a single time level/stage, see :class:`TimeSchemes`.
+    """
 
     root: SolverConfiguration
 
@@ -139,6 +168,11 @@ class Scheme(Configuration, is_interface=True):
 
     @dream_configuration
     def compile(self) -> dict[str, bool]:
+        r""" Sets the NGSolve compile options used when assembling the symbolic forms.
+
+            :getter: Returns the compile options
+            :setter: Sets the compile options, defaults to False
+        """
         return self._compile
 
     @compile.setter
@@ -226,6 +260,18 @@ class Scheme(Configuration, is_interface=True):
 
 
 class TimeSchemes(Scheme):
+    r""" Base interface for a concrete (multi-step or multi-stage) time-stepping scheme.
+
+        A :class:`TimeSchemes` discretizes the time derivative of the semi-discrete problem and
+        advances the solution either over a single time level, see :meth:`solve_current_time_level`,
+        or over a single Runge-Kutta stage, see :meth:`solve_stage`. Multi-step schemes (e.g. BDF) keep
+        track of the solutions of the previous :attr:`number_of_steps` time levels via
+        :meth:`get_step_gridfunctions`, while multi-stage schemes (e.g. Runge-Kutta) evaluate the
+        right-hand side at the intermediate stage times given by :attr:`time_of_stages`.
+
+        Concrete implementations are provided per solver, e.g. in :mod:`dream.scalar_transport.time`
+        and :mod:`dream.compressible_flow.conservative.time`.
+    """
 
     number_of_steps: int = 1
     number_of_stages: int = 1
@@ -304,6 +350,15 @@ class TimeSchemes(Scheme):
 
 
 class TimeRoutine(Configuration, is_interface=True):
+    r""" Base interface for a top-level solution routine driving a :class:`SolverConfiguration`.
+
+        While a :class:`TimeSchemes` discretizes a single time level or stage, a :class:`TimeRoutine`
+        orchestrates the full solution process, i.e. it drives the main solution loop, see
+        :meth:`start_solution_routine`, manages I/O, and reports solver convergence, see
+        :meth:`parse_routine_log`. Available routines are :class:`StationaryRoutine`,
+        :class:`TransientRoutine`, :class:`PseudoTimeSteppingRoutine`, and the IMEX routines derived
+        from :class:`IMEXTimeRoutine`.
+    """
 
     root: SolverConfiguration
 
@@ -340,6 +395,11 @@ class TimeRoutine(Configuration, is_interface=True):
 
 
 class StationaryRoutine(TimeRoutine):
+    r""" Solves a stationary (steady-state) problem.
+
+        No time integration is performed: the routine simply assembles the discrete problem and solves
+        it via the nonlinear solver of the underlying scheme, see :meth:`Scheme.solve_stationary`.
+    """
 
     name: str = "stationary"
 
@@ -369,6 +429,16 @@ class StationaryRoutine(TimeRoutine):
 
 
 class TransientRoutine(TimeRoutine):
+    r""" Marches a time-dependent problem forward over a fixed time interval.
+
+        The routine repeatedly advances the solution from :math:`t_n` to :math:`t_{n+1} = t_n + \Delta t`
+        over the interval held by its :attr:`timer`, see :meth:`start_solution_routine`. Each time level
+        is solved by the scheme of the underlying :class:`SolverConfiguration`, see
+        :meth:`TimeSchemes.solve_current_time_level`. In addition to the standard solution routine, this
+        class provides :meth:`start_timing_solution_routine` for performance profiling, and
+        :meth:`find_stable_time_step` to determine, by bisection, the largest stable time step for an
+        explicit scheme.
+    """
 
     name: str = "transient"
 
@@ -383,6 +453,11 @@ class TransientRoutine(TimeRoutine):
 
     @dream_configuration
     def timer(self) -> Timer:
+        r""" Sets the timer holding the time interval, time step and current simulation time.
+
+            :getter: Returns the timer
+            :setter: Sets the timer, defaults to :class:`Timer`
+        """
         return self._timer
 
     @timer.setter
@@ -561,6 +636,14 @@ class TransientRoutine(TimeRoutine):
 
 
 class PseudoTimeSteppingRoutine(TimeRoutine):
+    r""" Marches a stationary problem to steady state using pseudo-time continuation.
+
+        Rather than solving the nonlinear stationary problem directly, an artificial (pseudo) time
+        derivative is added and advanced with a time step that is progressively increased, every
+        :attr:`increment_at` iterations, by :attr:`increment_factor`, up to :attr:`max_time_step`.
+        This continuation strategy improves the robustness of the nonlinear solver, especially when
+        starting far from the steady-state solution, see :meth:`solver_iteration_update`.
+    """
 
     name: str = "pseudo_time_stepping"
 
@@ -578,6 +661,11 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
     @dream_configuration
     def timer(self) -> Timer:
+        r""" Sets the timer holding the pseudo-time step and current pseudo-time.
+
+            :getter: Returns the timer
+            :setter: Sets the timer, defaults to :class:`Timer`
+        """
         return self._timer
 
     @timer.setter
@@ -587,6 +675,11 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
     @dream_configuration
     def max_time_step(self) -> float:
+        r""" Sets the upper bound the pseudo-time step is allowed to grow to.
+
+            :getter: Returns the maximum pseudo-time step
+            :setter: Sets the maximum pseudo-time step, defaults to 1.0
+        """
         return self._max_time_step
 
     @max_time_step.setter
@@ -595,6 +688,11 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
     @dream_configuration
     def increment_at(self) -> int:
+        r""" Sets the number of iterations after which the pseudo-time step is increased.
+
+            :getter: Returns the increment interval
+            :setter: Sets the increment interval, defaults to 10
+        """
         return self._increment_at
 
     @increment_at.setter
@@ -603,6 +701,11 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
     @dream_configuration
     def increment_factor(self) -> int:
+        r""" Sets the multiplicative factor applied to the pseudo-time step at each increment.
+
+            :getter: Returns the increment factor
+            :setter: Sets the increment factor, defaults to 10
+        """
         return self._increment_factor
 
     @increment_factor.setter
@@ -659,6 +762,41 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
 
 class IMEXTimeRoutine(TimeRoutine, is_interface=True):
+    r""" Base interface for a geometry-split implicit-explicit (IMEX) time routine.
+
+        An :class:`IMEXTimeRoutine` couples two independently configured solvers, :attr:`cfg_implicit`
+        and :attr:`cfg_explicit`, each holding its own :class:`~dream.solver.SolverConfiguration` and
+        mesh. The routine itself does not partition a mesh into implicit/explicit regions; rather, it
+        assumes that the two complementary meshes :math:`\mesh^{im}` and :math:`\mesh^{ex}`, with
+        interface :math:`\Gamma_i = \mesh^{im} \cap \mesh^{ex}`, have already been constructed and
+        assigned to `cfg_implicit` and `cfg_explicit`, respectively, e.g. with the stiff (typically
+        small) region assigned to `cfg_implicit` and the remaining, non-stiff region to `cfg_explicit`.
+
+        Stiff regions are typically treated implicitly using a hybridizable discontinuous Galerkin
+        (HDG) scheme, while non-stiff regions are treated explicitly using a (standard) discontinuous
+        Galerkin (DG) scheme; however, the routine itself only assumes that `cfg_implicit` is solved
+        implicitly and `cfg_explicit` explicitly in time, and not any specific spatial discretization.
+        In particular, both regions may equally well use a DG discretization, with only the time
+        treatment (implicit vs. explicit) differing between them. The two solutions are weakly and
+        conservatively coupled across :math:`\Gamma_i` by appropriate interface conditions, while
+        temporal synchronization between the implicit and explicit schemes is achieved through additive
+        Runge-Kutta (ARK) methods, in which the implicit part is a singly diagonally implicit
+        Runge-Kutta (SDIRK) method and the explicit part a standard explicit Runge-Kutta (ERK) method.
+
+        At each global time step, every stage is solved by first advancing the explicit region, see
+        :meth:`solve_explicit_stage`, and then the implicit region, see :meth:`solve_implicit_stage`,
+        such that the explicit stage uses the implicit solution at the previous stage, and the implicit
+        stage uses the just-updated explicit solution, see :meth:`solve_stages`.
+
+        Restricting the (typically more expensive) implicit scheme to a small region, while advancing
+        the bulk of the domain with the cheaper explicit scheme, allows the explicit scheme's stable
+        time step to increase compared to a fully explicit discretization of the whole domain; this
+        increase yields the overall speedup of the IMEX approach, at the cost of the additional implicit
+        solve. Two synchronization strategies are provided: :class:`SynchronizedIMEXTimeRoutine`, in
+        which the implicit and explicit schemes share the same time step and stage times, and the
+        predictor-corrector routines :class:`PCIMEXTimeRoutine`/:class:`LinearPCIMEXTimeRoutine`, which
+        allow the explicit scheme to sub-cycle with a smaller, locally defined time step.
+    """
 
     def __init__(self, cfg_implicit: SolverConfiguration, cfg_explicit: SolverConfiguration, **default):
         super().__init__(None, None, **default)
@@ -807,7 +945,21 @@ class IMEXTimeRoutine(TimeRoutine, is_interface=True):
 
 
 class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
-    """ IMEX Synchronized routine where global and local time steps are equal and stage times are synchronized. """
+    r""" IMEX routine in which the implicit and explicit schemes share the same time step and stage times.
+
+        Both the implicit and explicit schemes advance with the same (global) time step
+        :math:`\Delta t` and the additive Runge-Kutta tableaux are synchronized via padding, i.e. the
+        stage times coincide, :math:`\overline{c}_{i+1} = c_i`. This is the classical structure of an
+        ARK method and is the synchronization strategy used for the geometry-split IMEX schemes
+        (ARS-type) developed for compressible flows in :class:`IMEXTimeRoutine`.
+
+        At every stage :math:`i`, the explicit stage solution is computed first, see
+        :meth:`solve_explicit_stage`, followed by the implicit stage solution, see
+        :meth:`solve_implicit_stage`, both using the previously computed stage solution of the other
+        scheme. The final solution update accounts for the first-same-as-last (FSAL) property of the
+        explicit scheme and the stiff accuracy of the implicit scheme, see
+        :meth:`update_final_stage_solution`.
+    """
 
     def initialize(self, reassemble):
         super().initialize(reassemble)
@@ -989,9 +1141,17 @@ class SynchronizedIMEXTimeRoutine(IMEXTimeRoutine):
 
 
 class PCIMEXTimeRoutine(IMEXTimeRoutine):
-    """ IMEX Predictor-Corrector routine with frozen interface values during the predictor stage. 
+    r""" IMEX predictor-corrector routine with frozen interface values during the predictor stage.
 
-        The explicit scheme uses the solution of the implicit scheme at Un for all explicit sub-steps.
+        Unlike :class:`SynchronizedIMEXTimeRoutine`, the global (implicit) time step :math:`\Delta t`
+        need not equal the local (explicit) time step, but must be an integer multiple of it, allowing
+        the explicit scheme to sub-cycle with several smaller steps per implicit stage.
+
+        For each implicit stage, a predictor step first advances the implicit solution, see
+        :meth:`solve_predictor_stage`, and the explicit scheme is then sub-cycled across the stage
+        interval using the predicted interface value frozen at :math:`\vec{U}_n^{im}` for all explicit
+        sub-steps, see :meth:`set_predictor_solution`. The implicit (corrector) solution is finally
+        recomputed using the now up-to-date explicit interface state, see :meth:`solve_implicit_stage`.
     """
 
     def initialize(self, reassemble):
@@ -1052,9 +1212,17 @@ class PCIMEXTimeRoutine(IMEXTimeRoutine):
 
 
 class LinearPCIMEXTimeRoutine(PCIMEXTimeRoutine):
-    """ IMEX Predictor-Corrector routine with linear interpolation of interface values during the predictor step. 
+    r""" IMEX predictor-corrector routine with linear interpolation of interface values.
 
-        The explicit scheme uses linearly interpolated values between Un and U^{n+1} for all explicit sub-steps.
+        Extends :class:`PCIMEXTimeRoutine` by replacing the frozen interface value during the
+        predictor stage with a linear interpolation in time. The predictor stage first solves the
+        implicit scheme to obtain a prediction of the interface state at the end of the stage, see
+        :meth:`solve_predictor_stage`, and the explicit sub-steps then use values linearly interpolated,
+        based on the local sub-step time, between the implicit solution at the start (:math:`\vec{y}_1`)
+        and end (:math:`\vec{y}_2`) of the stage, see :meth:`set_predictor_solution`. The corrector step,
+        see :meth:`solve_implicit_stage`, resets the implicit solution to :math:`\vec{y}_1` and resolves
+        the implicit stage using the now updated explicit solution, improving accuracy compared to the
+        frozen-interface predictor of :class:`PCIMEXTimeRoutine`.
     """
 
     def initialize(self, reassemble):
