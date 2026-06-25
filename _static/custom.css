@@ -11,6 +11,22 @@ table.docutils {
 .wy-table td, .rst-content table.docutils td {
     overflow: hidden;
 }
+
+/* Autosummary tables (class/method/module listings): the fixed layout + hidden overflow above
+   clips the description column. Let it size naturally and wrap instead of being cut off. */
+table.autosummary {
+    table-layout: auto;
+}
+
+table.autosummary td {
+    overflow: visible;
+    white-space: normal;
+}
+
+table.autosummary td:first-child {
+    width: 1%;
+    white-space: nowrap;
+}
 /*
 table.docutils span.scrollable {
     display: block;
