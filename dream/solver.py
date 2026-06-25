@@ -22,7 +22,8 @@ class NonlinearMethod(Configuration, is_interface=True):
 
         DEFAULT = {
             "max_iterations": 10,
-            "convergence_criterion": 1e-8
+            "convergence_criterion": 1e-8,
+            "freeze_jacobian": None,
         }
         DEFAULT.update(default)
 
@@ -47,6 +48,17 @@ class NonlinearMethod(Configuration, is_interface=True):
         if convergence_criterion <= 0:
             raise ValueError("Convergence Criterion must be greater than zero!")
         self._convergence_criterion = float(convergence_criterion)
+
+    @dream_configuration
+    def freeze_jacobian(self) -> bool:
+        return self._freeze_jacobian
+
+    @freeze_jacobian.setter
+    def freeze_jacobian(self, freeze_jacobian: str):
+        OPTIONS = ['step', 'stage', None]
+        if freeze_jacobian not in OPTIONS:
+            raise ValueError(f"Invalid value for freeze_jacobian. Must be one of {OPTIONS}")
+        self._freeze_jacobian = freeze_jacobian
 
     def update_solution(self, gfu: ngs.GridFunction, update: ngs.BaseVector):
         raise NotImplementedError("Overload this configuration in derived class!")
@@ -103,6 +115,9 @@ class Solver(Configuration, is_interface=True):
         OPTIONS = [NewtonsMethod]
         self._method = self._get_configuration_option(method, OPTIONS, NonlinearMethod)
 
+    def assemble_jacobian(self):
+        raise NotImplementedError("Overload this configuration in derived class!")
+
     def initialize_nonlinear_routine(self,
                                      blf: ngs.BilinearForm,
                                      gfu: ngs.GridFunction,
@@ -132,6 +147,9 @@ class Solver(Configuration, is_interface=True):
 
         Yields a dictionary containing the current iteration number and the error of the update step.
         """
+
+        if self.method.freeze_jacobian == "stage":
+            self.assemble_jacobian()
 
         for it in range(self.method.max_iterations):
             log = {'it': it}
@@ -199,6 +217,10 @@ class DirectSolver(Solver):
 
         self._inverse = inverse
 
+    def assemble_jacobian(self):
+        self.blf.AssembleLinearization(self.gfu.vec)
+        self.inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
+
     def get_inverse(self, blf: ngs.BilinearForm, fes: ngs.FESpace, freedofs: ngs.BitArray = None, **kwargs):
 
         inverse = kwargs.get("inverse", self.inverse)
@@ -235,16 +257,17 @@ class DirectSolver(Solver):
         self.blf.Apply(self.gfu.vec, self.res)
         if self.rhs is not None:
             self.res.data -= self.rhs
-        self.blf.AssembleLinearization(self.gfu.vec)
 
-        inv = self.blf.mat.Inverse(freedofs=self.fes.FreeDofs(self.blf.condense), inverse=self.inverse)
+        if self.method.freeze_jacobian == None:
+            self.assemble_jacobian()
+
         if self.blf.condense:
             self.res.data += self.blf.harmonic_extension_trans * self.res
-            self.du.data = inv * self.res
+            self.du.data = self.inv * self.res
             self.du.data += self.blf.harmonic_extension * self.du
             self.du.data += self.blf.inner_solve * self.res
         else:
-            self.du.data = inv * self.res
+            self.du.data = self.inv * self.res
 
     def solve_update_step_timing(self, log: dict):
 
@@ -487,7 +510,6 @@ class SolverConfiguration(Configuration, is_interface=True):
         self.fem.initialize()
 
     def get_all_solution_fields(self) -> ngsdict:
-        
         return self.fem.get_solution_fields()
 
     def get_solution_fields(self, *fields) -> ngsdict:
@@ -520,14 +542,7 @@ class SolverConfiguration(Configuration, is_interface=True):
         self.doc = doc
 
     def solve(self, reassemble: bool = True):
-        
+
         # Proceed with the simulation.
-        for t in self.time.start_solution_routine(reassemble):
+        for _ in self.time.start_solution_routine(reassemble):
             pass
-
-
-
-
-
-
-

@@ -279,6 +279,10 @@ class DIRKSchemes(TimeSchemes):
             self.rhs.data += aij * xj
     
         self.set_stage_time(stage, t0)
+
+        if stage == 1 and self.root.fem.solver.method.freeze_jacobian == "step":
+            self.root.fem.solver.assemble_jacobian()
+
         # Solve the resulting nonlinear system.
         for log in self.root.fem.solver.solve_nonlinear_system():
             yield {"t": self.t.Get(), "stage": stage, **log}
