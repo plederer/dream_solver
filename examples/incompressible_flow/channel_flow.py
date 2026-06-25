@@ -3,7 +3,7 @@ import netgen.occ as occ
 import dream.bla as bla
 
 from dream.io import DomainL2Sensor
-from dream.incompressible import IncompressibleSolver, flowfields, Force
+from dream.incompressible_flow import IncompressibleFlowSolver, flowfields, Force
 
 # Channel flow
 H = 2.0
@@ -20,7 +20,7 @@ mesh = ngs.Mesh(geo.GenerateMesh(maxh=0.2))
 mesh.Refine()
 
 # Set up the solver configuration
-cfg = IncompressibleSolver(mesh)
+cfg = IncompressibleFlowSolver(mesh)
 cfg.time = "stationary"
 
 cfg.reynolds_number = 1

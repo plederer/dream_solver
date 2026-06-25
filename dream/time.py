@@ -37,6 +37,8 @@ def time_generator(label):
 
 class Timer(Configuration):
 
+    name: str = "timer"
+
     def __init__(self, mesh=None, root=None, **default):
 
         self._step = ngs.Parameter(1e-4)
@@ -84,16 +86,6 @@ class Timer(Configuration):
     def t(self, t: float):
         self._t.Set(t)
 
-    def start(self, include_start: bool = False, stride: int = 1):
-
-        start, _ = self.interval
-        step = self.step.Get()
-        size = self.num_steps(include_start, stride)
-
-        for i in range(1 - include_start, size + 1):
-            self.t = start + stride*i*step
-            yield self.t.Get()
-
     def to_array(self, include_start: bool = False, stride: int = 1) -> np.ndarray:
         return np.array(list(self.start(include_start, stride)))
 
@@ -110,10 +102,10 @@ class Timer(Configuration):
 
         return size
 
-    def __call__(self, **kwargs):
+    def __call__(self, stride: int = 1, **kwargs):
         self.update(**kwargs)
         t0, end = self.interval
-        step = self.step.Get()
+        step = self.step.Get() * stride
 
         self.t = t0
         for rate in range(1, round((end - t0)/(step))+1):
@@ -395,11 +387,8 @@ class TransientRoutine(TimeRoutine):
 
     @timer.setter
     def timer(self, timer: Timer):
-
-        if not isinstance(timer, Timer):
-            raise TypeError(f"Timer must be of type {Timer}!")
-
-        self._timer = timer
+        OPTIONS = [Timer]
+        self._timer = self._get_configuration_option(timer, OPTIONS, Timer)
 
     def start_solution_routine(self, reassemble: bool = True) -> typing.Generator[float | None, None, None]:
 
@@ -430,7 +419,7 @@ class TransientRoutine(TimeRoutine):
                 logger.debug(f'Solved interval {tn:.6e} to {t1:.6e} \n')
                 scheme.update_step_gridfunctions()
 
-                #TODO: Add timestep controller to streams
+                # TODO: Add timestep controller to streams
                 # if self.root.timestep_controller is not None:
                 #     self.root.timestep_controller.process_iteration(iteration=rate)
 
@@ -513,7 +502,6 @@ class TransientRoutine(TimeRoutine):
             self, tol: float = 1e-8, process_routine: typing.Callable = None) -> typing.Generator[
             float | None, None, None]:
 
-
         scheme = self.root.fem.scheme
         timer = self.timer
         scheme.assemble()
@@ -554,7 +542,7 @@ class TransientRoutine(TimeRoutine):
                     process_routine(dt=timer.step.Get(), is_stable=True)
 
                 logger.info(f"Stable 𝚫t = {timer.step.Get()}")
-                #TODO: Add timestep controller to streams
+                # TODO: Add timestep controller to streams
                 # if self.root.timestep_controller is not None:
                 #     self.root.timestep_controller.process_iteration(iteration=rate)
 
@@ -591,11 +579,8 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
     @timer.setter
     def timer(self, timer: Timer):
-
-        if not isinstance(timer, Timer):
-            raise TypeError(f"Timer must be of type {Timer}!")
-
-        self._timer = timer
+        OPTIONS = [Timer]
+        self._timer = self._get_configuration_option(timer, OPTIONS, Timer)
 
     @dream_configuration
     def max_time_step(self) -> float:
@@ -636,6 +621,7 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
 
             # Solution routine starts here
             for log in scheme.solve_current_time_level(0.0):
+                it = log['it']
                 logger.info(self.parse_routine_log(**log))
 
                 if "is_diverged" in log:
@@ -643,10 +629,11 @@ class PseudoTimeSteppingRoutine(TimeRoutine):
                     break
 
                 scheme.update_step_gridfunctions()
-                self.solver_iteration_update(log['it'])
+                self.solver_iteration_update(it)
+                io.save_in_time_routine(it * dt, it)
                 io.redraw()
 
-            yield None
+                yield it
 
             # Solution routine ends here
             io.save_post_time_routine()

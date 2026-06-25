@@ -373,14 +373,15 @@ class GridfunctionStream(Stream):
 
         with self.root.io as io:
 
-            for it, t in enumerate(self.root.time.timer.start(stride=self.rate)):
-                logger.info(f"file: {self.filename} | t: {t:{self.time_format}} ")
+            for it, t0, _ in self.root.time.timer(stride=self.rate):
 
-                self.load_routine(t)
+                logger.info(f"file: {self.filename} | t: {t0:{self.time_format}} ")
+
+                self.load_routine(t0)
                 io.redraw()
-                io.save_in_time_routine(t, it)
+                io.save_in_time_routine(t0, it)
 
-                yield t
+                yield t0
 
                 time.sleep(sleep)
 
@@ -1107,8 +1108,8 @@ class IOConfiguration(Configuration):
             stream.close()
 
     def _parse_stream(self, stream: Stream, type: Stream):
-        if not isinstance(stream, type):
-            raise ValueError(f"Stream must be of type '{type}'!")
+        OPTIONS = [LogStream, MeshStream, SettingsStream, VTKStream, GridfunctionStream, SensorStream]
+        stream = self._get_configuration_option(stream, OPTIONS, Stream)
         stream.mesh = self.mesh
         stream.root = self.root
         return stream

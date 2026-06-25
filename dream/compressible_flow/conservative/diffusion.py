@@ -248,8 +248,10 @@ class StrainHeat(ViscousTreatment):
         Re = self.root.scaling.reference_reynolds_number
         Pr = self.root.prandtl_number
         mu = self.root.viscosity(U)
+        Ma = self.root.mach_number
+        gamma = self.root.equation_of_state.heat_capacity_ratio
 
-        tau_d = [0] + [1 for _ in range(self.mesh.dim)] + [1/Pr]
+        tau_d = [0] + [1 for _ in range(self.mesh.dim)] + [1/(Pr * (gamma - 1) * Ma**2)]
         return bla.diagonal(tau_d) * mu / Re
 
     def get_cbc_viscous_terms(self, bc: CBC):

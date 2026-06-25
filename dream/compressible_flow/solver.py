@@ -48,7 +48,7 @@ class CompressibleFlowSolver(SolverConfiguration):
         super().__init__(mesh=mesh, bcs=bcs, dcs=dcs, **DEFAULT)
 
     @dream_configuration
-    def fem(self) -> ConservativeHDG | ConservativeDG | ConservativeDG_HDG:
+    def fem(self) -> ConservativeHDG | ConservativeDG:
         r""" Sets the finite element for the compressible flow solver. 
 
             :getter: Returns the finite element

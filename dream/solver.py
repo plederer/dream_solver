@@ -464,9 +464,8 @@ class SolverConfiguration(Configuration, is_interface=True):
 
     @io.setter
     def io(self, io: IOConfiguration):
-        if not isinstance(io, IOConfiguration):
-            raise TypeError("IOConfiguration must be of type IOConfiguration!")
-        self._io = io
+        OPTIONS = [IOConfiguration]
+        self._io = self._get_configuration_option(io, OPTIONS, IOConfiguration)
 
     @dream_configuration
     def info(self) -> dict:

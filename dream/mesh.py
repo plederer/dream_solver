@@ -724,8 +724,11 @@ class BoundaryConditions(Conditions):
     def __init__(self, mesh: ngs.Mesh, options: list[Condition]) -> None:
         super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh, options)
 
+    def get_boundary_names(self, *condition_types) -> list[str]:
+        return get_pattern_from_sequence([bnd for bnd, _ in self.items(*condition_types)])
+
     def get_periodic_boundaries(self) -> str:
-        return get_pattern_from_sequence([bnd for bnd, _ in self.items(Periodic)])
+        return self.get_boundary_names(Periodic)
 
     def get_domain_boundaries(self) -> str:
         """ Returns a list or pattern of the domain boundaries!

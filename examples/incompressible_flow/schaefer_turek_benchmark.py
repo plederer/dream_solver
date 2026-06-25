@@ -1,6 +1,6 @@
 import ngsolve as ngs
 import netgen.occ as occ
-from dream.incompressible import IncompressibleSolver, Inflow, Wall, flowfields
+from dream.incompressible_flow import IncompressibleFlowSolver, Inflow, Wall, flowfields
 
 
 shape = occ.Rectangle(20, 4.1).Circle(2, 2, 0.5).Reverse().Face()
@@ -12,14 +12,14 @@ shape.edges.Max(occ.Y).name = "wall"
 mesh = ngs.Mesh(occ.OCCGeometry(shape, dim=2).GenerateMesh(maxh=0.7))
 
 # Set up the solver configuration
-cfg = IncompressibleSolver(mesh)
+cfg = IncompressibleFlowSolver(mesh)
 cfg.time = "stationary"
 
 cfg.reynolds_number = 100
 cfg.dynamic_viscosity = "constant"
 
+cfg.fem = "hdivhdg"
 cfg.fem = "taylor-hood"
-# cfg.fem = "hdivhdg"
 
 cfg.fem.order = 3
 cfg.fem.scheme = "direct"
@@ -49,7 +49,9 @@ cfg.convection = True
 
 cfg.fem.initialize_time_scheme_gridfunctions()
 cfg.fem.initialize_symbolic_forms()
+cfg.fem.solver.inverse = "pardiso"
 
-# SetNumThreads(12)
+
+ngs.SetNumThreads(4)
 with ngs.TaskManager():
     cfg.solve()
