@@ -23,3 +23,15 @@ fidelity and efficient **d**\ i\ **r**\ ect **ae**\ rocoustic si\ **m**\ ulation
 
    modules/scalar_transport/index.rst
    modules/compressible/index.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Time Integration
+
+   modules/time/index.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Mesh
+
+   modules/mesh/index.rst

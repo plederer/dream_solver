@@ -1,0 +1,1074 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Time Integration &mdash; dream 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=a357efec" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=e1a75a79"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../../_static/webgui.js"></script>
+      <script src="../../_static/webgui_jupyter_widgets.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="mesh" href="../mesh/index.html" />
+    <link rel="prev" title="Isentropic Vortex in 2D" href="../../examples/isentropic_vortex.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html">
+            
+              <img src="../../_static/dream_logo.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/about.html">About</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/about.html#key-features-of-the-dream-solver">Key Features of the <strong>dream</strong> Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/about.html#work-in-progress">Work in progress</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/contribute.html">Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/contribute.html#structure">Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/literature.html">References</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/literature.html#publications">Publications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../introduction/literature.html#literature">Literature</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../scalar_transport/index.html">scalar_transport</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html">solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.fem"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.fem</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.riemann_solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.convection_velocity"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.convection_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.diffusion_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.diffusion_coefficient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.is_inviscid"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.is_inviscid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.u"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver.u()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html">spatial</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.scheme"><code class="docutils literal notranslate"><span class="pre">DG.scheme</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">DG.add_finite_element_spaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">DG.add_convection_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">DG.add_diffusion_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">DG.add_farfield_formulation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.scheme"><code class="docutils literal notranslate"><span class="pre">HDG.scheme</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_finite_element_spaces"><code class="docutils literal notranslate"><span class="pre">HDG.add_finite_element_spaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_convection_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_convection_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_diffusion_form"><code class="docutils literal notranslate"><span class="pre">HDG.add_diffusion_form()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.set_initial_conditions"><code class="docutils literal notranslate"><span class="pre">HDG.set_initial_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.add_farfield_formulation"><code class="docutils literal notranslate"><span class="pre">HDG.add_farfield_formulation()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.interior_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.interior_penalty_coefficient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.get_penalty_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_symbolic_spatial_forms()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_boundary_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.add_domain_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.add_domain_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.html">time</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.explicit.html">explicit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.CRK4"><code class="docutils literal notranslate"><span class="pre">CRK4</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitEuler"><code class="docutils literal notranslate"><span class="pre">ExplicitEuler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ExplicitSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3"><code class="docutils literal notranslate"><span class="pre">SSPRK3</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.imex.html">imex</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRKSchemes"><code class="docutils literal notranslate"><span class="pre">IMEXRKSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRK_ARS443"><code class="docutils literal notranslate"><span class="pre">IMEXRK_ARS443</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.implicit.html">implicit</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.BDF2"><code class="docutils literal notranslate"><span class="pre">BDF2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes"><code class="docutils literal notranslate"><span class="pre">DIRKSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitEuler"><code class="docutils literal notranslate"><span class="pre">ImplicitEuler</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitSchemes"><code class="docutils literal notranslate"><span class="pre">ImplicitSchemes</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK22"><code class="docutils literal notranslate"><span class="pre">SDIRK22</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.SDIRK33"><code class="docutils literal notranslate"><span class="pre">SDIRK33</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html">riemann_solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_numerical_flux_dg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_stabilisation_hdg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_stabilisation_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver.get_convective_numerical_flux_dg"><code class="docutils literal notranslate"><span class="pre">RiemannSolver.get_convective_numerical_flux_dg()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.config.html">config</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields"><code class="docutils literal notranslate"><span class="pre">transportfields</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields.u"><code class="docutils literal notranslate"><span class="pre">transportfields.u</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/index.html#scalar-transport-equation">Scalar transport equation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/wave1d.html">Scalar wave equation in 1D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../compressible/index.html">compressible_flow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html">solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.fem"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.fem</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.mach_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.prandtl_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.prandtl_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.equation_of_state"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.equation_of_state</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dynamic_viscosity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.scaling"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.scaling</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.riemann_solver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.riemann_solver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.dimensional_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.dimensional_fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_solution_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_solution_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_farfield_fields"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_farfield_fields()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_convective_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_convective_flux()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_diffusive_flux"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_diffusive_flux()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_mach_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_mach_number()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_reynolds_number"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.get_local_reynolds_number()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.deviatoric_stress_tensor"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.deviatoric_stress_tensor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.drag_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.drag_coefficient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.lift_coefficient"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver.lift_coefficient()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.html">conservative</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.dg.html">dg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.dg.html#dream.compressible_flow.conservative.dg.ConservativeDG"><code class="docutils literal notranslate"><span class="pre">ConservativeDG</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.diffusion.html">diffusion</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.Gradient"><code class="docutils literal notranslate"><span class="pre">Gradient</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenalty"><code class="docutils literal notranslate"><span class="pre">InteriorPenalty</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltyHDG"><code class="docutils literal notranslate"><span class="pre">InteriorPenaltyHDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltySDG"><code class="docutils literal notranslate"><span class="pre">InteriorPenaltySDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat"><code class="docutils literal notranslate"><span class="pre">StrainHeat</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.ViscousTreatment"><code class="docutils literal notranslate"><span class="pre">ViscousTreatment</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.hdg.html">hdg</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG"><code class="docutils literal notranslate"><span class="pre">ConservativeHDG</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.time.html">time</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.time.explicit.html">explicit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.time.imex.html">imex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.conservative.time.implicit.html">implicit</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html">eos</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.EquationOfState"><code class="docutils literal notranslate"><span class="pre">EquationOfState</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas"><code class="docutils literal notranslate"><span class="pre">IdealGas</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.density"><code class="docutils literal notranslate"><span class="pre">IdealGas.density()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.temperature"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.inner_energy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_inner_energy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">IdealGas.speed_of_sound()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.thermodynamic_entropy"><code class="docutils literal notranslate"><span class="pre">IdealGas.thermodynamic_entropy()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.density_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.density_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.pressure_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.temperature_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.temperature_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_inner_energy_gradient"><code class="docutils literal notranslate"><span class="pre">IdealGas.specific_inner_energy_gradient()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_amplitudes"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_amplitudes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_from_primitive"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_from_primitive()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_conservative"><code class="docutils literal notranslate"><span class="pre">IdealGas.primitive_from_conservative()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_characteristic"><code class="docutils literal notranslate"><span class="pre">IdealGas.primitive_from_characteristic()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_from_primitive"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_from_primitive()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_from_characteristic"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_from_characteristic()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_from_conservative"><code class="docutils literal notranslate"><span class="pre">IdealGas.characteristic_from_conservative()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_x"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_convective_jacobian_x()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_y"><code class="docutils literal notranslate"><span class="pre">IdealGas.conservative_convective_jacobian_y()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.isentropic_density"><code class="docutils literal notranslate"><span class="pre">IdealGas.isentropic_density()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html">riemann_solver</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLL.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.theta_0"><code class="docutils literal notranslate"><span class="pre">HLLEM.theta_0</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">HLLEM.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Roe.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_convective_stabilisation_matrix_hdg()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind.get_simplified_convective_stabilisation_matrix_hdg"><code class="docutils literal notranslate"><span class="pre">Upwind.get_simplified_convective_stabilisation_matrix_hdg()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html">viscosity</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant.viscosity"><code class="docutils literal notranslate"><span class="pre">Constant.viscosity()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid.viscosity"><code class="docutils literal notranslate"><span class="pre">Inviscid.viscosity()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland.sutherland_temperature"><code class="docutils literal notranslate"><span class="pre">Sutherland.sutherland_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland.viscosity"><code class="docutils literal notranslate"><span class="pre">Sutherland.viscosity()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html">scaling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Acoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Acoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Acoustic.pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Acoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Acoustic.speed_of_sound</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.velocity"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.temperature"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.pressure"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic.speed_of_sound</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.velocity"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.temperature"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.temperature</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.pressure"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.reference_reynolds_number"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.reference_reynolds_number</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.speed_of_sound"><code class="docutils literal notranslate"><span class="pre">Aerodynamic.speed_of_sound</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.density"><code class="docutils literal notranslate"><span class="pre">Scaling.density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_density"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_density</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_velocity"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_velocity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_pressure"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_pressure</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling.reference_time_scale"><code class="docutils literal notranslate"><span class="pre">Scaling.reference_time_scale</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html">config</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.AdiabaticWall"><code class="docutils literal notranslate"><span class="pre">AdiabaticWall</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC"><code class="docutils literal notranslate"><span class="pre">CBC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.fields"><code class="docutils literal notranslate"><span class="pre">CBC.fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.target"><code class="docutils literal notranslate"><span class="pre">CBC.target</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.relaxation_factor"><code class="docutils literal notranslate"><span class="pre">CBC.relaxation_factor</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.tangential_relaxation"><code class="docutils literal notranslate"><span class="pre">CBC.tangential_relaxation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.is_viscous_fluxes"><code class="docutils literal notranslate"><span class="pre">CBC.is_viscous_fluxes</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod.get_domain_boundary_mask"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.get_domain_boundary_mask()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod.set_boundary_conditions"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod.set_boundary_conditions()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Dirichlet"><code class="docutils literal notranslate"><span class="pre">Dirichlet</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.fields"><code class="docutils literal notranslate"><span class="pre">FarField.fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.use_identity_jacobian"><code class="docutils literal notranslate"><span class="pre">FarField.use_identity_jacobian</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Force"><code class="docutils literal notranslate"><span class="pre">Force</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.GRCBC"><code class="docutils literal notranslate"><span class="pre">GRCBC</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Inflow"><code class="docutils literal notranslate"><span class="pre">Inflow</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InterfaceBC"><code class="docutils literal notranslate"><span class="pre">InterfaceBC</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InviscidWall"><code class="docutils literal notranslate"><span class="pre">InviscidWall</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall"><code class="docutils literal notranslate"><span class="pre">IsothermalWall</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall.fields"><code class="docutils literal notranslate"><span class="pre">IsothermalWall.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC"><code class="docutils literal notranslate"><span class="pre">NSCBC</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC.length"><code class="docutils literal notranslate"><span class="pre">NSCBC.length</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow"><code class="docutils literal notranslate"><span class="pre">Outflow</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow.fields"><code class="docutils literal notranslate"><span class="pre">Outflow.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields"><code class="docutils literal notranslate"><span class="pre">dimensionalfields</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.c"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.c</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.t"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.t</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.rho"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.rho</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.u"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.T"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.T</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.L"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.L</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.mu"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.mu</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.k"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.k</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields.c_p"><code class="docutils literal notranslate"><span class="pre">dimensionalfields.c_p</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho"><code class="docutils literal notranslate"><span class="pre">flowfields.rho</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.u"><code class="docutils literal notranslate"><span class="pre">flowfields.u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_u"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.p"><code class="docutils literal notranslate"><span class="pre">flowfields.p</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.T"><code class="docutils literal notranslate"><span class="pre">flowfields.T</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_E"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_E</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.E"><code class="docutils literal notranslate"><span class="pre">flowfields.E</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_Ei"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_Ei</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.Ei"><code class="docutils literal notranslate"><span class="pre">flowfields.Ei</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_Ek"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_Ek</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.Ek"><code class="docutils literal notranslate"><span class="pre">flowfields.Ek</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.rho_H"><code class="docutils literal notranslate"><span class="pre">flowfields.rho_H</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.H"><code class="docutils literal notranslate"><span class="pre">flowfields.H</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.c"><code class="docutils literal notranslate"><span class="pre">flowfields.c</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_u"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho_u"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho_u</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_p"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_p</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_T"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_T</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_rho_E"><code class="docutils literal notranslate"><span class="pre">flowfields.grad_rho_E</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.eps"><code class="docutils literal notranslate"><span class="pre">flowfields.eps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.omega"><code class="docutils literal notranslate"><span class="pre">flowfields.omega</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/index.html#compressible-flow-equations">Compressible flow equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/index.html#quasi-linear-euler-equations">Quasi-linear Euler equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../compressible/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/euler_around_naca.html">Flow around NACA 0012 airfoil</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/isentropic_vortex.html">Isentropic Vortex in 2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Time Integration</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Time Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#stationary-and-transient-routines">Stationary and transient routines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#geometry-split-implicit-explicit-imex-time-integration">Geometry-split implicit-explicit (IMEX) time integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.Timer"><code class="docutils literal notranslate"><span class="pre">Timer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.Timer.interval"><code class="docutils literal notranslate"><span class="pre">Timer.interval</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.Timer.step"><code class="docutils literal notranslate"><span class="pre">Timer.step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.Timer.t"><code class="docutils literal notranslate"><span class="pre">Timer.t</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.Scheme"><code class="docutils literal notranslate"><span class="pre">Scheme</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.Scheme.compile"><code class="docutils literal notranslate"><span class="pre">Scheme.compile</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.Scheme.parse_sum_of_integrals"><code class="docutils literal notranslate"><span class="pre">Scheme.parse_sum_of_integrals()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.TimeSchemes"><code class="docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.TimeSchemes.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">TimeSchemes.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.TimeRoutine"><code class="docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.TimeRoutine.parse_routine_log"><code class="docutils literal notranslate"><span class="pre">TimeRoutine.parse_routine_log()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.StationaryRoutine"><code class="docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.TransientRoutine"><code class="docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.TransientRoutine.timer"><code class="docutils literal notranslate"><span class="pre">TransientRoutine.timer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine.timer"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.timer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine.max_time_step"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.max_time_step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine.increment_at"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine.increment_factor"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_factor</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.IMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.IMEXTimeRoutine.gtimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gtimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.IMEXTimeRoutine.ltimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.ltimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.IMEXTimeRoutine.gscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.IMEXTimeRoutine.lscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.lscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.IMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.SynchronizedIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.PCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dream.time.PCIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#dream.time.LinearPCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Mesh</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../mesh/index.html">mesh</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#predefined-mesh-generators">Predefined mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#structured-mesh-generators">Structured mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#buffer-and-sponge-layer-infrastructure">Buffer and sponge layer infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#condition-containers">Condition containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_nodal_points"><code class="docutils literal notranslate"><span class="pre">get_nodal_points()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_cylinder_omesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_omesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_rectangular_mesh"><code class="docutils literal notranslate"><span class="pre">get_rectangular_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_structured_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_structured_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_2d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_2d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_3d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_3d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.get_chord_naca_4digit_series_coordinates"><code class="docutils literal notranslate"><span class="pre">get_chord_naca_4digit_series_coordinates()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.BufferCoord"><code class="docutils literal notranslate"><span class="pre">BufferCoord</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.SpongeFunction"><code class="docutils literal notranslate"><span class="pre">SpongeFunction</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.GridMapping"><code class="docutils literal notranslate"><span class="pre">GridMapping</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.GridMapping.none"><code class="docutils literal notranslate"><span class="pre">GridMapping.none()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.GridMapping.linear"><code class="docutils literal notranslate"><span class="pre">GridMapping.linear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.GridMapping.exponential"><code class="docutils literal notranslate"><span class="pre">GridMapping.exponential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.GridMapping.tangential"><code class="docutils literal notranslate"><span class="pre">GridMapping.tangential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.GridMapping.polar_to_cartesian"><code class="docutils literal notranslate"><span class="pre">GridMapping.polar_to_cartesian()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.Condition"><code class="docutils literal notranslate"><span class="pre">Condition</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.Periodic"><code class="docutils literal notranslate"><span class="pre">Periodic</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.Initial"><code class="docutils literal notranslate"><span class="pre">Initial</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.Initial.fields"><code class="docutils literal notranslate"><span class="pre">Initial.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.Perturbation"><code class="docutils literal notranslate"><span class="pre">Perturbation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.Perturbation.fields"><code class="docutils literal notranslate"><span class="pre">Perturbation.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.Buffer"><code class="docutils literal notranslate"><span class="pre">Buffer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.GridDeformation"><code class="docutils literal notranslate"><span class="pre">GridDeformation</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.SpongeLayer"><code class="docutils literal notranslate"><span class="pre">SpongeLayer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.SpongeLayer.target_state"><code class="docutils literal notranslate"><span class="pre">SpongeLayer.target_state</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.PSpongeLayer"><code class="docutils literal notranslate"><span class="pre">PSpongeLayer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.Conditions"><code class="docutils literal notranslate"><span class="pre">Conditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.BoundaryConditions"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../mesh/index.html#dream.mesh.BoundaryConditions.get_domain_boundaries"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions.get_domain_boundaries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#dream.mesh.DomainConditions"><code class="docutils literal notranslate"><span class="pre">DomainConditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../mesh/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/cylinder_mesh.html">Predefined Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/cylinder_mesh.html#Unstructured-mesh-with-a-sponge-layer">Unstructured mesh with a sponge layer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/cylinder_mesh.html#Structured-O-grid-mesh">Structured O-grid mesh</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/naca_airfoil_mesh.html">NACA Airfoil Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/rectangular_mesh.html">Structured Rectangular Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/rectangular_mesh.html#Uniform-channel-mesh">Uniform channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/rectangular_mesh.html#Wall-clustered-channel-mesh">Wall-clustered channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/rectangular_mesh.html#Two-domain-channel-with-a-downstream-sponge-region">Two-domain channel with a downstream sponge region</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/structured_cylinder_mesh.html">Structured Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/structured_cylinder_mesh.html#Uniform-annular-mesh">Uniform annular mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/structured_cylinder_mesh.html#Radially-clustered-mesh">Radially clustered mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/structured_cylinder_mesh.html#Two-domain-mesh:-fluid-core-and-outer-sponge-annulus">Two-domain mesh: fluid core and outer sponge annulus</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">dream</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Time Integration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/modules/time/index.rst" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="time-integration">
+<h1>Time Integration<a class="headerlink" href="#time-integration" title="Link to this heading"></a></h1>
+<p>The <code class="xref py py-mod docutils literal notranslate"><span class="pre">dream.time</span></code> module provides the time-stepping infrastructure that is shared across all
+<code class="docutils literal notranslate"><span class="pre">dream</span></code> solvers. It separates two concerns:</p>
+<ul class="simple">
+<li><p>A <a class="reference internal" href="#dream.time.TimeSchemes" title="dream.time.TimeSchemes"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a> discretizes the time derivative of the semi-discrete problem
+arising from the spatial discretization and advances the solution by a single time level or
+Runge-Kutta stage. Concrete schemes (explicit, implicit, IMEX) are implemented per solver, e.g. in
+<a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.html#module-dream.scalar_transport.time" title="dream.scalar_transport.time"><code class="xref py py-mod docutils literal notranslate"><span class="pre">dream.scalar_transport.time</span></code></a> and <a class="reference internal" href="../compressible/dream.compressible_flow.conservative.time.html#module-dream.compressible_flow.conservative.time" title="dream.compressible_flow.conservative.time"><code class="xref py py-mod docutils literal notranslate"><span class="pre">dream.compressible_flow.conservative.time</span></code></a>.</p></li>
+<li><p>A <a class="reference internal" href="#dream.time.TimeRoutine" title="dream.time.TimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a> drives the overall solution process: it owns the main solution
+loop, manages I/O, and reports solver convergence. The available routines are
+<a class="reference internal" href="#dream.time.StationaryRoutine" title="dream.time.StationaryRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a>, <a class="reference internal" href="#dream.time.TransientRoutine" title="dream.time.TransientRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a>,
+<a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine" title="dream.time.PseudoTimeSteppingRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a>, and the IMEX routines derived from
+<a class="reference internal" href="#dream.time.IMEXTimeRoutine" title="dream.time.IMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a>.</p></li>
+</ul>
+<section id="stationary-and-transient-routines">
+<h2>Stationary and transient routines<a class="headerlink" href="#stationary-and-transient-routines" title="Link to this heading"></a></h2>
+<p>For steady-state problems, <a class="reference internal" href="#dream.time.StationaryRoutine" title="dream.time.StationaryRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a> solves the discrete problem
+directly, without time-stepping. For time-dependent problems, <a class="reference internal" href="#dream.time.TransientRoutine" title="dream.time.TransientRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a>
+marches the solution forward over a fixed time interval <span class="math notranslate nohighlight">\((t_0, t_{\mathrm{end}})\)</span> held by a
+<a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Timer</span></code></a>, advancing <span class="math notranslate nohighlight">\(t_n \to t_{n+1} = t_n + \Delta t\)</span> until <span class="math notranslate nohighlight">\(t_{\mathrm{end}}\)</span> is
+reached. <a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine" title="dream.time.PseudoTimeSteppingRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a> instead marches a stationary problem towards
+steady state using pseudo-time continuation, in which an artificial time derivative is added and the
+(pseudo) time step is progressively increased, improving the robustness of the nonlinear solver when
+starting far from the solution.</p>
+</section>
+<section id="geometry-split-implicit-explicit-imex-time-integration">
+<h2>Geometry-split implicit-explicit (IMEX) time integration<a class="headerlink" href="#geometry-split-implicit-explicit-imex-time-integration" title="Link to this heading"></a></h2>
+<p>In many flow problems, only a small part of the computational mesh is responsible for the
+geometry-induced stiffness that limits the stable time step of an explicit scheme, for example highly
+refined regions near walls or small geometric features. The IMEX routines derived from
+<a class="reference internal" href="#dream.time.IMEXTimeRoutine" title="dream.time.IMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a> exploit this by coupling two independently configured
+<code class="xref py py-class docutils literal notranslate"><span class="pre">SolverConfiguration</span></code>\ s, held by an <code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code> as <code class="docutils literal notranslate"><span class="pre">cfg_implicit</span></code> and
+<code class="docutils literal notranslate"><span class="pre">cfg_explicit</span></code>. The routine itself does not partition a mesh into implicit/explicit regions; rather, it
+assumes that the two complementary meshes,</p>
+<div class="amsmath math notranslate nohighlight" id="equation-cdff9e79-3e47-4a17-b939-dcfd4ddb155e">
+<span class="eqno">(1)<a class="headerlink" href="#equation-cdff9e79-3e47-4a17-b939-dcfd4ddb155e" title="Permalink to this equation"></a></span>\[\begin{align}
+    \mesh = \mesh^{im} \cup \mesh^{ex}, \qquad \Gamma_i = \mesh^{im} \cap \mesh^{ex},
+\end{align}\]</div>
+<p>with interface <span class="math notranslate nohighlight">\(\Gamma_i\)</span>, have already been constructed and assigned to <code class="docutils literal notranslate"><span class="pre">cfg_implicit</span></code> and
+<code class="docutils literal notranslate"><span class="pre">cfg_explicit</span></code>, respectively, e.g. with the stiff (typically small) region assigned to <code class="docutils literal notranslate"><span class="pre">cfg_implicit</span></code>
+and the remaining, non-stiff region to <code class="docutils literal notranslate"><span class="pre">cfg_explicit</span></code>. Stiff regions are typically discretized with an
+implicit hybridizable discontinuous Galerkin (HDG) scheme, while non-stiff regions are discretized with
+a (standard) discontinuous Galerkin (DG) scheme; however, the routine itself only assumes that
+<code class="docutils literal notranslate"><span class="pre">cfg_implicit</span></code> is solved implicitly and <code class="docutils literal notranslate"><span class="pre">cfg_explicit</span></code> explicitly in time, not any specific spatial
+discretization. In particular, both regions may equally well use a DG discretization, with only the
+time treatment (implicit vs. explicit) differing between them.</p>
+<p>The two solutions are coupled weakly and conservatively across <span class="math notranslate nohighlight">\(\Gamma_i\)</span> by appropriate interface
+conditions, while the temporal synchronization between the implicit and explicit schemes is achieved
+through additive Runge-Kutta (ARK) methods: the implicit part is advanced with a singly diagonally
+implicit Runge-Kutta (SDIRK) method, and the explicit part with a standard explicit Runge-Kutta (ERK)
+method. At every stage, the explicit solution is updated first, using the implicit solution of the
+previous stage, and the implicit solution is then updated using the just-computed explicit solution.</p>
+<p>Two synchronization strategies are available:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#dream.time.SynchronizedIMEXTimeRoutine" title="dream.time.SynchronizedIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a>: the implicit and explicit schemes share the same
+(global) time step <span class="math notranslate nohighlight">\(\Delta t\)</span> and their stage times coincide, <span class="math notranslate nohighlight">\(\overline{c}_{i+1} = c_i\)</span>, following the
+classical structure of an ARK method. This is the strategy used for the ARS-type IMEX schemes for
+compressible flows.</p></li>
+<li><p><a class="reference internal" href="#dream.time.PCIMEXTimeRoutine" title="dream.time.PCIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a> and <a class="reference internal" href="#dream.time.LinearPCIMEXTimeRoutine" title="dream.time.LinearPCIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code></a>: a
+predictor-corrector strategy in which the global (implicit) time step may be a larger integer multiple
+of the local (explicit) time step, allowing the explicit scheme to sub-cycle within an implicit stage.
+During the sub-cycling, the interface value provided to the explicit scheme is either held frozen at
+<span class="math notranslate nohighlight">\(\vec{U}_n^{im}\)</span> (<code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code>) or linearly interpolated in time between the implicit solution at
+the start and end of the stage (<code class="docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code>), before the implicit (corrector) solution is
+recomputed using the updated explicit state.</p></li>
+</ul>
+<p>By restricting the (more expensive) implicit solve to the stiff region <span class="math notranslate nohighlight">\(\mesh^{im}\)</span>, while advancing the
+remainder of the domain <span class="math notranslate nohighlight">\(\mesh^{ex}\)</span> with the cheaper explicit scheme, the IMEX approach increases the
+overall stable time step compared to a fully explicit discretization, at the cost of the additional
+implicit solve. The net benefit therefore depends both on an effective mesh partitioning and an
+efficient implicit solver.</p>
+</section>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Timer</span></code></a>([mesh, root])</p></td>
+<td><p>Keeps track of the simulation time and time step used by a <a class="reference internal" href="#dream.time.TimeRoutine" title="dream.time.TimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dream.time.Scheme" title="dream.time.Scheme"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Scheme</span></code></a>(mesh[, root])</p></td>
+<td><p>Base interface for a spatial/temporal discretization scheme.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dream.time.TimeSchemes" title="dream.time.TimeSchemes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a>(mesh[, root])</p></td>
+<td><p>Base interface for a concrete (multi-step or multi-stage) time-stepping scheme.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dream.time.TimeRoutine" title="dream.time.TimeRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a>(mesh[, root])</p></td>
+<td><p>Base interface for a top-level solution routine driving a <code class="xref py py-class docutils literal notranslate"><span class="pre">SolverConfiguration</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dream.time.StationaryRoutine" title="dream.time.StationaryRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a>(mesh[, root])</p></td>
+<td><p>Solves a stationary (steady-state) problem.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dream.time.TransientRoutine" title="dream.time.TransientRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a>(mesh[, root])</p></td>
+<td><p>Marches a time-dependent problem forward over a fixed time interval.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine" title="dream.time.PseudoTimeSteppingRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a>(mesh[, root])</p></td>
+<td><p>Marches a stationary problem to steady state using pseudo-time continuation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dream.time.IMEXTimeRoutine" title="dream.time.IMEXTimeRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a>(cfg_implicit, cfg_explicit, ...)</p></td>
+<td><p>Base interface for a geometry-split implicit-explicit (IMEX) time routine.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dream.time.SynchronizedIMEXTimeRoutine" title="dream.time.SynchronizedIMEXTimeRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a>(cfg_implicit, ...)</p></td>
+<td><p>IMEX routine in which the implicit and explicit schemes share the same time step and stage times.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dream.time.PCIMEXTimeRoutine" title="dream.time.PCIMEXTimeRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a>(cfg_implicit, ...)</p></td>
+<td><p>IMEX predictor-corrector routine with frozen interface values during the predictor stage.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dream.time.LinearPCIMEXTimeRoutine" title="dream.time.LinearPCIMEXTimeRoutine"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code></a>(cfg_implicit, ...)</p></td>
+<td><p>IMEX predictor-corrector routine with linear interpolation of interface values.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.Timer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Timer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.Timer" title="Link to this definition"></a></dt>
+<dd><p>Keeps track of the simulation time and time step used by a <a class="reference internal" href="#dream.time.TimeRoutine" title="dream.time.TimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a>.</p>
+<p>The timer holds the time interval <span class="math notranslate nohighlight">\((t_0, t_{\mathrm{end}})\)</span> to be simulated, the current
+simulation time <span class="math notranslate nohighlight">\(t\)</span> and the time step <span class="math notranslate nohighlight">\(\Delta t\)</span>. Calling the timer as a generator,
+see <code class="xref py py-meth docutils literal notranslate"><span class="pre">__call__()</span></code>, advances <span class="math notranslate nohighlight">\(t\)</span> from <span class="math notranslate nohighlight">\(t_0\)</span> to <span class="math notranslate nohighlight">\(t_{\mathrm{end}}\)</span> in increments
+of <span class="math notranslate nohighlight">\(\Delta t\)</span>, yielding the iteration number together with the time levels <span class="math notranslate nohighlight">\(t_n\)</span> and
+<span class="math notranslate nohighlight">\(t_{n+1}\)</span> bracketing each step.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.Timer.interval">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">interval</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dream.time.Timer.interval" title="Link to this definition"></a></dt>
+<dd><p>Sets the time interval <span class="math notranslate nohighlight">\((t_0, t_{\mathrm{end}})\)</span> to be simulated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the time interval</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the time interval, defaults to (0.0, 1.0)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.Timer.step">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">step</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Parameter</span></em><a class="headerlink" href="#dream.time.Timer.step" title="Link to this definition"></a></dt>
+<dd><p>Sets the time step <span class="math notranslate nohighlight">\(\Delta t\)</span> used to advance the simulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the time step</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the time step, defaults to 1e-4</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.Timer.t">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">t</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Parameter</span></em><a class="headerlink" href="#dream.time.Timer.t" title="Link to this definition"></a></dt>
+<dd><p>Sets the current simulation time <span class="math notranslate nohighlight">\(t\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the current simulation time</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the current simulation time, defaults to 0.0</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.Scheme">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Scheme</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.Scheme" title="Link to this definition"></a></dt>
+<dd><p>Base interface for a spatial/temporal discretization scheme.</p>
+<p>A <a class="reference internal" href="#dream.time.Scheme" title="dream.time.Scheme"><code class="xref py py-class docutils literal notranslate"><span class="pre">Scheme</span></code></a> is responsible for assembling the bilinear and linear forms of the
+discretized problem, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">assemble()</span></code>, and for solving either a stationary problem,
+see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_stationary()</span></code>, or a single time level/stage, see <a class="reference internal" href="#dream.time.TimeSchemes" title="dream.time.TimeSchemes"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.Scheme.compile">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compile</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">bool</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#dream.time.Scheme.compile" title="Link to this definition"></a></dt>
+<dd><p>Sets the NGSolve compile options used when assembling the symbolic forms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the compile options</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the compile options, defaults to False</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.time.Scheme.parse_sum_of_integrals">
+<span class="sig-name descname"><span class="pre">parse_sum_of_integrals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">integrals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">SumOfIntegrals</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_terms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_terms</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">SumOfIntegrals</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dream.time.Scheme.parse_sum_of_integrals" title="Link to this definition"></a></dt>
+<dd><p>Parse the sum of integrals dictionary to include or exclude specific spaces and terms.</p>
+<p>By default, it includes all spaces and terms in the integrals. You can specify which spaces to include
+or exclude, and which terms to include or exclude. If a space in the include container
+is not found in the integrals dictionary, it will raise an error.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.TimeSchemes">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TimeSchemes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.TimeSchemes" title="Link to this definition"></a></dt>
+<dd><p>Base interface for a concrete (multi-step or multi-stage) time-stepping scheme.</p>
+<p>A <a class="reference internal" href="#dream.time.TimeSchemes" title="dream.time.TimeSchemes"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a> discretizes the time derivative of the semi-discrete problem and
+advances the solution either over a single time level, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_current_time_level()</span></code>,
+or over a single Runge-Kutta stage, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_stage()</span></code>. Multi-step schemes (e.g. BDF) keep
+track of the solutions of the previous <code class="xref py py-attr docutils literal notranslate"><span class="pre">number_of_steps</span></code> time levels via
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">get_step_gridfunctions()</span></code>, while multi-stage schemes (e.g. Runge-Kutta) evaluate the
+right-hand side at the intermediate stage times given by <code class="xref py py-attr docutils literal notranslate"><span class="pre">time_of_stages</span></code>.</p>
+<p>Concrete implementations are provided per solver, e.g. in <a class="reference internal" href="../scalar_transport/dream.scalar_transport.time.html#module-dream.scalar_transport.time" title="dream.scalar_transport.time"><code class="xref py py-mod docutils literal notranslate"><span class="pre">dream.scalar_transport.time</span></code></a>
+and <a class="reference internal" href="../compressible/dream.compressible_flow.conservative.time.html#module-dream.compressible_flow.conservative.time" title="dream.compressible_flow.conservative.time"><code class="xref py py-mod docutils literal notranslate"><span class="pre">dream.compressible_flow.conservative.time</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.time.TimeSchemes.update_final_stage_solution">
+<span class="sig-name descname"><span class="pre">update_final_stage_solution</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dream.time.TimeSchemes.update_final_stage_solution" title="Link to this definition"></a></dt>
+<dd><p>Updates the final stage solution</p>
+<p>This method is needed in case the time scheme is not stiffly accurate.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.TimeRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TimeRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.TimeRoutine" title="Link to this definition"></a></dt>
+<dd><p>Base interface for a top-level solution routine driving a <code class="xref py py-class docutils literal notranslate"><span class="pre">SolverConfiguration</span></code>.</p>
+<p>While a <a class="reference internal" href="#dream.time.TimeSchemes" title="dream.time.TimeSchemes"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a> discretizes a single time level or stage, a <a class="reference internal" href="#dream.time.TimeRoutine" title="dream.time.TimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a>
+orchestrates the full solution process, i.e. it drives the main solution loop, see
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">start_solution_routine()</span></code>, manages I/O, and reports solver convergence, see
+<a class="reference internal" href="#dream.time.TimeRoutine.parse_routine_log" title="dream.time.TimeRoutine.parse_routine_log"><code class="xref py py-meth docutils literal notranslate"><span class="pre">parse_routine_log()</span></code></a>. Available routines are <a class="reference internal" href="#dream.time.StationaryRoutine" title="dream.time.StationaryRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a>,
+<a class="reference internal" href="#dream.time.TransientRoutine" title="dream.time.TransientRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a>, <a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine" title="dream.time.PseudoTimeSteppingRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a>, and the IMEX routines derived
+from <a class="reference internal" href="#dream.time.IMEXTimeRoutine" title="dream.time.IMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.time.TimeRoutine.parse_routine_log">
+<span class="sig-name descname"><span class="pre">parse_routine_log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">it</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.TimeRoutine.parse_routine_log" title="Link to this definition"></a></dt>
+<dd><p>Parse the routine log and return a formatted string.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.StationaryRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">StationaryRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Configuration</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.StationaryRoutine" title="Link to this definition"></a></dt>
+<dd><p>Solves a stationary (steady-state) problem.</p>
+<p>No time integration is performed: the routine simply assembles the discrete problem and solves
+it via the nonlinear solver of the underlying scheme, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">Scheme.solve_stationary()</span></code>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.TransientRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">TransientRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.TransientRoutine" title="Link to this definition"></a></dt>
+<dd><p>Marches a time-dependent problem forward over a fixed time interval.</p>
+<p>The routine repeatedly advances the solution from <span class="math notranslate nohighlight">\(t_n\)</span> to <span class="math notranslate nohighlight">\(t_{n+1} = t_n + \Delta t\)</span>
+over the interval held by its <a class="reference internal" href="#dream.time.TransientRoutine.timer" title="dream.time.TransientRoutine.timer"><code class="xref py py-attr docutils literal notranslate"><span class="pre">timer</span></code></a>, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">start_solution_routine()</span></code>. Each time level
+is solved by the scheme of the underlying <code class="xref py py-class docutils literal notranslate"><span class="pre">SolverConfiguration</span></code>, see
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">TimeSchemes.solve_current_time_level()</span></code>. In addition to the standard solution routine, this
+class provides <code class="xref py py-meth docutils literal notranslate"><span class="pre">start_timing_solution_routine()</span></code> for performance profiling, and
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">find_stable_time_step()</span></code> to determine, by bisection, the largest stable time step for an
+explicit scheme.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.TransientRoutine.timer">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">timer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><span class="pre">Timer</span></a></em><a class="headerlink" href="#dream.time.TransientRoutine.timer" title="Link to this definition"></a></dt>
+<dd><p>Sets the timer holding the time interval, time step and current simulation time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the timer</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the timer, defaults to <a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Timer</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.PseudoTimeSteppingRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PseudoTimeSteppingRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.PseudoTimeSteppingRoutine" title="Link to this definition"></a></dt>
+<dd><p>Marches a stationary problem to steady state using pseudo-time continuation.</p>
+<p>Rather than solving the nonlinear stationary problem directly, an artificial (pseudo) time
+derivative is added and advanced with a time step that is progressively increased, every
+<a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine.increment_at" title="dream.time.PseudoTimeSteppingRoutine.increment_at"><code class="xref py py-attr docutils literal notranslate"><span class="pre">increment_at</span></code></a> iterations, by <a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine.increment_factor" title="dream.time.PseudoTimeSteppingRoutine.increment_factor"><code class="xref py py-attr docutils literal notranslate"><span class="pre">increment_factor</span></code></a>, up to <a class="reference internal" href="#dream.time.PseudoTimeSteppingRoutine.max_time_step" title="dream.time.PseudoTimeSteppingRoutine.max_time_step"><code class="xref py py-attr docutils literal notranslate"><span class="pre">max_time_step</span></code></a>.
+This continuation strategy improves the robustness of the nonlinear solver, especially when
+starting far from the steady-state solution, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solver_iteration_update()</span></code>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.PseudoTimeSteppingRoutine.timer">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">timer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><span class="pre">Timer</span></a></em><a class="headerlink" href="#dream.time.PseudoTimeSteppingRoutine.timer" title="Link to this definition"></a></dt>
+<dd><p>Sets the timer holding the pseudo-time step and current pseudo-time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the timer</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the timer, defaults to <a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><code class="xref py py-class docutils literal notranslate"><span class="pre">Timer</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.PseudoTimeSteppingRoutine.max_time_step">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_time_step</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#dream.time.PseudoTimeSteppingRoutine.max_time_step" title="Link to this definition"></a></dt>
+<dd><p>Sets the upper bound the pseudo-time step is allowed to grow to.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the maximum pseudo-time step</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the maximum pseudo-time step, defaults to 1.0</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.PseudoTimeSteppingRoutine.increment_at">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">increment_at</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#dream.time.PseudoTimeSteppingRoutine.increment_at" title="Link to this definition"></a></dt>
+<dd><p>Sets the number of iterations after which the pseudo-time step is increased.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the increment interval</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the increment interval, defaults to 10</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.PseudoTimeSteppingRoutine.increment_factor">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">increment_factor</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#dream.time.PseudoTimeSteppingRoutine.increment_factor" title="Link to this definition"></a></dt>
+<dd><p>Sets the multiplicative factor applied to the pseudo-time step at each increment.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Getter<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Returns the increment factor</p>
+</dd>
+<dt class="field-even">Setter<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sets the increment factor, defaults to 10</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.IMEXTimeRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">IMEXTimeRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg_implicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg_explicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.IMEXTimeRoutine" title="Link to this definition"></a></dt>
+<dd><p>Base interface for a geometry-split implicit-explicit (IMEX) time routine.</p>
+<p>An <a class="reference internal" href="#dream.time.IMEXTimeRoutine" title="dream.time.IMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a> couples two independently configured solvers, <code class="xref py py-attr docutils literal notranslate"><span class="pre">cfg_implicit</span></code>
+and <code class="xref py py-attr docutils literal notranslate"><span class="pre">cfg_explicit</span></code>, each holding its own <code class="xref py py-class docutils literal notranslate"><span class="pre">SolverConfiguration</span></code> and
+mesh. The routine itself does not partition a mesh into implicit/explicit regions; rather, it
+assumes that the two complementary meshes <span class="math notranslate nohighlight">\(\mesh^{im}\)</span> and <span class="math notranslate nohighlight">\(\mesh^{ex}\)</span>, with
+interface <span class="math notranslate nohighlight">\(\Gamma_i = \mesh^{im} \cap \mesh^{ex}\)</span>, have already been constructed and
+assigned to <cite>cfg_implicit</cite> and <cite>cfg_explicit</cite>, respectively, e.g. with the stiff (typically
+small) region assigned to <cite>cfg_implicit</cite> and the remaining, non-stiff region to <cite>cfg_explicit</cite>.</p>
+<p>Stiff regions are typically treated implicitly using a hybridizable discontinuous Galerkin
+(HDG) scheme, while non-stiff regions are treated explicitly using a (standard) discontinuous
+Galerkin (DG) scheme; however, the routine itself only assumes that <cite>cfg_implicit</cite> is solved
+implicitly and <cite>cfg_explicit</cite> explicitly in time, and not any specific spatial discretization.
+In particular, both regions may equally well use a DG discretization, with only the time
+treatment (implicit vs. explicit) differing between them. The two solutions are weakly and
+conservatively coupled across <span class="math notranslate nohighlight">\(\Gamma_i\)</span> by appropriate interface conditions, while
+temporal synchronization between the implicit and explicit schemes is achieved through additive
+Runge-Kutta (ARK) methods, in which the implicit part is a singly diagonally implicit
+Runge-Kutta (SDIRK) method and the explicit part a standard explicit Runge-Kutta (ERK) method.</p>
+<p>At each global time step, every stage is solved by first advancing the explicit region, see
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_explicit_stage()</span></code>, and then the implicit region, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_implicit_stage()</span></code>,
+such that the explicit stage uses the implicit solution at the previous stage, and the implicit
+stage uses the just-updated explicit solution, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_stages()</span></code>.</p>
+<p>Restricting the (typically more expensive) implicit scheme to a small region, while advancing
+the bulk of the domain with the cheaper explicit scheme, allows the explicit scheme’s stable
+time step to increase compared to a fully explicit discretization of the whole domain; this
+increase yields the overall speedup of the IMEX approach, at the cost of the additional implicit
+solve. Two synchronization strategies are provided: <a class="reference internal" href="#dream.time.SynchronizedIMEXTimeRoutine" title="dream.time.SynchronizedIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a>, in
+which the implicit and explicit schemes share the same time step and stage times, and the
+predictor-corrector routines <a class="reference internal" href="#dream.time.PCIMEXTimeRoutine" title="dream.time.PCIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a>/<a class="reference internal" href="#dream.time.LinearPCIMEXTimeRoutine" title="dream.time.LinearPCIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code></a>, which
+allow the explicit scheme to sub-cycle with a smaller, locally defined time step.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.IMEXTimeRoutine.gtimer">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">gtimer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><span class="pre">Timer</span></a></em><a class="headerlink" href="#dream.time.IMEXTimeRoutine.gtimer" title="Link to this definition"></a></dt>
+<dd><p>Global timer for the implicit scheme.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.IMEXTimeRoutine.ltimer">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ltimer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.time.Timer" title="dream.time.Timer"><span class="pre">Timer</span></a></em><a class="headerlink" href="#dream.time.IMEXTimeRoutine.ltimer" title="Link to this definition"></a></dt>
+<dd><p>Local timer for the explicit scheme.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.IMEXTimeRoutine.gscheme">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">gscheme</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.time.TimeSchemes" title="dream.time.TimeSchemes"><span class="pre">TimeSchemes</span></a></em><a class="headerlink" href="#dream.time.IMEXTimeRoutine.gscheme" title="Link to this definition"></a></dt>
+<dd><p>Global implicit scheme.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="dream.time.IMEXTimeRoutine.lscheme">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lscheme</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#dream.time.TimeSchemes" title="dream.time.TimeSchemes"><span class="pre">TimeSchemes</span></a></em><a class="headerlink" href="#dream.time.IMEXTimeRoutine.lscheme" title="Link to this definition"></a></dt>
+<dd><p>Local explicit scheme.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.time.IMEXTimeRoutine.update_final_stage_solution">
+<span class="sig-name descname"><span class="pre">update_final_stage_solution</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dream.time.IMEXTimeRoutine.update_final_stage_solution" title="Link to this definition"></a></dt>
+<dd><p>Updates the final stage solution</p>
+<p>This method is needed in case the time scheme is not stiffly accurate.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.SynchronizedIMEXTimeRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SynchronizedIMEXTimeRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg_implicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg_explicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.SynchronizedIMEXTimeRoutine" title="Link to this definition"></a></dt>
+<dd><p>IMEX routine in which the implicit and explicit schemes share the same time step and stage times.</p>
+<p>Both the implicit and explicit schemes advance with the same (global) time step
+<span class="math notranslate nohighlight">\(\Delta t\)</span> and the additive Runge-Kutta tableaux are synchronized via padding, i.e. the
+stage times coincide, <span class="math notranslate nohighlight">\(\overline{c}_{i+1} = c_i\)</span>. This is the classical structure of an
+ARK method and is the synchronization strategy used for the geometry-split IMEX schemes
+(ARS-type) developed for compressible flows in <a class="reference internal" href="#dream.time.IMEXTimeRoutine" title="dream.time.IMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a>.</p>
+<p>At every stage <span class="math notranslate nohighlight">\(i\)</span>, the explicit stage solution is computed first, see
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_explicit_stage()</span></code>, followed by the implicit stage solution, see
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_implicit_stage()</span></code>, both using the previously computed stage solution of the other
+scheme. The final solution update accounts for the first-same-as-last (FSAL) property of the
+explicit scheme and the stiff accuracy of the implicit scheme, see
+<a class="reference internal" href="#dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution" title="dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update_final_stage_solution()</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution">
+<span class="sig-name descname"><span class="pre">update_final_stage_solution</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution" title="Link to this definition"></a></dt>
+<dd><p>Updates the final stage solution</p>
+<p>This method is needed in case the time scheme is not stiffly accurate.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.PCIMEXTimeRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PCIMEXTimeRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg_implicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg_explicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.PCIMEXTimeRoutine" title="Link to this definition"></a></dt>
+<dd><p>IMEX predictor-corrector routine with frozen interface values during the predictor stage.</p>
+<p>Unlike <a class="reference internal" href="#dream.time.SynchronizedIMEXTimeRoutine" title="dream.time.SynchronizedIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a>, the global (implicit) time step <span class="math notranslate nohighlight">\(\Delta t\)</span>
+need not equal the local (explicit) time step, but must be an integer multiple of it, allowing
+the explicit scheme to sub-cycle with several smaller steps per implicit stage.</p>
+<p>For each implicit stage, a predictor step first advances the implicit solution, see
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_predictor_stage()</span></code>, and the explicit scheme is then sub-cycled across the stage
+interval using the predicted interface value frozen at <span class="math notranslate nohighlight">\(\vec{U}_n^{im}\)</span> for all explicit
+sub-steps, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">set_predictor_solution()</span></code>. The implicit (corrector) solution is finally
+recomputed using the now up-to-date explicit interface state, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_implicit_stage()</span></code>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dream.time.PCIMEXTimeRoutine.update_final_stage_solution">
+<span class="sig-name descname"><span class="pre">update_final_stage_solution</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.PCIMEXTimeRoutine.update_final_stage_solution" title="Link to this definition"></a></dt>
+<dd><p>Updates the final stage solution</p>
+<p>This method is needed in case the time scheme is not stiffly accurate.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dream.time.LinearPCIMEXTimeRoutine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">LinearPCIMEXTimeRoutine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cfg_implicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg_explicit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SolverConfiguration</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">default</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dream.time.LinearPCIMEXTimeRoutine" title="Link to this definition"></a></dt>
+<dd><p>IMEX predictor-corrector routine with linear interpolation of interface values.</p>
+<p>Extends <a class="reference internal" href="#dream.time.PCIMEXTimeRoutine" title="dream.time.PCIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a> by replacing the frozen interface value during the
+predictor stage with a linear interpolation in time. The predictor stage first solves the
+implicit scheme to obtain a prediction of the interface state at the end of the stage, see
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_predictor_stage()</span></code>, and the explicit sub-steps then use values linearly interpolated,
+based on the local sub-step time, between the implicit solution at the start (<span class="math notranslate nohighlight">\(\vec{y}_1\)</span>)
+and end (<span class="math notranslate nohighlight">\(\vec{y}_2\)</span>) of the stage, see <code class="xref py py-meth docutils literal notranslate"><span class="pre">set_predictor_solution()</span></code>. The corrector step,
+see <code class="xref py py-meth docutils literal notranslate"><span class="pre">solve_implicit_stage()</span></code>, resets the implicit solution to <span class="math notranslate nohighlight">\(\vec{y}_1\)</span> and resolves
+the implicit stage using the now updated explicit solution, improving accuracy compared to the
+frozen-interface predictor of <a class="reference internal" href="#dream.time.PCIMEXTimeRoutine" title="dream.time.PCIMEXTimeRoutine"><code class="xref py py-class docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a>.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../../examples/isentropic_vortex.html" class="btn btn-neutral float-left" title="Isentropic Vortex in 2D" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../mesh/index.html" class="btn btn-neutral float-right" title="mesh" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

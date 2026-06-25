@@ -8,7 +8,7 @@
   <title>Index &mdash; dream 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
-      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b6f29fd6" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=a357efec" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -418,6 +418,134 @@
 </ul>
 </li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">Time Integration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/time/index.html">Time Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#stationary-and-transient-routines">Stationary and transient routines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#geometry-split-implicit-explicit-imex-time-integration">Geometry-split implicit-explicit (IMEX) time integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.Timer"><code class="docutils literal notranslate"><span class="pre">Timer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.Timer.interval"><code class="docutils literal notranslate"><span class="pre">Timer.interval</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.Timer.step"><code class="docutils literal notranslate"><span class="pre">Timer.step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.Timer.t"><code class="docutils literal notranslate"><span class="pre">Timer.t</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.Scheme"><code class="docutils literal notranslate"><span class="pre">Scheme</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.Scheme.compile"><code class="docutils literal notranslate"><span class="pre">Scheme.compile</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.Scheme.parse_sum_of_integrals"><code class="docutils literal notranslate"><span class="pre">Scheme.parse_sum_of_integrals()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.TimeSchemes"><code class="docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.TimeSchemes.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">TimeSchemes.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.TimeRoutine"><code class="docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.TimeRoutine.parse_routine_log"><code class="docutils literal notranslate"><span class="pre">TimeRoutine.parse_routine_log()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.StationaryRoutine"><code class="docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.TransientRoutine"><code class="docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.TransientRoutine.timer"><code class="docutils literal notranslate"><span class="pre">TransientRoutine.timer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.timer"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.timer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.max_time_step"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.max_time_step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_at"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_factor"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_factor</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.IMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.IMEXTimeRoutine.gtimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gtimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.IMEXTimeRoutine.ltimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.ltimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.IMEXTimeRoutine.gscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.IMEXTimeRoutine.lscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.lscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.IMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.PCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/time/index.html#dream.time.PCIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/time/index.html#dream.time.LinearPCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Mesh</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="modules/mesh/index.html">mesh</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#predefined-mesh-generators">Predefined mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#structured-mesh-generators">Structured mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#buffer-and-sponge-layer-infrastructure">Buffer and sponge layer infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#condition-containers">Condition containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_nodal_points"><code class="docutils literal notranslate"><span class="pre">get_nodal_points()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_cylinder_omesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_omesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_rectangular_mesh"><code class="docutils literal notranslate"><span class="pre">get_rectangular_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_structured_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_structured_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_2d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_2d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_3d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_3d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.get_chord_naca_4digit_series_coordinates"><code class="docutils literal notranslate"><span class="pre">get_chord_naca_4digit_series_coordinates()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.BufferCoord"><code class="docutils literal notranslate"><span class="pre">BufferCoord</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.SpongeFunction"><code class="docutils literal notranslate"><span class="pre">SpongeFunction</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.GridMapping"><code class="docutils literal notranslate"><span class="pre">GridMapping</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.GridMapping.none"><code class="docutils literal notranslate"><span class="pre">GridMapping.none()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.GridMapping.linear"><code class="docutils literal notranslate"><span class="pre">GridMapping.linear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.GridMapping.exponential"><code class="docutils literal notranslate"><span class="pre">GridMapping.exponential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.GridMapping.tangential"><code class="docutils literal notranslate"><span class="pre">GridMapping.tangential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.GridMapping.polar_to_cartesian"><code class="docutils literal notranslate"><span class="pre">GridMapping.polar_to_cartesian()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Condition"><code class="docutils literal notranslate"><span class="pre">Condition</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Periodic"><code class="docutils literal notranslate"><span class="pre">Periodic</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Initial"><code class="docutils literal notranslate"><span class="pre">Initial</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Initial.fields"><code class="docutils literal notranslate"><span class="pre">Initial.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Perturbation"><code class="docutils literal notranslate"><span class="pre">Perturbation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Perturbation.fields"><code class="docutils literal notranslate"><span class="pre">Perturbation.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Buffer"><code class="docutils literal notranslate"><span class="pre">Buffer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.GridDeformation"><code class="docutils literal notranslate"><span class="pre">GridDeformation</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.SpongeLayer"><code class="docutils literal notranslate"><span class="pre">SpongeLayer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.SpongeLayer.target_state"><code class="docutils literal notranslate"><span class="pre">SpongeLayer.target_state</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.PSpongeLayer"><code class="docutils literal notranslate"><span class="pre">PSpongeLayer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.Conditions"><code class="docutils literal notranslate"><span class="pre">Conditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.BoundaryConditions"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.BoundaryConditions.get_domain_boundaries"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions.get_domain_boundaries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#dream.mesh.DomainConditions"><code class="docutils literal notranslate"><span class="pre">DomainConditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/mesh/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples/cylinder_mesh.html">Predefined Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="examples/cylinder_mesh.html#Unstructured-mesh-with-a-sponge-layer">Unstructured mesh with a sponge layer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="examples/cylinder_mesh.html#Structured-O-grid-mesh">Structured O-grid mesh</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="examples/naca_airfoil_mesh.html">NACA Airfoil Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples/rectangular_mesh.html">Structured Rectangular Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="examples/rectangular_mesh.html#Uniform-channel-mesh">Uniform channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="examples/rectangular_mesh.html#Wall-clustered-channel-mesh">Wall-clustered channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="examples/rectangular_mesh.html#Two-domain-channel-with-a-downstream-sponge-region">Two-domain channel with a downstream sponge region</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="examples/structured_cylinder_mesh.html">Structured Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="examples/structured_cylinder_mesh.html#Uniform-annular-mesh">Uniform annular mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="examples/structured_cylinder_mesh.html#Radially-clustered-mesh">Radially clustered mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="examples/structured_cylinder_mesh.html#Two-domain-mesh:-fluid-core-and-outer-sponge-annulus">Two-domain mesh: fluid core and outer sponge annulus</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 
         </div>
       </div>
@@ -527,9 +655,15 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.BDF2">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
+      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.BDF3">BDF3 (class in dream.compressible_flow.conservative.time.implicit)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.BDF3">BDF3 (class in dream.compressible_flow.conservative.time.implicit)</a>
+      <li><a href="modules/mesh/index.html#dream.mesh.BoundaryConditions">BoundaryConditions (class in dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.Buffer">Buffer (class in dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.BufferCoord">BufferCoord (class in dream.mesh)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -553,14 +687,20 @@
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.characteristic_from_primitive">characteristic_from_primitive() (IdealGas method)</a>
 </li>
+      <li><a href="modules/time/index.html#dream.time.Scheme.compile">compile (Scheme property)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod">CompressibleFiniteElementMethod (class in dream.compressible_flow.config)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver">CompressibleFlowSolver (class in dream.compressible_flow.solver)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_x">conservative_convective_jacobian_x() (IdealGas method)</a>
+      <li><a href="modules/mesh/index.html#dream.mesh.Condition">Condition (class in dream.mesh)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/mesh/index.html#dream.mesh.Conditions">Conditions (class in dream.mesh)</a>
+</li>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_x">conservative_convective_jacobian_x() (IdealGas method)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_convective_jacobian_y">conservative_convective_jacobian_y() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.conservative_from_characteristic">conservative_from_characteristic() (IdealGas method)</a>
@@ -617,6 +757,8 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
+      <li><a href="modules/mesh/index.html#dream.mesh.DomainConditions">DomainConditions (class in dream.mesh)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.drag_coefficient">drag_coefficient() (CompressibleFlowSolver method)</a>
 </li>
       <li>
@@ -811,6 +953,8 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.ExplicitSchemes">(class in dream.scalar_transport.time.explicit)</a>
 </li>
       </ul></li>
+      <li><a href="modules/mesh/index.html#dream.mesh.GridMapping.exponential">exponential() (GridMapping class method)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -834,9 +978,13 @@
       <ul>
         <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.fields">(FarField property)</a>
 </li>
+        <li><a href="modules/mesh/index.html#dream.mesh.Initial.fields">(Initial property)</a>
+</li>
         <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall.fields">(IsothermalWall property)</a>
 </li>
         <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow.fields">(Outflow property)</a>
+</li>
+        <li><a href="modules/mesh/index.html#dream.mesh.Perturbation.fields">(Perturbation property)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -851,6 +999,12 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_2d_naca_occ_profile">get_2d_naca_occ_profile() (in module dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_3d_naca_occ_profile">get_3d_naca_occ_profile() (in module dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_chord_naca_4digit_series_coordinates">get_chord_naca_4digit_series_coordinates() (in module dream.mesh)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_convective_flux">get_convective_flux() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG.get_convective_numerical_flux">get_convective_numerical_flux() (ConservativeHDG method)</a>
@@ -881,11 +1035,17 @@
         <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind.get_convective_stabilisation_matrix_hdg">(Upwind method)</a>
 </li>
       </ul></li>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_cylinder_mesh">get_cylinder_mesh() (in module dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_cylinder_omesh">get_cylinder_omesh() (in module dream.mesh)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_diffusive_flux">get_diffusive_flux() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenalty.get_diffusive_flux_from_conservative_jump">get_diffusive_flux_from_conservative_jump() (InteriorPenalty method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat.get_diffusive_numerical_flux">get_diffusive_numerical_flux() (StrainHeat method)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.BoundaryConditions.get_domain_boundaries">get_domain_boundaries() (BoundaryConditions method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod.get_domain_boundary_mask">get_domain_boundary_mask() (CompressibleFiniteElementMethod method)</a>
 
@@ -893,15 +1053,19 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_domain_boundary_mask">(ScalarTransportFiniteElementMethod method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_farfield_fields">get_farfield_fields() (CompressibleFlowSolver method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_mach_number">get_local_mach_number() (CompressibleFlowSolver method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_local_reynolds_number">get_local_reynolds_number() (CompressibleFlowSolver method)</a>
 </li>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_nodal_points">get_nodal_points() (in module dream.mesh)</a>
+</li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient">get_penalty_coefficient() (ScalarTransportFiniteElementMethod method)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_rectangular_mesh">get_rectangular_mesh() (in module dream.mesh)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL.get_simplified_convective_stabilisation_matrix_hdg">get_simplified_convective_stabilisation_matrix_hdg() (HLL method)</a>
 
@@ -916,6 +1080,8 @@
 </li>
       </ul></li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.get_solution_fields">get_solution_fields() (CompressibleFlowSolver method)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.get_structured_cylinder_mesh">get_structured_cylinder_mesh() (in module dream.mesh)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.grad_p">grad_p (flowfields attribute)</a>
 </li>
@@ -932,6 +1098,14 @@
       <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.Gradient">Gradient (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.GRCBC">GRCBC (class in dream.compressible_flow.config)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.GridDeformation">GridDeformation (class in dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.GridMapping">GridMapping (class in dream.mesh)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.IMEXTimeRoutine.gscheme">gscheme (IMEXTimeRoutine property)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.IMEXTimeRoutine.gtimer">gtimer (IMEXTimeRoutine property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -969,6 +1143,8 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.imex.html#dream.scalar_transport.time.imex.IMEXRKSchemes">(class in dream.scalar_transport.time.imex)</a>
 </li>
       </ul></li>
+      <li><a href="modules/time/index.html#dream.time.IMEXTimeRoutine">IMEXTimeRoutine (class in dream.time)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.ImplicitEuler">ImplicitEuler (class in dream.compressible_flow.conservative.time.implicit)</a>
 
       <ul>
@@ -981,12 +1157,18 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.ImplicitSchemes">(class in dream.scalar_transport.time.implicit)</a>
 </li>
       </ul></li>
+      <li><a href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_at">increment_at (PseudoTimeSteppingRoutine property)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_factor">increment_factor (PseudoTimeSteppingRoutine property)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Inflow">Inflow (class in dream.compressible_flow.config)</a>
 </li>
-      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.inner_energy">inner_energy() (IdealGas method)</a>
+      <li><a href="modules/mesh/index.html#dream.mesh.Initial">Initial (class in dream.mesh)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.inner_energy">inner_energy() (IdealGas method)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InterfaceBC">InterfaceBC (class in dream.compressible_flow.config)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenalty.interior_penalty_coefficient">interior_penalty_coefficient (InteriorPenalty property)</a>
@@ -1000,6 +1182,8 @@
       <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltyHDG">InteriorPenaltyHDG (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.InteriorPenaltySDG">InteriorPenaltySDG (class in dream.compressible_flow.conservative.diffusion)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.Timer.interval">interval (Timer property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid">Inviscid (class in dream.compressible_flow.viscosity)</a>
 </li>
@@ -1035,11 +1219,19 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich">(class in dream.scalar_transport.riemann_solver)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC.length">length (NSCBC property)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.lift_coefficient">lift_coefficient() (CompressibleFlowSolver method)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.GridMapping.linear">linear() (GridMapping class method)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.LinearPCIMEXTimeRoutine">LinearPCIMEXTimeRoutine (class in dream.time)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.IMEXTimeRoutine.lscheme">lscheme (IMEXTimeRoutine property)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.IMEXTimeRoutine.ltimer">ltimer (IMEXTimeRoutine property)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1048,6 +1240,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.mach_number">mach_number (CompressibleFlowSolver property)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.max_time_step">max_time_step (PseudoTimeSteppingRoutine property)</a>
 </li>
       <li>
     module
@@ -1108,6 +1302,10 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="modules/mesh/index.html#dream.mesh.GridMapping.none">none() (GridMapping class method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC">NSCBC (class in dream.compressible_flow.config)</a>
 </li>
   </ul></td>
@@ -1130,10 +1328,24 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.p">p (flowfields attribute)</a>
 </li>
+      <li><a href="modules/time/index.html#dream.time.TimeRoutine.parse_routine_log">parse_routine_log() (TimeRoutine method)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.Scheme.parse_sum_of_integrals">parse_sum_of_integrals() (Scheme method)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.PCIMEXTimeRoutine">PCIMEXTimeRoutine (class in dream.time)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.Periodic">Periodic (class in dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.Perturbation">Perturbation (class in dream.mesh)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.PML">PML (class in dream.compressible_flow.config)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.GridMapping.polar_to_cartesian">polar_to_cartesian() (GridMapping method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.prandtl_number">prandtl_number (CompressibleFlowSolver property)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.pressure">pressure (Acoustic property)</a>
 
       <ul>
@@ -1142,8 +1354,6 @@
         <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic.pressure">(Aerodynamic property)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure">pressure() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.pressure_gradient">pressure_gradient() (IdealGas method)</a>
@@ -1151,6 +1361,10 @@
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_characteristic">primitive_from_characteristic() (IdealGas method)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.primitive_from_conservative">primitive_from_conservative() (IdealGas method)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine">PseudoTimeSteppingRoutine (class in dream.time)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.PSpongeLayer">PSpongeLayer (class in dream.mesh)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1248,6 +1462,8 @@
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver.scaling">scaling (CompressibleFlowSolver property)</a>
 </li>
+      <li><a href="modules/time/index.html#dream.time.Scheme">Scheme (class in dream.time)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.hdg.html#dream.compressible_flow.conservative.hdg.ConservativeHDG.scheme">scheme (ConservativeHDG property)</a>
 
       <ul>
@@ -1278,14 +1494,14 @@
         <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.set_boundary_conditions">(ScalarTransportFiniteElementMethod method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG.set_initial_conditions">set_initial_conditions() (HDG method)</a>
 
       <ul>
         <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat.set_initial_conditions">(StrainHeat method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.DIRKSchemes.setup_stage_definitions">setup_stage_definitions() (DIRKSchemes method)</a>, <a href="modules/scalar_transport/dream.scalar_transport.time.implicit.html#dream.scalar_transport.time.implicit.DIRKSchemes.setup_stage_definitions">[1]</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.specific_entropy">specific_entropy() (IdealGas method)</a>
@@ -1304,12 +1520,20 @@
       </ul></li>
       <li><a href="modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas.speed_of_sound">speed_of_sound() (IdealGas method)</a>
 </li>
+      <li><a href="modules/mesh/index.html#dream.mesh.SpongeFunction">SpongeFunction (class in dream.mesh)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.SpongeLayer">SpongeLayer (class in dream.mesh)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.SSPRK3">SSPRK3 (class in dream.compressible_flow.conservative.time.explicit)</a>
 
       <ul>
         <li><a href="modules/scalar_transport/dream.scalar_transport.time.explicit.html#dream.scalar_transport.time.explicit.SSPRK3">(class in dream.scalar_transport.time.explicit)</a>
 </li>
       </ul></li>
+      <li><a href="modules/time/index.html#dream.time.StationaryRoutine">StationaryRoutine (class in dream.time)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.Timer.step">step (Timer property)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.diffusion.html#dream.compressible_flow.conservative.diffusion.StrainHeat">StrainHeat (class in dream.compressible_flow.conservative.diffusion)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland">Sutherland (class in dream.compressible_flow.viscosity)</a>
@@ -1317,6 +1541,8 @@
       <li><a href="modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland.sutherland_temperature">sutherland_temperature (Sutherland property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Symmetry">Symmetry (class in dream.compressible_flow.config)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine">SynchronizedIMEXTimeRoutine (class in dream.time)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1330,9 +1556,15 @@
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields.T">T (flowfields attribute)</a>
 </li>
+      <li><a href="modules/time/index.html#dream.time.Timer.t">t (Timer property)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.GridMapping.tangential">tangential() (GridMapping class method)</a>
+</li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.tangential_relaxation">tangential_relaxation (CBC property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC.target">target (CBC property)</a>
+</li>
+      <li><a href="modules/mesh/index.html#dream.mesh.SpongeLayer.target_state">target_state (SpongeLayer property)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic.temperature">temperature (Acoustic property)</a>
 
@@ -1352,6 +1584,20 @@
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM.theta_0">theta_0 (HLLEM property)</a>
 </li>
+      <li><a href="modules/time/index.html#dream.time.Timer">Timer (class in dream.time)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.timer">timer (PseudoTimeSteppingRoutine property)</a>
+
+      <ul>
+        <li><a href="modules/time/index.html#dream.time.TransientRoutine.timer">(TransientRoutine property)</a>
+</li>
+      </ul></li>
+      <li><a href="modules/time/index.html#dream.time.TimeRoutine">TimeRoutine (class in dream.time)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.TimeSchemes">TimeSchemes (class in dream.time)</a>
+</li>
+      <li><a href="modules/time/index.html#dream.time.TransientRoutine">TransientRoutine (class in dream.time)</a>
+</li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields">transportfields (class in dream.scalar_transport.config)</a>
 </li>
   </ul></td>
@@ -1370,16 +1616,24 @@
       </ul></li>
       <li><a href="modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver.u">u() (ScalarTransportSolver method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.conservative.time.implicit.html#dream.compressible_flow.conservative.time.implicit.DIRK34_LDD.update_final_stage_solution">update_final_stage_solution() (DIRK34_LDD method)</a>
 
       <ul>
+        <li><a href="modules/time/index.html#dream.time.IMEXTimeRoutine.update_final_stage_solution">(IMEXTimeRoutine method)</a>
+</li>
+        <li><a href="modules/time/index.html#dream.time.PCIMEXTimeRoutine.update_final_stage_solution">(PCIMEXTimeRoutine method)</a>
+</li>
         <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS232.update_final_stage_solution">(RK_ARS232 method)</a>
 </li>
         <li><a href="modules/compressible/dream.compressible_flow.conservative.time.explicit.html#dream.compressible_flow.conservative.time.explicit.RK_ARS33.update_final_stage_solution">(RK_ARS33 method)</a>
 </li>
+        <li><a href="modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution">(SynchronizedIMEXTimeRoutine method)</a>
+</li>
+        <li><a href="modules/time/index.html#dream.time.TimeSchemes.update_final_stage_solution">(TimeSchemes method)</a>
+</li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind">Upwind (class in dream.compressible_flow.riemann_solver)</a>
 </li>
       <li><a href="modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField.use_identity_jacobian">use_identity_jacobian (FarField property)</a>

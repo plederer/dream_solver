@@ -9,7 +9,7 @@
   <title>Flow around NACA 0012 airfoil &mdash; dream 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
-      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b6f29fd6" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=a357efec" />
       <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
 
   
@@ -424,6 +424,134 @@
 </ul>
 </li>
 </ul>
+<p class="caption" role="heading"><span class="caption-text">Time Integration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/time/index.html">Time Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#stationary-and-transient-routines">Stationary and transient routines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#geometry-split-implicit-explicit-imex-time-integration">Geometry-split implicit-explicit (IMEX) time integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer"><code class="docutils literal notranslate"><span class="pre">Timer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer.interval"><code class="docutils literal notranslate"><span class="pre">Timer.interval</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer.step"><code class="docutils literal notranslate"><span class="pre">Timer.step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer.t"><code class="docutils literal notranslate"><span class="pre">Timer.t</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.Scheme"><code class="docutils literal notranslate"><span class="pre">Scheme</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Scheme.compile"><code class="docutils literal notranslate"><span class="pre">Scheme.compile</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Scheme.parse_sum_of_integrals"><code class="docutils literal notranslate"><span class="pre">Scheme.parse_sum_of_integrals()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeSchemes"><code class="docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeSchemes.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">TimeSchemes.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeRoutine"><code class="docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeRoutine.parse_routine_log"><code class="docutils literal notranslate"><span class="pre">TimeRoutine.parse_routine_log()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.StationaryRoutine"><code class="docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.TransientRoutine"><code class="docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.TransientRoutine.timer"><code class="docutils literal notranslate"><span class="pre">TransientRoutine.timer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.timer"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.timer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.max_time_step"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.max_time_step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_at"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_factor"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_factor</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.gtimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gtimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.ltimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.ltimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.gscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.lscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.lscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.PCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PCIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.LinearPCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Mesh</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/mesh/index.html">mesh</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#predefined-mesh-generators">Predefined mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#structured-mesh-generators">Structured mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#buffer-and-sponge-layer-infrastructure">Buffer and sponge layer infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#condition-containers">Condition containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_nodal_points"><code class="docutils literal notranslate"><span class="pre">get_nodal_points()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_cylinder_omesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_omesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_rectangular_mesh"><code class="docutils literal notranslate"><span class="pre">get_rectangular_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_structured_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_structured_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_2d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_2d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_3d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_3d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_chord_naca_4digit_series_coordinates"><code class="docutils literal notranslate"><span class="pre">get_chord_naca_4digit_series_coordinates()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.BufferCoord"><code class="docutils literal notranslate"><span class="pre">BufferCoord</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.SpongeFunction"><code class="docutils literal notranslate"><span class="pre">SpongeFunction</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping"><code class="docutils literal notranslate"><span class="pre">GridMapping</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.none"><code class="docutils literal notranslate"><span class="pre">GridMapping.none()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.linear"><code class="docutils literal notranslate"><span class="pre">GridMapping.linear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.exponential"><code class="docutils literal notranslate"><span class="pre">GridMapping.exponential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.tangential"><code class="docutils literal notranslate"><span class="pre">GridMapping.tangential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.polar_to_cartesian"><code class="docutils literal notranslate"><span class="pre">GridMapping.polar_to_cartesian()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Condition"><code class="docutils literal notranslate"><span class="pre">Condition</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Periodic"><code class="docutils literal notranslate"><span class="pre">Periodic</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Initial"><code class="docutils literal notranslate"><span class="pre">Initial</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Initial.fields"><code class="docutils literal notranslate"><span class="pre">Initial.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Perturbation"><code class="docutils literal notranslate"><span class="pre">Perturbation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Perturbation.fields"><code class="docutils literal notranslate"><span class="pre">Perturbation.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Buffer"><code class="docutils literal notranslate"><span class="pre">Buffer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridDeformation"><code class="docutils literal notranslate"><span class="pre">GridDeformation</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.SpongeLayer"><code class="docutils literal notranslate"><span class="pre">SpongeLayer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.SpongeLayer.target_state"><code class="docutils literal notranslate"><span class="pre">SpongeLayer.target_state</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.PSpongeLayer"><code class="docutils literal notranslate"><span class="pre">PSpongeLayer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Conditions"><code class="docutils literal notranslate"><span class="pre">Conditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.BoundaryConditions"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.BoundaryConditions.get_domain_boundaries"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions.get_domain_boundaries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.DomainConditions"><code class="docutils literal notranslate"><span class="pre">DomainConditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cylinder_mesh.html">Predefined Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="cylinder_mesh.html#Unstructured-mesh-with-a-sponge-layer">Unstructured mesh with a sponge layer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cylinder_mesh.html#Structured-O-grid-mesh">Structured O-grid mesh</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="naca_airfoil_mesh.html">NACA Airfoil Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rectangular_mesh.html">Structured Rectangular Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rectangular_mesh.html#Uniform-channel-mesh">Uniform channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="rectangular_mesh.html#Wall-clustered-channel-mesh">Wall-clustered channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="rectangular_mesh.html#Two-domain-channel-with-a-downstream-sponge-region">Two-domain channel with a downstream sponge region</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="structured_cylinder_mesh.html">Structured Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="structured_cylinder_mesh.html#Uniform-annular-mesh">Uniform annular mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structured_cylinder_mesh.html#Radially-clustered-mesh">Radially clustered mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structured_cylinder_mesh.html#Two-domain-mesh:-fluid-core-and-outer-sponge-annulus">Two-domain mesh: fluid core and outer sponge annulus</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 
         </div>
       </div>
@@ -500,7 +628,7 @@
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "a0a0eca4861b431d89641e12972f657b"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "e7da48580b8f47cf90faf6aa620122af"}</script></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
@@ -601,14 +729,14 @@
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | pseudo_time_stepping | conservative_hdg implicit_euler | it: 42 | error: 3.391479e-14 | t: 1.000000e-03
+dream.time      (INFO) | pseudo_time_stepping | conservative_hdg implicit_euler | it: 42 | error: 3.391474e-14 | t: 1.000000e-03
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "1c2c19dad37d458283eb9447b9caaec3"}</script></div>
+<script type="application/vnd.jupyter.widget-view+json">{"version_major": 2, "version_minor": 0, "model_id": "11236c8f811d42adaa65655a374558e9"}</script></div>
 </div>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -667,7 +795,7 @@ Text(0.5, 1.0, &#39;Pressure coefficient over chord length&#39;)
 </div>
 </div>
 <script type="application/vnd.jupyter.widget-state+json">
-{"state": {"30400cbed7d74d6eb8ed78e48319f52d": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "a0a0eca4861b431d89641e12972f657b": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_30400cbed7d74d6eb8ed78e48319f52d", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_0.json", "preview": "preview_0.png"}}}, "e2415a5f04fc4f3d931531ce29f0ca13": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "1c2c19dad37d458283eb9447b9caaec3": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_e2415a5f04fc4f3d931531ce29f0ca13", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_1.json", "preview": "preview_1.png"}}}}, "version_major": 2, "version_minor": 0}
+{"state": {"ee19dbbf5d9b4447a2f809b9a7a2dcc0": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "e7da48580b8f47cf90faf6aa620122af": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_ee19dbbf5d9b4447a2f809b9a7a2dcc0", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_2.json", "preview": "preview_2.png"}}}, "5273e3550a254721835a0e86a2107b59": {"model_name": "LayoutModel", "model_module": "@jupyter-widgets/base", "model_module_version": "2.0.0", "state": {"_model_module": "@jupyter-widgets/base", "_model_module_version": "2.0.0", "_model_name": "LayoutModel", "_view_count": null, "_view_module": "@jupyter-widgets/base", "_view_module_version": "2.0.0", "_view_name": "LayoutView", "align_content": null, "align_items": null, "align_self": null, "border_bottom": null, "border_left": null, "border_right": null, "border_top": null, "bottom": null, "display": null, "flex": null, "flex_flow": null, "grid_area": null, "grid_auto_columns": null, "grid_auto_flow": null, "grid_auto_rows": null, "grid_column": null, "grid_gap": null, "grid_row": null, "grid_template_areas": null, "grid_template_columns": null, "grid_template_rows": null, "height": null, "justify_content": null, "justify_items": null, "left": null, "margin": null, "max_height": null, "max_width": null, "min_height": null, "min_width": null, "object_fit": null, "object_position": null, "order": null, "overflow": null, "padding": null, "right": null, "top": null, "visibility": null, "width": null}}, "11236c8f811d42adaa65655a374558e9": {"model_name": "WebguiModel", "model_module": "webgui_jupyter_widgets", "model_module_version": "0.2.37", "state": {"_dom_classes": [], "_model_module": "webgui_jupyter_widgets", "_model_module_version": "0.2.37", "_model_name": "WebguiModel", "_view_count": null, "_view_module": "webgui_jupyter_widgets", "_view_module_version": "0.2.37", "_view_name": "WebguiDocuView", "layout": "IPY_MODEL_5273e3550a254721835a0e86a2107b59", "tabbable": null, "tooltip": null, "value": {"render_data": "render_data_3.json", "preview": "preview_3.png"}}}}, "version_major": 2, "version_minor": 0}
 </script></section>
 
 
