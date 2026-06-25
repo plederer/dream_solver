@@ -384,9 +384,9 @@ def test_gridfunctionstream_load_transient_routine(gfu_handler):
     handler, cfg = gfu_handler
     handler.filename = "test"
     handler = handler.open()
-    for t in cfg.time.timer.start(True):
-        cfg.fem.gfu.vec[:] = t
-        handler.save_in_time_routine(t)
+    for rate, t0, tn in cfg.time.timer():
+        cfg.fem.gfu.vec[:] = t0
+        handler.save_in_time_routine(t0)
     gfu = ngs.GridFunction(ngs.L2(cfg.mesh, order=0)**2)
     for t in handler.load_transient_routine():
         gfu.vec[:] = t
