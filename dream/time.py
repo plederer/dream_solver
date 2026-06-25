@@ -400,6 +400,9 @@ class TransientRoutine(TimeRoutine):
         if reassemble:
             scheme.assemble()
 
+        if hasattr(self.root, 'timestep_controller') and self.root.timestep_controller is not None:
+            self.root.timestep_controller.initialize()
+
         with self.root.io as io:
             io.save_pre_time_routine(self.timer.t.Get())
 
@@ -420,8 +423,8 @@ class TransientRoutine(TimeRoutine):
                 scheme.update_step_gridfunctions()
 
                 # TODO: Add timestep controller to streams
-                # if self.root.timestep_controller is not None:
-                #     self.root.timestep_controller.process_iteration(iteration=rate)
+                if hasattr(self.root, 'timestep_controller') and self.root.timestep_controller is not None:
+                    self.root.timestep_controller.process_iteration(iteration=rate)
 
                 yield t1
 
@@ -709,6 +712,12 @@ class IMEXTimeRoutine(TimeRoutine, is_interface=True):
                 f"""Global scheme stages {self.gscheme.number_of_stages}  must be equal to local scheme stages
                 {self.lscheme.number_of_stages}.""")
 
+        if self.cfg_implicit.timestep_controller is not None:
+            self.cfg_implicit.timestep_controller.initialize()
+
+        if self.cfg_explicit.timestep_controller is not None:
+            self.cfg_explicit.timestep_controller.initialize()
+        
     def finalize(self):
         self.gtimer.step = self.gdt
         self.ltimer.step = self.ldt
@@ -732,6 +741,13 @@ class IMEXTimeRoutine(TimeRoutine, is_interface=True):
 
             # Start the global time-stepping loop.
             for grate, gt0, gt1 in self.gtimer():
+
+                # TODO: Add timestep controller to streams
+                if self.cfg_implicit.timestep_controller is not None:
+                    self.cfg_implicit.timestep_controller.process_iteration(iteration=grate)
+
+                if self.cfg_explicit.timestep_controller is not None:
+                    self.cfg_explicit.timestep_controller.process_iteration(iteration=grate)
 
                 # Sync timers
                 self.ltimer.t = self.gtimer.t.Get()
