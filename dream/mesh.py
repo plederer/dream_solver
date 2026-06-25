@@ -43,11 +43,12 @@ def get_nodal_points(n, distribution='uniform', **kwargs):
     distribution : str, optional
         Type of nodal distribution. Options:
         'uniform' (default), 'cosine', 'polynomial', 'tanh', 'exponential'.
-    **kwargs : dict, optional
+    \*\*kwargs : dict, optional
         Additional parameters for specific distributions:
-            - polynomial: p (default=2)
-            - tanh: beta (default=2.5)
-            - exponential: a (default=4)
+
+        - polynomial: p (default=2)
+        - tanh: beta (default=2.5)
+        - exponential: a (default=4)
 
     Returns
     -------
@@ -323,6 +324,13 @@ class GridMapping:
 
 
 class Condition:
+    r""" Base class for a named condition that can be set on a mesh region.
+
+        Conditions are set on a region (boundary or domain) via a :class:`Conditions` container, e.g.
+        :class:`BoundaryConditions` or :class:`DomainConditions`. Instances compare by identity, such
+        that the same condition object can be associated with several regions while remaining
+        distinguishable from another condition of the same type set on a different region.
+    """
 
     name: str
     mesh: ngs.Mesh
@@ -342,11 +350,18 @@ class Condition:
 
 
 class Periodic(Condition):
+    r""" Marks a boundary region as periodic. """
 
     name = "periodic"
 
 
 class Initial(Condition):
+    r""" Sets the initial condition on a domain region.
+
+        Holds the initial :attr:`fields`, which are projected onto the solution space at the start of
+        a :class:`~dream.time.TransientRoutine`, :class:`~dream.time.PseudoTimeSteppingRoutine`, or
+        :class:`~dream.time.IMEXTimeRoutine`.
+    """
 
     def __init__(self, fields: ngsdict | None = None, bonus_int_order: int = 0):
         super().__init__()
@@ -373,6 +388,11 @@ class Initial(Condition):
 
 
 class Perturbation(Condition):
+    r""" Adds a perturbation to the initial condition on a domain region.
+
+        Holds the perturbation :attr:`fields`, which are added on top of the initial condition, e.g. to
+        seed a transient simulation with a localized disturbance.
+    """
 
     def __init__(self, fields: ngsdict | None = None):
         super().__init__()
@@ -398,6 +418,12 @@ class Perturbation(Condition):
 
 
 class Buffer(Condition):
+    r""" Base class for a domain buffer condition that contributes an auxiliary term to the weak form.
+
+        Subclasses hold a :attr:`function` (the buffer weight or deformation field) and a polynomial
+        :attr:`order` used to project it onto a suitable FE space.  Concrete subclasses are
+        :class:`GridDeformation` and :class:`SpongeLayer`.
+    """
 
     def __init__(self, function: ngs.CF | None = None, order: int = 0):
         self.function = function
@@ -436,6 +462,14 @@ class Buffer(Condition):
 
 
 class GridDeformation(Buffer):
+    r""" Specifies a mesh deformation mapping in a domain region.
+
+        The deformation is defined by up to three :class:`GridMapping` objects, one per spatial
+        coordinate.  Each mapping translates a :class:`BufferCoord` in the computational domain to
+        a deformed position in the physical domain; the difference gives the deformation vector that
+        is projected onto a :class:`~ngsolve.VectorH1` space and applied to the mesh via
+        :meth:`~dream.mesh.DomainConditions.get_grid_deformation_function`.
+    """
 
     name = "grid_deformation"
 
@@ -525,6 +559,13 @@ class GridDeformation(Buffer):
 
 
 class SpongeLayer(Buffer):
+    r""" Adds a sponge (damping) term in a domain region to absorb outgoing waves.
+
+        The sponge drives the solution toward a prescribed :attr:`target_state` with a weight
+        given by :attr:`function`.  The weight is projected onto an :class:`~ngsolve.L2` space via
+        :meth:`~dream.mesh.DomainConditions.get_sponge_layer_function` and added as a volumetric
+        penalty term in the weak form.
+    """
 
     name = "sponge_layer"
 
@@ -582,6 +623,14 @@ class SpongeLayer(Buffer):
 
 
 class PSpongeLayer(SpongeLayer):
+    r""" Polynomial sponge layer that additionally reduces the local polynomial order.
+
+        In addition to the standard damping of :class:`SpongeLayer`, a ``PSpongeLayer`` gradually
+        lowers the polynomial order from :attr:`high_order` (at the inner edge of the layer) down
+        to :attr:`low_order` (at the outer edge).  This p-type coarsening reduces the resolution
+        inside the sponge and thereby introduces additional numerical dissipation, which enhances
+        absorption of outgoing waves.
+    """
 
     name = "psponge_layer"
 
@@ -641,6 +690,16 @@ class PSpongeLayer(SpongeLayer):
 
 
 class Conditions:
+    r""" Container that maps mesh regions to :class:`Condition` instances.
+
+        Regions are identified by their string names as returned by :meth:`~ngsolve.Mesh.GetBoundaries`
+        or :meth:`~ngsolve.Mesh.GetMaterials`.  A condition is associated with one or more regions by
+        assigning it via ``conditions['region_a|region_b'] = SomeCondition()``.  The pipe-separated
+        pattern syntax follows the NGSolve convention.
+
+        Assigning the same :class:`Condition` object to multiple calls merges all matching regions
+        under a single condition instance, which can be retrieved together through :meth:`items`.
+    """
 
     def __init__(self, regions: list[str], mesh: ngs.Mesh, options: list[Condition]) -> None:
         self._reg2con = {region: [] for region in regions}
@@ -720,6 +779,12 @@ class Conditions:
 
 
 class BoundaryConditions(Conditions):
+    r""" Manages conditions on mesh boundary (edge/face) regions.
+
+        Initialised from the list of boundary names returned by
+        :meth:`~ngsolve.Mesh.GetBoundaries`.  Provides helpers to retrieve the periodic boundaries
+        and the non-periodic domain boundaries as NGSolve region patterns.
+    """
 
     def __init__(self, mesh: ngs.Mesh, options: list[Condition]) -> None:
         super().__init__(list(dict.fromkeys(mesh.GetBoundaries())), mesh, options)
@@ -740,6 +805,14 @@ class BoundaryConditions(Conditions):
 
 
 class DomainConditions(Conditions):
+    r""" Manages conditions on mesh domain (material) regions.
+
+        Initialised from the list of material names returned by
+        :meth:`~ngsolve.Mesh.GetMaterials`.  Provides helpers to assemble the grid-deformation
+        field, the sponge-layer weight, and the p-sponge weight as NGSolve
+        :class:`~ngsolve.GridFunction` objects, as well as utilities to reduce the polynomial order
+        of an L2 or FacetFESpace elementwise inside p-sponge regions.
+    """
 
     def __init__(self, mesh: ngs.Mesh, options: list[Condition]) -> None:
         super().__init__(list(dict.fromkeys(mesh.GetMaterials())), mesh, options)
@@ -995,6 +1068,58 @@ def get_cylinder_mesh(radius: float = 0.5,
                       mat: tuple[str, str] = ('sound', 'sponge'),
                       curve_layers: bool = False,
                       grading: float = 0.3):
+    r""" Generates an unstructured mesh around a circular cylinder for aeroacoustic simulations.
+
+    The mesh is built from up to four concentric regions:
+
+    1. **Boundary layer** (optional): a stack of :math:`n` thin structured rings of uniform
+       thickness ``boundary_layer_thickness / boundary_layer_levels`` fitted to the cylinder
+       surface.  Enabled when ``boundary_layer_thickness > 0``.
+    2. **Transition region**: a graded layer between the cylinder (or boundary layer) and the
+       farfield, whose element size grows with exponent ``transition_layer_growth`` out to
+       radius ``transition_radial_factor * radius``.
+    3. **Farfield region**: the acoustically active region up to radius
+       ``farfield_radial_factor * radius``, resolved with element size ``farfield_maxh``.  A
+       downstream wake patch of width ``wake_maxh`` is cut into this region.
+    4. **Sponge layer** (optional): an annular absorbing region between
+       ``farfield_radial_factor * radius`` and ``sponge_radial_factor * radius``.  Enabled when
+       ``sponge_layer=True``.
+
+    :param radius: Radius of the cylinder, defaults to 0.5
+    :type radius: float, optional
+    :param sponge_layer: Include an outer sponge layer, defaults to False
+    :type sponge_layer: bool, optional
+    :param boundary_layer_levels: Number of elements in the radial boundary-layer stack, defaults to 5
+    :type boundary_layer_levels: int, optional
+    :param boundary_layer_thickness: Total thickness of the boundary layer (0 disables it), defaults to 0
+    :type boundary_layer_thickness: float, optional
+    :param transition_layer_levels: Number of graded rings in the transition region, defaults to 5
+    :type transition_layer_levels: int, optional
+    :param transition_layer_growth: Growth exponent of the transition region, defaults to 1.4
+    :type transition_layer_growth: float, optional
+    :param transition_radial_factor: Outer radius of the transition region as a multiple of ``radius``, defaults to 6
+    :type transition_radial_factor: float, optional
+    :param farfield_radial_factor: Outer radius of the farfield region as a multiple of ``radius``, defaults to 50
+    :type farfield_radial_factor: float, optional
+    :param sponge_radial_factor: Outer radius of the sponge layer as a multiple of ``radius``, defaults to 60
+    :type sponge_radial_factor: float, optional
+    :param wake_maxh: Maximum element size in the downstream wake patch, defaults to 2
+    :type wake_maxh: float, optional
+    :param farfield_maxh: Maximum element size in the farfield region, defaults to 4
+    :type farfield_maxh: float, optional
+    :param sponge_maxh: Maximum element size in the sponge layer, defaults to 4
+    :type sponge_maxh: float, optional
+    :param bnd: Names of the inflow, outflow and cylinder boundaries, defaults to ('inflow', 'outflow', 'cylinder')
+    :type bnd: tuple[str, str, str], optional
+    :param mat: Names of the acoustic and sponge domain materials, defaults to ('sound', 'sponge')
+    :type mat: tuple[str, str], optional
+    :param curve_layers: Curve the boundary edges to follow the cylindrical geometry, defaults to False
+    :type curve_layers: bool, optional
+    :param grading: Netgen grading parameter controlling element size variation, defaults to 0.3
+    :type grading: float, optional
+    :return: The generated mesh
+    :rtype: ngs.Mesh
+    """
 
     import numpy as np
     from netgen.occ import WorkPlane, OCCGeometry, Glue
@@ -1094,8 +1219,6 @@ def get_cylinder_mesh(radius: float = 0.5,
         new_mesh.dim = 2
         new_mesh.SetGeometry(geo)
 
-        edge_map = set(elem.edgenr for elem in mesh.Elements1D())
-
         new_mesh.Add(FaceDescriptor(surfnr=1, domin=1, domout=0, bc=1))
         new_mesh.Add(FaceDescriptor(surfnr=2, domin=1, domout=0, bc=2))
         new_mesh.Add(FaceDescriptor(surfnr=3, domin=1, domout=0, bc=3))
@@ -1107,12 +1230,18 @@ def get_cylinder_mesh(radius: float = 0.5,
         new_mesh.SetMaterial(idx_dom, mat[0])
 
         if sponge_layer:
-            new_mesh.SetBCName(3, "default")
             sponge_dom = new_mesh.AddRegion(mat[1], dim=2)
             new_mesh.SetMaterial(sponge_dom, mat[1])
-            edge_map = {1: (0, 1), 2: (1, 2), 3: (2, 4),  4: (2, 4), 5: (2, 4), max(edge_map): (3, 3)}
-        else:
-            edge_map = {6: (0, 1), 8: (1, 2), 7: (1, 2), 5: (1, 2), 1: (1, 2), max(edge_map): (2, 3)}
+
+        # Map named OCC boundaries to their new BC index and edge region number.
+        # All other edges (wake seam, internal OCC faces) are intentionally dropped;
+        # the material interface between sound and sponge is inferred automatically
+        # by Netgen/NGSolve from the adjacent 2D element indices.
+        bc_to_new = {
+            bnd[0]: (0, 1),  # inflow  → edgenr=0, index=1
+            bnd[1]: (1, 2),  # outflow → edgenr=1, index=2
+            bnd[2]: (2, 3),  # cylinder → edgenr=2, index=3
+        }
 
         for point in mesh.Points():
             new_mesh.Add(point)
@@ -1124,8 +1253,9 @@ def get_cylinder_mesh(radius: float = 0.5,
                 new_mesh.Add(Element2D(idx_dom, elem.vertices))
 
         for elem in mesh.Elements1D():
-            if elem.edgenr in edge_map:
-                edgenr, index = edge_map[elem.edgenr]
+            bc_name = mesh.GetBCName(elem.index - 1)
+            if bc_name in bc_to_new:
+                edgenr, index = bc_to_new[bc_name]
                 new_mesh.Add(Element1D(elem.points, elem.surfaces, index, edgenr))
 
         mesh = new_mesh
@@ -1282,11 +1412,40 @@ def get_3d_naca_occ_profile(number: str | int, depth: float,
     return wing
 
 
-def get_rectangular_mesh(domains: dict[str, tuple[np.ndarray, np.ndarray]],
-                         boundaries: dict[str, tuple[np.ndarray, np.ndarray]],
+def get_rectangular_mesh(domains: list[tuple[str, tuple[np.ndarray, np.ndarray]]],
+                         boundaries: list[tuple[str, tuple[np.ndarray, np.ndarray]]],
                          quads: bool = True,
                          periodic_x: bool = False,
                          periodic_y: bool = False) -> ngs.Mesh:
+    r""" Generates a structured rectangular mesh from explicit nodal coordinate arrays.
+
+    Mesh points are placed at every combination of the *union* of all x and y coordinates supplied
+    across all domains.  Elements are then created for each domain by selecting the mesh points
+    that fall within the domain's x and y extents and subdividing the resulting rectangular patches
+    into quads (default) or pairs of triangles.
+
+    Both ``domains`` and ``boundaries`` are sequences of ``(name, (x_coords, y_coords))`` pairs:
+
+    * **domains**: ``x_coords`` and ``y_coords`` are 1-D arrays spanning the extent of the domain.
+      Several domains may share edge coordinates; the union of all coordinate arrays determines the
+      global mesh nodes.
+    * **boundaries**: a boundary is identified by the range of its x and y coordinate array.
+      To select a vertical edge at :math:`x = x_0`, pass ``x_coords = np.array([x_0])`` and
+      ``y_coords`` spanning the full y extent of that edge.
+
+    :param domains: Sequence of ``(name, (x_coords, y_coords))`` pairs defining the domain regions
+    :type domains: list[tuple[str, tuple[np.ndarray, np.ndarray]]]
+    :param boundaries: Sequence of ``(name, (x_coords, y_coords))`` pairs defining the boundary edges
+    :type boundaries: list[tuple[str, tuple[np.ndarray, np.ndarray]]]
+    :param quads: Use quadrilateral elements; if False, each quad is split into two triangles, defaults to True
+    :type quads: bool, optional
+    :param periodic_x: Identify left and right boundary nodes as periodic, defaults to False
+    :type periodic_x: bool, optional
+    :param periodic_y: Identify bottom and top boundary nodes as periodic, defaults to False
+    :type periodic_y: bool, optional
+    :return: The generated structured mesh
+    :rtype: ngs.Mesh
+    """
     from netgen.meshing import Mesh, MeshPoint, Pnt, Element1D, Element2D, IdentificationType
 
     def union(*args):
