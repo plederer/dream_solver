@@ -1,0 +1,449 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quick Start: Compressible Flow &mdash; dream 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=a357efec" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=e1a75a79"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../_static/webgui.js?v=70f75c54"></script>
+      <script src="../_static/webgui_jupyter_widgets.js?v=ef7975dd"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Flow around NACA 0012 airfoil" href="euler_around_naca.html" />
+    <link rel="prev" title="config" href="../modules/compressible/dream.compressible_flow.config.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html">
+            
+              <img src="../_static/dream_logo.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/about.html">About</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/about.html#key-features-of-the-dream-solver">Key Features of the <strong>dream</strong> Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/about.html#work-in-progress">Work in progress</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/funding.html">Funding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/contribute.html">Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/contribute.html#structure">Structure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/contribute.html#solvers">Solvers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/contribute.html#two-level-time-structure">Two-level time structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/contribute.html#finite-element-methods">Finite element methods</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/contribute.html#solution-routines">Solution routines</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/literature.html">References</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/literature.html#publications">Publications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/literature.html#literature">Literature</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Solvers</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../modules/scalar_transport/index.html">scalar_transport</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#solver-architecture">Solver Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#scalar-transport-equation">Scalar Transport Equation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#discretisation">Discretisation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/index.html#hybridised-discontinuous-galerkin-hdg">Hybridised Discontinuous Galerkin (HDG)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/index.html#discontinuous-galerkin-dg">Discontinuous Galerkin (DG)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/index.html#riemann-solver">Riemann Solver</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#time-integration">Time Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#api-reference">API Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.solver.html">solver</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.solver.html#dream.scalar_transport.solver.ScalarTransportSolver"><code class="docutils literal notranslate"><span class="pre">ScalarTransportSolver</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.spatial.html">spatial</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG"><code class="docutils literal notranslate"><span class="pre">DG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG"><code class="docutils literal notranslate"><span class="pre">HDG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ScalarTransportFiniteElementMethod</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.time.html">time</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.time.explicit.html">explicit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.time.imex.html">imex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.time.implicit.html">implicit</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.riemann_solver.html">riemann_solver</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.config.html">config</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.config.html#dream.scalar_transport.config.transportfields"><code class="docutils literal notranslate"><span class="pre">transportfields</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quick_start_scalar_transport.html">Quick Start: Scalar Transport</a></li>
+<li class="toctree-l3"><a class="reference internal" href="wave1d.html">Scalar wave equation in 1D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules/compressible/index.html">compressible_flow</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#solver-architecture">Solver Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#compressible-flow-equations">Compressible flow equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#quasi-linear-euler-equations">Quasi-linear Euler equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#discretisation">Discretisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#api-reference">API Reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.solver.html">solver</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.conservative.html">conservative</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.conservative.dg.html">dg</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.conservative.diffusion.html">diffusion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.conservative.hdg.html">hdg</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.conservative.time.html">time</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.eos.html">eos</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.EquationOfState"><code class="docutils literal notranslate"><span class="pre">EquationOfState</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas"><code class="docutils literal notranslate"><span class="pre">IdealGas</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.riemann_solver.html">riemann_solver</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL"><code class="docutils literal notranslate"><span class="pre">HLL</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM"><code class="docutils literal notranslate"><span class="pre">HLLEM</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich"><code class="docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.RiemannSolver"><code class="docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe"><code class="docutils literal notranslate"><span class="pre">Roe</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind"><code class="docutils literal notranslate"><span class="pre">Upwind</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.viscosity.html">viscosity</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant"><code class="docutils literal notranslate"><span class="pre">Constant</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.DynamicViscosity"><code class="docutils literal notranslate"><span class="pre">DynamicViscosity</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid"><code class="docutils literal notranslate"><span class="pre">Inviscid</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland"><code class="docutils literal notranslate"><span class="pre">Sutherland</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.scaling.html">scaling</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic"><code class="docutils literal notranslate"><span class="pre">Acoustic</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic"><code class="docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic"><code class="docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Scaling"><code class="docutils literal notranslate"><span class="pre">Scaling</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html">config</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.AdiabaticWall"><code class="docutils literal notranslate"><span class="pre">AdiabaticWall</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CBC"><code class="docutils literal notranslate"><span class="pre">CBC</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.CompressibleFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">CompressibleFiniteElementMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.ConservativeFiniteElementMethod"><code class="docutils literal notranslate"><span class="pre">ConservativeFiniteElementMethod</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Dirichlet"><code class="docutils literal notranslate"><span class="pre">Dirichlet</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.FarField"><code class="docutils literal notranslate"><span class="pre">FarField</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Force"><code class="docutils literal notranslate"><span class="pre">Force</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.GRCBC"><code class="docutils literal notranslate"><span class="pre">GRCBC</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Inflow"><code class="docutils literal notranslate"><span class="pre">Inflow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InterfaceBC"><code class="docutils literal notranslate"><span class="pre">InterfaceBC</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.InviscidWall"><code class="docutils literal notranslate"><span class="pre">InviscidWall</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.IsothermalWall"><code class="docutils literal notranslate"><span class="pre">IsothermalWall</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.NSCBC"><code class="docutils literal notranslate"><span class="pre">NSCBC</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Outflow"><code class="docutils literal notranslate"><span class="pre">Outflow</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.PML"><code class="docutils literal notranslate"><span class="pre">PML</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.Symmetry"><code class="docutils literal notranslate"><span class="pre">Symmetry</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.dimensionalfields"><code class="docutils literal notranslate"><span class="pre">dimensionalfields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields"><code class="docutils literal notranslate"><span class="pre">flowfields</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2 current"><a class="reference internal" href="../modules/compressible/index.html#examples">Examples</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Quick Start: Compressible Flow</a></li>
+<li class="toctree-l3"><a class="reference internal" href="euler_around_naca.html">Flow around NACA 0012 airfoil</a></li>
+<li class="toctree-l3"><a class="reference internal" href="isentropic_vortex.html">Isentropic Vortex in 2D</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Time Integration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/time/index.html">Time Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#stationary-and-transient-routines">Stationary and transient routines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#geometry-split-implicit-explicit-imex-time-integration">Geometry-split implicit-explicit (IMEX) time integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer"><code class="docutils literal notranslate"><span class="pre">Timer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer.interval"><code class="docutils literal notranslate"><span class="pre">Timer.interval</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer.step"><code class="docutils literal notranslate"><span class="pre">Timer.step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Timer.t"><code class="docutils literal notranslate"><span class="pre">Timer.t</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.Scheme"><code class="docutils literal notranslate"><span class="pre">Scheme</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Scheme.compile"><code class="docutils literal notranslate"><span class="pre">Scheme.compile</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.Scheme.parse_sum_of_integrals"><code class="docutils literal notranslate"><span class="pre">Scheme.parse_sum_of_integrals()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeSchemes"><code class="docutils literal notranslate"><span class="pre">TimeSchemes</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeSchemes.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">TimeSchemes.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeRoutine"><code class="docutils literal notranslate"><span class="pre">TimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.TimeRoutine.parse_routine_log"><code class="docutils literal notranslate"><span class="pre">TimeRoutine.parse_routine_log()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.StationaryRoutine"><code class="docutils literal notranslate"><span class="pre">StationaryRoutine</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.TransientRoutine"><code class="docutils literal notranslate"><span class="pre">TransientRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.TransientRoutine.timer"><code class="docutils literal notranslate"><span class="pre">TransientRoutine.timer</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.timer"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.timer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.max_time_step"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.max_time_step</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_at"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_at</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PseudoTimeSteppingRoutine.increment_factor"><code class="docutils literal notranslate"><span class="pre">PseudoTimeSteppingRoutine.increment_factor</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.gtimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gtimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.ltimer"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.ltimer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.gscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.gscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.lscheme"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.lscheme</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.IMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">IMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.SynchronizedIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">SynchronizedIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.PCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/time/index.html#dream.time.PCIMEXTimeRoutine.update_final_stage_solution"><code class="docutils literal notranslate"><span class="pre">PCIMEXTimeRoutine.update_final_stage_solution()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/time/index.html#dream.time.LinearPCIMEXTimeRoutine"><code class="docutils literal notranslate"><span class="pre">LinearPCIMEXTimeRoutine</span></code></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Mesh</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules/mesh/index.html">mesh</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#predefined-mesh-generators">Predefined mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#structured-mesh-generators">Structured mesh generators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#buffer-and-sponge-layer-infrastructure">Buffer and sponge layer infrastructure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#condition-containers">Condition containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_nodal_points"><code class="docutils literal notranslate"><span class="pre">get_nodal_points()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_cylinder_omesh"><code class="docutils literal notranslate"><span class="pre">get_cylinder_omesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_rectangular_mesh"><code class="docutils literal notranslate"><span class="pre">get_rectangular_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_structured_cylinder_mesh"><code class="docutils literal notranslate"><span class="pre">get_structured_cylinder_mesh()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_2d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_2d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_3d_naca_occ_profile"><code class="docutils literal notranslate"><span class="pre">get_3d_naca_occ_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.get_chord_naca_4digit_series_coordinates"><code class="docutils literal notranslate"><span class="pre">get_chord_naca_4digit_series_coordinates()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.BufferCoord"><code class="docutils literal notranslate"><span class="pre">BufferCoord</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.SpongeFunction"><code class="docutils literal notranslate"><span class="pre">SpongeFunction</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping"><code class="docutils literal notranslate"><span class="pre">GridMapping</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.none"><code class="docutils literal notranslate"><span class="pre">GridMapping.none()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.linear"><code class="docutils literal notranslate"><span class="pre">GridMapping.linear()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.exponential"><code class="docutils literal notranslate"><span class="pre">GridMapping.exponential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.tangential"><code class="docutils literal notranslate"><span class="pre">GridMapping.tangential()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridMapping.polar_to_cartesian"><code class="docutils literal notranslate"><span class="pre">GridMapping.polar_to_cartesian()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Condition"><code class="docutils literal notranslate"><span class="pre">Condition</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Periodic"><code class="docutils literal notranslate"><span class="pre">Periodic</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Initial"><code class="docutils literal notranslate"><span class="pre">Initial</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Initial.fields"><code class="docutils literal notranslate"><span class="pre">Initial.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Perturbation"><code class="docutils literal notranslate"><span class="pre">Perturbation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Perturbation.fields"><code class="docutils literal notranslate"><span class="pre">Perturbation.fields</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Buffer"><code class="docutils literal notranslate"><span class="pre">Buffer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.GridDeformation"><code class="docutils literal notranslate"><span class="pre">GridDeformation</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.SpongeLayer"><code class="docutils literal notranslate"><span class="pre">SpongeLayer</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.SpongeLayer.target_state"><code class="docutils literal notranslate"><span class="pre">SpongeLayer.target_state</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.PSpongeLayer"><code class="docutils literal notranslate"><span class="pre">PSpongeLayer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.Conditions"><code class="docutils literal notranslate"><span class="pre">Conditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.BoundaryConditions"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.BoundaryConditions.get_domain_boundaries"><code class="docutils literal notranslate"><span class="pre">BoundaryConditions.get_domain_boundaries()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#dream.mesh.DomainConditions"><code class="docutils literal notranslate"><span class="pre">DomainConditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/mesh/index.html#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="cylinder_mesh.html">Predefined Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="cylinder_mesh.html#Unstructured-mesh-with-a-sponge-layer">Unstructured mesh with a sponge layer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cylinder_mesh.html#Structured-O-grid-mesh">Structured O-grid mesh</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="naca_airfoil_mesh.html">NACA Airfoil Mesh</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rectangular_mesh.html">Structured Rectangular Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rectangular_mesh.html#Uniform-channel-mesh">Uniform channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="rectangular_mesh.html#Wall-clustered-channel-mesh">Wall-clustered channel mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="rectangular_mesh.html#Two-domain-channel-with-a-downstream-sponge-region">Two-domain channel with a downstream sponge region</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="structured_cylinder_mesh.html">Structured Cylinder Meshes</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="structured_cylinder_mesh.html#Uniform-annular-mesh">Uniform annular mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structured_cylinder_mesh.html#Radially-clustered-mesh">Radially clustered mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="structured_cylinder_mesh.html#Two-domain-mesh:-fluid-core-and-outer-sponge-annulus">Two-domain mesh: fluid core and outer sponge annulus</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">dream</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../modules/compressible/index.html">compressible_flow</a></li>
+      <li class="breadcrumb-item active">Quick Start: Compressible Flow</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/examples/quick_start_compressible.ipynb" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Quick-Start:-Compressible-Flow">
+<h1>Quick Start: Compressible Flow<a class="headerlink" href="#Quick-Start:-Compressible-Flow" title="Link to this heading"></a></h1>
+<p>This notebook demonstrates a minimal transient compressible flow setup: inviscid flow around a cylinder at Mach 0.3 using HDG with implicit Euler time integration.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">ngsolve</span> <span class="k">as</span> <span class="nn">ngs</span>
+<span class="n">ngs</span><span class="o">.</span><span class="n">ngsglobals</span><span class="o">.</span><span class="n">msg_level</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="kn">from</span> <span class="nn">dream.mesh</span> <span class="kn">import</span> <span class="n">get_cylinder_omesh</span>
+<span class="kn">from</span> <span class="nn">dream.compressible_flow</span> <span class="kn">import</span> <span class="n">CompressibleFlowSolver</span><span class="p">,</span> <span class="n">FarField</span><span class="p">,</span> <span class="n">InviscidWall</span><span class="p">,</span> <span class="n">Initial</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Structured O-mesh around cylinder: inner radius 0.5, outer radius 15</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">get_cylinder_omesh</span><span class="p">(</span><span class="n">ri</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">ro</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">n_polar</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">n_radial</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">geom</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">solver</span> <span class="o">=</span> <span class="n">CompressibleFlowSolver</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
+
+<span class="c1"># Physical parameters</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">mach_number</span> <span class="o">=</span> <span class="mf">0.3</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">scaling</span>     <span class="o">=</span> <span class="s1">&#39;aerodynamic&#39;</span>
+
+<span class="c1"># Discretisation</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">fem</span>            <span class="o">=</span> <span class="s1">&#39;conservative_hdg&#39;</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">order</span>      <span class="o">=</span> <span class="mi">2</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s1">&#39;roe&#39;</span>
+
+<span class="c1"># Time integration</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">time</span>                <span class="o">=</span> <span class="s1">&#39;transient&#39;</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">fem</span><span class="o">.</span><span class="n">scheme</span>          <span class="o">=</span> <span class="s1">&#39;implicit_euler&#39;</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">time</span><span class="o">.</span><span class="n">timer</span><span class="o">.</span><span class="n">step</span>     <span class="o">=</span> <span class="mf">5e-3</span>
+
+<span class="c1"># Boundary and initial conditions</span>
+<span class="n">Uinf</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">get_farfield_fields</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">bcs</span><span class="p">[</span><span class="s1">&#39;left|right&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">FarField</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">Uinf</span><span class="p">)</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">bcs</span><span class="p">[</span><span class="s1">&#39;cylinder&#39;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">InviscidWall</span><span class="p">()</span>
+<span class="n">solver</span><span class="o">.</span><span class="n">dcs</span><span class="p">[</span><span class="s1">&#39;default&#39;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">Initial</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">Uinf</span><span class="p">)</span>
+
+<span class="c1"># with ngs.TaskManager():</span>
+<span class="c1">#     # Sets up finite element spaces, assembles bilinear forms and applies boundary conditions</span>
+<span class="c1">#     solver.initialize()</span>
+<span class="c1">#     # Runs the time-stepping loop defined by solver.time</span>
+<span class="c1">#     solver.solve()</span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../modules/compressible/dream.compressible_flow.config.html" class="btn btn-neutral float-left" title="config" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="euler_around_naca.html" class="btn btn-neutral float-right" title="Flow around NACA 0012 airfoil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

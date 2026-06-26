@@ -28,76 +28,103 @@ We appreciate your help in improving dream!
 
 # Structure
 
+Every `dream` solver is a `SolverConfiguration` that composes a set of interchangeable
+sub-objects, each declared with the `@dream_configuration` decorator. This decorator
+turns a property into a configurable slot: assigning a string key (e.g. `solver.fem = 'hdg'`)
+selects the corresponding concrete class, while assigning an instance gives full control.
+
+## Solvers
+
+The two main solvers are
+{py:class}`~dream.scalar_transport.solver.ScalarTransportSolver` and
+{py:class}`~dream.compressible_flow.solver.CompressibleFlowSolver`. Both follow the same
+pattern: a `fem` slot for the finite element method, a `riemann_solver` slot, and a `time`
+slot for the outer solution loop. Physical parameters (Reynolds number, Mach number, etc.) are
+likewise declared as `@dream_configuration` properties with validation in their setters.
+
 ```python
-class SomeCFDSolver:
+class SomeCFDSolver(SolverConfiguration):
 
     @dream_configuration
     def fem(self) -> FiniteElementMethod:
-        """ Your favourite finite element method """
-        return FiniteElementMethod(self)
+        return self._fem
+
+    @fem.setter
+    def fem(self, fem):
+        OPTIONS = [HDG, DG]
+        self._fem = self._get_configuration_option(fem, OPTIONS, FiniteElementMethod)
 
     @dream_configuration
-    def time(self) -> TransientRoutine:
-        """ Your favourite time routine """
-        return TransientRoutine(self)
+    def time(self) -> TimeRoutine:
+        return self._time
 
-    @dream_configuration
-    def reynolds_number(self) -> float:
-        r""" Reynolds number of the flow.
-        
-            .. math::
-                Re = \frac{\rho U L}{\mu}
-        """
-        return self._reynolds_number
-
-    @reynolds_number.setter
-    def reynolds_number(self, value):
-
-        value = float(value)
-
-        if value <= 0:
-            raise ValueError("Reynolds number must be positive.")
-            
-        self._reynolds_number = value
+    @time.setter
+    def time(self, time):
+        OPTIONS = [StationaryRoutine, TransientRoutine, PseudoTimeSteppingRoutine]
+        self._time = self._get_configuration_option(time, OPTIONS, TimeRoutine)
 ```
 
-See e.g. {class}`~dream.compressible_flow.solver.CompressibleFlowSolver` for a complete example for a documentation of a CFD solver using the dream package.
+## Two-level time structure
+
+`dream` separates time integration into two distinct layers:
+
+- **`solver.time`** — selects the *outer solution loop*
+  ({py:class}`~dream.time.TransientRoutine`, {py:class}`~dream.time.StationaryRoutine`, or
+  {py:class}`~dream.time.PseudoTimeSteppingRoutine`). This controls *how* the solver is driven
+  (marching in time, solving stationary, or using pseudo-time continuation) and owns the
+  {py:class}`~dream.time.Timer` via `solver.time.timer`.
+
+- **`solver.fem.scheme`** — selects the *numerical time integration scheme*
+  ({py:class}`~dream.time.TimeSchemes`). This is a property on the finite element method
+  (`HDG`, `DG`, `ConservativeHDG`, …) and determines *how* the time derivative is
+  discretised (e.g. `'implicit_euler'`, `'bdf2'`, `'sdirk22'`, `'ssprk3'`).
+
+A typical transient setup therefore looks like:
+
+```python
+solver.time               = 'transient'      # outer loop
+solver.fem.scheme         = 'bdf2'           # numerical scheme
+solver.time.timer.interval = (0.0, 1.0)
+solver.time.timer.step     = 1e-3
+```
+
+## Finite element methods
+
+Each FEM class (e.g. {py:class}`~dream.scalar_transport.spatial.HDG`) implements the
+`initialize` chain that builds finite element spaces, trial/test functions, and symbolic
+bilinear/linear forms:
 
 ```python
 class FiniteElementMethod:
 
     def initialize(self) -> None:
-
         self.initialize_finite_element_spaces()
         self.initialize_trial_and_test_functions()
         self.initialize_gridfunctions()
         self.initialize_time_scheme_gridfunctions()
-
         self.set_boundary_conditions()
         self.set_initial_conditions()
-
         self.initialize_symbolic_forms()
+```
 
-class TransientRoutine:
+## Solution routines
 
-    def start_solution_routine(self) -> Generator[float, None, None]:
-        """ Starts the solution routine for the CFD simulation. """
+{py:class}`~dream.time.TransientRoutine` advances the solution by calling
+`solver.fem.scheme.solve_current_time_level()` at each step and yields the current time for
+optional post-processing. Calling `solver.solve()` is the simplest interface — it calls
+`solver.time.start_solution_routine()` internally and blocks until the simulation is complete:
 
-        scheme = self.root.fem.scheme
+```python
+solver.setup()
+solver.solve()
+```
 
-        scheme.Assemble()
+For finer control (e.g. custom output at every step), iterate over
+`solver.time.start_solution_routine()` directly:
 
-        with self.root.io as io:
-
-            # Solution routine starts here
-            for t in self.timer():
-
-                scheme.solve_current_time_level()
-
-                yield t
-
-                io.save()
-                io.redraw()
-            # Solution routine ends here
+```python
+solver.setup()
+for t in solver.time.start_solution_routine():
+    print(f"t = {t:.4f}")
 ```
 
