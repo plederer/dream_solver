@@ -34,3 +34,4 @@ Examples
     ../../examples/quick_start_compressible.ipynb
     ../../examples/euler_around_naca.ipynb
     ../../examples/isentropic_vortex.ipynb
+    ../../examples/imex_vortex.ipynb

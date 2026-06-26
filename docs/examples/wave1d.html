@@ -22,12 +22,12 @@
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-      <script src="../_static/webgui.js?v=70f75c54"></script>
-      <script src="../_static/webgui_jupyter_widgets.js?v=ef7975dd"></script>
+      <script src="../_static/webgui.js"></script>
+      <script src="../_static/webgui_jupyter_widgets.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="compressible_flow" href="../modules/compressible/index.html" />
+    <link rel="next" title="Rotation of a Gaussian hill" href="gaussian_hill_farfield.html" />
     <link rel="prev" title="Quick Start: Scalar Transport" href="quick_start_scalar_transport.html" /> 
 </head>
 
@@ -85,7 +85,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/index.html#riemann-solver">Riemann Solver</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#boundary-and-initial-conditions">Boundary and Initial Conditions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#time-integration">Time Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/scalar_transport/index.html#api-reference">API Reference</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../modules/scalar_transport/dream.scalar_transport.solver.html">solver</a><ul>
@@ -119,6 +119,7 @@
 <li class="toctree-l2 current"><a class="reference internal" href="../modules/scalar_transport/index.html#examples">Examples</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="quick_start_scalar_transport.html">Quick Start: Scalar Transport</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Scalar wave equation in 1D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gaussian_hill_farfield.html">Rotation of a Gaussian hill</a></li>
 </ul>
 </li>
 </ul>
@@ -129,6 +130,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#quasi-linear-euler-equations">Quasi-linear Euler equations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#discretisation">Discretisation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#initial-and-domain-conditions">Initial and Domain Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#time-integration">Time Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../modules/compressible/index.html#api-reference">API Reference</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.solver.html">solver</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="../modules/compressible/dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a></li>
@@ -196,6 +199,16 @@
 <li class="toctree-l3"><a class="reference internal" href="quick_start_compressible.html">Quick Start: Compressible Flow</a></li>
 <li class="toctree-l3"><a class="reference internal" href="euler_around_naca.html">Flow around NACA 0012 airfoil</a></li>
 <li class="toctree-l3"><a class="reference internal" href="isentropic_vortex.html">Isentropic Vortex in 2D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="imex_vortex.html">IMEX: Isentropic Vortex on a Geometry-Split Mesh</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="imex_vortex.html#Mesh">Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="imex_vortex.html#Shared-Configuration">Shared Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="imex_vortex.html#Implicit-Solver-(HDG,-sdirk33)">Implicit Solver (HDG, <code class="docutils literal notranslate"><span class="pre">sdirk33</span></code>)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="imex_vortex.html#Explicit-Solver-(DG,-rk_ars33)">Explicit Solver (DG, <code class="docutils literal notranslate"><span class="pre">rk_ars33</span></code>)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="imex_vortex.html#Initial-Condition:-Isentropic-Vortex">Initial Condition: Isentropic Vortex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="imex_vortex.html#Boundary-and-Initial-Conditions">Boundary and Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="imex_vortex.html#Initialise,-Link,-and-Solve">Initialise, Link, and Solve</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -376,6 +389,8 @@
 <span class="kn">from</span> <span class="nn">ngsolve</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">ngsolve.meshes</span> <span class="kn">import</span> <span class="n">Make1DMesh</span>
 <span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="n">ngs</span><span class="o">.</span><span class="n">SetNumThreads</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -394,7 +409,6 @@
 
 <span class="c1"># Message output detail from netgen.</span>
 <span class="n">ngs</span><span class="o">.</span><span class="n">ngsglobals</span><span class="o">.</span><span class="n">msg_level</span> <span class="o">=</span> <span class="mi">0</span>
-<span class="n">ngs</span><span class="o">.</span><span class="n">SetNumThreads</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -493,7 +507,7 @@ dream.time      (INFO) | transient | dg implicit_euler | t: 1.200000e+01
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-[&lt;matplotlib.lines.Line2D at 0x1123c7c50&gt;]
+[&lt;matplotlib.lines.Line2D at 0x1102bfc50&gt;]
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -723,7 +737,7 @@ dream.time      (INFO) | transient | dg implicit_euler | t: 1.200000e+01
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | hdg implicit_euler | t: 5.040000e+00
+dream.time      (INFO) | transient | hdg implicit_euler | t: 5.470000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -739,7 +753,7 @@ Running implicit_euler(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | dg implicit_euler | t: 5.140000e+00
+dream.time      (INFO) | transient | dg implicit_euler | t: 4.740000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -755,7 +769,7 @@ Running implicit_euler(dg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | hdg bdf2 | t: 4.580000e+00
+dream.time      (INFO) | transient | hdg bdf2 | t: 4.750000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -771,7 +785,7 @@ Running bdf2(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | dg bdf2 | t: 4.710000e+00
+dream.time      (INFO) | transient | dg bdf2 | t: 4.970000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -787,7 +801,7 @@ Running bdf2(dg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | hdg sdirk22 | stage: 1 | t: 2.382929e+00
+dream.time      (INFO) | transient | hdg sdirk22 | stage: 1 | t: 2.502929e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -803,7 +817,7 @@ Running sdirk22(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | dg sdirk22 | stage: 2 | t: 2.590000e+00
+dream.time      (INFO) | transient | dg sdirk22 | stage: 1 | t: 2.592929e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -819,7 +833,7 @@ Running sdirk22(dg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | hdg sdirk33 | stage: 3 | t: 1.690000e+00
+dream.time      (INFO) | transient | hdg sdirk33 | stage: 3 | t: 1.630000e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -835,7 +849,7 @@ Running sdirk33(hdg)...
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-dream.time      (INFO) | transient | dg sdirk33 | stage: 2 | t: 1.737179e+00
+dream.time      (INFO) | transient | dg sdirk33 | stage: 1 | t: 1.704359e+00
 </pre></div></div>
 </div>
 <div class="nboutput docutils container">
@@ -883,7 +897,7 @@ dream.time      (INFO) | transient | dg sdirk33 | stage: 3 | t: 1.200000e+01
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="quick_start_scalar_transport.html" class="btn btn-neutral float-left" title="Quick Start: Scalar Transport" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="../modules/compressible/index.html" class="btn btn-neutral float-right" title="compressible_flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="gaussian_hill_farfield.html" class="btn btn-neutral float-right" title="Rotation of a Gaussian hill" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

@@ -32,3 +32,4 @@ Examples
 
     ../../examples/quick_start_scalar_transport.ipynb
     ../../examples/wave1d.ipynb
+    ../../examples/gaussian_hill_farfield.ipynb

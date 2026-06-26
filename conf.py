@@ -35,7 +35,7 @@ extensions = ["sphinxcontrib.bibtex",
               ]
 
 templates_path = ['_templates']
-exclude_patterns = ['build', 'docs', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints", "examples/gaussian_hill_farfield.ipynb"] #, "examples"]
+exclude_patterns = ['build', 'docs', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints"] #, "examples"]
 
 tikz_proc_suite = 'pdf2svg'
 

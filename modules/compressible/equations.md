@@ -95,7 +95,29 @@ available:
 | {py:class}`~dream.compressible_flow.config.AdiabaticWall` | No-slip wall with zero heat flux |
 | {py:class}`~dream.compressible_flow.config.CBC` | Non-reflecting BC;<br>subclasses: `GRCBC`, `NSCBC` |
 | {py:class}`~dream.compressible_flow.config.InterfaceBC` | IMEX coupling: solution fields<br>from neighbouring submesh at $\Gamma_i$ |
-| {py:class}`~dream.compressible_flow.config.PML` | Perfectly matched layer<br>for aeroacoustic simulations |
+
+## Initial and Domain Conditions
+
+Domain conditions are assigned via the solver's `dcs`
+({py:class}`~dream.mesh.DomainConditions`) attribute and apply over named mesh regions
+rather than boundaries. For transient simulations the initial state is mandatory:
+
+```python
+Uinf = solver.get_farfield_fields((1, 0))
+solver.dcs['domain'] = Initial(fields=Uinf)
+```
+
+The fields object passed to `Initial` must be a {py:class}`~dream.compressible_flow.config.flowfields`
+instance, typically obtained via
+{py:meth}`~dream.compressible_flow.solver.CompressibleFlowSolver.get_farfield_fields`
+for a uniform free-stream state, or assembled manually from density, velocity, and pressure (or
+temperature) using `flowfields(rho=..., u=..., p=...)`.
+
+| Class | Description |
+|---|---|
+| {py:class}`~dream.mesh.Initial` | Initial state $\mathbf{U}(\cdot,0)$ projected onto the solution space;<br>required for `'transient'` and `'pseudo_time_stepping'` outer loops |
+| {py:class}`~dream.compressible_flow.config.Force` | Body force term added to the momentum equation |
+| {py:class}`~dream.compressible_flow.config.Perturbation` | Superimposed perturbation field<br>on the background state |
 
 ## Time Integration
 

@@ -19,8 +19,8 @@
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
-      <script src="../../_static/webgui.js?v=70f75c54"></script>
-      <script src="../../_static/webgui_jupyter_widgets.js?v=ef7975dd"></script>
+      <script src="../../_static/webgui.js"></script>
+      <script src="../../_static/webgui_jupyter_widgets.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -82,7 +82,7 @@
 <li class="toctree-l3"><a class="reference internal" href="../scalar_transport/index.html#riemann-solver">Riemann Solver</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/index.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../scalar_transport/index.html#boundary-and-initial-conditions">Boundary and Initial Conditions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../scalar_transport/index.html#time-integration">Time Integration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../scalar_transport/index.html#api-reference">API Reference</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../scalar_transport/dream.scalar_transport.solver.html">solver</a><ul>
@@ -116,6 +116,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../scalar_transport/index.html#examples">Examples</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../examples/quick_start_scalar_transport.html">Quick Start: Scalar Transport</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../examples/wave1d.html">Scalar wave equation in 1D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/gaussian_hill_farfield.html">Rotation of a Gaussian hill</a></li>
 </ul>
 </li>
 </ul>
@@ -126,6 +127,8 @@
 <li class="toctree-l2"><a class="reference internal" href="index.html#quasi-linear-euler-equations">Quasi-linear Euler equations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#discretisation">Discretisation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#boundary-conditions">Boundary Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#initial-and-domain-conditions">Initial and Domain Conditions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#time-integration">Time Integration</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="index.html#api-reference">API Reference</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="dream.compressible_flow.solver.html">solver</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="dream.compressible_flow.solver.html#dream.compressible_flow.solver.CompressibleFlowSolver"><code class="docutils literal notranslate"><span class="pre">CompressibleFlowSolver</span></code></a></li>
@@ -193,6 +196,16 @@
 <li class="toctree-l3"><a class="reference internal" href="../../examples/quick_start_compressible.html">Quick Start: Compressible Flow</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../examples/euler_around_naca.html">Flow around NACA 0012 airfoil</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../examples/isentropic_vortex.html">Isentropic Vortex in 2D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/imex_vortex.html">IMEX: Isentropic Vortex on a Geometry-Split Mesh</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Mesh">Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Shared-Configuration">Shared Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Implicit-Solver-(HDG,-sdirk33)">Implicit Solver (HDG, <code class="docutils literal notranslate"><span class="pre">sdirk33</span></code>)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Explicit-Solver-(DG,-rk_ars33)">Explicit Solver (DG, <code class="docutils literal notranslate"><span class="pre">rk_ars33</span></code>)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initial-Condition:-Isentropic-Vortex">Initial Condition: Isentropic Vortex</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Boundary-and-Initial-Conditions">Boundary and Initial Conditions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initialise,-Link,-and-Solve">Initialise, Link, and Solve</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

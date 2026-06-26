@@ -71,7 +71,7 @@ $$
 where $\lambda = |\vec{b}\cdot\vec{n}|$ is the maximum wave speed and $u^\pm$ are the
 one-sided traces from the two neighbouring elements.
 
-## Boundary Conditions
+## Boundary and Initial Conditions
 
 Boundary and initial conditions are attached to the solver via
 {py:class}`~dream.mesh.BoundaryConditions` and {py:class}`~dream.mesh.DomainConditions`:
@@ -106,10 +106,4 @@ or large time steps):
 | {py:class}`~dream.scalar_transport.time.explicit.SSPRK3` | 3 | `'ssprk3'` |
 | {py:class}`~dream.scalar_transport.time.explicit.CRK4` | 4 | `'crk4'` |
 
-**IMEX schemes** (treat convection explicitly and diffusion implicitly — useful when $\kappa$
-is large but $\vec{b}$ drives an explicit CFL):
-
-| Scheme | Order | Key |
-|--------|-------|-----|
-| {py:class}`~dream.scalar_transport.time.imex.IMEXRK_ARS443` | 3 | `'imexrk_ars443'` |
 
