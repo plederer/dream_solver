@@ -28,12 +28,12 @@ In many flow problems, only a small part of the computational mesh is responsibl
 geometry-induced stiffness that limits the stable time step of an explicit scheme, for example highly
 refined regions near walls or small geometric features. The IMEX routines derived from
 {py:class}`~dream.time.IMEXTimeRoutine` exploit this by coupling two independently configured
-{py:class}`~dream.solver.SolverConfiguration`\ s, held by an `IMEXTimeRoutine` as `cfg_implicit` and
+{py:class}`~dream.solver.SolverConfiguration`s, held by an `IMEXTimeRoutine` as `cfg_implicit` and
 `cfg_explicit`. The routine itself does not partition a mesh into implicit/explicit regions; rather, it
 assumes that the two complementary meshes,
-\begin{align}
+\begin{align*}
     \mesh = \mesh^{im} \cup \mesh^{ex}, \qquad \Gamma_i = \mesh^{im} \cap \mesh^{ex},
-\end{align}
+\end{align*}
 with interface $\Gamma_i$, have already been constructed and assigned to `cfg_implicit` and
 `cfg_explicit`, respectively, e.g. with the stiff (typically small) region assigned to `cfg_implicit`
 and the remaining, non-stiff region to `cfg_explicit`. Stiff regions are typically discretized with an

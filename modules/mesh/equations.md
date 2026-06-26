@@ -49,7 +49,7 @@ can be used to concentrate grid points near boundaries.
 
 ### Buffer and sponge layer infrastructure
 
-`dream` uses buffer layers to implement non-reflecting far-field conditions.  Two mechanisms
+`dream` uses e.g. buffer layers to implement non-reflecting far-field conditions.  Two mechanisms
 are available:
 
 **Grid deformation** ({py:class}`~dream.mesh.GridDeformation`): the computational mesh is
