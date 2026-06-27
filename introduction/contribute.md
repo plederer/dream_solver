@@ -115,7 +115,7 @@ optional post-processing. Calling `solver.solve()` is the simplest interface —
 `solver.time.start_solution_routine()` internally and blocks until the simulation is complete:
 
 ```python
-solver.setup()
+solver.initialize()
 solver.solve()
 ```
 
@@ -123,7 +123,7 @@ For finer control (e.g. custom output at every step), iterate over
 `solver.time.start_solution_routine()` directly:
 
 ```python
-solver.setup()
+solver.initialize()
 for t in solver.time.start_solution_routine():
     print(f"t = {t:.4f}")
 ```
