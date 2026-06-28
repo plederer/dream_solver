@@ -18,7 +18,6 @@
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js?v=70f75c54"></script>
@@ -525,6 +524,15 @@ temperature) using <code class="docutils literal notranslate"><span class="pre">
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Perturbation</span></code></p></td>
 <td><p>Superimposed perturbation field<br>on the background state</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../mesh/index.html#dream.mesh.SpongeLayer" title="dream.mesh.SpongeLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">SpongeLayer</span></code></a></p></td>
+<td><p>Volumetric damping term that drives the solution toward a<br><code class="docutils literal notranslate"><span class="pre">target_state</span></code> with a prescribed weight <code class="docutils literal notranslate"><span class="pre">function</span></code>;<br>used to absorb outgoing waves at domain boundaries</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../mesh/index.html#dream.mesh.PSpongeLayer" title="dream.mesh.PSpongeLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">PSpongeLayer</span></code></a></p></td>
+<td><p>Polynomial sponge layer: same damping as <code class="docutils literal notranslate"><span class="pre">SpongeLayer</span></code><br>plus gradual reduction of the local polynomial order<br>from <code class="docutils literal notranslate"><span class="pre">high_order</span></code> to <code class="docutils literal notranslate"><span class="pre">low_order</span></code> for additional dissipation</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../mesh/index.html#dream.mesh.GridDeformation" title="dream.mesh.GridDeformation"><code class="xref py py-class docutils literal notranslate"><span class="pre">GridDeformation</span></code></a></p></td>
+<td><p>Mesh deformation mapping defined by <code class="docutils literal notranslate"><span class="pre">GridMapping</span></code> objects<br>per coordinate direction; deforms the mesh in a domain region</p></td>
 </tr>
 </tbody>
 </table>

@@ -118,6 +118,9 @@ temperature) using `flowfields(rho=..., u=..., p=...)`.
 | {py:class}`~dream.mesh.Initial` | Initial state $\mathbf{U}(\cdot,0)$ projected onto the solution space;<br>required for `'transient'` and `'pseudo_time_stepping'` outer loops |
 | {py:class}`~dream.compressible_flow.config.Force` | Body force term added to the momentum equation |
 | {py:class}`~dream.compressible_flow.config.Perturbation` | Superimposed perturbation field<br>on the background state |
+| {py:class}`~dream.mesh.SpongeLayer` | Volumetric damping term that drives the solution toward a<br>`target_state` with a prescribed weight `function`;<br>used to absorb outgoing waves at domain boundaries |
+| {py:class}`~dream.mesh.PSpongeLayer` | Polynomial sponge layer: same damping as `SpongeLayer`<br>plus gradual reduction of the local polynomial order<br>from `high_order` to `low_order` for additional dissipation |
+| {py:class}`~dream.mesh.GridDeformation` | Mesh deformation mapping defined by `GridMapping` objects<br>per coordinate direction; deforms the mesh in a domain region |
 
 ## Time Integration
 
