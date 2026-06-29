@@ -37,7 +37,7 @@ assumes that the two complementary meshes,
 with interface $\Gamma_i$, have already been constructed and assigned to `cfg_implicit` and
 `cfg_explicit`, respectively, e.g. with the stiff (typically small) region assigned to `cfg_implicit`
 and the remaining, non-stiff region to `cfg_explicit`. Stiff regions are typically discretized with an
-implicit hybridizable discontinuous Galerkin (HDG) scheme, while non-stiff regions are discretized with
+implicit Hybridised Discontinuous Galerkin (HDG) scheme, while non-stiff regions are discretized with
 a (standard) discontinuous Galerkin (DG) scheme; however, the routine itself only assumes that
 `cfg_implicit` is solved implicitly and `cfg_explicit` explicitly in time, not any specific spatial
 discretization. In particular, both regions may equally well use a DG discretization, with only the

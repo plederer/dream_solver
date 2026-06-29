@@ -18,7 +18,6 @@
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js?v=70f75c54"></script>
@@ -206,6 +205,13 @@
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initial-Condition:-Isentropic-Vortex">Initial Condition: Isentropic Vortex</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Boundary-and-Initial-Conditions">Boundary and Initial Conditions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initialise,-Link,-and-Solve">Initialise, Link, and Solve</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html">Planar Acoustic Pulse: Reflecting vs Non-Reflecting Boundaries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Domain-and-Mesh">Domain and Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Physical-Setup">Physical Setup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Simulation-Loop">Simulation Loop</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Results">Results</a></li>
 </ul>
 </li>
 </ul>
@@ -448,7 +454,7 @@
 \[\begin{split}\bm{r}_i       &amp;= \widetilde{\bm{M}}_i \bm{y}_i - \widetilde{\bm{M}}_i \bm{U}^{n} + \frac{1}{a_{ii}} \sum_{j=1}^{i-1} a_{ij} \bm{f}(\bm{z}_j) + \bm{f}(\bm{z}_i),\\ 
 \hat{\bm{r}}_i &amp;= \bm{g}(\bm{z}_i),\end{split}\]</div>
 <p>where <span class="math notranslate nohighlight">\(\widetilde{\bm{M}}_i = \bm{M}/(a_{ii} \delta t)\)</span> is the weighted mass matrix associated with the <em>ith</em> stage.</p>
-<p>Therefore, a Newton-Rhapson update formula for the <em>kth</em> iteration can be written as</p>
+<p>Therefore, a Newton-Raphson update formula for the <em>kth</em> iteration can be written as</p>
 <div class="math notranslate nohighlight">
 \[\bm{N}_{i}^{k} \delta \bm{z}_{i}^{k} = - \bm{R}_{i}^{k},\]</div>
 <p>where the overall residual is <span class="math notranslate nohighlight">\(\bm{R}_{i}^{k} = \Big( \bm{r}(\bm{z}_{i}^{k}), \hat{\bm{r}}(\bm{z}_{i}^{k}) \Big)^T\)</span> and the iteration matrix is defined as</p>

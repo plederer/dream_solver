@@ -18,7 +18,6 @@
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js?v=70f75c54"></script>
@@ -206,6 +205,13 @@
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initial-Condition:-Isentropic-Vortex">Initial Condition: Isentropic Vortex</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Boundary-and-Initial-Conditions">Boundary and Initial Conditions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initialise,-Link,-and-Solve">Initialise, Link, and Solve</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html">Planar Acoustic Pulse: Reflecting vs Non-Reflecting Boundaries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Domain-and-Mesh">Domain and Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Physical-Setup">Physical Setup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Simulation-Loop">Simulation Loop</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Results">Results</a></li>
 </ul>
 </li>
 </ul>
@@ -497,13 +503,13 @@ u^2_{ref} p &amp;= \rho \frac{\overline{c}_\infty^2}{\gamma \overline{T}_\infty}
 <span class="sig-name descname"><span class="pre">specific_inner_energy_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields" title="dream.compressible_flow.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields" title="dream.compressible_flow.config.flowfields"><span class="pre">flowfields</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible_flow.eos.IdealGas.specific_inner_energy_gradient" title="Link to this definition"></a></dt>
 <dd><p>Returns the specific inner energy gradient from given fields</p>
 <div class="math notranslate nohighlight">
-\[(1) \quad \nabla E_i &amp;= \frac{\nabla T}{\gamma},\]</div>
+\[\nabla E_i = \frac{\nabla T}{\gamma}\]</div>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dream.compressible_flow.eos.IdealGas.characteristic_amplitudes">
 <span class="sig-name descname"><span class="pre">characteristic_amplitudes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">U</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields" title="dream.compressible_flow.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dU</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="dream.compressible_flow.config.html#dream.compressible_flow.config.flowfields" title="dream.compressible_flow.config.flowfields"><span class="pre">flowfields</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_vector</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">CoefficientFunction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CoefficientFunction</span></span></span><a class="headerlink" href="#dream.compressible_flow.eos.IdealGas.characteristic_amplitudes" title="Link to this definition"></a></dt>
-<dd><p>Returns the charachteristic amplitudes</p>
+<dd><p>Returns the characteristic amplitudes</p>
 <div class="math notranslate nohighlight">
 \[\vec{\mathcal{L}} := \vec{\Lambda} \mat{P}_n^{-1} \frac{\partial \vec{U}}{\partial n} = \vec{\Lambda} \vec{L}_n^{-1} \frac{\partial \vec{V}}{\partial n} = \vec{\Lambda} \frac{\partial \vec{W}}{\partial n},\]</div>
 </dd></dl>

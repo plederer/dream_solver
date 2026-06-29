@@ -11,7 +11,7 @@ Run the following command in the directory of the git repository:
 This will install the *dream* package and all its dependencies from pip including [`ngsolve`](https://ngsolve.org/).
 
 ``````{tip} 
-We advice the use of a virtual environment for the installation of the *dream* package
+We advise the use of a virtual environment for the installation of the *dream* package
 and its dependencies.
 
 To setup and activate a virtual environment run the following commands:

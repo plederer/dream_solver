@@ -18,7 +18,6 @@
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
       <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "macros": {"bm": ["\\boldsymbol{#1}", 1], "div": "{\\operatorname{div}}", "tr": "{\\operatorname{tr}}", "dev": "{\\operatorname{dev}}", "curl": "{\\operatorname{curl}}", "grad": "{\\nabla}", "T": "{\\rm{T}}", "I": "{\\operatorname{I}}", "Re": "{\\operatorname{\\rm{Re}}}", "Pr": "{\\operatorname{\\rm{Pr}}}", "Ma": "{\\operatorname{\\rm{Ma}}}", "Fr": "{\\operatorname{\\rm{Fr}}}", "jump": ["{{[\\![#1]\\!]}}", 1], "sym": ["{{\\rm sym} (#1) }", 1], "skw": ["{{\\rm skw} (#1) }", 1], "vec": ["{\\bm{#1}}", 1], "mat": ["{\\bm{#1}}", 1], "facets": "\\mathcal{F}_h", "mesh": "\\mathcal{T}_h"}}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
       <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../_static/webgui.js?v=70f75c54"></script>
@@ -204,6 +203,13 @@
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initial-Condition:-Isentropic-Vortex">Initial Condition: Isentropic Vortex</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Boundary-and-Initial-Conditions">Boundary and Initial Conditions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initialise,-Link,-and-Solve">Initialise, Link, and Solve</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html">Planar Acoustic Pulse: Reflecting vs Non-Reflecting Boundaries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Domain-and-Mesh">Domain and Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Physical-Setup">Physical Setup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Simulation-Loop">Simulation Loop</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Results">Results</a></li>
 </ul>
 </li>
 </ul>
@@ -404,7 +410,7 @@ assumes that the two complementary meshes,</p>
 <p>with interface <span class="math notranslate nohighlight">\(\Gamma_i\)</span>, have already been constructed and assigned to <code class="docutils literal notranslate"><span class="pre">cfg_implicit</span></code> and
 <code class="docutils literal notranslate"><span class="pre">cfg_explicit</span></code>, respectively, e.g. with the stiff (typically small) region assigned to <code class="docutils literal notranslate"><span class="pre">cfg_implicit</span></code>
 and the remaining, non-stiff region to <code class="docutils literal notranslate"><span class="pre">cfg_explicit</span></code>. Stiff regions are typically discretized with an
-implicit hybridizable discontinuous Galerkin (HDG) scheme, while non-stiff regions are discretized with
+implicit Hybridised Discontinuous Galerkin (HDG) scheme, while non-stiff regions are discretized with
 a (standard) discontinuous Galerkin (DG) scheme; however, the routine itself only assumes that
 <code class="docutils literal notranslate"><span class="pre">cfg_implicit</span></code> is solved implicitly and <code class="docutils literal notranslate"><span class="pre">cfg_explicit</span></code> explicitly in time, not any specific spatial
 discretization. In particular, both regions may equally well use a DG discretization, with only the
