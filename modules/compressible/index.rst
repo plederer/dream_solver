@@ -35,3 +35,4 @@ Examples
     ../../examples/euler_around_naca.ipynb
     ../../examples/isentropic_vortex.ipynb
     ../../examples/imex_vortex.ipynb
+    ../../examples/planar_acoustic_pulse.ipynb
