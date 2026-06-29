@@ -166,7 +166,7 @@ class DIRKSchemes(TimeSchemes):
 
     where :math:`\widetilde{\bm{M}}_i = \bm{M}/(a_{ii} \delta t)` is the weighted mass matrix associated with the *ith* stage.
 
-    Therefore, a Newton-Rhapson update formula for the *kth* iteration can be written as
+    Therefore, a Newton-Raphson update formula for the *kth* iteration can be written as
 
     .. math::
         \bm{N}_{i}^{k} \delta \bm{z}_{i}^{k} = - \bm{R}_{i}^{k},

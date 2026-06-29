@@ -472,7 +472,7 @@ class DG(ScalarTransportFiniteElementMethod):
                                     +\hspace{-4mm} \int\limits_{\partial D \setminus \partial \Omega} \kappa \tau (u_i - u_j)(v_i - v_j)\, d\bm{s},
             \end{aligned}
 
-        where the *ith* and *jth* subscripts correspond to the indices of the local solution and its neighobring solution, respectively. Additionally, :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`.
+        where the *ith* and *jth* subscripts correspond to the indices of the local solution and its neighboring solution, respectively. Additionally, :math:`\tau` is the interior penalty coefficient, see :func:`~dream.scalar_transport.spatial.ScalarTransportFiniteElementMethod.get_penalty_coefficient`.
         """
 
         bonus = self.bonus_int_order['diffusion']

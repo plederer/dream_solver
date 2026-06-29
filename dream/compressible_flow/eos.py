@@ -371,7 +371,7 @@ class IdealGas(EquationOfState):
         r"""Returns the specific inner energy gradient from given fields
 
         .. math::
-            (1) \quad \nabla E_i &= \frac{\nabla T}{\gamma},
+            \nabla E_i = \frac{\nabla T}{\gamma}
         """
 
         gamma = self.heat_capacity_ratio
@@ -444,7 +444,7 @@ class IdealGas(EquationOfState):
 
     def characteristic_amplitudes(self, U: flowfields, dU: flowfields, unit_vector: ngs.CF,
                                   type_: str = None) -> ngs.CF:
-        r""" Returns the charachteristic amplitudes
+        r""" Returns the characteristic amplitudes
 
             .. math::
                 \vec{\mathcal{L}} := \vec{\Lambda} \mat{P}_n^{-1} \frac{\partial \vec{U}}{\partial n} = \vec{\Lambda} \vec{L}_n^{-1} \frac{\partial \vec{V}}{\partial n} = \vec{\Lambda} \frac{\partial \vec{W}}{\partial n},
