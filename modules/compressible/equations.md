@@ -45,6 +45,76 @@ it is essential to express these equations in quasi-linear form
 \end{align*}
 where the $\mat{A}_i$ are the directional convective Jacobians.
 
+## Flow Configuration
+
+Before selecting a discretisation, the physical model is configured by setting the equation
+of state, viscosity model, non-dimensionalisation scaling, Mach number, and Riemann solver.
+
+### Equation of State
+
+The equation of state closes the system by relating pressure, density, and temperature.
+The only currently supported option is the ideal gas law:
+
+```python
+cfg.equation_of_state                     = 'ideal'
+cfg.equation_of_state.heat_capacity_ratio = 1.4
+```
+
+| Class | Key | Description |
+|---|---|---|
+| {py:class}`~dream.compressible_flow.eos.IdealGas` | `'ideal'` | Ideal gas: $p = (\gamma-1)\,\rho E_i$,<br>$T = \gamma E_i$ |
+
+### Viscosity
+
+The viscosity model controls the deviatoric stress tensor $\mat{\tau}$ and heat flux $\vec{q}$:
+
+```python
+cfg.dynamic_viscosity = 'inviscid'   # Euler equations (no viscosity)
+cfg.dynamic_viscosity = 'constant'   # constant dynamic viscosity
+cfg.dynamic_viscosity = 'sutherland' # temperature-dependent viscosity
+```
+
+| Class | Key | Description |
+|---|---|---|
+| {py:class}`~dream.compressible_flow.viscosity.Inviscid` | `'inviscid'` | $\mat{\tau} = 0$, $\vec{q} = 0$ — Euler equations |
+| {py:class}`~dream.compressible_flow.viscosity.Constant` | `'constant'` | Constant dynamic viscosity $\mu$ |
+| {py:class}`~dream.compressible_flow.viscosity.Sutherland` | `'sutherland'` | Sutherland's law: $\mu \propto T^{3/2}/(T + S)$ |
+
+### Non-Dimensionalisation Scaling
+
+The scaling determines how the reference state $(\rho_\infty, c_\infty, p_\infty, T_\infty)$
+is constructed from the Mach number. It affects all non-dimensional quantities used by the solver.
+
+```python
+cfg.scaling     = 'acoustic'      # acoustic: rho_inf=1, c_inf=1, p_inf=1/gamma
+cfg.scaling     = 'aerodynamic'   # aerodynamic: rho_inf=1, u_inf=1, p_inf=1/(gamma*M^2)
+cfg.scaling     = 'aeroacoustic'  # combined aerodynamic/acoustic scaling
+cfg.mach_number = 0.03
+```
+
+| Class | Key | Characteristic velocity |
+|---|---|---|
+| {py:class}`~dream.compressible_flow.scaling.Acoustic` | `'acoustic'` | $u_\mathrm{ref} = c_\infty$ |
+| {py:class}`~dream.compressible_flow.scaling.Aerodynamic` | `'aerodynamic'` | $u_\mathrm{ref} = u_\infty$ |
+| {py:class}`~dream.compressible_flow.scaling.Aeroacoustic` | `'aeroacoustic'` | $u_\mathrm{ref} = \sqrt{u_\infty c_\infty}$ |
+
+### Riemann Solver
+
+The Riemann solver defines the convective numerical flux at element interfaces and
+boundary faces. It affects both accuracy and stability:
+
+```python
+cfg.riemann_solver = 'lax_friedrich'
+```
+
+| Class | Key | Notes |
+|---|---|---|
+| {py:class}`~dream.compressible_flow.riemann_solver.LaxFriedrich` | `'lax_friedrich'` | Simple, robust; adds maximum-speed dissipation |
+| {py:class}`~dream.compressible_flow.riemann_solver.Upwind` | `'upwind'` | Characteristic upwinding |
+| {py:class}`~dream.compressible_flow.riemann_solver.Roe` | `'roe'` | Roe-averaged flux; accurate but no entropy fix |
+| {py:class}`~dream.compressible_flow.riemann_solver.HLL` | `'hll'` | Two-wave HLL flux |
+| {py:class}`~dream.compressible_flow.riemann_solver.HLLEM` | `'hllem'` | HLL with entropy-fix correction |
+
 ## Discretisation
 
 The solver discretises the compressible Navier-Stokes equations on a mesh $\mesh$ using either

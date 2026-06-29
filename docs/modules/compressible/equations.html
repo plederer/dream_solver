@@ -124,6 +124,13 @@
 <li class="toctree-l2"><a class="reference internal" href="index.html#solver-architecture">Solver Architecture</a></li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#compressible-flow-equations">Compressible flow equations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#quasi-linear-euler-equations">Quasi-linear Euler equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="index.html#flow-configuration">Flow Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="index.html#equation-of-state">Equation of State</a></li>
+<li class="toctree-l3"><a class="reference internal" href="index.html#viscosity">Viscosity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="index.html#non-dimensionalisation-scaling">Non-Dimensionalisation Scaling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="index.html#riemann-solver">Riemann Solver</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#discretisation">Discretisation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#boundary-conditions">Boundary Conditions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="index.html#initial-and-domain-conditions">Initial and Domain Conditions</a></li>
@@ -203,6 +210,13 @@
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initial-Condition:-Isentropic-Vortex">Initial Condition: Isentropic Vortex</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Boundary-and-Initial-Conditions">Boundary and Initial Conditions</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../examples/imex_vortex.html#Initialise,-Link,-and-Solve">Initialise, Link, and Solve</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html">Planar Acoustic Pulse: Reflecting vs Non-Reflecting Boundaries</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Domain-and-Mesh">Domain and Mesh</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Physical-Setup">Physical Setup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Simulation-Loop">Simulation Loop</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../examples/planar_acoustic_pulse.html#Results">Results</a></li>
 </ul>
 </li>
 </ul>
@@ -410,6 +424,136 @@ it is essential to express these equations in quasi-linear form</p>
     \frac{\partial \vec{U}}{\partial t} + \sum_{i=1}^d \mat{A}_i \frac{\partial \vec{U}}{\partial x_i}  &amp;= \vec{0}, \\
 \end{align*}\]</div>
 <p>where the <span class="math notranslate nohighlight">\(\mat{A}_i\)</span> are the directional convective Jacobians.</p>
+</section>
+<section id="flow-configuration">
+<h1>Flow Configuration<a class="headerlink" href="#flow-configuration" title="Link to this heading"></a></h1>
+<p>Before selecting a discretisation, the physical model is configured by setting the equation
+of state, viscosity model, non-dimensionalisation scaling, Mach number, and Riemann solver.</p>
+<section id="equation-of-state">
+<h2>Equation of State<a class="headerlink" href="#equation-of-state" title="Link to this heading"></a></h2>
+<p>The equation of state closes the system by relating pressure, density, and temperature.
+The only currently supported option is the ideal gas law:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span><span class="o">.</span><span class="n">equation_of_state</span>                     <span class="o">=</span> <span class="s1">&#39;ideal&#39;</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">equation_of_state</span><span class="o">.</span><span class="n">heat_capacity_ratio</span> <span class="o">=</span> <span class="mf">1.4</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Key</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.eos.html#dream.compressible_flow.eos.IdealGas" title="dream.compressible_flow.eos.IdealGas"><code class="xref py py-class docutils literal notranslate"><span class="pre">IdealGas</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'ideal'</span></code></p></td>
+<td><p>Ideal gas: <span class="math notranslate nohighlight">\(p = (\gamma-1)\,\rho E_i\)</span>,<br><span class="math notranslate nohighlight">\(T = \gamma E_i\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="viscosity">
+<h2>Viscosity<a class="headerlink" href="#viscosity" title="Link to this heading"></a></h2>
+<p>The viscosity model controls the deviatoric stress tensor <span class="math notranslate nohighlight">\(\mat{\tau}\)</span> and heat flux <span class="math notranslate nohighlight">\(\vec{q}\)</span>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span><span class="o">.</span><span class="n">dynamic_viscosity</span> <span class="o">=</span> <span class="s1">&#39;inviscid&#39;</span>   <span class="c1"># Euler equations (no viscosity)</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">dynamic_viscosity</span> <span class="o">=</span> <span class="s1">&#39;constant&#39;</span>   <span class="c1"># constant dynamic viscosity</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">dynamic_viscosity</span> <span class="o">=</span> <span class="s1">&#39;sutherland&#39;</span> <span class="c1"># temperature-dependent viscosity</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Key</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Inviscid" title="dream.compressible_flow.viscosity.Inviscid"><code class="xref py py-class docutils literal notranslate"><span class="pre">Inviscid</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'inviscid'</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mat{\tau} = 0\)</span>, <span class="math notranslate nohighlight">\(\vec{q} = 0\)</span> — Euler equations</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Constant" title="dream.compressible_flow.viscosity.Constant"><code class="xref py py-class docutils literal notranslate"><span class="pre">Constant</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'constant'</span></code></p></td>
+<td><p>Constant dynamic viscosity <span class="math notranslate nohighlight">\(\mu\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.viscosity.html#dream.compressible_flow.viscosity.Sutherland" title="dream.compressible_flow.viscosity.Sutherland"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sutherland</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'sutherland'</span></code></p></td>
+<td><p>Sutherland’s law: <span class="math notranslate nohighlight">\(\mu \propto T^{3/2}/(T + S)\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="non-dimensionalisation-scaling">
+<h2>Non-Dimensionalisation Scaling<a class="headerlink" href="#non-dimensionalisation-scaling" title="Link to this heading"></a></h2>
+<p>The scaling determines how the reference state <span class="math notranslate nohighlight">\((\rho_\infty, c_\infty, p_\infty, T_\infty)\)</span>
+is constructed from the Mach number. It affects all non-dimensional quantities used by the solver.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span><span class="o">.</span><span class="n">scaling</span>     <span class="o">=</span> <span class="s1">&#39;acoustic&#39;</span>      <span class="c1"># acoustic: rho_inf=1, c_inf=1, p_inf=1/gamma</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">scaling</span>     <span class="o">=</span> <span class="s1">&#39;aerodynamic&#39;</span>   <span class="c1"># aerodynamic: rho_inf=1, u_inf=1, p_inf=1/(gamma*M^2)</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">scaling</span>     <span class="o">=</span> <span class="s1">&#39;aeroacoustic&#39;</span>  <span class="c1"># combined aerodynamic/acoustic scaling</span>
+<span class="n">cfg</span><span class="o">.</span><span class="n">mach_number</span> <span class="o">=</span> <span class="mf">0.03</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Key</p></th>
+<th class="head"><p>Characteristic velocity</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Acoustic" title="dream.compressible_flow.scaling.Acoustic"><code class="xref py py-class docutils literal notranslate"><span class="pre">Acoustic</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'acoustic'</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(u_\mathrm{ref} = c_\infty\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aerodynamic" title="dream.compressible_flow.scaling.Aerodynamic"><code class="xref py py-class docutils literal notranslate"><span class="pre">Aerodynamic</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'aerodynamic'</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(u_\mathrm{ref} = u_\infty\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.scaling.html#dream.compressible_flow.scaling.Aeroacoustic" title="dream.compressible_flow.scaling.Aeroacoustic"><code class="xref py py-class docutils literal notranslate"><span class="pre">Aeroacoustic</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'aeroacoustic'</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(u_\mathrm{ref} = \sqrt{u_\infty c_\infty}\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="riemann-solver">
+<h2>Riemann Solver<a class="headerlink" href="#riemann-solver" title="Link to this heading"></a></h2>
+<p>The Riemann solver defines the convective numerical flux at element interfaces and
+boundary faces. It affects both accuracy and stability:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cfg</span><span class="o">.</span><span class="n">riemann_solver</span> <span class="o">=</span> <span class="s1">&#39;lax_friedrich&#39;</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Class</p></th>
+<th class="head"><p>Key</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.LaxFriedrich" title="dream.compressible_flow.riemann_solver.LaxFriedrich"><code class="xref py py-class docutils literal notranslate"><span class="pre">LaxFriedrich</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'lax_friedrich'</span></code></p></td>
+<td><p>Simple, robust; adds maximum-speed dissipation</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Upwind" title="dream.compressible_flow.riemann_solver.Upwind"><code class="xref py py-class docutils literal notranslate"><span class="pre">Upwind</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'upwind'</span></code></p></td>
+<td><p>Characteristic upwinding</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.Roe" title="dream.compressible_flow.riemann_solver.Roe"><code class="xref py py-class docutils literal notranslate"><span class="pre">Roe</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'roe'</span></code></p></td>
+<td><p>Roe-averaged flux; accurate but no entropy fix</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLL" title="dream.compressible_flow.riemann_solver.HLL"><code class="xref py py-class docutils literal notranslate"><span class="pre">HLL</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'hll'</span></code></p></td>
+<td><p>Two-wave HLL flux</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="dream.compressible_flow.riemann_solver.html#dream.compressible_flow.riemann_solver.HLLEM" title="dream.compressible_flow.riemann_solver.HLLEM"><code class="xref py py-class docutils literal notranslate"><span class="pre">HLLEM</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'hllem'</span></code></p></td>
+<td><p>HLL with entropy-fix correction</p></td>
+</tr>
+</tbody>
+</table>
+</section>
 </section>
 <section id="discretisation">
 <h1>Discretisation<a class="headerlink" href="#discretisation" title="Link to this heading"></a></h1>
