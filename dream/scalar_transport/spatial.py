@@ -384,9 +384,9 @@ class DG(ScalarTransportFiniteElementMethod):
     This may be compactly written as: Find :math:`u_h, v_h \in U_h`, such that
 
     .. math::
-        \bm{M} \partial_t u_h + B_c(u_h, v_h) + B_d(u_h, v_h) = l_c(v_h) + l_d(v_h),
+        (\partial_t u_h, v_h) + B_c(u_h, v_h) + B_d(u_h, v_h) = l_c(v_h) + l_d(v_h),
 
-    where the first term, involving the mass matrix :math:`\bm{M} = (u_h, v_h)` is treated separately, depending on the chosen temporal scheme, see :mod:`~dream.scalar_transport.time`. The discrete space is defined as
+    where the time derivative term is treated separately depending on the chosen temporal scheme, see :mod:`~dream.scalar_transport.time`. The discrete space is defined as
 
     .. math::
         U_h := L^2\left(\mathbb{P}^k(\Omega, \mathbb{R}^{d}) \right).
