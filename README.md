@@ -17,7 +17,8 @@ We thank the Austrian Science Fund (FWF) for funding via the stand alone project
 
 Developed at:
 * (2022 - ) TU Wien, Institute of Analysis and Scientific Computing
-* (2023 - ) University of Twente, Institute of Applied Mathematics
+* (2023 - 2024) University of Twente, Institute of Applied Mathematics
+* (2024 - ) University of Hamburg, Department of Mathematics
 
 
 
