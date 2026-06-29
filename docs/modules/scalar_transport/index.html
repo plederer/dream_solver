@@ -417,26 +417,37 @@ facets <span class="math notranslate nohighlight">\(\facets\)</span>.  The globa
 unknowns are eliminated locally via static condensation.  This leads to a significantly
 smaller global system compared to standard DG, making HDG attractive for implicit time
 integration at low polynomial orders.</p>
-<p>The discrete problem is: find <span class="math notranslate nohighlight">\((u_h, \hat{u}_h)\)</span> such that for every element <span class="math notranslate nohighlight">\(K \in \mesh\)</span></p>
+<p>The discrete problem finds <span class="math notranslate nohighlight">\((u_h, \hat{u}_h) \in U_h \times \hat{U}_h\)</span> such that</p>
 <div class="math notranslate nohighlight">
 \[
-\int_K \frac{\partial u_h}{\partial t} v\,\mathrm{d}x
-+ \int_{\partial K} \hat{f}^*(u_h, \hat{u}_h;\vec{b})\,v\,\mathrm{d}s
-+ \int_K \kappa\,\nabla u_h \cdot \nabla v\,\mathrm{d}x
-- \int_{\partial K} \kappa\,\nabla u_h \cdot \vec{n}\,v\,\mathrm{d}s
-= 0,
+(\partial_t u_h, v) + B_c(\{u_h,\hat{u}_h\},\{v,\hat{v}\}) + B_d(\{u_h,\hat{u}_h\},\{v,\hat{v}\}) = 0
 \]</div>
-<p>where <span class="math notranslate nohighlight">\(\hat{f}^*\)</span> is a single-valued numerical flux on <span class="math notranslate nohighlight">\(\partial K\)</span> determined by the
-<a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver" title="dream.scalar_transport.riemann_solver.RiemannSolver"><code class="xref py py-class docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a> and the stabilisation
-parameter (see <a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG" title="dream.scalar_transport.spatial.HDG"><code class="xref py py-class docutils literal notranslate"><span class="pre">HDG</span></code></a> for details).</p>
+<p>for all <span class="math notranslate nohighlight">\((v, \hat{v}) \in U_h \times \hat{U}_h\)</span>. The <strong>convective</strong> bilinear form is</p>
+<div class="math notranslate nohighlight">
+\[
+B_c = -\int_K \vec{b}\,u_h \cdot \nabla v\,\mathrm{d}x
++ \int_{\partial K} \hat{f}^*\,v\,\mathrm{d}s
+- \int_{\partial K \setminus \partial\Omega} \hat{f}^*\,\hat{v}\,\mathrm{d}s,
+\]</div>
+<p>and the <strong>diffusive</strong> bilinear form is</p>
+<div class="math notranslate nohighlight">
+\[
+B_d = \int_K \kappa\,\nabla u_h \cdot \nabla v\,\mathrm{d}x
+- \int_{\partial K} \kappa\,\nabla u_h \cdot \vec{n}\,(v - \hat{v})\,\mathrm{d}s
+- \int_{\partial K \setminus \partial\Omega} \kappa\,(u_h - \hat{u}_h)\,\vec{n}\cdot\nabla v\,\mathrm{d}s
++ \int_{\partial K \setminus \partial\Omega} \kappa\,\tau\,(u_h - \hat{u}_h)\,(v - \hat{v})\,\mathrm{d}s.
+\]</div>
+<p>Here <span class="math notranslate nohighlight">\(\hat{f}^*\)</span> is the convective numerical flux determined by the
+<a class="reference internal" href="dream.scalar_transport.riemann_solver.html#dream.scalar_transport.riemann_solver.RiemannSolver" title="dream.scalar_transport.riemann_solver.RiemannSolver"><code class="xref py py-class docutils literal notranslate"><span class="pre">RiemannSolver</span></code></a>, and <span class="math notranslate nohighlight">\(\tau\)</span> is the
+interior penalty coefficient (see <a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.HDG" title="dream.scalar_transport.spatial.HDG"><code class="xref py py-class docutils literal notranslate"><span class="pre">HDG</span></code></a> for details).</p>
 </section>
 <section id="discontinuous-galerkin-dg">
 <h3>Discontinuous Galerkin (DG)<a class="headerlink" href="#discontinuous-galerkin-dg" title="Link to this heading"></a></h3>
 <p>The <a class="reference internal" href="dream.scalar_transport.spatial.html#dream.scalar_transport.spatial.DG" title="dream.scalar_transport.spatial.DG"><code class="xref py py-class docutils literal notranslate"><span class="pre">DG</span></code></a> method uses element-wise polynomial
 spaces without skeleton unknowns.  Inter-element communication is handled entirely through
-the numerical flux chosen by the Riemann solver.  DG is simpler to implement and sometimes
-preferred for explicit time stepping, but the global system is larger because no static
-condensation is possible.</p>
+the numerical flux chosen by the Riemann solver.  DG is straightforward to use with explicit
+time integrators, though implicit solves may be more expensive since no static condensation
+is available.</p>
 </section>
 <section id="riemann-solver">
 <h3>Riemann Solver<a class="headerlink" href="#riemann-solver" title="Link to this heading"></a></h3>

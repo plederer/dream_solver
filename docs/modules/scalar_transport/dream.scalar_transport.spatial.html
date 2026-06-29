@@ -382,8 +382,8 @@
 <dd><p>Class containing the tools that define a standard discontinuous Galerkin (DG) finite element method for the scalar transport equation.</p>
 <p>This may be compactly written as: Find <span class="math notranslate nohighlight">\(u_h, v_h \in U_h\)</span>, such that</p>
 <div class="math notranslate nohighlight">
-\[\bm{M} \partial_t u_h + B_c(u_h, v_h) + B_d(u_h, v_h) = l_c(v_h) + l_d(v_h),\]</div>
-<p>where the first term, involving the mass matrix <span class="math notranslate nohighlight">\(\bm{M} = (u_h, v_h)\)</span> is treated separately, depending on the chosen temporal scheme, see <a class="reference internal" href="dream.scalar_transport.time.html#module-dream.scalar_transport.time" title="dream.scalar_transport.time"><code class="xref py py-mod docutils literal notranslate"><span class="pre">time</span></code></a>. The discrete space is defined as</p>
+\[(\partial_t u_h, v_h) + B_c(u_h, v_h) + B_d(u_h, v_h) = l_c(v_h) + l_d(v_h),\]</div>
+<p>where the time derivative term is treated separately depending on the chosen temporal scheme, see <a class="reference internal" href="dream.scalar_transport.time.html#module-dream.scalar_transport.time" title="dream.scalar_transport.time"><code class="xref py py-mod docutils literal notranslate"><span class="pre">time</span></code></a>. The discrete space is defined as</p>
 <div class="math notranslate nohighlight">
 \[U_h := L^2\left(\mathbb{P}^k(\Omega, \mathbb{R}^{d}) \right).\]</div>
 <p>The above bilinear and linear forms correspond to</p>

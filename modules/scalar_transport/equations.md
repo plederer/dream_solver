@@ -36,27 +36,40 @@ unknowns are eliminated locally via static condensation.  This leads to a signif
 smaller global system compared to standard DG, making HDG attractive for implicit time
 integration at low polynomial orders.
 
-The discrete problem is: find $(u_h, \hat{u}_h)$ such that for every element $K \in \mesh$
+The discrete problem finds $(u_h, \hat{u}_h) \in U_h \times \hat{U}_h$ such that
 
 $$
-\int_K \frac{\partial u_h}{\partial t} v\,\mathrm{d}x
-+ \int_{\partial K} \hat{f}^*(u_h, \hat{u}_h;\vec{b})\,v\,\mathrm{d}s
-+ \int_K \kappa\,\nabla u_h \cdot \nabla v\,\mathrm{d}x
-- \int_{\partial K} \kappa\,\nabla u_h \cdot \vec{n}\,v\,\mathrm{d}s
-= 0,
+(\partial_t u_h, v) + B_c(\{u_h,\hat{u}_h\},\{v,\hat{v}\}) + B_d(\{u_h,\hat{u}_h\},\{v,\hat{v}\}) = 0
 $$
 
-where $\hat{f}^*$ is a single-valued numerical flux on $\partial K$ determined by the
-{py:class}`~dream.scalar_transport.riemann_solver.RiemannSolver` and the stabilisation
-parameter (see {py:class}`~dream.scalar_transport.spatial.HDG` for details).
+for all $(v, \hat{v}) \in U_h \times \hat{U}_h$. The **convective** bilinear form is
+
+$$
+B_c = -\int_K \vec{b}\,u_h \cdot \nabla v\,\mathrm{d}x
++ \int_{\partial K} \hat{f}^*\,v\,\mathrm{d}s
+- \int_{\partial K \setminus \partial\Omega} \hat{f}^*\,\hat{v}\,\mathrm{d}s,
+$$
+
+and the **diffusive** bilinear form is
+
+$$
+B_d = \int_K \kappa\,\nabla u_h \cdot \nabla v\,\mathrm{d}x
+- \int_{\partial K} \kappa\,\nabla u_h \cdot \vec{n}\,(v - \hat{v})\,\mathrm{d}s
+- \int_{\partial K \setminus \partial\Omega} \kappa\,(u_h - \hat{u}_h)\,\vec{n}\cdot\nabla v\,\mathrm{d}s
++ \int_{\partial K \setminus \partial\Omega} \kappa\,\tau\,(u_h - \hat{u}_h)\,(v - \hat{v})\,\mathrm{d}s.
+$$
+
+Here $\hat{f}^*$ is the convective numerical flux determined by the
+{py:class}`~dream.scalar_transport.riemann_solver.RiemannSolver`, and $\tau$ is the
+interior penalty coefficient (see {py:class}`~dream.scalar_transport.spatial.HDG` for details).
 
 ### Discontinuous Galerkin (DG)
 
 The {py:class}`~dream.scalar_transport.spatial.DG` method uses element-wise polynomial
 spaces without skeleton unknowns.  Inter-element communication is handled entirely through
-the numerical flux chosen by the Riemann solver.  DG is simpler to implement and sometimes
-preferred for explicit time stepping, but the global system is larger because no static
-condensation is possible.
+the numerical flux chosen by the Riemann solver.  DG is straightforward to use with explicit
+time integrators, though implicit solves may be more expensive since no static condensation
+is available.
 
 ### Riemann Solver
 
